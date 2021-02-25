@@ -5,9 +5,9 @@ cc_library(
     srcs = ["fake_onewire_thermometer.cpp"],
     hdrs = ["fake_onewire_thermometer.h"],
     deps = [
-        "//testing/buses/onewire",
-        "//testing/transducers/temperature",
-        "//testing/transducers/time",
+        "//roo_testing/buses/onewire",
+        "//roo_testing/transducers/temperature",
+        "//roo_testing/transducers/time",
     ],
     visibility = ["//visibility:public"],
 )

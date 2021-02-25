@@ -19,6 +19,6 @@ cc_library(
     name = "arduino",
     visibility = ["//visibility:public"],
     deps = [
-        "//testing/frameworks/arduinoespressif32:arduino",
+        "//roo_testing/frameworks/arduinoespressif32:arduino",
     ],
 )

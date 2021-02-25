@@ -1,7 +1,7 @@
 #pragma once
 
-#include "testing/buses/i2c/fake_i2c.h"
-#include "testing/transducers/temperature/temperature.h"
+#include "roo_testing/buses/i2c/fake_i2c.h"
+#include "roo_testing/transducers/temperature/temperature.h"
 
 class FakeI2cDs3231 : public FakeI2cDevice {
  public:

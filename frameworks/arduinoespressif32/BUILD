@@ -46,8 +46,8 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        "//testing/buses/i2c",
-        "//testing/transducers/time",
-        "//testing/transducers/time:default_system_clock",
+        "//roo_testing/buses/i2c",
+        "//roo_testing/transducers/time",
+        "//roo_testing/transducers/time:default_system_clock",
     ],
 )

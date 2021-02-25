@@ -5,9 +5,9 @@ cc_library(
     srcs = ["fake_i2c_ds3231.cpp"],
     hdrs = ["fake_i2c_ds3231.h"],
     deps = [
-        "//testing/buses/i2c",
-        "//testing/transducers/time",
-        "//testing/transducers/temperature",
+        "//roo_testing/buses/i2c",
+        "//roo_testing/transducers/time",
+        "//roo_testing/transducers/temperature",
     ],
     visibility = ["//visibility:public"],
 )

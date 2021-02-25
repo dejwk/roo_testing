@@ -1,7 +1,7 @@
 #pragma once
 
-#include "testing/buses/onewire/fake_onewire.h"
-#include "testing/transducers/temperature/temperature.h"
+#include "roo_testing/buses/onewire/fake_onewire.h"
+#include "roo_testing/transducers/temperature/temperature.h"
 
 class FakeOneWireThermometer : public FakeOneWireBaseDevice {
  public:

@@ -33,10 +33,13 @@ typedef enum {
     ADC_11db
 } adc_attenuation_t;
 
+void gpioFakeWrite(uint8_t pin, float voltage);
+float gpioFakeRead(uint8_t pin);
+
 /*
  * Get ADC value for pin
  * */
-inline uint16_t analogRead(uint8_t pin) { return 3000; }
+uint16_t analogRead(uint8_t pin);
 
 /*
  * Set the resolution of analogRead return values. Default is 12 bits (range from 0 to 4096).

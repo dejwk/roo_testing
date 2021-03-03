@@ -74,13 +74,13 @@ extern const int8_t esp32_adc2gpio[20];
 #define digitalPinToTouchChannel(pin)   (((pin) < 40)?esp32_gpioMux[(pin)].touch:-1)
 #define digitalPinToDacChannel(pin)     (((pin) == 25)?0:((pin) == 26)?1:-1)
 
-inline void pinMode(uint8_t pin, uint8_t mode) {}
-inline void digitalWrite(uint8_t pin, uint8_t val) {}
-inline int digitalRead(uint8_t pin) { return 1; }
+void pinMode(uint8_t pin, uint8_t mode);
+void digitalWrite(uint8_t pin, uint8_t val);
+int digitalRead(uint8_t pin);
 
-inline void attachInterrupt(uint8_t pin, void (*x)(void), int mode) {}
-inline void attachInterruptArg(uint8_t pin, void (*x)(void), void * arg, int mode) {}
-inline void detachInterrupt(uint8_t pin) {}
+void attachInterrupt(uint8_t pin, void (*x)(void), int mode);
+void attachInterruptArg(uint8_t pin, void (*x)(void), void * arg, int mode);
+void detachInterrupt(uint8_t pin);
 
 #ifdef __cplusplus
 }

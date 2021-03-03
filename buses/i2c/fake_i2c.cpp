@@ -22,6 +22,21 @@ static FakeI2cDevice* getDevice(uint8_t i2c_num, uint16_t address) {
   return (i2c == nullptr) ? nullptr : i2c->getDevice(address);
 }
 
+std::map<uint8_t, std::unique_ptr<FakeI2cInterface>>* i2cMap() {
+  static std::map<uint8_t, std::unique_ptr<FakeI2cInterface>> i2cMap;
+  return &i2cMap;
+}
+
+FakeI2cInterface* getI2cInterface(uint8_t i2c_num) {
+  auto* map = i2cMap();
+  auto i = map->find(i2c_num);
+  return (i == map->end() ? nullptr : i->second.get());
+}
+
+void attachI2cInterface(uint8_t i2c_num, FakeI2cInterface* i2c) {
+  i2cMap()->emplace(i2c_num, i2c);
+}
+
 extern "C" {
 
 uint8_t i2cFakeWrite(uint8_t i2c_num, uint16_t address, uint8_t* buff,

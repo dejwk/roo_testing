@@ -49,4 +49,5 @@ class FakeI2cInterface {
   std::map<uint16_t, std::unique_ptr<FakeI2cDevice>> devices_;
 };
 
+void attachI2cInterface(uint8_t i2c_num, FakeI2cInterface* i2c);
 FakeI2cInterface* getI2cInterface(uint8_t i2c_num);

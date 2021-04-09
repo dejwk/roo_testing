@@ -209,6 +209,8 @@ class OffscreenBox : public Fl_Box {
   int handle(int event) override {
     switch (event) {
       case FL_ENTER: {
+        queue_->set_mouse_status(Fl::event_x() / magnification_,
+                                 Fl::event_y() / magnification_, false);
         return 1;
       }
       case FL_LEAVE: {
@@ -227,11 +229,13 @@ class OffscreenBox : public Fl_Box {
         return 0;
       }
       case FL_PUSH:
-      case FL_RELEASE: {
         queue_->set_mouse_status(Fl::event_x() / magnification_,
                                  Fl::event_y() / magnification_, true);
-        //                                 Fl::event_button() );
-        return 0;
+        return 1;
+      case FL_RELEASE: {
+        queue_->set_mouse_status(Fl::event_x() / magnification_,
+                                 Fl::event_y() / magnification_, false);
+        return 1;
       }
       default: {
         return Fl_Box::handle(event);

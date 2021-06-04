@@ -9,6 +9,8 @@
 #include <mutex>
 #include <queue>
 
+#define FLTK_DEVICE_NOISE_BITS 6
+
 /* Fltk headers */
 #include <FL/Enumerations.H>
 #include <FL/Fl.H>
@@ -249,8 +251,12 @@ class OffscreenBox : public Fl_Box {
     // long time = millis();
     Message::Content::PixelMessage msg;
     while (queue_->popPixelMessage(&msg)) {
+      uint32_t color = msg.color.asArgb() << 8;
+#ifdef FLTK_DEVICE_NOISE_BITS
+  color ^= (rand() % (1 << FLTK_DEVICE_NOISE_BITS)) * 0x01010100;
+#endif
       fl_rectf(msg.x * magnification_, msg.y * magnification_, magnification_,
-               magnification_, msg.color.asArgb() << 8);
+               magnification_, color);
       ++i;
     }
     // long elapsed = millis() - time;

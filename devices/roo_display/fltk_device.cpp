@@ -9,7 +9,8 @@
 #include <mutex>
 #include <queue>
 
-#define FLTK_DEVICE_NOISE_BITS 6
+// #define FLTK_DEVICE_NOISE_BITS 6
+// #define FLTK_MAX_PIXELS_PER_MS 100
 
 /* Fltk headers */
 #include <FL/Enumerations.H>
@@ -274,6 +275,8 @@ class OffscreenBox : public Fl_Box {
 
 /*****************************************************************************/
 
+int pixelCounter = 0;
+
 void Framebuffer::fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1, Color color) {
   if (orientation_.isXYswapped()) {
     std::swap(x0, y0);
@@ -293,6 +296,12 @@ void Framebuffer::fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1, Color
   for (int iy = y0; iy <= y1; ++iy) {
     for (int ix = x0; ix <= x1; ++ix) {
       queue_->push(drawPixel(ix, iy, color));
+#ifdef FLTK_MAX_PIXELS_PER_MS
+      if (++pixelCounter >= FLTK_MAX_PIXELS_PER_MS) {
+        pixelCounter = 0;
+        delay(1);
+      }
+#endif
     }
   }
 }

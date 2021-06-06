@@ -566,7 +566,19 @@ int main(int argc, char **argv) {
 
 void Framebuffer::init() {
   manager()->addDevice(queue_);
-  fillRect(0, 0, width_ - 1, height_ - 1, Color(128, 128, 128));
+
+  int16_t x1 = width_ - 1;
+  int16_t y1 = height_ - 1;
+  if (orientation_.isXYswapped()) {
+    std::swap(x1, y1);
+  }
+  uint32_t gray = 0xFF808080;
+  for (int iy = 0; iy <= y1; ++iy) {
+    for (int ix = 0; ix <= x1; ++ix) {
+      //queue_->push(drawPixel(ix, iy, gray));
+      queue_->push(drawPixel(ix, iy, gray + 0x010101 * (rand() % 64)));
+    }
+  }
 }
 
 void EmulatorDevice::init() {

@@ -529,10 +529,6 @@ class DeviceManager {
   }
 
  private:
-  std::unique_ptr<Device> device_;
-  bool exiting_;
-  bool exited_;
-
   Device *getDevice() {
     MutexLock lock(&device_mutex_);
     while (device_.get() == nullptr) {
@@ -541,8 +537,11 @@ class DeviceManager {
     return device_.get();
   }
 
+  std::unique_ptr<Device> device_;
   mutable pthread_mutex_t device_mutex_;
   pthread_cond_t nonempty_;
+  bool exiting_;
+  bool exited_;
 };
 
 extern "C" void *device_func(void *p) {

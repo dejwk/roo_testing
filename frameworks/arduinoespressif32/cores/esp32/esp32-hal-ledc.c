@@ -81,8 +81,8 @@
 // }
 
 //uint32_t frequency = (80MHz or 1MHz)/((div_num / 256.0)*(1 << bit_num));
-static void _ledcSetupTimer(uint8_t chan, uint32_t div_num, uint8_t bit_num, bool apb_clk)
-{
+// static void _ledcSetupTimer(uint8_t chan, uint32_t div_num, uint8_t bit_num, bool apb_clk)
+// {
 //     uint8_t group=(chan/8), timer=((chan/2)%4);
 //     static bool tHasStarted = false;
 //     if(!tHasStarted) {
@@ -107,7 +107,7 @@ static void _ledcSetupTimer(uint8_t chan, uint32_t div_num, uint8_t bit_num, boo
 //     LEDC_MUTEX_UNLOCK();
 //     uint32_t iarg = chan;
 //     addApbChangeCallback((void*)iarg, _on_apb_change);
-}
+// }
 
 //max div_num 0x3FFFF (262143)
 //max bit_num 0x1F (31)

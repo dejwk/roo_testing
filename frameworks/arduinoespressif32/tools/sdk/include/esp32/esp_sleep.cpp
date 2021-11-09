@@ -1,3 +1,4 @@
+#include <cstdlib>
 
 #include "esp_sleep.h"
 
@@ -40,13 +41,15 @@ esp_err_t esp_sleep_pd_config(esp_sleep_pd_domain_t domain,
   return 0;
 }
 
-void esp_deep_sleep_start() {}
+void esp_deep_sleep_start() {
+  exit(0);
+}
 
 esp_err_t esp_light_sleep_start() { return 0; }
 
-void esp_deep_sleep(uint64_t time_in_us) {}
+void esp_deep_sleep(uint64_t time_in_us) { exit(0); }
 
-void system_deep_sleep(uint64_t time_in_us) {}
+void system_deep_sleep(uint64_t time_in_us) { exit(0); }
 
 esp_sleep_wakeup_cause_t esp_sleep_get_wakeup_cause() { 
   return ESP_SLEEP_WAKEUP_UNDEFINED; 

@@ -89,6 +89,7 @@ uint64_t SDFS::totalBytes()
 //        *512;
 #endif
 //	return size;
+  return 0;
 }
 
 uint64_t SDFS::usedBytes()

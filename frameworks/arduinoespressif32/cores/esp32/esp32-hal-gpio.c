@@ -76,7 +76,7 @@ typedef struct {
     void* arg;
     bool functional;
 } InterruptHandle_t;
-static InterruptHandle_t __pinInterruptHandlers[GPIO_PIN_COUNT] = {0,};
+// static InterruptHandle_t __pinInterruptHandlers[GPIO_PIN_COUNT] = {0,};
 
 //#include "driver/rtc_io.h"
 
@@ -251,7 +251,7 @@ extern int IRAM_ATTR __digitalRead(uint8_t pin)
     return gpioFakeRead(pin) > VOLTAGE_THRESHOLD;
 }
 
-static intr_handle_t gpio_intr_handle = NULL;
+// static intr_handle_t gpio_intr_handle = NULL;
 
 // static void IRAM_ATTR __onPinInterrupt()
 // {

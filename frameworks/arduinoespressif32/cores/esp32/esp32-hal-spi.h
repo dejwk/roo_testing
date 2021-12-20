@@ -15,9 +15,9 @@
 #ifndef MAIN_ESP32_HAL_SPI_H_
 #define MAIN_ESP32_HAL_SPI_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+// #ifdef __cplusplus
+// extern "C" {
+// #endif
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -134,8 +134,8 @@ void spiTransferBitsNL(spi_t * spi, uint32_t data_in, uint32_t * data_out, uint8
 uint32_t spiFrequencyToClockDiv(uint32_t freq);
 uint32_t spiClockDivToFrequency(uint32_t freq);
 
-#ifdef __cplusplus
-}
-#endif
+// #ifdef __cplusplus
+// }
+// #endif
 
 #endif /* MAIN_ESP32_HAL_SPI_H_ */

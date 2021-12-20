@@ -48,6 +48,7 @@ cc_library(
     deps = [
         "//roo_testing/buses/i2c",
         "//roo_testing/buses/gpio",
+        "//roo_testing/buses/spi",
         "//roo_testing/transducers/time",
         "//roo_testing/transducers/time:default_system_clock",
     ],

@@ -21,16 +21,19 @@ enum SpiBitOrder {
 
 class SimpleFakeSpiDevice {
  public:
-  SimpleFakeSpiDevice(const FakeGpioPin& cs) : cs_(cs) {}
+  SimpleFakeSpiDevice(uint8_t cs) : cs_(new FakeGpioPin()) {
+    getGpioInterface()->attach(cs, cs_);
+  }
+
   virtual ~SimpleFakeSpiDevice() {}
 
-  bool isSelected() const { return cs_.read() <= 0.8; }
+  bool isSelected() const { return cs_->read() <= 0.8; }
 
   virtual void transfer(uint32_t clk, SpiDataMode mode, SpiBitOrder order,
                         uint8_t* buf, uint16_t bit_count) = 0;
 
  private:
-  const FakeGpioPin& cs_;
+  FakeGpioPin* cs_;
 };
 
 class FakeSpiInterface {
@@ -48,9 +51,7 @@ class FakeSpiInterface {
 
   SimpleFakeSpiDevice& device(int pos) { return *devices_[pos]; }
 
-  const SimpleFakeSpiDevice& device(int pos) const {
-    return *devices_[pos];
-  }
+  const SimpleFakeSpiDevice& device(int pos) const { return *devices_[pos]; }
 
  private:
   std::vector<std::unique_ptr<SimpleFakeSpiDevice>> devices_;

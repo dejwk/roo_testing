@@ -2,16 +2,37 @@
 
 #include <stdint.h>
 
-#include <map>
+#include <vector>
+#include <cmath>
+#include <cstdlib>
 #include <memory>
 
 class FakeGpioPin {
  public:
-  FakeGpioPin() {}
+  FakeGpioPin() : last_written_(std::nanf("")) {}
   virtual ~FakeGpioPin() {}
 
-  virtual float read() const = 0;
-  virtual void write(float voltage) = 0;
+  virtual float read() const {
+    if (std::isnan(last_written_)) {
+      // The value has never been written; assume floating.
+      return (float)rand() * 5.0 / RAND_MAX;
+    }
+    // Otherwise, default to returning last written value. This is normal
+    // behavior for microcontroller pins in the output mode.
+    return last_written_;
+  }
+
+  void write(float voltage) {
+    last_written_ = voltage;
+    onWrite(voltage);
+  }
+
+  virtual void onWrite(float voltage) {}
+
+  float last_written() { return last_written_; }
+
+ private:
+  float last_written_;
 };
 
 class FakeGpioInterface {
@@ -22,22 +43,10 @@ class FakeGpioInterface {
     attach(pin, std::unique_ptr<FakeGpioPin>(fake));
   }
   void attach(uint8_t pin, std::unique_ptr<FakeGpioPin> fake);
-  FakeGpioPin* get(uint8_t pin) const;
+  FakeGpioPin& get(uint8_t pin) const;
 
  private:
-  std::map<uint8_t, std::unique_ptr<FakeGpioPin>> pins_;
-  std::unique_ptr<FakeGpioPin> default_;
+  mutable std::vector<std::unique_ptr<FakeGpioPin>> pins_;
 };
 
 FakeGpioInterface* getGpioInterface();
-
-class SimpleFakeGpioPin : public FakeGpioPin {
- public:
-  SimpleFakeGpioPin() : voltage_(0.0) {}
-
-  float read() const override { return voltage_; }
-  void write(float voltage) override { voltage_ = voltage; }
-
- private:
-  float voltage_;
-};

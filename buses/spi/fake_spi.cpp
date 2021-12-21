@@ -1,6 +1,7 @@
-#include <iostream>
-
 #include "fake_spi.h"
+
+#include <iostream>
+#include <map>
 
 FakeSpiInterface::FakeSpiInterface(
     std::initializer_list<SimpleFakeSpiDevice*> devices) {

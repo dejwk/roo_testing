@@ -1,9 +1,9 @@
 #pragma once
 
+#include <stdint.h>
+
 #include <map>
 #include <memory>
-
-#include <stdint.h>
 
 class FakeGpioPin {
  public:
@@ -30,3 +30,14 @@ class FakeGpioInterface {
 };
 
 FakeGpioInterface* getGpioInterface();
+
+class SimpleFakeGpioPin : public FakeGpioPin {
+ public:
+  SimpleFakeGpioPin() : voltage_(0.0) {}
+
+  float read() const override { return voltage_; }
+  void write(float voltage) override { voltage_ = voltage; }
+
+ private:
+  float voltage_;
+};

@@ -690,12 +690,26 @@ extern spi_dev_t SPI3;
 
 namespace {
 
+inline SpiDataMode spiGetMode(spi_dev_t& spi) {
+  switch ((spi.pin.ck_idle_edge << 1) + spi.user.ck_out_edge) {
+    case 0: return kSpiMode0;
+    case 1: return kSpiMode1;
+    case 2: return kSpiMode3;
+    case 3: return kSpiMode2;
+  }
+}
+
+inline SpiBitOrder spiGetBitOrder(spi_dev_t& spi) {
+  return spi.ctrl.wr_bit_order ? kSpiMsbFirst : kSpiLsbFirst;
+}
+
 inline void spiFakeTransferForDevice(int8_t spi_num, spi_dev_t& spi) {
   uint8_t buf[64];
   int mosi_bits = spi.mosi_dlen.usr_mosi_dbitlen + 1;
   int miso_bits = spi.miso_dlen.usr_miso_dbitlen;
   memcpy(buf, (const void*)spi.data_buf, (mosi_bits + 7) / 8);
-  spiFakeTransfer(spi_num, buf, mosi_bits);
+  spiFakeTransfer(spi_num, spi.clock.val, spiGetMode(spi), spiGetBitOrder(spi),
+                  buf, mosi_bits);
   memcpy((void*)spi.data_buf, buf, (miso_bits + 7) / 8);
 }
 

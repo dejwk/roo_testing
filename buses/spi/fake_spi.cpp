@@ -1,13 +1,15 @@
+#include <iostream>
+
 #include "fake_spi.h"
 
 FakeSpiInterface::FakeSpiInterface(
-    std::initializer_list<FakeSpiDevice*> devices) {
+    std::initializer_list<SimpleFakeSpiDevice*> devices) {
   for (auto device : devices) {
     addDevice(device);
   }
 }
 
-void FakeSpiInterface::addDevice(std::unique_ptr<FakeSpiDevice> device) {
+void FakeSpiInterface::addDevice(std::unique_ptr<SimpleFakeSpiDevice> device) {
   devices_.push_back(std::move(device));
 }
 
@@ -28,13 +30,30 @@ void attachSpiInterface(uint8_t spi_num, FakeSpiInterface* spi) {
 
 extern "C" {
 
-void spiFakeTransfer(uint8_t spi_num, uint8_t* buf, uint16_t bit_count) {
-//   FakeSpiDevice* device = getDevice(i2c_num, address);
-//   if (device == nullptr) {
-//     return FakeI2cDevice::I2C_ERROR_DEV;
-//   } else {
-//     return device->write(buff, size, sendStop, timeOutMillis);
-//   }
+void spiFakeTransfer(uint8_t spi_num, uint32_t clk, SpiDataMode mode,
+                     SpiBitOrder order, uint8_t* buf, uint16_t bit_count) {
+  FakeSpiInterface* spi = getSpiInterface(spi_num);
+  if (spi == nullptr) {
+    std::cerr << "SPI interface #" << spi_num << " is not attached" << "\n";
+    return;
+  }
+  SimpleFakeSpiDevice* selected_dev = nullptr;
+  for (int i = 0; i < spi->device_count(); i++) {
+    SimpleFakeSpiDevice& dev = spi->device(i);
+    if (dev.isSelected()) {
+      if (selected_dev == nullptr) {
+        selected_dev = &dev;
+      } else {
+        std::cerr << "SPI interface #" << spi_num << ": bus conflict" << "\n";
+        return;
+      }
+    }
+  }
+  if (selected_dev == nullptr) {
+    std::cerr << "SPI interface #" << spi_num << ": no device selected" << "\n";
+    return;
+  }
+  selected_dev->transfer(clk, mode, order, buf, bit_count);
 }
 
 }

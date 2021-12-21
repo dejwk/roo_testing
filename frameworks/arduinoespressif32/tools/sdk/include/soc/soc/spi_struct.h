@@ -16,31 +16,38 @@
 
 #include "roo_testing/buses/spi/fake_spi.h"
 
+class Usr {
+ public:
+  operator uint32_t() const volatile { return 0; }
+  inline uint32_t operator=(uint32_t val) const volatile;
+};
+
 // #ifdef __cplusplus
 // extern "C" {
 // #endif
 
-typedef volatile struct {
+typedef volatile struct spi_def_t {
     union {
-        struct {
-            uint32_t reserved0: 16;                         /*reserved*/
-            uint32_t flash_per:  1;                         /*program erase resume bit  program erase suspend operation will be triggered when the bit is set. The bit will be cleared once the operation done.1: enable 0: disable.*/
-            uint32_t flash_pes:  1;                         /*program erase suspend bit  program erase suspend operation will be triggered when the bit is set. The bit will be cleared once the operation done.1: enable 0: disable.*/
-            uint32_t usr:        1;                         /*User define command enable.  An operation will be triggered when the bit is set. The bit will be cleared once the operation done.1: enable 0: disable.*/
-            uint32_t flash_hpm:  1;                         /*Drive Flash into high performance mode.  The bit will be cleared once the operation done.1: enable 0: disable.*/
-            uint32_t flash_res:  1;                         /*This bit combined with reg_resandres bit releases Flash from the power-down state or high performance mode and obtains the devices ID. The bit will be cleared once the operation done.1: enable 0: disable.*/
-            uint32_t flash_dp:   1;                         /*Drive Flash into power down.  An operation will be triggered when the bit is set. The bit will be cleared once the operation done.1: enable 0: disable.*/
-            uint32_t flash_ce:   1;                         /*Chip erase enable. Chip erase operation will be triggered when the bit is set. The bit will be cleared once the operation done.1: enable 0: disable.*/
-            uint32_t flash_be:   1;                         /*Block erase enable(32KB) .  Block erase operation will be triggered when the bit is set. The bit will be cleared once the operation done.1: enable 0: disable.*/
-            uint32_t flash_se:   1;                         /*Sector erase enable(4KB). Sector erase operation will be triggered when the bit is set. The bit will be cleared once the operation done.1: enable 0: disable.*/
-            uint32_t flash_pp:   1;                         /*Page program enable(1 byte ~256 bytes data to be programmed). Page program operation  will be triggered when the bit is set. The bit will be cleared once the operation done .1: enable 0: disable.*/
-            uint32_t flash_wrsr: 1;                         /*Write status register enable.   Write status operation  will be triggered when the bit is set. The bit will be cleared once the operation done.1: enable 0: disable.*/
-            uint32_t flash_rdsr: 1;                         /*Read status register-1.  Read status operation will be triggered when the bit is set. The bit will be cleared once the operation done.1: enable 0: disable.*/
-            uint32_t flash_rdid: 1;                         /*Read JEDEC ID . Read ID command will be sent when the bit is set. The bit will be cleared once the operation done. 1: enable 0: disable.*/
-            uint32_t flash_wrdi: 1;                         /*Write flash disable. Write disable command will be sent when the bit is set. The bit will be cleared once the operation done. 1: enable 0: disable.*/
-            uint32_t flash_wren: 1;                         /*Write flash enable.  Write enable command will be sent when the bit is set. The bit will be cleared once the operation done. 1: enable 0: disable.*/
-            uint32_t flash_read: 1;                         /*Read flash enable. Read flash operation will be triggered when the bit is set. The bit will be cleared once the operation done. 1: enable 0: disable.*/
-        };
+        // struct {
+        //     uint32_t reserved0: 16;                         /*reserved*/
+        //     uint32_t flash_per:  1;                         /*program erase resume bit  program erase suspend operation will be triggered when the bit is set. The bit will be cleared once the operation done.1: enable 0: disable.*/
+        //     uint32_t flash_pes:  1;                         /*program erase suspend bit  program erase suspend operation will be triggered when the bit is set. The bit will be cleared once the operation done.1: enable 0: disable.*/
+        //     uint32_t usr:        1;                         /*User define command enable.  An operation will be triggered when the bit is set. The bit will be cleared once the operation done.1: enable 0: disable.*/
+        //     uint32_t flash_hpm:  1;                         /*Drive Flash into high performance mode.  The bit will be cleared once the operation done.1: enable 0: disable.*/
+        //     uint32_t flash_res:  1;                         /*This bit combined with reg_resandres bit releases Flash from the power-down state or high performance mode and obtains the devices ID. The bit will be cleared once the operation done.1: enable 0: disable.*/
+        //     uint32_t flash_dp:   1;                         /*Drive Flash into power down.  An operation will be triggered when the bit is set. The bit will be cleared once the operation done.1: enable 0: disable.*/
+        //     uint32_t flash_ce:   1;                         /*Chip erase enable. Chip erase operation will be triggered when the bit is set. The bit will be cleared once the operation done.1: enable 0: disable.*/
+        //     uint32_t flash_be:   1;                         /*Block erase enable(32KB) .  Block erase operation will be triggered when the bit is set. The bit will be cleared once the operation done.1: enable 0: disable.*/
+        //     uint32_t flash_se:   1;                         /*Sector erase enable(4KB). Sector erase operation will be triggered when the bit is set. The bit will be cleared once the operation done.1: enable 0: disable.*/
+        //     uint32_t flash_pp:   1;                         /*Page program enable(1 byte ~256 bytes data to be programmed). Page program operation  will be triggered when the bit is set. The bit will be cleared once the operation done .1: enable 0: disable.*/
+        //     uint32_t flash_wrsr: 1;                         /*Write status register enable.   Write status operation  will be triggered when the bit is set. The bit will be cleared once the operation done.1: enable 0: disable.*/
+        //     uint32_t flash_rdsr: 1;                         /*Read status register-1.  Read status operation will be triggered when the bit is set. The bit will be cleared once the operation done.1: enable 0: disable.*/
+        //     uint32_t flash_rdid: 1;                         /*Read JEDEC ID . Read ID command will be sent when the bit is set. The bit will be cleared once the operation done. 1: enable 0: disable.*/
+        //     uint32_t flash_wrdi: 1;                         /*Write flash disable. Write disable command will be sent when the bit is set. The bit will be cleared once the operation done. 1: enable 0: disable.*/
+        //     uint32_t flash_wren: 1;                         /*Write flash enable.  Write enable command will be sent when the bit is set. The bit will be cleared once the operation done. 1: enable 0: disable.*/
+        //     uint32_t flash_read: 1;                         /*Read flash enable. Read flash operation will be triggered when the bit is set. The bit will be cleared once the operation done. 1: enable 0: disable.*/
+        // };
+        Usr usr;
         uint32_t val;
     } cmd;
     uint32_t addr;                                          /*addr to slave / from master. SPI transfer from the MSB to the LSB. If length > 32 bits, then address continues from MSB of slv_wr_status.*/
@@ -680,6 +687,36 @@ extern spi_dev_t SPI0;                                      /* SPI0 IS FOR INTER
 extern spi_dev_t SPI1;
 extern spi_dev_t SPI2;
 extern spi_dev_t SPI3;
+
+namespace {
+
+inline void spiFakeTransferForDevice(int8_t spi_num, spi_dev_t& spi) {
+  uint8_t buf[64];
+  int mosi_bits = spi.mosi_dlen.usr_mosi_dbitlen + 1;
+  int miso_bits = spi.miso_dlen.usr_miso_dbitlen;
+  memcpy(buf, (const void*)spi.data_buf, (mosi_bits + 7) / 8);
+  spiFakeTransfer(spi_num, buf, mosi_bits);
+  memcpy((void*)spi.data_buf, buf, (miso_bits + 7) / 8);
+}
+
+}  // namespace
+
+uint32_t Usr::operator=(uint32_t val) const volatile {
+  if (val == 0) return val;
+
+  if (this == &SPI0.cmd.usr) {
+    spiFakeTransferForDevice(0, SPI0);
+  }
+  if (this == &SPI1.cmd.usr) {
+    spiFakeTransferForDevice(1, SPI1);
+  }
+  if (this == &SPI2.cmd.usr) {
+    spiFakeTransferForDevice(2, SPI2);
+  }
+  if (this == &SPI3.cmd.usr) {
+    spiFakeTransferForDevice(3, SPI3);
+  }
+}
 
 // #ifdef __cplusplus
 // }

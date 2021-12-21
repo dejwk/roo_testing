@@ -4,7 +4,7 @@
 
 class FloatingGpioPin : public FakeGpioPin {
  public:
-  float read() override { return (float)rand() * 5.0 / RAND_MAX; }
+  float read() const override { return (float)rand() * 5.0 / RAND_MAX; }
   void write(float voltage) override {}
 };
 

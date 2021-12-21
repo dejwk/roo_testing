@@ -35,3 +35,9 @@ class FakeSpiInterface {
 
 void attachSpiInterface(uint8_t spi_num, FakeSpiInterface* spi);
 FakeSpiInterface* getSpiInterface(uint8_t spi_num);
+
+extern "C" {
+
+void spiFakeTransfer(uint8_t spi_num, uint8_t* buf, uint16_t bit_count);
+
+}

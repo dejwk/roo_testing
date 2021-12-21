@@ -28,7 +28,7 @@ void attachSpiInterface(uint8_t spi_num, FakeSpiInterface* spi) {
 
 extern "C" {
 
-uint8_t i2cFakeTransfer(uint8_t spi_num, uint8_t* buf, uint16_t size) {
+void spiFakeTransfer(uint8_t spi_num, uint8_t* buf, uint16_t bit_count) {
 //   FakeSpiDevice* device = getDevice(i2c_num, address);
 //   if (device == nullptr) {
 //     return FakeI2cDevice::I2C_ERROR_DEV;

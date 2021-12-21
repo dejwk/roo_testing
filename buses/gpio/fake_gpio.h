@@ -10,7 +10,7 @@ class FakeGpioPin {
   FakeGpioPin() {}
   virtual ~FakeGpioPin() {}
 
-  virtual float read() = 0;
+  virtual float read() const = 0;
   virtual void write(float voltage) = 0;
 };
 

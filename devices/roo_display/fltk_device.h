@@ -23,36 +23,7 @@
 #include <memory>
 
 #include "roo_display/core/device.h"
-
-class EventQueue;
-
-class Framebuffer {
- public:
-  Framebuffer(int16_t width, int16_t height, int magnification);
-  Framebuffer(Framebuffer&& other);
-  Framebuffer(const Framebuffer& other);  // Left unimplemented.
-
-  ~Framebuffer();
-
-  void init();
-  void setOrientation(roo_display::Orientation orientation) {
-    orientation_ = orientation;
-  }
-  void fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                roo_display::Color color);
-  void flush();
-  bool isMouseClicked(int16_t* x, int16_t* y);
-
-  int16_t width() const { return width_; }
-  int16_t height() const { return height_; }
-
- private:
-  int16_t width_;
-  int16_t height_;
-  int magnification_;
-  roo_display::Orientation orientation_;
-  EventQueue* queue_;
-};
+#include "roo_testing/devices/roo_display/fltk_framebuffer.h"
 
 class EmulatorDevice : public roo_display::DisplayDevice,
                        public roo_display::TouchDevice {
@@ -98,8 +69,6 @@ class EmulatorDevice : public roo_display::DisplayDevice,
     bgcolor_ = bgcolor;
   }
 
-  void orientationUpdated() override;
-
   int magnification() const;
 
   bool getTouch(int16_t* x, int16_t* y, int16_t* z) override;
@@ -108,7 +77,8 @@ class EmulatorDevice : public roo_display::DisplayDevice,
   roo_display::Color effective_color(roo_display::PaintMode mode,
                                      roo_display::Color color);
 
-  void rectFill(int x, int y, int w, int h, roo_display::Color color);
+  void fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
+                roo_display::Color color);
 
   void advance();
 

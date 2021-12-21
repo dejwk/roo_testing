@@ -13,6 +13,8 @@ filegroup(
     srcs = [
         "fltk_device.cpp",
         "fltk_device.h",
+        "fltk_framebuffer.cpp",
+        "fltk_framebuffer.h",
     ],
     visibility = ["//visibility:public"],
 )

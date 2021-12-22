@@ -2,13 +2,15 @@
 
 #include <stdint.h>
 
-#include <vector>
 #include <cmath>
 #include <cstdlib>
 #include <memory>
+#include <vector>
 
 class FakeGpioPin {
  public:
+  enum DigitalLevel { kDigitalLow = 0, kDigitalHigh = 1, kDigitalUndef = -1 };
+
   FakeGpioPin() : last_written_(std::nanf("")) {}
   virtual ~FakeGpioPin() {}
 
@@ -20,6 +22,21 @@ class FakeGpioPin {
     // Otherwise, default to returning last written value. This is normal
     // behavior for microcontroller pins in the output mode.
     return last_written_;
+  }
+
+  DigitalLevel digitalRead() const {
+    float voltage = read();
+    return voltage <= 0.8   ? kDigitalLow
+           : voltage >= 2.0 ? kDigitalHigh
+                            : kDigitalUndef;
+  }
+
+  bool isDigitalLow() const {
+    return digitalRead() == kDigitalLow;
+  }
+
+  bool isDigitalHigh() const {
+    return digitalRead() == kDigitalHigh;
   }
 
   void write(float voltage) {

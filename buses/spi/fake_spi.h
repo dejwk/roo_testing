@@ -27,7 +27,7 @@ class SimpleFakeSpiDevice {
 
   virtual ~SimpleFakeSpiDevice() {}
 
-  bool isSelected() const { return cs_->read() <= 0.8; }
+  bool isSelected() const { return cs_->isDigitalLow(); }
 
   virtual void transfer(uint32_t clk, SpiDataMode mode, SpiBitOrder order,
                         uint8_t* buf, uint16_t bit_count) = 0;

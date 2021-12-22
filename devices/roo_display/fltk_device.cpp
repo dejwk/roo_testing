@@ -20,7 +20,7 @@ void EmulatorDevice::fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
     x0 = raw_width() - x0;
     x1 = raw_width() - x1;
   }
-  framebuffer_.fillRect(x0, y0, x1, y1, color.asArgb() >> 8);
+  framebuffer_.fillRect(x0, y0, x1, y1, color.asArgb());
 }
 
 EmulatorDevice::EmulatorDevice(int w, int h, int magnification)

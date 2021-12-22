@@ -251,7 +251,7 @@ class OffscreenBox : public Fl_Box {
       color ^= (rand() % (1 << FLTK_DEVICE_NOISE_BITS)) * 0x01010100;
 #endif
       fl_rectf(msg.x * magnification_, msg.y * magnification_, magnification_,
-               magnification_, msg.color);
+               magnification_, msg.color << 8);
       ++i;
     }
     // long elapsed = millis() - time;
@@ -272,7 +272,7 @@ class OffscreenBox : public Fl_Box {
 int pixelCounter = 0;
 
 void Framebuffer::fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                           uint32_t color_rgb) {
+                           uint32_t color_argb) {
   if (xy_swapped_) {
     std::swap(x0, y0);
     std::swap(x1, y1);
@@ -290,7 +290,7 @@ void Framebuffer::fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
 
   for (int iy = y0; iy <= y1; ++iy) {
     for (int ix = x0; ix <= x1; ++ix) {
-      queue_->push(drawPixel(ix, iy, color_rgb));
+      queue_->push(drawPixel(ix, iy, color_argb));
 #ifdef FLTK_MAX_PIXELS_PER_MS
       if (++pixelCounter >= FLTK_MAX_PIXELS_PER_MS) {
         pixelCounter = 0;

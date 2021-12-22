@@ -15,7 +15,7 @@ class Framebuffer {
 
   Framebuffer(int16_t width, int16_t height, int magnification,
               Rotation rotation = kRotationNone);
-              
+
   Framebuffer(Framebuffer&& other);
   Framebuffer(const Framebuffer& other);  // Left unimplemented.
 
@@ -26,7 +26,7 @@ class Framebuffer {
   void setRotation(Rotation rotation);
 
   void fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                uint32_t color_rgb);
+                uint32_t color_argb);
   void flush();
   bool isMouseClicked(int16_t* x, int16_t* y);
 

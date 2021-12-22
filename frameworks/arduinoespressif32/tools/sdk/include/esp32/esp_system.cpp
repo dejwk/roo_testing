@@ -1,4 +1,5 @@
 #include "esp_system.h"
+#include <cstdlib>
 #include <malloc.h>
 
 #ifdef __cplusplus
@@ -9,9 +10,10 @@ void system_init(void) {}
 
 void system_restore(void) {}
 
-esp_err_t esp_register_shutdown_handler(shutdown_handler_t handle) {}
+esp_err_t esp_register_shutdown_handler(shutdown_handler_t handle) { return 0; }
 
 void esp_restart(void) {
+  exit(0);
 }
 
 void system_restart(void) { esp_restart(); }
@@ -38,7 +40,7 @@ uint32_t esp_random(void) { return 1; }
 
 void esp_fill_random(void *buf, size_t len) {}
 
-esp_err_t esp_base_mac_addr_set(uint8_t *mac) {}
+esp_err_t esp_base_mac_addr_set(uint8_t *mac) { return 0; }
 
 esp_err_t esp_base_mac_addr_get(uint8_t *mac) { return 0; }
 

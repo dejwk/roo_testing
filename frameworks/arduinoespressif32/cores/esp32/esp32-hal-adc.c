@@ -141,7 +141,7 @@ bool IRAM_ATTR __adcAttachPin(uint8_t pin){
         return false;//not adc pin
     }
 
-    int8_t pad = digitalPinToTouchChannel(pin);
+    // int8_t pad = digitalPinToTouchChannel(pin);
     // if(pad >= 0){
     //     uint32_t touch = READ_PERI_REG(SENS_SAR_TOUCH_ENABLE_REG);
     //     if(touch & (1 << pad)){
@@ -199,7 +199,7 @@ bool IRAM_ATTR __adcBusy(uint8_t pin){
 uint16_t IRAM_ATTR __adcEnd(uint8_t pin)
 {
 
-    uint16_t value = 0;
+    // uint16_t value = 0;
     int8_t channel = digitalPinToAnalogChannel(pin);
     if(channel < 0){
         return 0;//not adc pin

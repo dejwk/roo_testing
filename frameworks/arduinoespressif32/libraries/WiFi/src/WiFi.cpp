@@ -48,20 +48,20 @@ extern "C" {
  */
 void WiFiClass::printDiag(Print& p)
 {
-    const char* modes[] = { "NULL", "STA", "AP", "STA+AP" };
+    // const char* modes[] = { "NULL", "STA", "AP", "STA+AP" };
 
-    wifi_mode_t mode;
-    //esp_wifi_get_mode(&mode);
+    // wifi_mode_t mode;
+    // esp_wifi_get_mode(&mode);
 
-    uint8_t primaryChan;
-    wifi_second_chan_t secondChan;
-    //esp_wifi_get_channel(&primaryChan, &secondChan);
+    // uint8_t primaryChan;
+    // wifi_second_chan_t secondChan;
+    // esp_wifi_get_channel(&primaryChan, &secondChan);
 
-    p.print("Mode: ");
-    p.println(modes[mode]);
+    // p.print("Mode: ");
+    // p.println(modes[mode]);
 
-    p.print("Channel: ");
-    p.println(primaryChan);
+    // p.print("Channel: ");
+    // p.println(primaryChan);
     /*
         p.print("AP id: ");
         p.println(wifi_station_get_current_ap_id());

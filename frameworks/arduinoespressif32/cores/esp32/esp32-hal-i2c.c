@@ -1476,7 +1476,7 @@ uint32_t i2cGetFrequency(i2c_t * i2c)
 void i2cDumpI2c(i2c_t * i2c)
 {
     log_e("i2c=%p",i2c);
-    log_e("dev=%p date=%p",i2c->dev,i2c->dev->date);
+    log_e("dev=%p date=%d",i2c->dev,i2c->dev->date);
 // #if !CONFIG_DISABLE_HAL_LOCKS
 //     log_e("lock=%p",i2c->lock);
 // #endif

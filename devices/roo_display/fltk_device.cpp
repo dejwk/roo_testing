@@ -12,13 +12,13 @@ void EmulatorDevice::fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
   }
   if (orientation().isBottomToTop()) {
     std::swap(y0, y1);
-    y0 = raw_height() - y0;
-    y1 = raw_height() - y1;
+    y0 = raw_height() - y0 - 1;
+    y1 = raw_height() - y1 - 1;
   }
   if (orientation().isRightToLeft()) {
     std::swap(x0, x1);
-    x0 = raw_width() - x0;
-    x1 = raw_width() - x1;
+    x0 = raw_width() - x0 - 1;
+    x1 = raw_width() - x1 - 1;
   }
   framebuffer_.fillRect(x0, y0, x1, y1, color.asArgb());
 }

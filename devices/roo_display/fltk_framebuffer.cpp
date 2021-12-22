@@ -279,13 +279,13 @@ void Framebuffer::fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
   }
   if (bottom_to_top_) {
     std::swap(y0, y1);
-    y0 = height_ - y0;
-    y1 = height_ - y1;
+    y0 = height_ - y0 - 1;
+    y1 = height_ - y1 - 1;
   }
   if (right_to_left_) {
     std::swap(x0, x1);
-    x0 = width_ - x0;
-    x1 = width_ - x1;
+    x0 = width_ - x0 - 1;
+    x1 = width_ - x1 - 1;
   }
 
   for (int iy = y0; iy <= y1; ++iy) {
@@ -312,6 +312,9 @@ Framebuffer::Framebuffer(int16_t width, int16_t height, int magnification,
       right_to_left_(rotation == kRotationRight ||
                      rotation == kRotationUpsideDown),
       queue_(new EventQueue(100000)) {
+  if (xy_swapped_) {
+    std::swap(width_, height_);
+  }
   queue_->push(initDisplay(width, height, magnification));
 }
 

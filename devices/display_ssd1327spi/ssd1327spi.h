@@ -13,14 +13,19 @@ class FakeSsd1327Spi : public SimpleFakeSpiDevice {
         framebuffer_(128, 128, magnification, rotation) {
     getGpioInterface()->attach(dc, pinDC_);
     getGpioInterface()->attach(rst, pinRST_);
+    framebuffer_.init();
   }
 
   void transfer(uint32_t clk, SpiDataMode mode, SpiBitOrder order, uint8_t* buf,
                 uint16_t bit_count) override;
 
  private:
+  void writeColor(uint8_t color);
+
   FakeGpioPin* pinDC_;
   FakeGpioPin* pinRST_;
 
   Framebuffer framebuffer_;
+
+  int16_t x0_, y0_, x1_, y1_, x_cursor_, y_cursor_;
 };

@@ -18,7 +18,7 @@
 #include <FL/fl_draw.H>
 #include <FL/x.H>
 
-#include "roo_testing/devices/roo_display/fltk_viewport.h"
+#include "roo_testing/transducers/ui/fltk_viewport.h"
 
 class DeviceManager;
 

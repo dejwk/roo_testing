@@ -1,29 +1,9 @@
-// TFT emulator for the esp-display library.
-// It uses the FLTK library to render data on the screen.
-
-// /* Standard headers */
-// #include <pthread.h>
-// #include <stdlib.h>
-
-// #include <iostream>
-// #include <mutex>
-// #include <queue>
-
-// #include <Arduino.h>
-
-// /* Fltk headers */
-// #include <FL/Fl.H>
-// #include <FL/Fl_Box.H>
-// #include <FL/Fl_Double_Window.H>
-// #include <FL/fl_draw.H>
-// #include <FL/x.H>
-
 #pragma once
 
 #include <memory>
 
 #include "roo_display/core/device.h"
-#include "roo_testing/devices/roo_display/fltk_viewport.h"
+#include "roo_testing/transducers/ui/fltk_viewport.h"
 
 class EmulatorDevice : public roo_display::DisplayDevice,
                        public roo_display::TouchDevice {

@@ -5,7 +5,7 @@ cc_library(
     hdrs = ["ssd1327spi.h"],
     deps = [
         "//roo_testing/buses/spi",
-        "//roo_testing/devices/roo_display:fltk_framebuffer",
+        "//roo_testing/devices/roo_display:viewport",
     ],
     visibility = ["//visibility:public"],
 )

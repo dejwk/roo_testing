@@ -23,7 +23,7 @@
 #include <memory>
 
 #include "roo_display/core/device.h"
-#include "roo_testing/devices/roo_display/fltk_framebuffer.h"
+#include "roo_testing/devices/roo_display/fltk_viewport.h"
 
 class EmulatorDevice : public roo_display::DisplayDevice,
                        public roo_display::TouchDevice {

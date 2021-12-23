@@ -1,20 +1,44 @@
-cc_library(
-    name = "roo_display",
-    visibility = ["//visibility:public"],
-    deps = [":fltk_framebuffer"],
-)
+# cc_library(
+#     name = "roo_display",
+#     visibility = ["//visibility:public"],
+#     deps = [":fltk_viewport"],
+# )
 
 cc_library(
-    name = "fltk_framebuffer",
+    name = "fltk_viewport",
     srcs = [
-        "fltk_framebuffer.cpp",
+        "fltk_viewport.cpp",
     ],
     hdrs = [
-        "fltk_framebuffer.h",
+        "fltk_viewport.h",
     ],
     #    linkopts = ["-pthread"],
     visibility = ["//visibility:public"],
-    deps = ["@fltk"],
+    deps = [
+        ":viewport",
+        "@fltk",
+    ],
+)
+
+cc_library(
+    name = "viewport",
+    hdrs = [
+        "viewport.h",
+    ],
+    #    linkopts = ["-pthread"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "flex_viewport",
+    srcs = [
+        "flex_viewport.cpp",
+    ],
+    hdrs = [
+        "flex_viewport.h",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [":viewport"],
 )
 
 filegroup(

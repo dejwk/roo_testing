@@ -1,7 +1,7 @@
 #pragma once
 
 #include "roo_testing/buses/spi/fake_spi.h"
-#include "roo_testing/devices/roo_display/fltk_framebuffer.h"
+#include "roo_testing/devices/roo_display/viewport.h"
 
 class FakeSsd1327Spi : public SimpleFakeSpiDevice {
  public:

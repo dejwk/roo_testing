@@ -35,10 +35,18 @@ bool FlexViewport::isMouseClicked(int16_t *x, int16_t *y) {
   int16_t dx, dy;
   bool clicked = delegate_.isMouseClicked(&dx, &dy);
   if (!clicked) return false;
+  dx /= magnification_;
+  dy /= magnification_;
   if (xy_swapped_) {
     std::swap(dx, dy);
   }
-  *x = dx * magnification_;
-  *y = dy * magnification_;
+  if (bottom_to_top_) {
+    dy = height() - dy - 1;
+  }
+  if (right_to_left_) {
+    dx = width() - dx - 1;
+  }
+  *x = dx;
+  *y = dy;
   return true;
 }

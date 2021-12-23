@@ -274,7 +274,9 @@ void FltkViewport::flush() { Fl::awake(); }
 bool FltkViewport::isMouseClicked(int16_t *x, int16_t *y) {
   bool result;
   queue_->get_mouse_status(x, y, &result);
-  return result;
+  if (!result) return false;
+  if (*x < 0 || *y < 0 || *x >= width() || *y >= height()) return false;
+  return true;
 }
 
 class Device {

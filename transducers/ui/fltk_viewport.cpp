@@ -404,11 +404,10 @@ void FltkViewport::init(int16_t width, int16_t height) {
   int16_t x1 = width - 1;
   int16_t y1 = height - 1;
   uint32_t gray = 0xFF808080;
-  for (int iy = 0; iy <= y1; ++iy) {
+  // for (int iy = 0; iy <= y1; ++iy) {
     for (int ix = 0; ix <= x1; ++ix) {
-      // queue_->push(drawPixel(ix, iy, gray));
       queue_->push(
-          createFillRectMsg(ix, iy, ix, iy, gray + 0x010101 * (rand() % 64)));
+          createFillRectMsg(ix, 0, ix, y1, gray + 0x010101 * (rand() % 64)));
     }
-  }
+  // }
 }

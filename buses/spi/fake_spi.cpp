@@ -3,6 +3,8 @@
 #include <iostream>
 #include <map>
 
+#include <glog/logging.h>
+
 FakeSpiInterface::FakeSpiInterface(
     std::initializer_list<SimpleFakeSpiDevice*> devices) {
   for (auto device : devices) {
@@ -35,7 +37,7 @@ void spiFakeTransfer(uint8_t spi_num, uint32_t clk, SpiDataMode mode,
                      SpiBitOrder order, uint8_t* buf, uint16_t bit_count) {
   FakeSpiInterface* spi = getSpiInterface(spi_num);
   if (spi == nullptr) {
-    std::cerr << "SPI interface #" << spi_num << " is not attached" << "\n";
+    LOG(WARNING) << "SPI interface #" << spi_num << " is not attached";
     return;
   }
   SimpleFakeSpiDevice* selected_dev = nullptr;
@@ -45,13 +47,13 @@ void spiFakeTransfer(uint8_t spi_num, uint32_t clk, SpiDataMode mode,
       if (selected_dev == nullptr) {
         selected_dev = &dev;
       } else {
-        std::cerr << "SPI interface #" << spi_num << ": bus conflict" << "\n";
+        LOG(WARNING) << "SPI interface #" << spi_num << ": bus conflict" << "\n";
         return;
       }
     }
   }
   if (selected_dev == nullptr) {
-    std::cerr << "SPI interface #" << spi_num << ": no device selected" << "\n";
+    LOG(WARNING) << "SPI interface #" << spi_num << ": no device selected";
     return;
   }
   selected_dev->transfer(clk, mode, order, buf, bit_count);

@@ -1,6 +1,6 @@
 
 cc_library(
-    name = "display_ssd1327spi",
+    name = "spi",
     srcs = ["ssd1327spi.cpp"],
     hdrs = ["ssd1327spi.h"],
     deps = [

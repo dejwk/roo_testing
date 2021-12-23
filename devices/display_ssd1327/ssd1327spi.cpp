@@ -1,4 +1,4 @@
-#include "roo_testing/devices/display_ssd1327spi/ssd1327spi.h"
+#include "roo_testing/devices/display_ssd1327/ssd1327spi.h"
 
 #include <iostream>
 

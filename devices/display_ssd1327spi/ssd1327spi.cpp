@@ -63,8 +63,8 @@ void FakeSsd1327Spi::transfer(uint32_t clk, SpiDataMode mode, SpiBitOrder order,
 }
 
 void FakeSsd1327Spi::writeColor(uint8_t color) {
-  framebuffer_.fillRect(x_cursor_, y_cursor_, x_cursor_, y_cursor_,
-                        0xFF00000000 | color * 0x00111111);
+  viewport_.fillRect(x_cursor_, y_cursor_, x_cursor_, y_cursor_,
+                     0xFF00000000 | color * 0x00111111);
   if (x_cursor_ < x1_) {
     ++x_cursor_;
     return;

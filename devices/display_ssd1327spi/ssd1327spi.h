@@ -5,15 +5,14 @@
 
 class FakeSsd1327Spi : public SimpleFakeSpiDevice {
  public:
-  FakeSsd1327Spi(int cs, int dc, int rst, int magnification = 1,
-                 Framebuffer::Rotation rotation = Framebuffer::kRotationNone)
+  FakeSsd1327Spi(int cs, int dc, int rst, Viewport& viewport)
       : SimpleFakeSpiDevice(cs),
         pinDC_(new FakeGpioPin()),
         pinRST_(new FakeGpioPin()),
-        framebuffer_(128, 128, magnification, rotation) {
+        viewport_(viewport) {
     getGpioInterface()->attach(dc, pinDC_);
     getGpioInterface()->attach(rst, pinRST_);
-    framebuffer_.init();
+    viewport_.init(128, 128);
   }
 
   void transfer(uint32_t clk, SpiDataMode mode, SpiBitOrder order, uint8_t* buf,
@@ -25,7 +24,7 @@ class FakeSsd1327Spi : public SimpleFakeSpiDevice {
   FakeGpioPin* pinDC_;
   FakeGpioPin* pinRST_;
 
-  Framebuffer framebuffer_;
+  Viewport& viewport_;
 
   int16_t x0_, y0_, x1_, y1_, x_cursor_, y_cursor_;
 };

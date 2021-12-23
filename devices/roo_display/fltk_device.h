@@ -28,7 +28,8 @@
 class EmulatorDevice : public roo_display::DisplayDevice,
                        public roo_display::TouchDevice {
  public:
-  EmulatorDevice(int w, int h, int magnification);
+  EmulatorDevice(int w, int h, Viewport& viewport);
+
   ~EmulatorDevice() {}
 
   void init() override;
@@ -69,8 +70,6 @@ class EmulatorDevice : public roo_display::DisplayDevice,
     bgcolor_ = bgcolor;
   }
 
-  int magnification() const;
-
   bool getTouch(int16_t* x, int16_t* y, int16_t* z) override;
 
  private:
@@ -82,7 +81,7 @@ class EmulatorDevice : public roo_display::DisplayDevice,
 
   void advance();
 
-  Framebuffer framebuffer_;
+  Viewport& viewport_;
   roo_display::Color bgcolor_;
   int16_t addr_x0_, addr_y0_, addr_x1_, addr_y1_;
   roo_display::PaintMode paint_mode_;

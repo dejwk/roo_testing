@@ -20,16 +20,16 @@ void EmulatorDevice::fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
     x0 = raw_width() - x0 - 1;
     x1 = raw_width() - x1 - 1;
   }
-  framebuffer_.fillRect(x0, y0, x1, y1, color.asArgb());
+  viewport_.fillRect(x0, y0, x1, y1, color.asArgb());
 }
 
-EmulatorDevice::EmulatorDevice(int w, int h, int magnification)
-    : DisplayDevice(w, h),
-      framebuffer_(w, h, magnification),
-      bgcolor_(0xFF7F7F7F) {}
+EmulatorDevice::EmulatorDevice(int w, int h, Viewport &viewport)
+    : DisplayDevice(w, h), viewport_(viewport), bgcolor_(0xFF7F7F7F) {
+  // viewport_.init(w, h);
+}
 
 void EmulatorDevice::begin() {}
-void EmulatorDevice::end() { framebuffer_.flush(); }
+void EmulatorDevice::end() { viewport_.flush(); }
 
 Color EmulatorDevice::effective_color(roo_display::PaintMode mode,
                                       Color color) {
@@ -105,7 +105,7 @@ void EmulatorDevice::advance() {
 
 bool EmulatorDevice::getTouch(int16_t *x, int16_t *y, int16_t *z) {
   int16_t x_display, y_display;
-  bool result = framebuffer_.isMouseClicked(&x_display, &y_display);
+  bool result = viewport_.isMouseClicked(&x_display, &y_display);
   if (result) {
     *x = (int32_t)4096 * x_display / effective_width();
     *y = (int32_t)4096 * y_display / effective_height();
@@ -114,4 +114,4 @@ bool EmulatorDevice::getTouch(int16_t *x, int16_t *y, int16_t *z) {
   return result;
 }
 
-void EmulatorDevice::init() { framebuffer_.init(); }
+void EmulatorDevice::init() { viewport_.init(raw_width(), raw_height()); }

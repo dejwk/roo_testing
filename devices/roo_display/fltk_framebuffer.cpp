@@ -29,42 +29,44 @@ void loop();
 
 struct Message {
   Message() {}
-  enum Type { INIT, DRAWPIXEL } type;
+  enum Type { INIT, FILLRECT } type;
   union Content {
     Content() {}
-    struct PixelMessage {
-      PixelMessage() {}
-      PixelMessage(int x, int y, uint32_t color) : x(x), y(y), color(color) {}
-      int x;
-      int y;
-      uint32_t color;
-    } drawpixel;
+    struct FillRectMessage {
+      FillRectMessage() {}
+      FillRectMessage(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
+                      uint32_t color_argb)
+          : x0(x0), y0(y0), x1(x1), y1(y1), color_argb(color_argb) {}
+      int x0;
+      int y0;
+      int x1;
+      int y1;
+      uint32_t color_argb;
+    } fillrect;
 
     struct InitMessage {
       InitMessage() {}
       int width;
       int height;
-      int magnification;
     } init;
   } content;
   ~Message() {}
 };
 
-Message initDisplay(int width, int height, int magnification) {
+Message createInitDisplayMsg(int width, int height) {
   Message message;
   message.type = Message::INIT;
   message.content.init.width = width;
   message.content.init.height = height;
-  message.content.init.magnification = magnification;
   return message;
 }
 
-Message drawPixel(int x, int y, uint32_t color) {
+Message createFillRectMsg(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
+                          uint32_t color_argb) {
   Message message;
-  message.type = Message::DRAWPIXEL;
-  message.content.drawpixel.x = x;
-  message.content.drawpixel.y = y;
-  message.content.drawpixel.color = color;
+  message.type = Message::FILLRECT;
+  message.content.fillrect =
+      Message::Content::FillRectMessage(x0, y0, x1, y1, color_argb);
   return message;
 }
 
@@ -128,21 +130,21 @@ class EventQueue {
         *message = queue_.front().content.init;
         queue_.pop();
         return true;
-      } else if (queue_.front().type == Message::DRAWPIXEL) {
+      } else if (queue_.front().type == Message::FILLRECT) {
       }
       queue_.pop();
     }
     return false;
   }
 
-  bool popPixelMessage(Message::Content::PixelMessage *message) {
+  bool popFillRectMessage(Message::Content::FillRectMessage *message) {
     MutexLock lock(&mutex_);
     while (!queue_.empty()) {
       if (queue_.size() == capacity_) {
         pthread_cond_signal(&nonfull_);
       }
-      if (queue_.front().type == Message::DRAWPIXEL) {
-        *message = queue_.front().content.drawpixel;
+      if (queue_.front().type == Message::FILLRECT) {
+        *message = queue_.front().content.fillrect;
         queue_.pop();
         return true;
       }
@@ -190,49 +192,37 @@ static Fl_Thread device_thread;
 
 class OffscreenBox : public Fl_Box {
  public:
-  OffscreenBox(int w, int h, int magnification, EventQueue *queue)
-      : Fl_Box(0, 0, w * magnification, h * magnification),
-        w_(w),
-        h_(h),
-        magnification_(magnification),
-        queue_(queue) {}
+  OffscreenBox(int w, int h, EventQueue *queue)
+      : Fl_Box(0, 0, w, h), w_(w), h_(h), queue_(queue) {}
 
   ~OffscreenBox() {}
 
   int16_t raw_width() const { return w_; }
   int16_t raw_height() const { return h_; }
 
-  int magnification() const { return magnification_; }
-
   int handle(int event) override {
     switch (event) {
       case FL_ENTER: {
-        queue_->set_mouse_status(Fl::event_x() / magnification_,
-                                 Fl::event_y() / magnification_, false);
+        queue_->set_mouse_status(Fl::event_x(), Fl::event_y(), false);
         return 1;
       }
       case FL_LEAVE: {
-        queue_->set_mouse_status(Fl::event_x() / magnification_,
-                                 Fl::event_y() / magnification_, false);
+        queue_->set_mouse_status(Fl::event_x(), Fl::event_y(), false);
         return 0;
       }
       case FL_DRAG: {
-        queue_->set_mouse_status(Fl::event_x() / magnification_,
-                                 Fl::event_y() / magnification_, true);
+        queue_->set_mouse_status(Fl::event_x(), Fl::event_y(), true);
         return 0;
       }
       case FL_MOVE: {
-        queue_->set_mouse_status(Fl::event_x() / magnification_,
-                                 Fl::event_y() / magnification_, false);
+        queue_->set_mouse_status(Fl::event_x(), Fl::event_y(), false);
         return 0;
       }
       case FL_PUSH:
-        queue_->set_mouse_status(Fl::event_x() / magnification_,
-                                 Fl::event_y() / magnification_, true);
+        queue_->set_mouse_status(Fl::event_x(), Fl::event_y(), true);
         return 1;
       case FL_RELEASE: {
-        queue_->set_mouse_status(Fl::event_x() / magnification_,
-                                 Fl::event_y() / magnification_, false);
+        queue_->set_mouse_status(Fl::event_x(), Fl::event_y(), false);
         return 1;
       }
       default: {
@@ -245,13 +235,13 @@ class OffscreenBox : public Fl_Box {
   void draw() {
     int i = 0;
     // long time = millis();
-    Message::Content::PixelMessage msg;
-    while (queue_->popPixelMessage(&msg)) {
+    Message::Content::FillRectMessage msg;
+    while (queue_->popFillRectMessage(&msg)) {
 #ifdef FLTK_DEVICE_NOISE_BITS
       color ^= (rand() % (1 << FLTK_DEVICE_NOISE_BITS)) * 0x01010100;
 #endif
-      fl_rectf(msg.x * magnification_, msg.y * magnification_, magnification_,
-               magnification_, msg.color << 8);
+      fl_rectf(msg.x0, msg.y0, msg.x1 - msg.x0 + 1, msg.y1 - msg.y0 + 1,
+               msg.color_argb << 8);
       ++i;
     }
     // long elapsed = millis() - time;
@@ -260,7 +250,6 @@ class OffscreenBox : public Fl_Box {
   }
 
   int w_, h_;
-  int magnification_;
   EventQueue *queue_;
 };
 
@@ -271,66 +260,61 @@ class OffscreenBox : public Fl_Box {
 
 int pixelCounter = 0;
 
-void Framebuffer::fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                           uint32_t color_argb) {
+void FlexViewport::fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
+                            uint32_t color_argb) {
   if (xy_swapped_) {
     std::swap(x0, y0);
     std::swap(x1, y1);
   }
   if (bottom_to_top_) {
     std::swap(y0, y1);
-    y0 = height_ - y0 - 1;
-    y1 = height_ - y1 - 1;
+    y0 = height() - y0 - 1;
+    y1 = height() - y1 - 1;
   }
   if (right_to_left_) {
     std::swap(x0, x1);
-    x0 = width_ - x0 - 1;
-    x1 = width_ - x1 - 1;
+    x0 = width() - x0 - 1;
+    x1 = width() - x1 - 1;
   }
+  delegate_.fillRect(x0 * magnification_, y0 * magnification_,
+                     (x1 + 1) * magnification_ - 1,
+                     (y1 + 1) * magnification_ - 1, color_argb);
 
-  for (int iy = y0; iy <= y1; ++iy) {
-    for (int ix = x0; ix <= x1; ++ix) {
-      queue_->push(drawPixel(ix, iy, color_argb));
-#ifdef FLTK_MAX_PIXELS_PER_MS
-      if (++pixelCounter >= FLTK_MAX_PIXELS_PER_MS) {
-        pixelCounter = 0;
-        delay(1);
-      }
-#endif
-    }
-  }
+  //   for (int iy = y0; iy <= y1; ++iy) {
+  //     for (int ix = x0; ix <= x1; ++ix) {
+  //       queue_->push(fillRect(ix, iy, color_argb));
+  // #ifdef FLTK_MAX_PIXELS_PER_MS
+  //       if (++pixelCounter >= FLTK_MAX_PIXELS_PER_MS) {
+  //         pixelCounter = 0;
+  //         delay(1);
+  //       }
+  // #endif
+  //     }
+  //   }
 }
 
-Framebuffer::Framebuffer(int16_t width, int16_t height, int magnification,
-                         Rotation rotation)
-    : width_(width),
-      height_(height),
+void FltkViewport::fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
+                            uint32_t color_argb) {
+  queue_->push(createFillRectMsg(x0, y0, x1, y1, color_argb));
+}
+
+FlexViewport::FlexViewport(Viewport &delegate, int magnification,
+                           Rotation rotation)
+    : delegate_(delegate),
       magnification_(magnification),
       xy_swapped_(rotation == kRotationRight || rotation == kRotationLeft),
       bottom_to_top_(rotation == kRotationUpsideDown ||
                      rotation == kRotationLeft),
       right_to_left_(rotation == kRotationRight ||
-                     rotation == kRotationUpsideDown),
-      queue_(new EventQueue(100000)) {
-  if (xy_swapped_) {
-    std::swap(width_, height_);
-  }
-  queue_->push(initDisplay(width, height, magnification));
-}
+                     rotation == kRotationUpsideDown) {}
 
-// Framebuffer::Framebuffer(Framebuffer &&other) {
-//   width_ = other.width_;
-//   height_ = other.height_;
-//   magnification_ = other.magnification_;
-//   queue_ = other.queue_;
-//   other.queue_ = nullptr;
-// }
+FltkViewport::FltkViewport() : queue_(new EventQueue(100000)) {}
 
-Framebuffer::~Framebuffer() { delete queue_; }
+FltkViewport::~FltkViewport() { delete queue_; }
 
-void Framebuffer::flush() { Fl::awake(); }
+void FltkViewport::flush() { Fl::awake(); }
 
-bool Framebuffer::isMouseClicked(int16_t *x, int16_t *y) {
+bool FltkViewport::isMouseClicked(int16_t *x, int16_t *y) {
   bool result;
   queue_->get_mouse_status(x, y, &result);
   return result;
@@ -340,11 +324,10 @@ class Device {
  public:
   Device(EventQueue *queue) : initialized_(false), queue_(queue) {}
 
-  void show(int width, int height, int magnification) {
-    window_.reset(new Fl_Window(width * magnification, height * magnification,
-                                "roo_display emulator"));
+  void show(int width, int height) {
+    window_.reset(new Fl_Window(width, height, "roo_display emulator"));
     window_->begin();
-    box_.reset(new OffscreenBox(width, height, magnification, queue_));
+    box_.reset(new OffscreenBox(width, height, queue_));
     window_->end();
     window_->show();
     window_->make_current();
@@ -357,7 +340,7 @@ class Device {
     if (!initialized_) {
       Message::Content::InitMessage msg;
       if (!queue_->popInitMessage(&msg)) return;
-      show(msg.width, msg.height, msg.magnification);
+      show(msg.width, msg.height);
       initialized_ = true;
     }
     box_->damage(FL_DAMAGE_ALL);
@@ -457,19 +440,30 @@ int main(int argc, char **argv) {
   }
 }
 
-void Framebuffer::init() {
+void FltkViewport::init(int16_t width, int16_t height) {
+  Viewport::init(width, height);
   manager()->addDevice(queue_);
-
-  int16_t x1 = width_ - 1;
-  int16_t y1 = height_ - 1;
-  if (xy_swapped_) {
-    std::swap(x1, y1);
-  }
+  queue_->push(createInitDisplayMsg(width, height));
+  int16_t x1 = width - 1;
+  int16_t y1 = height - 1;
   uint32_t gray = 0xFF808080;
   for (int iy = 0; iy <= y1; ++iy) {
     for (int ix = 0; ix <= x1; ++ix) {
       // queue_->push(drawPixel(ix, iy, gray));
-      queue_->push(drawPixel(ix, iy, gray + 0x010101 * (rand() % 64)));
+      queue_->push(
+          createFillRectMsg(ix, iy, ix, iy, gray + 0x010101 * (rand() % 64)));
     }
   }
+}
+
+bool FlexViewport::isMouseClicked(int16_t *x, int16_t *y) {
+  int16_t dx, dy;
+  bool clicked = delegate_.isMouseClicked(&dx, &dy);
+  if (!clicked) return false;
+  if (xy_swapped_) {
+    std::swap(dx, dy);
+  }
+  *x = dx * magnification_;
+  *y = dy * magnification_;
+  return true;
 }

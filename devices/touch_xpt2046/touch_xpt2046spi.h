@@ -35,7 +35,7 @@ class FakeXpt2046Spi : public SimpleFakeSpiDevice {
     int16_t x;
     int16_t y;
     bool clicked = viewport_.isMouseClicked(&x, &y);
-    switch (val) {
+    switch (val & 0xF0) {
       case 0xD0: {
         conversion_requested_ = true;
         conversion_ = clicked ? ((4096LL * x) / viewport_.width()) << 3 : 0;
@@ -46,18 +46,14 @@ class FakeXpt2046Spi : public SimpleFakeSpiDevice {
         conversion_ = clicked ? ((4096LL * y) / viewport_.height()) << 3 : 0;
         break;
       }
-      case 0xB1: {
+      case 0xB0: {
         conversion_requested_ = true;
         conversion_ = clicked ? 1250 : 0;
         break;
       }
-      case 0xC1: {
+      case 0xC0: {
         conversion_requested_ = true;
         conversion_ = 0xFFF << 3;
-        break;
-      }
-      case 0x91: {
-        conversion_ = 0;
         break;
       }
     }

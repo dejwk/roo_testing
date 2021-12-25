@@ -2,13 +2,15 @@
 
 #include "roo_testing/buses/spi/fake_spi.h"
 #include "roo_testing/transducers/ui/viewport.h"
-#include <iostream>
 
 class FakeXpt2046Spi : public SimpleFakeSpiDevice {
  public:
-  FakeXpt2046Spi(int cs, Viewport& viewport)
-      : SimpleFakeSpiDevice(cs), viewport_(viewport),
-        conversion_requested_(false), conversion_bytes_returned_(0) {}
+  FakeXpt2046Spi(int cs, Viewport& viewport,
+                 const std::string& name = "touch_XPT2046")
+      : SimpleFakeSpiDevice(name, cs),
+        viewport_(viewport),
+        conversion_requested_(false),
+        conversion_bytes_returned_(0) {}
 
   void transfer(uint32_t clk, SpiDataMode mode, SpiBitOrder order, uint8_t* buf,
                 uint16_t bit_count) override {
@@ -24,7 +26,7 @@ class FakeXpt2046Spi : public SimpleFakeSpiDevice {
       // Ignore the operand in this case.
       return (conversion_ >> 8);
     }
-    uint8_t result ;
+    uint8_t result;
     if (!conversion_requested_) {
       result = 0;
     } else if (conversion_bytes_returned_ == 1) {

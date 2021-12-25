@@ -1,12 +1,15 @@
 #pragma once
 
+#include <string>
+
 #include "roo_testing/buses/spi/fake_spi.h"
 #include "roo_testing/transducers/ui/viewport.h"
 
 class FakeIli9486Spi : public SimpleFakeSpiDevice {
  public:
-  FakeIli9486Spi(int cs, int dc, int rst, Viewport& viewport)
-      : SimpleFakeSpiDevice(cs),
+  FakeIli9486Spi(int cs, int dc, int rst, Viewport& viewport,
+                 const std::string& name = "display_ILI9486")
+      : SimpleFakeSpiDevice(name, cs),
         pinDC_(new FakeGpioPin()),
         pinRST_(new FakeGpioPin()),
         viewport_(viewport),
@@ -23,7 +26,7 @@ class FakeIli9486Spi : public SimpleFakeSpiDevice {
   class MadCtl {
    public:
     MadCtl(uint16_t val) : val_(val) {}
-    
+
     bool my() const { return val_ & 0x80; }
     bool mx() const { return val_ & 0x40; }
     bool mv() const { return val_ & 0x20; }
@@ -35,9 +38,8 @@ class FakeIli9486Spi : public SimpleFakeSpiDevice {
     uint16_t val_;
   };
 
-
   int16_t last_command_;
-  
+
   void writeColor(uint16_t color);
 
   FakeGpioPin* pinDC_;

@@ -1,12 +1,15 @@
 #pragma once
 
+#include <string>
+
 #include "roo_testing/buses/spi/fake_spi.h"
 #include "roo_testing/transducers/ui/viewport.h"
 
 class FakeSsd1327Spi : public SimpleFakeSpiDevice {
  public:
-  FakeSsd1327Spi(int cs, int dc, int rst, Viewport& viewport)
-      : SimpleFakeSpiDevice(cs),
+  FakeSsd1327Spi(int cs, int dc, int rst, Viewport& viewport,
+                 const std::string& name = "display_SSD1327")
+      : SimpleFakeSpiDevice(name, cs),
         pinDC_(new FakeGpioPin()),
         pinRST_(new FakeGpioPin()),
         viewport_(viewport) {

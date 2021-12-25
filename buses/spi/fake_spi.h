@@ -3,8 +3,8 @@
 #include <stdint.h>
 
 #include <memory>
-#include <vector>
 #include <string>
+#include <vector>
 
 #include "roo_testing/buses/gpio/fake_gpio.h"
 
@@ -22,11 +22,14 @@ enum SpiBitOrder {
 
 class SimpleFakeSpiDevice {
  public:
-  SimpleFakeSpiDevice(uint8_t cs) : cs_(new FakeGpioPin()) {
+  SimpleFakeSpiDevice(const std::string& name, uint8_t cs)
+      : name_(name), cs_(new FakeGpioPin()) {
     getGpioInterface()->attach(cs, cs_);
   }
 
   virtual ~SimpleFakeSpiDevice() {}
+
+  const std::string& name() const { return name_; }
 
   bool isSelected() const { return cs_->isDigitalLow(); }
 
@@ -34,6 +37,7 @@ class SimpleFakeSpiDevice {
                         uint8_t* buf, uint16_t bit_count) = 0;
 
  private:
+  const std::string name_;
   FakeGpioPin* cs_;
 };
 
@@ -57,7 +61,7 @@ class FakeSpiInterface {
   const SimpleFakeSpiDevice& device(int pos) const { return *devices_[pos]; }
 
  private:
-  std::string name_;
+  const std::string name_;
   std::vector<std::unique_ptr<SimpleFakeSpiDevice>> devices_;
 };
 

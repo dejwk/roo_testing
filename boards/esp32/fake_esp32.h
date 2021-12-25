@@ -20,9 +20,9 @@ class FakeEsp32Board {
 
   FakeEsp32Board()
       : gpio(),
-        i2c({FakeI2cInterface("i2c0"), FakeI2cInterface("i2c1")}),
-        spi({FakeSpiInterface("spi0(internal)"), FakeSpiInterface("spi1(FSPI)"),
-             FakeSpiInterface("spi2(HSPI)"), FakeSpiInterface("spi3(VSPI)")}),
+        i2c{FakeI2cInterface("i2c0"), FakeI2cInterface("i2c1")},
+        spi{FakeSpiInterface("spi0(internal)"), FakeSpiInterface("spi1(FSPI)"),
+            FakeSpiInterface("spi2(HSPI)"), FakeSpiInterface("spi3(VSPI)")},
         fspi(spi[1]),
         hspi(spi[2]),
         vspi(spi[3]) {}

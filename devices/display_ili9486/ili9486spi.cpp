@@ -21,6 +21,10 @@ void FakeIli9486Spi::transfer(uint32_t clk, SpiDataMode mode, SpiBitOrder order,
   if (command) {
     CHECK_EQ(16, bit_count);
     last_command_ = read16(buf);
+    if (last_command_ == 0x2C) {  // RAMWR
+      x_cursor_ = x0_;
+      y_cursor_ = y0_;
+    }
     return;
   } else {
     switch (last_command_) {
@@ -28,16 +32,12 @@ void FakeIli9486Spi::transfer(uint32_t clk, SpiDataMode mode, SpiBitOrder order,
         CHECK_EQ(64, bit_count);
         x0_ = (read16(buf) << 8) + read16(buf);
         x1_ = (read16(buf) << 8) + read16(buf);
-        x_cursor_ = x0_;
-        y_cursor_ = y0_;
         break;
       }
       case 0x2B: {  // PASET
         CHECK_EQ(64, bit_count);
         y0_ = (read16(buf) << 8) + read16(buf);
         y1_ = (read16(buf) << 8) + read16(buf);
-        x_cursor_ = x0_;
-        y_cursor_ = y0_;
         break;
       }
       case 0x2C: {  // RAMWR

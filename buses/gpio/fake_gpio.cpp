@@ -12,11 +12,6 @@ void FakeGpioInterface::attach(uint8_t pin,
   pins_[pin] = std::move(fake);
 }
 
-FakeGpioInterface* getGpioInterface() {
-  static FakeGpioInterface gpio;
-  return &gpio;
-}
-
 FakeGpioPin& FakeGpioInterface::get(uint8_t pin) const {
   if (pin >= pins_.size()) {
     pins_.resize(pin + 1);

@@ -3,11 +3,11 @@
 FakeI2cInterface::FakeI2cInterface(
     std::initializer_list<FakeI2cDevice*> devices) {
   for (auto device : devices) {
-    addDevice(device);
+    attach(device);
   }
 }
 
-void FakeI2cInterface::addDevice(std::unique_ptr<FakeI2cDevice> device) {
+void FakeI2cInterface::attach(std::unique_ptr<FakeI2cDevice> device) {
   uint16_t address = device->address();
   devices_.insert(std::make_pair(address, std::move(device)));
 }
@@ -20,21 +20,6 @@ FakeI2cDevice* FakeI2cInterface::getDevice(uint16_t address) const {
 static FakeI2cDevice* getDevice(uint8_t i2c_num, uint16_t address) {
   FakeI2cInterface* i2c = getI2cInterface(i2c_num);
   return (i2c == nullptr) ? nullptr : i2c->getDevice(address);
-}
-
-std::map<uint8_t, std::unique_ptr<FakeI2cInterface>>* i2cMap() {
-  static std::map<uint8_t, std::unique_ptr<FakeI2cInterface>> i2cMap;
-  return &i2cMap;
-}
-
-FakeI2cInterface* getI2cInterface(uint8_t i2c_num) {
-  auto* map = i2cMap();
-  auto i = map->find(i2c_num);
-  return (i == map->end() ? nullptr : i->second.get());
-}
-
-void attachI2cInterface(uint8_t i2c_num, FakeI2cInterface* i2c) {
-  i2cMap()->emplace(i2c_num, i2c);
 }
 
 extern "C" {

@@ -46,6 +46,7 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
+        "//roo_testing/boards/esp32",
         "//roo_testing/buses/i2c",
         "//roo_testing/buses/gpio",
         "//roo_testing/buses/spi",

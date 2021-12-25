@@ -39,15 +39,14 @@ class FakeI2cInterface {
 
   FakeI2cInterface(std::initializer_list<FakeI2cDevice*> devices);
 
-  void addDevice(FakeI2cDevice* device) {
-    addDevice(std::unique_ptr<FakeI2cDevice>(device));
+  void attach(FakeI2cDevice* device) {
+    attach(std::unique_ptr<FakeI2cDevice>(device));
   }
-  void addDevice(std::unique_ptr<FakeI2cDevice> device);
+  void attach(std::unique_ptr<FakeI2cDevice> device);
   FakeI2cDevice* getDevice(uint16_t address) const;
 
  private:
   std::map<uint16_t, std::unique_ptr<FakeI2cDevice>> devices_;
 };
 
-void attachI2cInterface(uint8_t i2c_num, FakeI2cInterface* i2c);
 FakeI2cInterface* getI2cInterface(uint8_t i2c_num);

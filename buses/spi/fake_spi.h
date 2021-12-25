@@ -42,10 +42,10 @@ class FakeSpiInterface {
 
   FakeSpiInterface(std::initializer_list<SimpleFakeSpiDevice*> devices);
 
-  void addDevice(SimpleFakeSpiDevice* device) {
-    addDevice(std::unique_ptr<SimpleFakeSpiDevice>(device));
+  void attach(SimpleFakeSpiDevice* device) {
+    attach(std::unique_ptr<SimpleFakeSpiDevice>(device));
   }
-  void addDevice(std::unique_ptr<SimpleFakeSpiDevice> device);
+  void attach(std::unique_ptr<SimpleFakeSpiDevice> device);
 
   int device_count() const { return devices_.size(); }
 
@@ -57,7 +57,6 @@ class FakeSpiInterface {
   std::vector<std::unique_ptr<SimpleFakeSpiDevice>> devices_;
 };
 
-void attachSpiInterface(uint8_t spi_num, FakeSpiInterface* spi);
 FakeSpiInterface* getSpiInterface(uint8_t spi_num);
 
 extern "C" {

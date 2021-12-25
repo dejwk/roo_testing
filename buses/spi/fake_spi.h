@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <vector>
+#include <string>
 
 #include "roo_testing/buses/gpio/fake_gpio.h"
 
@@ -38,9 +39,11 @@ class SimpleFakeSpiDevice {
 
 class FakeSpiInterface {
  public:
-  FakeSpiInterface() {}
+  FakeSpiInterface(const std::string& name) : name_(name) {}
 
   FakeSpiInterface(std::initializer_list<SimpleFakeSpiDevice*> devices);
+
+  const std::string& name() const { return name_; }
 
   void attach(SimpleFakeSpiDevice* device) {
     attach(std::unique_ptr<SimpleFakeSpiDevice>(device));
@@ -54,6 +57,7 @@ class FakeSpiInterface {
   const SimpleFakeSpiDevice& device(int pos) const { return *devices_[pos]; }
 
  private:
+  std::string name_;
   std::vector<std::unique_ptr<SimpleFakeSpiDevice>> devices_;
 };
 

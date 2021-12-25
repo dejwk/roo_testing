@@ -1,9 +1,10 @@
 #pragma once
 
+#include <stdint.h>
+
 #include <map>
 #include <memory>
-
-#include <stdint.h>
+#include <string>
 
 class FakeI2cDevice {
  public:
@@ -35,9 +36,11 @@ class FakeI2cDevice {
 
 class FakeI2cInterface {
  public:
-  FakeI2cInterface() {}
+  FakeI2cInterface(const std::string& name) : name_(name) {}
 
   FakeI2cInterface(std::initializer_list<FakeI2cDevice*> devices);
+
+  const std::string& name() const { return name_; }
 
   void attach(FakeI2cDevice* device) {
     attach(std::unique_ptr<FakeI2cDevice>(device));
@@ -46,6 +49,7 @@ class FakeI2cInterface {
   FakeI2cDevice* getDevice(uint16_t address) const;
 
  private:
+  std::string name_;
   std::map<uint16_t, std::unique_ptr<FakeI2cDevice>> devices_;
 };
 

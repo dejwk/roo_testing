@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <memory>
+#include <string>
 #include <vector>
 
 class FakeGpioPin {
@@ -12,7 +13,10 @@ class FakeGpioPin {
   enum DigitalLevel { kDigitalLow = 0, kDigitalHigh = 1, kDigitalUndef = -1 };
 
   FakeGpioPin() : last_written_(std::nanf("")) {}
+
   virtual ~FakeGpioPin() {}
+
+  virtual std::string name() const { return "<unnamed>"; }
 
   virtual float read() const {
     if (std::isnan(last_written_)) {
@@ -31,13 +35,9 @@ class FakeGpioPin {
                             : kDigitalUndef;
   }
 
-  bool isDigitalLow() const {
-    return digitalRead() == kDigitalLow;
-  }
+  bool isDigitalLow() const { return digitalRead() == kDigitalLow; }
 
-  bool isDigitalHigh() const {
-    return digitalRead() == kDigitalHigh;
-  }
+  bool isDigitalHigh() const { return digitalRead() == kDigitalHigh; }
 
   void write(float voltage) {
     last_written_ = voltage;
@@ -52,6 +52,16 @@ class FakeGpioPin {
   float last_written_;
 };
 
+class SimpleFakeGpioPin : public FakeGpioPin {
+ public:
+  SimpleFakeGpioPin(const std::string& name) : name_(name) {}
+
+  std::string name() const override { return name_; }
+
+ private:
+  std::string name_;
+};
+
 class FakeGpioInterface {
  public:
   FakeGpioInterface();
@@ -59,7 +69,9 @@ class FakeGpioInterface {
   void attach(uint8_t pin, FakeGpioPin* fake) {
     attach(pin, std::unique_ptr<FakeGpioPin>(fake));
   }
+
   void attach(uint8_t pin, std::unique_ptr<FakeGpioPin> fake);
+
   FakeGpioPin& get(uint8_t pin) const;
 
  private:

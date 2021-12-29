@@ -23,7 +23,7 @@ enum SpiBitOrder {
 class SimpleFakeSpiDevice {
  public:
   SimpleFakeSpiDevice(const std::string& name, uint8_t cs)
-      : name_(name), cs_(new FakeGpioPin()) {
+      : name_(name), cs_(new SimpleFakeGpioPin(name + ":CS")) {
     getGpioInterface()->attach(cs, cs_);
   }
 

@@ -10,8 +10,8 @@ class FakeIli9486Spi : public SimpleFakeSpiDevice {
   FakeIli9486Spi(int cs, int dc, int rst, Viewport& viewport,
                  const std::string& name = "display_ILI9486")
       : SimpleFakeSpiDevice(name, cs),
-        pinDC_(new FakeGpioPin()),
-        pinRST_(new FakeGpioPin()),
+        pinDC_(new SimpleFakeGpioPin(name + ":CS")),
+        pinRST_(new SimpleFakeGpioPin(name + ":RESET")),
         viewport_(viewport),
         mad_ctl_(0) {
     getGpioInterface()->attach(dc, pinDC_);

@@ -10,8 +10,8 @@ class FakeSsd1327Spi : public SimpleFakeSpiDevice {
   FakeSsd1327Spi(int cs, int dc, int rst, Viewport& viewport,
                  const std::string& name = "display_SSD1327")
       : SimpleFakeSpiDevice(name, cs),
-        pinDC_(new FakeGpioPin()),
-        pinRST_(new FakeGpioPin()),
+        pinDC_(new SimpleFakeGpioPin(name + ":DC")),
+        pinRST_(new SimpleFakeGpioPin(name + ":RESET")),
         viewport_(viewport) {
     getGpioInterface()->attach(dc, pinDC_);
     getGpioInterface()->attach(rst, pinRST_);

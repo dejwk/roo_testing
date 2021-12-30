@@ -1159,10 +1159,10 @@ i2c_err_t i2cAttachSCL(i2c_t * i2c, int8_t scl)
     if(i2c == NULL) {
         return I2C_ERROR_DEV;
     }
-    // digitalWrite(scl, HIGH);
-    // pinMode(scl, OPEN_DRAIN | PULLUP | INPUT | OUTPUT);
-    // pinMatrixOutAttach(scl, I2C_SCL_IDX(i2c->num), false, false);
-    // pinMatrixInAttach(scl, I2C_SCL_IDX(i2c->num), false);
+    digitalWrite(scl, HIGH);
+    pinMode(scl, OPEN_DRAIN | PULLUP | INPUT | OUTPUT);
+    pinMatrixOutAttach(scl, I2C_SCL_IDX(i2c->num), false, false);
+    pinMatrixInAttach(scl, I2C_SCL_IDX(i2c->num), false);
     return I2C_ERROR_OK;
 }
 
@@ -1171,9 +1171,9 @@ i2c_err_t i2cDetachSCL(i2c_t * i2c, int8_t scl)
     if(i2c == NULL) {
         return I2C_ERROR_DEV;
     }
-    // pinMatrixOutDetach(scl, false, false);
-    // pinMatrixInDetach(I2C_SCL_IDX(i2c->num), false, false);
-    // pinMode(scl, INPUT | PULLUP);
+    pinMatrixOutDetach(scl, false, false);
+    pinMatrixInDetach(I2C_SCL_IDX(i2c->num), false, false);
+    pinMode(scl, INPUT | PULLUP);
     return I2C_ERROR_OK;
 }
 
@@ -1182,10 +1182,10 @@ i2c_err_t i2cAttachSDA(i2c_t * i2c, int8_t sda)
     if(i2c == NULL) {
         return I2C_ERROR_DEV;
     }
-    // digitalWrite(sda, HIGH);
-    // pinMode(sda, OPEN_DRAIN | PULLUP | INPUT | OUTPUT );
-    // pinMatrixOutAttach(sda, I2C_SDA_IDX(i2c->num), false, false);
-    // pinMatrixInAttach(sda, I2C_SDA_IDX(i2c->num), false);
+    digitalWrite(sda, HIGH);
+    pinMode(sda, OPEN_DRAIN | PULLUP | INPUT | OUTPUT );
+    pinMatrixOutAttach(sda, I2C_SDA_IDX(i2c->num), false, false);
+    pinMatrixInAttach(sda, I2C_SDA_IDX(i2c->num), false);
     return I2C_ERROR_OK;
 }
 
@@ -1194,9 +1194,9 @@ i2c_err_t i2cDetachSDA(i2c_t * i2c, int8_t sda)
     if(i2c == NULL) {
         return I2C_ERROR_DEV;
     }
-    // pinMatrixOutDetach(sda, false, false);
-    // pinMatrixInDetach(I2C_SDA_IDX(i2c->num), false, false);
-    // pinMode(sda, INPUT | PULLUP);
+    pinMatrixOutDetach(sda, false, false);
+    pinMatrixInDetach(I2C_SDA_IDX(i2c->num), false, false);
+    pinMode(sda, INPUT | PULLUP);
     return I2C_ERROR_OK;
 }
 

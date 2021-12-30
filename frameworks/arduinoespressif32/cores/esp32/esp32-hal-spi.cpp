@@ -94,7 +94,7 @@ void spiAttachSCK(spi_t * spi, int8_t sck)
         }
     }
     pinMode(sck, OUTPUT);
-    // pinMatrixOutAttach(sck, SPI_CLK_IDX(spi->num), false, false);
+    pinMatrixOutAttach(sck, SPI_CLK_IDX(spi->num), false, false);
 }
 
 void spiAttachMISO(spi_t * spi, int8_t miso)
@@ -113,7 +113,7 @@ void spiAttachMISO(spi_t * spi, int8_t miso)
     }
     SPI_MUTEX_LOCK();
     pinMode(miso, INPUT);
-    // pinMatrixInAttach(miso, SPI_MISO_IDX(spi->num), false);
+    pinMatrixInAttach(miso, SPI_MISO_IDX(spi->num), false);
     SPI_MUTEX_UNLOCK();
 }
 
@@ -132,7 +132,7 @@ void spiAttachMOSI(spi_t * spi, int8_t mosi)
         }
     }
     pinMode(mosi, OUTPUT);
-    // pinMatrixOutAttach(mosi, SPI_MOSI_IDX(spi->num), false, false);
+    pinMatrixOutAttach(mosi, SPI_MOSI_IDX(spi->num), false, false);
 }
 
 void spiDetachSCK(spi_t * spi, int8_t sck)
@@ -149,7 +149,7 @@ void spiDetachSCK(spi_t * spi, int8_t sck)
             sck = 6;
         }
     }
-    // pinMatrixOutDetach(sck, false, false);
+    pinMatrixOutDetach(sck, false, false);
     pinMode(sck, INPUT);
 }
 
@@ -167,7 +167,7 @@ void spiDetachMISO(spi_t * spi, int8_t miso)
             miso = 7;
         }
     }
-    // pinMatrixInDetach(SPI_MISO_IDX(spi->num), false, false);
+    pinMatrixInDetach(SPI_MISO_IDX(spi->num), false, false);
     pinMode(miso, INPUT);
 }
 
@@ -185,7 +185,7 @@ void spiDetachMOSI(spi_t * spi, int8_t mosi)
             mosi = 8;
         }
     }
-    // pinMatrixOutDetach(mosi, false, false);
+    pinMatrixOutDetach(mosi, false, false);
     pinMode(mosi, INPUT);
 }
 
@@ -208,7 +208,7 @@ void spiAttachSS(spi_t * spi, uint8_t cs_num, int8_t ss)
         }
     }
     pinMode(ss, OUTPUT);
-    // pinMatrixOutAttach(ss, SPI_SS_IDX(spi->num, cs_num), false, false);
+    pinMatrixOutAttach(ss, SPI_SS_IDX(spi->num, cs_num), false, false);
     spiEnableSSPins(spi, (1 << cs_num));
 }
 
@@ -226,7 +226,7 @@ void spiDetachSS(spi_t * spi, int8_t ss)
             ss = 11;
         }
     }
-    // pinMatrixOutDetach(ss, false, false);
+    pinMatrixOutDetach(ss, false, false);
     pinMode(ss, INPUT);
 }
 

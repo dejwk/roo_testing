@@ -48,13 +48,13 @@ inline void yield(void) {}
 #define NOP() asm volatile ("nop")
 
 #include "esp32-hal-log.h"
-// #include "esp32-hal-matrix.h"
+#include "esp32-hal-matrix.h"
 // #include "esp32-hal-uart.h"
 #include "esp32-hal-gpio.h"
 // #include "esp32-hal-touch.h"
 // #include "esp32-hal-dac.h"
 #include "esp32-hal-adc.h"
-// #include "esp32-hal-spi.h"
+#include "esp32-hal-spi.h"
 #include "esp32-hal-i2c.h"
 #include "esp32-hal-ledc.h"
 // #include "esp32-hal-sigmadelta.h"

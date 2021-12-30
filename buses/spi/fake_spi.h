@@ -49,10 +49,7 @@ class FakeSpiInterface {
 
   const std::string& name() const { return name_; }
 
-  void attach(SimpleFakeSpiDevice* device) {
-    attach(std::unique_ptr<SimpleFakeSpiDevice>(device));
-  }
-  void attach(std::unique_ptr<SimpleFakeSpiDevice> device);
+  void attach(SimpleFakeSpiDevice& device);
 
   int device_count() const { return devices_.size(); }
 
@@ -62,7 +59,7 @@ class FakeSpiInterface {
 
  private:
   const std::string name_;
-  std::vector<std::unique_ptr<SimpleFakeSpiDevice>> devices_;
+  std::vector<SimpleFakeSpiDevice*> devices_;
 };
 
 FakeSpiInterface* getSpiInterface(uint8_t spi_num);

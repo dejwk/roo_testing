@@ -5,15 +5,15 @@
 #include <iostream>
 #include <map>
 
-FakeSpiInterface::FakeSpiInterface(
-    std::initializer_list<SimpleFakeSpiDevice*> devices) {
-  for (auto device : devices) {
-    attach(device);
-  }
-}
+// FakeSpiInterface::FakeSpiInterface(
+//     std::initializer_list<SimpleFakeSpiDevice*> devices) {
+//   for (auto device : devices) {
+//     attach(device);
+//   }
+// }
 
-void FakeSpiInterface::attach(std::unique_ptr<SimpleFakeSpiDevice> device) {
-  devices_.push_back(std::move(device));
+void FakeSpiInterface::attach(SimpleFakeSpiDevice& device) {
+  devices_.push_back(&device);
 }
 
 extern "C" {

@@ -1,6 +1,5 @@
 #include "gpio.h"
 
-#include "glog/logging.h"
 #include "fake_esp32.h"
 
 extern "C" {

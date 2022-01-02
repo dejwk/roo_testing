@@ -29,6 +29,11 @@ extern "C" {
 }
 
 #include "esp32-hal-i2c.h"
+
+// Including this early, since it uses OUTPUT which gets redefined by Arduino
+// headers.
+#include "glog/logging.h"
+
 #include "Wire.h"
 #include "Arduino.h"
 

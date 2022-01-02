@@ -20,6 +20,10 @@
 #ifndef Arduino_h
 #define Arduino_h
 
+// Including this early, since it uses OUTPUT which gets redefined by Arduino
+// headers.
+#include "glog/logging.h"
+
 #include "fake_esp32.h"
 
 #include <stdbool.h>

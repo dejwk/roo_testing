@@ -1,7 +1,12 @@
-#include "roo_testing/boards/esp32/fake_esp32.h"
+#include "fake_esp32.h"
 
 #include <algorithm>
+#include <cstring>
 #include <set>
+
+#include "glog/logging.h"
+#include "soc/gpio_sig_map.h"
+#include "soc/spi_struct.h"
 
 FakeEsp32Board& FakeEsp32() {
   static FakeEsp32Board esp32;
@@ -12,10 +17,6 @@ FakeGpioInterface* getGpioInterface() { return &FakeEsp32().gpio; }
 
 FakeI2cInterface* getI2cInterface(uint8_t i2c_num) {
   return &FakeEsp32().i2c[i2c_num];
-}
-
-FakeSpiInterface* getSpiInterface(uint8_t spi_num) {
-  return &FakeEsp32().spi[spi_num];
 }
 
 namespace {
@@ -563,16 +564,130 @@ Esp32OutMatrix::Esp32OutMatrix() {
   std::fill(&pin_to_signal_[0], &pin_to_signal_[40], kMatrixDetachInUndefPin);
 }
 
+Esp32SpiInterface::Esp32SpiInterface(volatile spi_def_t& spi,
+                                     const std::string& name,
+                                     uint8_t clk_signal, uint8_t miso_signal,
+                                     uint8_t mosi_signal, FakeEsp32Board* esp32)
+    : FakeSpiInterface(name),
+      spi_(spi),
+      clk_signal_(clk_signal),
+      miso_signal_(miso_signal),
+      mosi_signal_(mosi_signal),
+      esp32_(esp32) {}
+
+uint32_t Esp32SpiInterface::clkHz() const { return spi_.clock.val; }
+
+SpiDataMode Esp32SpiInterface::dataMode() const {
+  switch ((spi_.pin.ck_idle_edge << 1) + spi_.user.ck_out_edge) {
+    case 0:
+      return kSpiMode0;
+    case 1:
+      return kSpiMode1;
+    case 2:
+      return kSpiMode3;
+    case 3:
+      return kSpiMode2;
+  }
+}
+
+SpiBitOrder Esp32SpiInterface::bitOrder() const {
+  return spi_.ctrl.wr_bit_order ? kSpiMsbFirst : kSpiLsbFirst;
+}
+
+void Esp32SpiInterface::transfer() {
+  SimpleFakeSpiDevice* input_dev = nullptr;
+  uint8_t buf[64];
+  int mosi_bits = spi_.mosi_dlen.usr_mosi_dbitlen + 1;
+  int miso_bits = spi_.miso_dlen.usr_miso_dbitlen;
+  // Find the device to transfer to.
+  for (const auto& i : esp32_->spi_devices()) {
+    if (esp32_->out_matrix.signal_for_pin(i.second.clk) != clk_signal_)
+      continue;
+    SimpleFakeSpiDevice* dev = i.first;
+    if (!dev->isSelected()) continue;
+    if (esp32_->in_matrix.pin_for_signal(miso_signal_) == i.second.miso) {
+      if (input_dev != nullptr) {
+        LOG(ERROR) << "SPI interface " << name() << ": bus conflict: selected "
+                   << input_dev->name() << " and " << dev->name() << "\n";
+        memset((void*)spi_.data_buf, 0xFF, (miso_bits + 7) / 8);
+      } else {
+        input_dev = dev;
+      }
+    }
+    if (esp32_->out_matrix.signal_for_pin(i.second.mosi) == mosi_signal_) {
+      memcpy(buf, (const void*)spi_.data_buf, (mosi_bits + 7) / 8);
+    } else {
+      FakeGpioPin& pin = esp32_->gpio.get(i.second.mosi);
+      if (pin.last_written() >= 1.8) {
+        memset(buf, 0xFF, (mosi_bits + 7) / 8);
+      } else {
+        memset(buf, 0x00, (mosi_bits + 7) / 8);
+      }
+    }
+    dev->transfer(*this, buf, mosi_bits);
+    if (dev == input_dev) {
+      memcpy((void*)spi_.data_buf, buf, (miso_bits + 7) / 8);
+    }
+  }
+  if (input_dev == nullptr) {
+    FakeGpioPin& pin =
+        esp32_->gpio.get(esp32_->in_matrix.pin_for_signal(miso_signal_));
+    if (pin.digitalRead() == FakeGpioPin::kDigitalHigh) {
+      memset((void*)spi_.data_buf, 0xFF, (miso_bits + 7) / 8);
+    } else {
+      memset((void*)spi_.data_buf, 0x00, (miso_bits + 7) / 8);
+    }
+  }
+}
+
+// namespace {
+
+void spiFakeTransferOnDevice(int8_t spi_num) {
+  FakeEsp32().spi[spi_num].transfer();
+}
+
+// }
+
+uint32_t Esp32SpiUsr::operator=(uint32_t val) const volatile {
+  if (val == 0) return val;
+
+  if (this == &SPI0.cmd.usr) {
+    spiFakeTransferOnDevice(0);
+  }
+  if (this == &SPI1.cmd.usr) {
+    spiFakeTransferOnDevice(1);
+  }
+  if (this == &SPI2.cmd.usr) {
+    spiFakeTransferOnDevice(2);
+  }
+  if (this == &SPI3.cmd.usr) {
+    spiFakeTransferOnDevice(3);
+  }
+  return val;
+}
+
 FakeEsp32Board::FakeEsp32Board()
     : gpio(),
       in_matrix(),
       out_matrix(),
       i2c{FakeI2cInterface("i2c0"), FakeI2cInterface("i2c1")},
-      spi{FakeSpiInterface("spi0(internal)"), FakeSpiInterface("spi1(FSPI)"),
-          FakeSpiInterface("spi2(HSPI)"), FakeSpiInterface("spi3(VSPI)")},
-      fspi(spi[1]),
-      hspi(spi[2]),
-      vspi(spi[3]) {}
+      spi{Esp32SpiInterface(SPI0, "spi0(internal)", SPICLK_OUT_IDX,
+                            SPIQ_OUT_IDX, SPID_IN_IDX, this),
+          Esp32SpiInterface(SPI1, "spi1(FSPI)", SPICLK_OUT_IDX, SPIQ_OUT_IDX,
+                            SPID_IN_IDX, this),
+          Esp32SpiInterface(SPI2, "spi2(HSPI)", HSPICLK_OUT_IDX, HSPIQ_OUT_IDX,
+                            HSPID_IN_IDX, this),
+          Esp32SpiInterface(SPI3, "spi3(VSPI)", VSPICLK_OUT_IDX, VSPIQ_OUT_IDX,
+                            VSPID_IN_IDX, this)} {}
+
+void FakeEsp32Board::attachSpiDevice(SimpleFakeSpiDevice& dev, int8_t clk,
+                                     int8_t miso, int8_t mosi) {
+  spi_devices_to_pins_[&dev] = SpiPins{
+      .clk = clk,
+      .miso = miso,
+      .mosi = mosi,
+  };
+}
 
 void Esp32InMatrix::assign(uint32_t gpio, uint32_t signal_idx, bool inv) {
   uint8_t old_pin = signal_to_pin_[signal_idx];
@@ -583,7 +698,8 @@ void Esp32InMatrix::assign(uint32_t gpio, uint32_t signal_idx, bool inv) {
   }
 }
 
-void Esp32OutMatrix::assign(uint32_t gpio, uint32_t signal_idx, bool out_inv, bool oen_inv) {
+void Esp32OutMatrix::assign(uint32_t gpio, uint32_t signal_idx, bool out_inv,
+                            bool oen_inv) {
   uint16_t old_signal = pin_to_signal_[gpio];
   signal_to_pins_.erase(old_signal);
   pin_to_signal_[gpio] = signal_idx;

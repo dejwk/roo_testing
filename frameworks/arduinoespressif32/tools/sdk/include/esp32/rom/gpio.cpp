@@ -1,7 +1,7 @@
 #include "gpio.h"
 
 #include "glog/logging.h"
-#include "roo_testing/boards/esp32/fake_esp32.h"
+#include "fake_esp32.h"
 
 extern "C" {
 

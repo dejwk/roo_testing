@@ -20,7 +20,7 @@
 #ifndef Arduino_h
 #define Arduino_h
 
-#include "roo_testing/boards/esp32/fake_esp32.h"
+#include "fake_esp32.h"
 
 #include <stdbool.h>
 #include <stdint.h>

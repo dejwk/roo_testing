@@ -12,7 +12,7 @@ class FakeXpt2046Spi : public SimpleFakeSpiDevice {
         conversion_requested_(false),
         conversion_bytes_returned_(0) {}
 
-  void transfer(uint32_t clk, SpiDataMode mode, SpiBitOrder order, uint8_t* buf,
+  void transfer(const FakeSpiInterface& spi, uint8_t* buf,
                 uint16_t bit_count) override {
     for (int i = 0; i < (bit_count + 7) / 8; i++) {
       buf[i] = transfer_byte(buf[i]);

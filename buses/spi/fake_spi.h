@@ -20,6 +20,21 @@ enum SpiBitOrder {
   kSpiMsbFirst = 1,
 };
 
+class FakeSpiInterface {
+ public:
+  FakeSpiInterface(const std::string& name) : name_(name) {}
+  virtual ~FakeSpiInterface() {}
+
+  const std::string& name() const { return name_; }
+
+  virtual uint32_t clkHz() const = 0;
+  virtual SpiDataMode dataMode() const = 0;
+  virtual SpiBitOrder bitOrder() const = 0;
+
+ private:
+  const std::string name_;
+};
+
 class SimpleFakeSpiDevice {
  public:
   SimpleFakeSpiDevice(const std::string& name, uint8_t cs)
@@ -33,39 +48,10 @@ class SimpleFakeSpiDevice {
 
   bool isSelected() const { return cs_->isDigitalLow(); }
 
-  virtual void transfer(uint32_t clk, SpiDataMode mode, SpiBitOrder order,
+  virtual void transfer(const FakeSpiInterface& spi,
                         uint8_t* buf, uint16_t bit_count) = 0;
 
  private:
   const std::string name_;
   FakeGpioPin* cs_;
 };
-
-class FakeSpiInterface {
- public:
-  FakeSpiInterface(const std::string& name) : name_(name) {}
-
-  FakeSpiInterface(std::initializer_list<SimpleFakeSpiDevice*> devices);
-
-  const std::string& name() const { return name_; }
-
-  void attach(SimpleFakeSpiDevice& device);
-
-  int device_count() const { return devices_.size(); }
-
-  SimpleFakeSpiDevice& device(int pos) { return *devices_[pos]; }
-
-  const SimpleFakeSpiDevice& device(int pos) const { return *devices_[pos]; }
-
- private:
-  const std::string name_;
-  std::vector<SimpleFakeSpiDevice*> devices_;
-};
-
-FakeSpiInterface* getSpiInterface(uint8_t spi_num);
-
-extern "C" {
-
-void spiFakeTransfer(uint8_t spi_num, uint32_t clk, SpiDataMode mode,
-                     SpiBitOrder order, uint8_t* buf, uint16_t bit_count);
-}

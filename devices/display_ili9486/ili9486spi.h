@@ -19,7 +19,7 @@ class FakeIli9486Spi : public SimpleFakeSpiDevice {
     viewport_.init(320, 480);
   }
 
-  void transfer(uint32_t clk, SpiDataMode mode, SpiBitOrder order, uint8_t* buf,
+  void transfer(const FakeSpiInterface& spi, uint8_t* buf,
                 uint16_t bit_count) override;
 
  private:

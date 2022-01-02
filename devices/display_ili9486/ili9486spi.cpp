@@ -14,8 +14,8 @@ uint16_t read16(uint8_t*& buf) {
 
 }  // namespace
 
-void FakeIli9486Spi::transfer(uint32_t clk, SpiDataMode mode, SpiBitOrder order,
-                              uint8_t* buf, uint16_t bit_count) {
+void FakeIli9486Spi::transfer(const FakeSpiInterface& spi, uint8_t* buf,
+                              uint16_t bit_count) {
   if (pinRST_->isDigitalLow()) return;
   bool command = pinDC_->isDigitalLow();
   if (command) {

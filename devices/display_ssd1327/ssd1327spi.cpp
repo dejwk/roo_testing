@@ -2,8 +2,8 @@
 
 #include <iostream>
 
-void FakeSsd1327Spi::transfer(uint32_t clk, SpiDataMode mode, SpiBitOrder order,
-                              uint8_t* buf, uint16_t bit_count) {
+void FakeSsd1327Spi::transfer(const FakeSpiInterface& spi, uint8_t* buf,
+                              uint16_t bit_count) {
   if (pinRST_->isDigitalLow()) return;
   bool command = pinDC_->isDigitalLow();
   uint8_t* data = buf;

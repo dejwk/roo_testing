@@ -16,10 +16,10 @@
 
 #include "roo_testing/buses/spi/fake_spi.h"
 
-class Usr {
+class Esp32SpiUsr {
  public:
   operator uint32_t() const volatile { return 0; }
-  inline uint32_t operator=(uint32_t val) const volatile;
+  uint32_t operator=(uint32_t val) const volatile;
 };
 
 // #ifdef __cplusplus
@@ -47,7 +47,7 @@ typedef volatile struct spi_def_t {
         //     uint32_t flash_wren: 1;                         /*Write flash enable.  Write enable command will be sent when the bit is set. The bit will be cleared once the operation done. 1: enable 0: disable.*/
         //     uint32_t flash_read: 1;                         /*Read flash enable. Read flash operation will be triggered when the bit is set. The bit will be cleared once the operation done. 1: enable 0: disable.*/
         // };
-        Usr usr;
+        Esp32SpiUsr usr;
         uint32_t val;
     } cmd;
     uint32_t addr;                                          /*addr to slave / from master. SPI transfer from the MSB to the LSB. If length > 32 bits, then address continues from MSB of slv_wr_status.*/
@@ -687,50 +687,6 @@ extern spi_dev_t SPI0;                                      /* SPI0 IS FOR INTER
 extern spi_dev_t SPI1;
 extern spi_dev_t SPI2;
 extern spi_dev_t SPI3;
-
-namespace {
-
-inline SpiDataMode spiGetMode(spi_dev_t& spi) {
-  switch ((spi.pin.ck_idle_edge << 1) + spi.user.ck_out_edge) {
-    case 0: return kSpiMode0;
-    case 1: return kSpiMode1;
-    case 2: return kSpiMode3;
-    case 3: return kSpiMode2;
-  }
-}
-
-inline SpiBitOrder spiGetBitOrder(spi_dev_t& spi) {
-  return spi.ctrl.wr_bit_order ? kSpiMsbFirst : kSpiLsbFirst;
-}
-
-inline void spiFakeTransferForDevice(int8_t spi_num, spi_dev_t& spi) {
-  uint8_t buf[64];
-  int mosi_bits = spi.mosi_dlen.usr_mosi_dbitlen + 1;
-  int miso_bits = spi.miso_dlen.usr_miso_dbitlen;
-  memcpy(buf, (const void*)spi.data_buf, (mosi_bits + 7) / 8);
-  spiFakeTransfer(spi_num, spi.clock.val, spiGetMode(spi), spiGetBitOrder(spi),
-                  buf, mosi_bits);
-  memcpy((void*)spi.data_buf, buf, (miso_bits + 7) / 8);
-}
-
-}  // namespace
-
-uint32_t Usr::operator=(uint32_t val) const volatile {
-  if (val == 0) return val;
-
-  if (this == &SPI0.cmd.usr) {
-    spiFakeTransferForDevice(0, SPI0);
-  }
-  if (this == &SPI1.cmd.usr) {
-    spiFakeTransferForDevice(1, SPI1);
-  }
-  if (this == &SPI2.cmd.usr) {
-    spiFakeTransferForDevice(2, SPI2);
-  }
-  if (this == &SPI3.cmd.usr) {
-    spiFakeTransferForDevice(3, SPI3);
-  }
-}
 
 // #ifdef __cplusplus
 // }

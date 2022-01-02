@@ -318,10 +318,10 @@ class DeviceManager {
  public:
   DeviceManager()
       : device_(nullptr),
-        device_mutex_(PTHREAD_MUTEX_INITIALIZER),
-        nonempty_(PTHREAD_COND_INITIALIZER),
         exiting_(false),
-        exited_(false) {
+        exited_(false),
+        device_mutex_(PTHREAD_MUTEX_INITIALIZER),
+        nonempty_(PTHREAD_COND_INITIALIZER) {
     fl_create_thread(device_thread, device_func, this);
   }
 
@@ -364,10 +364,6 @@ class DeviceManager {
   }
 
  private:
-  std::unique_ptr<Device> device_;
-  bool exiting_;
-  bool exited_;
-
   Device *getDevice() {
     MutexLock lock(&device_mutex_);
     while (device_.get() == nullptr) {
@@ -375,6 +371,10 @@ class DeviceManager {
     }
     return device_.get();
   }
+
+  std::unique_ptr<Device> device_;
+  bool exiting_;
+  bool exited_;
 
   mutable pthread_mutex_t device_mutex_;
   pthread_cond_t nonempty_;
@@ -407,9 +407,9 @@ void FltkViewport::init(int16_t width, int16_t height) {
   int16_t y1 = height - 1;
   uint32_t gray = 0xFF808080;
   // for (int iy = 0; iy <= y1; ++iy) {
-    for (int ix = 0; ix <= x1; ++ix) {
-      queue_->push(
-          createFillRectMsg(ix, 0, ix, y1, gray + 0x010101 * (rand() % 64)));
-    }
+  for (int ix = 0; ix <= x1; ++ix) {
+    queue_->push(
+        createFillRectMsg(ix, 0, ix, y1, gray + 0x010101 * (rand() % 64)));
+  }
   // }
 }

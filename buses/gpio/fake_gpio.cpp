@@ -2,13 +2,20 @@
 
 #include <cstdlib>
 
+#include "glog/logging.h"
+
 FakeGpioInterface::FakeGpioInterface() {}
 
-void FakeGpioInterface::attach(uint8_t pin, std::unique_ptr<FakeGpioPin> fake) {
+void FakeGpioInterface::attach(uint8_t pin, FakeGpioPin* fake) {
   if (pin >= pins_.size()) {
     pins_.resize(pin + 1);
   }
-  pins_[pin] = std::move(fake);
+  if (pins_[pin] != nullptr) {
+    LOG(ERROR) << "GPIO conflict: attaching " << fake->name() << " on pin "
+               << int(pin) << " which had " << pins_[pin]->name()
+               << " already attached";
+  }
+  pins_[pin] = fake;
 }
 
 FakeGpioPin& FakeGpioInterface::get(uint8_t pin) const {
@@ -17,7 +24,7 @@ FakeGpioPin& FakeGpioInterface::get(uint8_t pin) const {
   }
   auto& result = pins_[pin];
   if (result == nullptr) {
-    result.reset(new FakeGpioPin());
+    result = new FakeGpioPin();
   }
   return *result;
 }

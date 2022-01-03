@@ -44,6 +44,18 @@ class FakeGpioPin {
     onWrite(voltage);
   }
 
+  void digitalWrite(DigitalLevel level) {
+    write(level == kDigitalLow ? 0.0 : level == kDigitalHigh ? 3.3 : 1.5);
+  }
+
+  void digitalWriteHigh() {
+    digitalWrite(kDigitalHigh);
+  }
+
+  void digitalWriteLow() {
+    digitalWrite(kDigitalLow);
+  }
+
   virtual void onWrite(float voltage) {}
 
   float last_written() { return last_written_; }
@@ -66,16 +78,12 @@ class FakeGpioInterface {
  public:
   FakeGpioInterface();
 
-  void attach(uint8_t pin, FakeGpioPin* fake) {
-    attach(pin, std::unique_ptr<FakeGpioPin>(fake));
-  }
-
-  void attach(uint8_t pin, std::unique_ptr<FakeGpioPin> fake);
+  void attach(uint8_t pin, FakeGpioPin* fake);
 
   FakeGpioPin& get(uint8_t pin) const;
 
  private:
-  mutable std::vector<std::unique_ptr<FakeGpioPin>> pins_;
+  mutable std::vector<FakeGpioPin*> pins_;
 };
 
 FakeGpioInterface* getGpioInterface();

@@ -2,5 +2,4 @@
 
 #include <glog/logging.h>
 
-#include <iostream>
 #include <map>

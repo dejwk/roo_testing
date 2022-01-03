@@ -2,7 +2,6 @@
 #include <stdlib.h>
 
 #include <chrono>
-#include <iostream>
 #include <mutex>
 #include <queue>
 #include <thread>
@@ -165,7 +164,6 @@ class EventQueue {
     mouse_x_ = x;
     mouse_y_ = y;
     mouse_pressed_ = pressed;
-    //    Serial.println(String("X ") + x + " y " + y + " pressed :" + pressed);
   }
 
  private:
@@ -275,6 +273,8 @@ bool FltkViewport::isMouseClicked(int16_t *x, int16_t *y) {
   bool result;
   queue_->get_mouse_status(x, y, &result);
   if (!result) return false;
+  // Emulate behavior of a touch pad: dragging finger away from the pad
+  // releases the touch.
   if (*x < 0 || *y < 0 || *x >= width() || *y >= height()) return false;
   return true;
 }

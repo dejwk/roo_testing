@@ -1,7 +1,5 @@
 #include "roo_testing/devices/display_ssd1327/ssd1327spi.h"
 
-#include <iostream>
-
 void FakeSsd1327Spi::transfer(const FakeSpiInterface& spi, uint8_t* buf,
                               uint16_t bit_count) {
   if (pinRST_->isDigitalLow()) return;

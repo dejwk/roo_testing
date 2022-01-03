@@ -2,8 +2,6 @@
 
 #include <glog/logging.h>
 
-#include <iostream>
-
 namespace {
 
 uint16_t read16(uint8_t*& buf) {

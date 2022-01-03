@@ -95,7 +95,7 @@ class FakeXpt2046Spi : public SimpleFakeSpiDevice {
       }
       case 0xB0: {
         conversion_requested_ = true;
-        conversion_ = clicked ? 1250 : 0;
+        conversion_ = clicked ? 1250 << 3 : 0;
         break;
       }
       case 0xC0: {

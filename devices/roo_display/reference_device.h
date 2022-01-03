@@ -3,14 +3,14 @@
 #include <memory>
 
 #include "roo_display/core/device.h"
-#include "roo_testing/transducers/ui/fltk_viewport.h"
+#include "roo_testing/transducers/ui/viewport.h"
 
-class EmulatorDevice : public roo_display::DisplayDevice,
-                       public roo_display::TouchDevice {
+class ReferenceDevice : public roo_display::DisplayDevice,
+                        public roo_display::TouchDevice {
  public:
-  EmulatorDevice(int w, int h, Viewport& viewport);
+  ReferenceDevice(int w, int h, Viewport& viewport);
 
-  ~EmulatorDevice() {}
+  ~ReferenceDevice() {}
 
   void init() override;
   void begin() override;

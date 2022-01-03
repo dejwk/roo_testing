@@ -212,75 +212,75 @@ uint16_t IRAM_ATTR __adcEnd(uint8_t pin)
     //     value = GET_PERI_REG_BITS2(SENS_SAR_MEAS_START1_REG, SENS_MEAS1_DATA_SAR, SENS_MEAS1_DATA_SAR_S);
     // }
 
-    // // Shift result if necessary
-    // uint8_t from = __analogWidth + 9;
-    // if (from == __analogReturnedWidth) {
-    //     return value;
-    // }
-    // if (from > __analogReturnedWidth) {
-    //     return value >> (from - __analogReturnedWidth);
-    // }
-    // return value << (__analogReturnedWidth - from);
     float voltage = gpioFakeRead(pin);
-    int16_t val;
+    int16_t value;
     switch (__channel_attenuations[channel]) {
         // https://people.eecs.berkeley.edu/~boser/courses/49_sp_2019/N_gpio.html
         case 0: {
             // 0 db.
             if (voltage < 0.065) {
-                val = 0;
+                value = 0;
             } else if (voltage < 1.03) {
-                val = (uint16_t)((voltage - 0.065) * 4243.5);
+                value = (uint16_t)((voltage - 0.065) * 4243.5);
             } else {
-                val = 4095;
+                value = 4095;
             }
             break;
         }
         case 1: {
             // 2.5 db.
             if (voltage < 0.068) {
-                val = 0;
+                value = 0;
             } else if (voltage < 1.36) {
-                val = (uint16_t)((voltage - 0.068) * 3169.5);
+                value = (uint16_t)((voltage - 0.068) * 3169.5);
             } else {
-                val = 4095;
+                value = 4095;
             }
             break;
         }
         case 2: {
             // 6 db.
             if (voltage < 0.093) {
-                val = 0;
+                value = 0;
             } else if (voltage < 1.88) {
-                val = (uint16_t)((voltage - 0.093) * 2291.5);
+                value = (uint16_t)((voltage - 0.093) * 2291.5);
             } else {
-                val = 4095;
+                value = 4095;
             }
             break;
         }
         case 3: {
             // 11 db.
             if (voltage < 0.13) {
-                val = 0;
+                value = 0;
             } else if (voltage < 3.12) {
-                val = (uint16_t)((voltage - 0.13) * 1233.4);
+                value = (uint16_t)((voltage - 0.13) * 1233.4);
                 if (voltage > 2.5) {
                     // ADC behaves non-linearly in this range.
                     float d = voltage - 2.5;
-                    val += (d*d)*1059;
+                    value += (d*d)*1059;
                 }
             } else {
-                val = 4095;
+                value = 4095;
             }
             break;
         }
     }
     // Add noise.
     int16_t offset = rand() / (RAND_MAX / 16) - (RAND_MAX / 32);
-    val += offset;
-    if (val < 0) val = 0;
-    if (val > 4095) val = 4095;
-    return val;
+    value += offset;
+    if (value < 0) value = 0;
+    if (value > 4095) value = 4095;
+
+    // Shift result if necessary
+    uint8_t from = __analogWidth + 9;
+    if (from == __analogReturnedWidth) {
+        return value;
+    }
+    if (from > __analogReturnedWidth) {
+        return value >> (from - __analogReturnedWidth);
+    }
+    return value << (__analogReturnedWidth - from);
 }
 
 uint16_t IRAM_ATTR __analogRead(uint8_t pin)

@@ -17,7 +17,7 @@
 #include "esp_err.h"
 #include <esp_types.h>
 #include "soc/gpio_reg.h"
-#include "soc/gpio_struct.h"
+// #include "soc/gpio_struct.h"
 #include "soc/rtc_io_reg.h"
 #include "soc/io_mux_reg.h"
 #include "soc/gpio_sig_map.h"

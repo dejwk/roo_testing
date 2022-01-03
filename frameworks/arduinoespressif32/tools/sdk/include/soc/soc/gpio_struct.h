@@ -14,15 +14,129 @@
 #ifndef _SOC_GPIO_STRUCT_H_
 #define _SOC_GPIO_STRUCT_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <stdint.h>
 
-typedef volatile struct {
+// #ifdef __cplusplus
+// extern "C" {
+// #endif
+
+class Esp32GpioOutW1tc {
+ public:
+  uint32_t operator=(uint32_t val) const;
+ private:
+  uint32_t dummy;
+};
+
+class Esp32GpioOutW1ts {
+ public:
+  uint32_t operator=(uint32_t val) const;
+ private:
+  uint32_t dummy;
+};
+
+class Esp32GpioOut1W1tc {
+ public:
+  uint32_t operator=(uint32_t val) const;
+ private:
+  uint32_t dummy;
+};
+
+class Esp32GpioOut1W1ts {
+ public:
+  uint32_t operator=(uint32_t val) const;
+ private:
+  uint32_t dummy;
+};
+
+class Esp32GpioInReadSpec {
+ public:
+  Esp32GpioInReadSpec() : mask(0xFFFFFFFF), shift(0) {}
+
+  Esp32GpioInReadSpec(uint32_t mask, int8_t shift) : mask(mask), shift(shift) {}
+
+  Esp32GpioInReadSpec operator>>(uint32_t shift) const {
+    int8_t newshift = this->shift + shift;
+    return Esp32GpioInReadSpec((mask >> newshift) << newshift, newshift);
+  }
+
+  Esp32GpioInReadSpec operator&(uint32_t sel) const {
+    return Esp32GpioInReadSpec(((mask >> shift) & sel) << shift, shift);
+  }
+
+  operator uint32_t() const;
+
+ private:
+  uint32_t mask;
+  int8_t shift;
+};
+
+class Esp32GpioIn {
+ public:
+  Esp32GpioIn() {}
+
+  Esp32GpioInReadSpec operator>>(uint32_t shift) const {
+    return Esp32GpioInReadSpec() >> shift;
+  }
+
+  Esp32GpioInReadSpec operator&(uint32_t sel) const {
+    return Esp32GpioInReadSpec() & sel;
+  }
+
+  operator uint32_t() const {
+    return Esp32GpioInReadSpec();
+  }
+
+ private:
+  uint32_t dummy;
+};
+
+class Esp32GpioIn1ReadSpec {
+ public:
+  Esp32GpioIn1ReadSpec() : mask(0x000000FF), shift(0) {}
+
+  Esp32GpioIn1ReadSpec(uint32_t mask, int8_t shift) : mask(mask), shift(shift) {}
+
+  Esp32GpioIn1ReadSpec operator>>(uint32_t shift) const {
+    int8_t newshift = this->shift + shift;
+    return Esp32GpioIn1ReadSpec((mask >> newshift) << newshift, newshift);
+  }
+
+  Esp32GpioIn1ReadSpec operator&(uint32_t sel) const {
+    return Esp32GpioIn1ReadSpec(((mask >> shift) & sel) << shift, shift);
+  }
+
+  operator uint32_t() const;
+
+ private:
+  uint32_t mask;
+  int8_t shift;
+};
+
+class Esp32GpioIn1 {
+ public:
+  Esp32GpioIn1() {}
+
+  Esp32GpioIn1ReadSpec operator>>(uint32_t shift) const {
+    return Esp32GpioIn1ReadSpec() >> shift;
+  }
+
+  Esp32GpioIn1ReadSpec operator&(uint32_t sel) const {
+    return Esp32GpioIn1ReadSpec() & sel;
+  }
+
+  operator uint32_t() const {
+    return Esp32GpioIn1ReadSpec();
+  }
+
+ private:
+  uint32_t dummy;
+};
+
+typedef struct {
     uint32_t bt_select;                             /*NA*/
     uint32_t out;                                   /*GPIO0~31 output value*/
-    uint32_t out_w1ts;                              /*GPIO0~31 output value write 1 to set*/
-    uint32_t out_w1tc;                              /*GPIO0~31 output value write 1 to clear*/
+    Esp32GpioOutW1ts out_w1ts;                      /*GPIO0~31 output value write 1 to set*/
+    Esp32GpioOutW1tc out_w1tc;                      /*GPIO0~31 output value write 1 to clear*/
     union {
         struct {
             uint32_t data:       8;                 /*GPIO32~39 output value*/
@@ -35,14 +149,14 @@ typedef volatile struct {
             uint32_t data:       8;                 /*GPIO32~39 output value write 1 to set*/
             uint32_t reserved8: 24;
         };
-        uint32_t val;
+        Esp32GpioOut1W1ts val;
     } out1_w1ts;
     union {
         struct {
             uint32_t data:       8;                 /*GPIO32~39 output value write 1 to clear*/
             uint32_t reserved8: 24;
         };
-        uint32_t val;
+        Esp32GpioOut1W1tc val;
     } out1_w1tc;
     union {
         struct {
@@ -82,13 +196,13 @@ typedef volatile struct {
         };
         uint32_t val;
     } strap;
-    uint32_t in;                                    /*GPIO0~31 input value*/
-    union {
-        struct {
-            uint32_t data:       8;                 /*GPIO32~39 input value*/
-            uint32_t reserved8: 24;
-        };
-        uint32_t val;
+    Esp32GpioIn in;                                 /*GPIO0~31 input value*/
+    struct {
+        // struct {
+        //     uint32_t data:       8;                 /*GPIO32~39 input value*/
+        //     uint32_t reserved8: 24;
+        // };
+        Esp32GpioIn1 val;
     } in1;
     uint32_t status;                                /*GPIO0~31 interrupt status*/
     uint32_t status_w1ts;                           /*GPIO0~31 interrupt status write 1 to set*/
@@ -207,8 +321,8 @@ typedef volatile struct {
 } gpio_dev_t;
 extern gpio_dev_t GPIO;
 
-#ifdef __cplusplus
-}
-#endif
+// #ifdef __cplusplus
+// }
+// #endif
 
 #endif  /* _SOC_GPIO_STRUCT_H_ */

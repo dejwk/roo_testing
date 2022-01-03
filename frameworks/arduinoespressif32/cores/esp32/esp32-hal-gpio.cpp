@@ -161,26 +161,26 @@ extern void IRAM_ATTR __pinMode(uint8_t pin, uint8_t mode)
     //     //unlock rtc
     // }
 
-    // uint32_t pinFunction = 0, pinControl = 0;
-    uint32_t pinFunction = 0;
+    uint32_t pinFunction = 0, pinControl = 0;
+    // uint32_t pinFunction = 0;
 
     //lock gpio
     if(mode & INPUT) {
         pin_output[pin] = 0;
-        gpioFakeWrite(pin, LOW_VOLTAGE);
-        // if(pin < 32) {
-        //     GPIO.enable_w1tc = ((uint32_t)1 << pin);
-        // } else {
-        //     GPIO.enable1_w1tc.val = ((uint32_t)1 << (pin - 32));
-        // }
+        // gpioFakeWrite(pin, LOW_VOLTAGE);
+        if(pin < 32) {
+            GPIO.enable_w1tc = ((uint32_t)1 << pin);
+        } else {
+            GPIO.enable1_w1tc.val = ((uint32_t)1 << (pin - 32));
+        }
     } else if(mode & OUTPUT) {
         if(pin > 33){
             //unlock gpio
             return;//pins above 33 can be only inputs
-        // } else if(pin < 32) {
-        //     GPIO.enable_w1ts = ((uint32_t)1 << pin);
-        // } else {
-        //     GPIO.enable1_w1ts.val = ((uint32_t)1 << (pin - 32));
+        } else if(pin < 32) {
+            GPIO.enable_w1ts = ((uint32_t)1 << pin);
+        } else {
+            GPIO.enable1_w1ts.val = ((uint32_t)1 << (pin - 32));
         }
         pin_output[pin] = 1;
         output_level[pin] = 1;
@@ -207,12 +207,12 @@ extern void IRAM_ATTR __pinMode(uint8_t pin, uint8_t mode)
     // ESP_REG(DR_REG_IO_MUX_BASE + esp32_gpioMux[pin].reg) = pinFunction;
     pin_function[pin] = pinFunction;
 
-    // if(mode & OPEN_DRAIN) {
-    //     pinControl = (1 << GPIO_PIN0_PAD_DRIVER_S);
-    // }
+    if(mode & OPEN_DRAIN) {
+        pinControl = (1 << GPIO_PIN0_PAD_DRIVER_S);
+    }
 
-    // GPIO.pin[pin].val = pinControl;
-    // //unlock gpio
+    GPIO.pin[pin].val = pinControl;
+    //unlock gpio
 }
 
 extern void IRAM_ATTR __digitalWrite(uint8_t pin, uint8_t val)
@@ -224,19 +224,17 @@ extern void IRAM_ATTR __digitalWrite(uint8_t pin, uint8_t val)
     }
     output_level[pin] = val;
     if(val) {
-        gpioFakeWrite(pin, HIGH_VOLTAGE);
-        // if(pin < 32) {
-        //     GPIO.out_w1ts = ((uint32_t)1 << pin);
-        // } else if(pin < 34) {
-        //     GPIO.out1_w1ts.val = ((uint32_t)1 << (pin - 32));
-        // }
+        if(pin < 32) {
+            GPIO.out_w1ts = ((uint32_t)1 << pin);
+        } else if(pin < 34) {
+            GPIO.out1_w1ts.val = ((uint32_t)1 << (pin - 32));
+        }
     } else {
-        gpioFakeWrite(pin, LOW_VOLTAGE);
-        // if(pin < 32) {
-        //     GPIO.out_w1tc = ((uint32_t)1 << pin);
-        // } else if(pin < 34) {
-        //     GPIO.out1_w1tc.val = ((uint32_t)1 << (pin - 32));
-        // }
+        if(pin < 32) {
+            GPIO.out_w1tc = ((uint32_t)1 << pin);
+        } else if(pin < 34) {
+            GPIO.out1_w1tc.val = ((uint32_t)1 << (pin - 32));
+        }
     }
 }
 
@@ -245,12 +243,12 @@ extern int IRAM_ATTR __digitalRead(uint8_t pin)
     if (pin_output[pin]) {
         return output_level[pin];
     }
-    // if(pin < 32) {
-    //     return (GPIO.in >> pin) & 0x1;
-    // } else if(pin < 40) {
-    //     return (GPIO.in1.val >> (pin - 32)) & 0x1;
-    // }
-    return gpioFakeRead(pin) > VOLTAGE_THRESHOLD;
+    if(pin < 32) {
+        return (GPIO.in >> pin) & 0x1;
+    } else if(pin < 40) {
+        return (GPIO.in1.val >> (pin - 32)) & 0x1;
+    }
+    // return gpioFakeRead(pin) > VOLTAGE_THRESHOLD;
 }
 
 // static intr_handle_t gpio_intr_handle = NULL;

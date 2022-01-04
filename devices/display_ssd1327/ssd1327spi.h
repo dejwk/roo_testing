@@ -21,6 +21,8 @@ class FakeSsd1327Spi : public SimpleFakeSpiDevice {
   void transfer(const FakeSpiInterface& spi, uint8_t* buf,
                 uint16_t bit_count) override;
 
+  void flush() override { viewport_.flush(); }
+
  private:
   void writeColor(uint8_t color);
 

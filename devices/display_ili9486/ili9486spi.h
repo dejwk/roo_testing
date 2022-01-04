@@ -22,6 +22,8 @@ class FakeIli9486Spi : public SimpleFakeSpiDevice {
   void transfer(const FakeSpiInterface& spi, uint8_t* buf,
                 uint16_t bit_count) override;
 
+  void flush() override { viewport_.flush(); }
+
  private:
   class MadCtl {
    public:

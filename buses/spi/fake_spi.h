@@ -51,6 +51,8 @@ class SimpleFakeSpiDevice {
   virtual void transfer(const FakeSpiInterface& spi,
                         uint8_t* buf, uint16_t bit_count) = 0;
 
+  virtual void flush() {}
+
  private:
   const std::string name_;
   FakeGpioPin* cs_;

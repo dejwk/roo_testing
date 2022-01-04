@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include <cstdlib>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -48,13 +49,9 @@ class FakeGpioPin {
     write(level == kDigitalLow ? 0.0 : level == kDigitalHigh ? 3.3 : 1.5);
   }
 
-  void digitalWriteHigh() {
-    digitalWrite(kDigitalHigh);
-  }
+  void digitalWriteHigh() { digitalWrite(kDigitalHigh); }
 
-  void digitalWriteLow() {
-    digitalWrite(kDigitalLow);
-  }
+  void digitalWriteLow() { digitalWrite(kDigitalLow); }
 
   virtual void onWrite(float voltage) {}
 
@@ -72,6 +69,20 @@ class SimpleFakeGpioPin : public FakeGpioPin {
 
  private:
   std::string name_;
+};
+
+class FakeGpioInput : public SimpleFakeGpioPin {
+ public:
+  FakeGpioInput(std::function<float()> voltage)
+      : FakeGpioInput("<unnamed>", voltage) {}
+
+  FakeGpioInput(const std::string& name, std::function<float()> voltage)
+      : SimpleFakeGpioPin(name), voltage_(std::move(voltage)) {}
+
+  float read() const override { return voltage_(); }
+
+ private:
+  std::function<float()> voltage_;
 };
 
 class FakeGpioInterface {

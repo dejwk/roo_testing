@@ -10,7 +10,7 @@ class Voltage {
   Voltage() {}
   virtual ~Voltage() {}
 
-  virtual const std::string& name() const { return "<unnamed>"; }
+  virtual std::string name() const { return "<unnamed>"; }
 
   virtual float read() const = 0;
 };
@@ -23,7 +23,7 @@ class SimpleVoltage : public Voltage {
   SimpleVoltage(std::string name, std::function<float()> voltage)
       : Voltage(), name_(std::move(name)), voltage_(std::move(voltage)) {}
 
-  const std::string& name() const { return name_; }
+  std::string name() const { return name_; }
 
   float read() const override { return voltage_(); }
 
@@ -39,7 +39,7 @@ class ConstVoltage : public Voltage {
   ConstVoltage(std::string name, float value)
       : Voltage(), name_(std::move(name)), value_(std::move(value)) {}
 
-  const std::string& name() const { return name_; }
+  std::string name() const { return name_; }
 
   float read() const override { return value_; }
 

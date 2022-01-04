@@ -80,6 +80,8 @@ class FakeGpioInterface {
 
   void attach(uint8_t pin, FakeGpioPin* fake);
 
+  void detach(uint8_t pin);
+
   // Does not take ownership.
   void attachInput(uint8_t pin, const roo_testing_transducers::Voltage& voltage);
 

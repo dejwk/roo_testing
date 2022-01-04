@@ -18,6 +18,15 @@ void FakeGpioInterface::attach(uint8_t pin, FakeGpioPin* fake) {
   attachInternal(pin, fake, false);
 }
 
+void FakeGpioInterface::detach(uint8_t pin) {
+  auto& val = pins_[pin];
+  if (val.ptr != nullptr && val.owned) {
+    delete val.ptr;
+  }
+  val.ptr = nullptr;
+  val.owned = false;
+}
+
 void FakeGpioInterface::attachInternal(uint8_t pin, FakeGpioPin* fake,
                                        bool owned) {
   if (pin >= pins_.size()) {

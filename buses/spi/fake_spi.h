@@ -38,22 +38,23 @@ class FakeSpiInterface {
 class SimpleFakeSpiDevice {
  public:
   SimpleFakeSpiDevice(const std::string& name, uint8_t cs)
-      : name_(name), cs_(new SimpleFakeGpioPin(name + ":CS")) {
-    getGpioInterface()->attach(cs, cs_);
+      : name_(name), cs_pin_(cs), cs_(name + ":CS") {
+    getGpioInterface()->attach(cs, &cs_);
   }
 
-  virtual ~SimpleFakeSpiDevice() {}
+  virtual ~SimpleFakeSpiDevice() { getGpioInterface()->detach(cs_pin_); }
 
   const std::string& name() const { return name_; }
 
-  bool isSelected() const { return cs_->isDigitalLow(); }
+  bool isSelected() const { return cs_.isDigitalLow(); }
 
-  virtual void transfer(const FakeSpiInterface& spi,
-                        uint8_t* buf, uint16_t bit_count) = 0;
+  virtual void transfer(const FakeSpiInterface& spi, uint8_t* buf,
+                        uint16_t bit_count) = 0;
 
   virtual void flush() {}
 
  private:
   const std::string name_;
-  FakeGpioPin* cs_;
+  uint8_t cs_pin_;
+  SimpleFakeGpioPin cs_;
 };

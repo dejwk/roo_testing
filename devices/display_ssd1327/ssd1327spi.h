@@ -11,12 +11,20 @@ class FakeSsd1327Spi : public SimpleFakeSpiDevice {
                  roo_testing_transducers::Viewport& viewport,
                  const std::string& name = "display_SSD1327")
       : SimpleFakeSpiDevice(name, cs),
-        pinDC_(new SimpleFakeGpioPin(name + ":DC")),
-        pinRST_(new SimpleFakeGpioPin(name + ":RESET")),
+        dc_pin_(dc),
+        rst_pin_(rst),
+        pinDC_(name + ":DC"),
+        pinRST_(name + ":RESET"),
         viewport_(viewport) {
-    getGpioInterface()->attach(dc, pinDC_);
-    getGpioInterface()->attach(rst, pinRST_);
+    getGpioInterface()->attach(dc, &pinDC_);
+    getGpioInterface()->attach(rst, &pinRST_);
     viewport_.init(128, 128);
+  }
+
+  ~FakeSsd1327Spi() {
+    getGpioInterface()->detach(dc_pin_);
+    getGpioInterface()->detach(rst_pin_);
+    SimpleFakeSpiDevice::~SimpleFakeSpiDevice();
   }
 
   void transfer(const FakeSpiInterface& spi, uint8_t* buf,
@@ -27,8 +35,10 @@ class FakeSsd1327Spi : public SimpleFakeSpiDevice {
  private:
   void writeColor(uint8_t color);
 
-  FakeGpioPin* pinDC_;
-  FakeGpioPin* pinRST_;
+  uint8_t dc_pin_;
+  uint8_t rst_pin_;
+  SimpleFakeGpioPin pinDC_;
+  SimpleFakeGpioPin pinRST_;
 
   roo_testing_transducers::Viewport& viewport_;
 

@@ -11,6 +11,8 @@ class FakeIli9486Spi : public SimpleFakeSpiDevice {
                  roo_testing_transducers::Viewport& viewport,
                  const std::string& name = "display_ILI9486")
       : SimpleFakeSpiDevice(name, cs),
+        dc_pin_(dc),
+        rst_pin_(rst),
         pinDC_(new SimpleFakeGpioPin(name + ":DC")),
         pinRST_(new SimpleFakeGpioPin(name + ":RESET")),
         viewport_(viewport),
@@ -18,6 +20,12 @@ class FakeIli9486Spi : public SimpleFakeSpiDevice {
     getGpioInterface()->attach(dc, pinDC_);
     getGpioInterface()->attach(rst, pinRST_);
     viewport_.init(320, 480);
+  }
+
+  ~FakeIli9486Spi() {
+    getGpioInterface()->detach(dc_pin_);
+    getGpioInterface()->detach(rst_pin_);
+    SimpleFakeSpiDevice::~SimpleFakeSpiDevice();
   }
 
   void transfer(const FakeSpiInterface& spi, uint8_t* buf,
@@ -45,6 +53,8 @@ class FakeIli9486Spi : public SimpleFakeSpiDevice {
 
   void writeColor(uint16_t color);
 
+  uint8_t dc_pin_;
+  uint8_t rst_pin_;
   FakeGpioPin* pinDC_;
   FakeGpioPin* pinRST_;
 

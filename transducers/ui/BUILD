@@ -1,19 +1,3 @@
-
-cc_library(
-    name = "fltk_viewport",
-    srcs = [
-        "fltk_viewport.cpp",
-    ],
-    hdrs = [
-        "fltk_viewport.h",
-    ],
-    visibility = ["//visibility:public"],
-    deps = [
-        ":viewport",
-        "@fltk",
-    ],
-)
-
 cc_library(
     name = "viewport",
     hdrs = [

@@ -115,7 +115,12 @@ void FakeOneWireBaseDevice::write_bit(bool bit) {
       if (bit) rom_command_ |= 0x80;
       ++bits_received_;
       if (bits_received_ >= 8) {
-        state_ = ROM_COMMAND_DATA_EXCHANGE;
+        if (rom_command_ == 0xCC) {
+          // Skip ROM. Broadcast.
+          state_ = FUNCTION_COMMAND;
+        } else {
+          state_ = ROM_COMMAND_DATA_EXCHANGE;
+        }
         bits_received_ = 0;
       }
       return;

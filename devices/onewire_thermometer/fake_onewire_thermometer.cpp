@@ -59,7 +59,7 @@ FakeOneWireThermometer::FakeOneWireThermometer(
   scratchpad_[1] = 0x00;
   scratchpad_[2] = eeprom_.get(0);
   scratchpad_[3] = eeprom_.get(1);
-  scratchpad_[4] = 0xFF;
+  scratchpad_[4] = eeprom_.get(2);
   scratchpad_[5] = 0xFF;
   scratchpad_[6] = 0x0C;
   scratchpad_[7] = 0x10;

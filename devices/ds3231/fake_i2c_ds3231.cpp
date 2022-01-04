@@ -1,15 +1,18 @@
 #include "fake_i2c_ds3231.h"
-#include "roo_testing/transducers/time/clock.h"
+
 #include <assert.h>
-#include <cstring>
 #include <time.h>
 
-using testing_transducers::FixedThermometer;
-using testing_transducers::Temperature;
-using testing_transducers::Thermometer;
+#include <cstring>
+
+#include "roo_testing/transducers/time/clock.h"
+
+using roo_testing_transducers::FixedThermometer;
+using roo_testing_transducers::Temperature;
+using roo_testing_transducers::Thermometer;
 
 inline int64_t getSystemTimeMicros() {
-  return testing_transducers::getDefaultSystemClock()->getTimeMicros();
+  return roo_testing_transducers::getDefaultSystemClock()->getTimeMicros();
 }
 
 static const uint64_t kMicrosPerSec = 1000000LL;
@@ -31,10 +34,12 @@ FakeI2cDs3231::FakeI2cDs3231()
     : FakeI2cDs3231(new FixedThermometer(Temperature::FromC(25))) {}
 
 FakeI2cDs3231::FakeI2cDs3231(Thermometer *thermometer)
-    : FakeI2cDevice(0x68), thermometer_(thermometer), register_address_(0xFF),
-      time_offset_(0), weekday_offset_(0) {
-  for (int i = 0; i < 0x12; ++i)
-    registers_[i] = 0;
+    : FakeI2cDevice(0x68),
+      thermometer_(thermometer),
+      register_address_(0xFF),
+      time_offset_(0),
+      weekday_offset_(0) {
+  for (int i = 0; i < 0x12; ++i) registers_[i] = 0;
 }
 
 FakeI2cDevice::Result FakeI2cDs3231::write(uint8_t *buff, uint16_t size,
@@ -56,17 +61,18 @@ void FakeI2cDs3231::tick() {
   registers_[0] = dec2bcd(t->tm_sec);
   registers_[1] = dec2bcd(t->tm_min);
   switch (get_hour_mode()) {
-  case H24: {
-    registers_[2] = dec2bcd(t->tm_hour);
-    break;
-  }
-  case H12: {
-    bool pm = (t->tm_hour >= 12);
-    uint8_t h12 =
-        t->tm_hour == 0 ? 12 : t->tm_hour >= 13 ? t->tm_hour - 12 : t->tm_hour;
-    registers_[2] = dec2bcd(h12) | 0x40 | (pm ? 0x20 : 0);
-    break;
-  }
+    case H24: {
+      registers_[2] = dec2bcd(t->tm_hour);
+      break;
+    }
+    case H12: {
+      bool pm = (t->tm_hour >= 12);
+      uint8_t h12 = t->tm_hour == 0    ? 12
+                    : t->tm_hour >= 13 ? t->tm_hour - 12
+                                       : t->tm_hour;
+      registers_[2] = dec2bcd(h12) | 0x40 | (pm ? 0x20 : 0);
+      break;
+    }
   }
   registers_[3] = ((t->tm_wday + weekday_offset_) % 7) + 1;
   registers_[4] = dec2bcd(t->tm_mday);

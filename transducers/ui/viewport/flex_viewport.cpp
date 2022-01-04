@@ -1,5 +1,7 @@
 #include "roo_testing/transducers/ui/viewport/flex_viewport.h"
 
+namespace roo_testing_transducers {
+
 void FlexViewport::fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
                             uint32_t color_argb) {
   if (bottom_to_top_) {
@@ -50,3 +52,5 @@ bool FlexViewport::isMouseClicked(int16_t *x, int16_t *y) {
   *y = dy;
   return true;
 }
+
+}  // namespace roo_testing_transducers

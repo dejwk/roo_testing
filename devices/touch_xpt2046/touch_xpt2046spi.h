@@ -44,7 +44,7 @@ class FakeXpt2046Spi : public SimpleFakeSpiDevice {
     bool swap_xy;
   };
 
-  FakeXpt2046Spi(int cs, Viewport& viewport,
+  FakeXpt2046Spi(int cs, roo_testing_transducers::Viewport& viewport,
                  Calibration calibration = Calibration(),
                  const std::string& name = "touch_XPT2046")
       : SimpleFakeSpiDevice(name, cs),
@@ -110,7 +110,7 @@ class FakeXpt2046Spi : public SimpleFakeSpiDevice {
     return result;
   }
 
-  Viewport& viewport_;
+  roo_testing_transducers::Viewport& viewport_;
   Calibration calibration_;
   bool conversion_requested_;
   uint8_t conversion_bytes_returned_;

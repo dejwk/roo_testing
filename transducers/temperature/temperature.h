@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <functional>
 
-namespace testing_transducers {
+namespace roo_testing_transducers {
 
 class Temperature {
  public:
@@ -53,4 +53,4 @@ class FunctionThermometer : public Thermometer {
   std::function<Temperature()> temp_;
 };
 
-}  // namespace testing_transducers
+}  // namespace roo_testing_transducers

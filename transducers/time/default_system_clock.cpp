@@ -3,11 +3,11 @@
 
 #include "clock.h"
 
-namespace testing_transducers {
+namespace roo_testing_transducers {
 
 Clock* getDefaultSystemClock() {
   static SystemClock clock;
   return &clock;
 }
 
-}  // namespace
+}  // namespace roo_testing_transducers

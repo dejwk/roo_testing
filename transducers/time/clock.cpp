@@ -3,7 +3,7 @@
 
 #include "clock.h"
 
-namespace testing_transducers {
+namespace roo_testing_transducers {
 
 int64_t SystemClock::getTimeMicros() const {
   std::chrono::time_point<std::chrono::steady_clock> ts =
@@ -17,4 +17,4 @@ void SystemClock::delayMicros(uint64_t delay) {
   std::this_thread::sleep_for(std::chrono::microseconds(delay));
 }
 
-}  // namespace testing_transducers
+}  // namespace roo_testing_transducers

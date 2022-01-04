@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-namespace testing_transducers {
+namespace roo_testing_transducers {
 
 class Clock {
  public:
@@ -30,4 +30,4 @@ class FakeClock : public Clock {
 
 Clock* getDefaultSystemClock();
 
-}  // namespace testing_transducers
+}  // namespace roo_testing_transducers

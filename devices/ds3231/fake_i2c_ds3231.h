@@ -11,7 +11,7 @@ class FakeI2cDs3231 : public FakeI2cDevice {
   };
 
   FakeI2cDs3231();
-  FakeI2cDs3231(testing_transducers::Thermometer *thermometer);
+  FakeI2cDs3231(roo_testing_transducers::Thermometer *thermometer);
   Result write(uint8_t *buff, uint16_t size, bool sendStop,
                uint16_t timeOutMillis) override;
   Result read(uint8_t *buff, uint16_t size, bool sendStop,
@@ -27,7 +27,7 @@ class FakeI2cDs3231 : public FakeI2cDevice {
     return (registers_[2] & 0x40) == 0 ? H24 : H12;
   }
 
-  std::unique_ptr<testing_transducers::Thermometer> thermometer_;
+  std::unique_ptr<roo_testing_transducers::Thermometer> thermometer_;
 
   uint8_t register_address_;
   uint8_t registers_[0x12];

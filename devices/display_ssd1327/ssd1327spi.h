@@ -7,7 +7,8 @@
 
 class FakeSsd1327Spi : public SimpleFakeSpiDevice {
  public:
-  FakeSsd1327Spi(int cs, int dc, int rst, Viewport& viewport,
+  FakeSsd1327Spi(int cs, int dc, int rst,
+                 roo_testing_transducers::Viewport& viewport,
                  const std::string& name = "display_SSD1327")
       : SimpleFakeSpiDevice(name, cs),
         pinDC_(new SimpleFakeGpioPin(name + ":DC")),
@@ -29,7 +30,7 @@ class FakeSsd1327Spi : public SimpleFakeSpiDevice {
   FakeGpioPin* pinDC_;
   FakeGpioPin* pinRST_;
 
-  Viewport& viewport_;
+  roo_testing_transducers::Viewport& viewport_;
 
   int16_t x0_, y0_, x1_, y1_, x_cursor_, y_cursor_;
 };

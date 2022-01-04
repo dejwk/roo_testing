@@ -2,6 +2,8 @@
 
 #include <inttypes.h>
 
+namespace roo_testing_transducers {
+
 class Viewport {
  public:
   Viewport() : width_(-1), height_(-1) {}
@@ -27,3 +29,5 @@ class Viewport {
   int16_t width_;
   int16_t height_;
 };
+
+}  // namespace roo_testing_transducers

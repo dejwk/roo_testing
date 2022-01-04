@@ -4,6 +4,8 @@
 
 #include <algorithm>
 
+namespace roo_testing_transducers {
+
 class FlexViewport : public Viewport {
  public:
   enum Rotation {
@@ -42,3 +44,5 @@ class FlexViewport : public Viewport {
   bool bottom_to_top_;
   bool right_to_left_;
 };
+
+}  // namespace roo_testing_transducers

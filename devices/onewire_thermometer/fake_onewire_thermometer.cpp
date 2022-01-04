@@ -1,14 +1,16 @@
 #include "fake_onewire_thermometer.h"
-#include "roo_testing/transducers/time/clock.h"
 
 #include <stdint.h>
+
 #include <cmath>
 
+#include "roo_testing/transducers/time/clock.h"
+
 inline int64_t getSystemTimeMicros() {
-  return testing_transducers::getDefaultSystemClock()->getTimeMicros();
+  return roo_testing_transducers::getDefaultSystemClock()->getTimeMicros();
 }
 
-using testing_transducers::Temperature;
+using roo_testing_transducers::Temperature;
 
 static inline void set_bit(uint8_t* buf, int idx, bool bit) {
   uint8_t mask = 1 << (idx & 0x7);
@@ -41,7 +43,8 @@ FakeOneWireThermometer::EepromState::EepromState(int8_t t_h, int8_t t_l,
 
 FakeOneWireThermometer::FakeOneWireThermometer(
     FakeOneWireDevice::Rom rom, EepromState eeprom,
-    std::unique_ptr<testing_transducers::Thermometer> thermometer, Power power)
+    std::unique_ptr<roo_testing_transducers::Thermometer> thermometer,
+    Power power)
     : FakeOneWireBaseDevice(rom),
       thermometer_(std::move(thermometer)),
       power_(power),

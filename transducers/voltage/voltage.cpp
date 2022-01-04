@@ -1,6 +1,6 @@
 #include "roo_testing/transducers/voltage/voltage.h"
 
-namespace testing_transducers {
+namespace roo_testing_transducers {
 
 const ConstVoltage& Vcc33() {
   static ConstVoltage vcc33("VCC+3.3V", 3.3);
@@ -12,4 +12,4 @@ const ConstVoltage& Ground() {
   return ground;
 }
 
-}  // namespace
+}  // namespace roo_testing_transducers

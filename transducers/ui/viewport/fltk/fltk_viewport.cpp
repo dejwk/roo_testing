@@ -19,12 +19,11 @@
 
 #include "roo_testing/transducers/ui/viewport/fltk/fltk_viewport.h"
 
+namespace roo_testing_transducers {
+
 class DeviceManager;
 
 DeviceManager *manager();
-
-void setup();
-void loop();
 
 struct Message {
   Message() {}
@@ -391,14 +390,6 @@ DeviceManager *manager() {
   return &manager;
 }
 
-int main(int argc, char **argv) {
-  setup();
-  while (true) {
-    loop();
-    std::this_thread::sleep_for(std::chrono::microseconds(1000));
-  }
-}
-
 void FltkViewport::init(int16_t width, int16_t height) {
   Viewport::init(width, height);
   manager()->addDevice(queue_);
@@ -412,4 +403,17 @@ void FltkViewport::init(int16_t width, int16_t height) {
         createFillRectMsg(ix, 0, ix, y1, gray + 0x010101 * (rand() % 64)));
   }
   // }
+}
+
+}  // namespace roo_testing_transducers
+
+extern void setup();
+extern void loop();
+
+int main(int argc, char **argv) {
+  setup();
+  while (true) {
+    loop();
+    std::this_thread::sleep_for(std::chrono::microseconds(1000));
+  }
 }

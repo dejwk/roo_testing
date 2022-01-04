@@ -38,14 +38,14 @@ class FakeOneWireThermometer : public FakeOneWireBaseDevice {
 
   FakeOneWireThermometer(
       FakeOneWireDevice::Rom rom,
-      std::unique_ptr<testing_transducers::Thermometer> thermometer,
+      std::unique_ptr<roo_testing_transducers::Thermometer> thermometer,
       Power power = POWER_SUPPLIED)
       : FakeOneWireThermometer(rom, EepromState(85, 0), std::move(thermometer),
                                power) {}
 
   FakeOneWireThermometer(
       FakeOneWireDevice::Rom rom, EepromState eeprom,
-      std::unique_ptr<testing_transducers::Thermometer> thermometer,
+      std::unique_ptr<roo_testing_transducers::Thermometer> thermometer,
       Power power = POWER_SUPPLIED);
 
   Power power() const { return power_; }
@@ -61,15 +61,14 @@ class FakeOneWireThermometer : public FakeOneWireBaseDevice {
   }
 
   inline Resolution get_resolution() const {
-    return has_configurable_resolution()
-        ? Resolution((scratchpad_[4] >> 5) + 9)
-        : RESOLUTION_12_BIT;
+    return has_configurable_resolution() ? Resolution((scratchpad_[4] >> 5) + 9)
+                                         : RESOLUTION_12_BIT;
   }
 
   void check_finish_conversion();
   void recalculate_scratch_crc();
 
-  std::unique_ptr<testing_transducers::Thermometer> thermometer_;
+  std::unique_ptr<roo_testing_transducers::Thermometer> thermometer_;
   Power power_;
 
   uint8_t scratchpad_[9];
@@ -77,6 +76,6 @@ class FakeOneWireThermometer : public FakeOneWireBaseDevice {
 
   bool conversion_in_progress_;
   int64_t conversion_start_;
-  testing_transducers::Temperature temperature_;
+  roo_testing_transducers::Temperature temperature_;
   bool is_alarming_;
 };

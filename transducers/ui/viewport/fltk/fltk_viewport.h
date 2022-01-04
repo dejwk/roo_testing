@@ -3,6 +3,8 @@
 #include <memory>
 #include "roo_testing/transducers/ui/viewport/viewport.h"
 
+namespace roo_testing_transducers {
+
 class EventQueue;
 
 class FltkViewport : public Viewport {
@@ -23,3 +25,5 @@ class FltkViewport : public Viewport {
  private:
   EventQueue* queue_;
 };
+
+}  // namespace roo_testing_transducers

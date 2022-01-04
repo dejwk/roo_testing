@@ -7,7 +7,8 @@
 
 class FakeIli9486Spi : public SimpleFakeSpiDevice {
  public:
-  FakeIli9486Spi(int cs, int dc, int rst, Viewport& viewport,
+  FakeIli9486Spi(int cs, int dc, int rst,
+                 roo_testing_transducers::Viewport& viewport,
                  const std::string& name = "display_ILI9486")
       : SimpleFakeSpiDevice(name, cs),
         pinDC_(new SimpleFakeGpioPin(name + ":DC")),
@@ -47,7 +48,7 @@ class FakeIli9486Spi : public SimpleFakeSpiDevice {
   FakeGpioPin* pinDC_;
   FakeGpioPin* pinRST_;
 
-  Viewport& viewport_;
+  roo_testing_transducers::Viewport& viewport_;
 
   MadCtl mad_ctl_;
 

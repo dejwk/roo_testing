@@ -3,7 +3,7 @@
 #include <functional>
 #include <string>
 
-namespace testing_transducers {
+namespace roo_testing_transducers {
 
 class Voltage {
  public:
@@ -53,4 +53,4 @@ class ConstVoltage : public Voltage {
 const ConstVoltage& Vcc33();
 const ConstVoltage& Ground();
 
-}  // namespace
+}  // namespace roo_testing_transducers

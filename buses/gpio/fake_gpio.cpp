@@ -4,7 +4,7 @@
 
 #include "glog/logging.h"
 
-using testing_transducers::Voltage;
+using roo_testing_transducers::Voltage;
 
 FakeGpioInterface::FakeGpioInterface() {}
 

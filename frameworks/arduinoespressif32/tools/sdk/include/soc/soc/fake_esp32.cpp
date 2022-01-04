@@ -722,7 +722,7 @@ Esp32GpioInReadSpec::operator uint32_t() const {
     }
     val >>= 1;
   }
-  return result;
+  return result >> shift;
 }
 
 Esp32GpioIn1ReadSpec::operator uint32_t() const {
@@ -734,7 +734,7 @@ Esp32GpioIn1ReadSpec::operator uint32_t() const {
     }
     val >>= 1;
   }
-  return result;
+  return result >> shift;
 }
 
 namespace {

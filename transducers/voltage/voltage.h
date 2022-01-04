@@ -5,6 +5,16 @@
 
 namespace roo_testing_transducers {
 
+enum DigitalLevel {
+  kDigitalLow = 0, kDigitalHigh = 1, kDigitalUndef = -1,
+};
+
+static constexpr DigitalLevel DigitalLevelFromVoltage(float voltage) {
+  return voltage <= 0.8   ? kDigitalLow
+          : voltage >= 2.0 ? kDigitalHigh
+                          : kDigitalUndef;
+}
+
 class Voltage {
  public:
   Voltage() {}
@@ -43,7 +53,13 @@ class ConstVoltage : public Voltage {
 
   float read() const override { return value_; }
 
-  void set_value(float value) { value_ = value; }
+  void set(float value) { value_ = value; }
+
+  void set(DigitalLevel value) {
+    value_ = (value == kDigitalHigh ? 3.3 : value == kDigitalLow ? 0.0 : 1.5);
+  }
+
+  void setDigitalLow() { value_ = 0.0; }
 
  private:
   std::string name_;

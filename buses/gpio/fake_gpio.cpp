@@ -14,8 +14,12 @@ FakeGpioInterface::~FakeGpioInterface() {
   }
 }
 
-void FakeGpioInterface::attach(uint8_t pin, FakeGpioPin* fake) {
-  attachInternal(pin, fake, false);
+void FakeGpioInterface::attach(uint8_t pin, FakeGpioPin& fake) {
+  attachInternal(pin, &fake, false);
+}
+
+void FakeGpioInterface::attach(uint8_t pin, std::unique_ptr<FakeGpioPin> fake) {
+  attachInternal(pin, fake.release(), true);
 }
 
 void FakeGpioInterface::detach(uint8_t pin) {

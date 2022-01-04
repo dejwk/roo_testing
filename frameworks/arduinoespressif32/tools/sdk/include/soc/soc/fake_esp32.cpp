@@ -642,7 +642,7 @@ uint32_t Esp32SpiInterface::transfer() {
   if (input_dev == nullptr) {
     FakeGpioPin& pin =
         esp32_->gpio.get(esp32_->in_matrix.pin_for_signal(miso_signal_));
-    if (pin.digitalRead() == FakeGpioPin::kDigitalHigh) {
+    if (pin.digitalRead() == roo_testing_transducers::kDigitalHigh) {
       memset((void*)spi_.data_buf, 0xFF, (miso_bits + 7) / 8);
     } else {
       memset((void*)spi_.data_buf, 0x00, (miso_bits + 7) / 8);

@@ -13,8 +13,6 @@
 
 class FakeGpioPin {
  public:
-  enum DigitalLevel { kDigitalLow = 0, kDigitalHigh = 1, kDigitalUndef = -1 };
-
   FakeGpioPin() : last_written_(std::nanf("")) {}
 
   virtual ~FakeGpioPin() {}
@@ -31,29 +29,34 @@ class FakeGpioPin {
     return last_written_;
   }
 
-  DigitalLevel digitalRead() const {
-    float voltage = read();
-    return voltage <= 0.8   ? kDigitalLow
-           : voltage >= 2.0 ? kDigitalHigh
-                            : kDigitalUndef;
+  roo_testing_transducers::DigitalLevel digitalRead() const {
+    return roo_testing_transducers::DigitalLevelFromVoltage(read());
   }
 
-  bool isDigitalLow() const { return digitalRead() == kDigitalLow; }
+  bool isDigitalLow() const {
+    return digitalRead() == roo_testing_transducers::kDigitalLow;
+  }
 
-  bool isDigitalHigh() const { return digitalRead() == kDigitalHigh; }
+  bool isDigitalHigh() const {
+    return digitalRead() == roo_testing_transducers::kDigitalHigh;
+  }
 
   void write(float voltage) {
     last_written_ = voltage;
     onWrite(voltage);
   }
 
-  void digitalWrite(DigitalLevel level) {
-    write(level == kDigitalLow ? 0.0 : level == kDigitalHigh ? 3.3 : 1.5);
+  void digitalWrite(roo_testing_transducers::DigitalLevel level) {
+    write(level == roo_testing_transducers::kDigitalLow    ? 0.0
+          : level == roo_testing_transducers::kDigitalHigh ? 3.3
+                                                           : 1.5);
   }
 
-  void digitalWriteHigh() { digitalWrite(kDigitalHigh); }
+  void digitalWriteHigh() {
+    digitalWrite(roo_testing_transducers::kDigitalHigh);
+  }
 
-  void digitalWriteLow() { digitalWrite(kDigitalLow); }
+  void digitalWriteLow() { digitalWrite(roo_testing_transducers::kDigitalLow); }
 
   virtual void onWrite(float voltage) {}
 
@@ -65,6 +68,7 @@ class FakeGpioPin {
 
 class SimpleFakeGpioPin : public FakeGpioPin {
  public:
+  SimpleFakeGpioPin() : name_("<unnamed>") {}
   SimpleFakeGpioPin(const std::string& name) : name_(name) {}
 
   std::string name() const override { return name_; }
@@ -73,21 +77,58 @@ class SimpleFakeGpioPin : public FakeGpioPin {
   std::string name_;
 };
 
+class SimpleFakeGpioOutput : public SimpleFakeGpioPin {
+ public:
+  SimpleFakeGpioOutput(
+      std::function<void(roo_testing_transducers::DigitalLevel)> trigger)
+      : SimpleFakeGpioPin(), trigger_(trigger) {}
+
+  SimpleFakeGpioOutput(
+      const std::string& name,
+      std::function<void(roo_testing_transducers::DigitalLevel)> trigger)
+      : SimpleFakeGpioPin(name), trigger_(trigger) {}
+
+  void onWrite(float voltage) override {
+    trigger_(roo_testing_transducers::DigitalLevelFromVoltage(voltage));
+  }
+
+ private:
+  std::function<void(roo_testing_transducers::DigitalLevel)> trigger_;
+};
+
+class SimpleFakeGpioAnalogOutput : public SimpleFakeGpioPin {
+ public:
+  SimpleFakeGpioAnalogOutput(std::function<void(float)> trigger)
+      : SimpleFakeGpioPin(), trigger_(trigger) {}
+
+  SimpleFakeGpioAnalogOutput(const std::string& name,
+                             std::function<void(float)> trigger)
+      : SimpleFakeGpioPin(name), trigger_(trigger) {}
+
+  void onWrite(float voltage) override { trigger_(voltage); }
+
+ private:
+  std::function<void(float)> trigger_;
+};
+
 class FakeGpioInterface {
  public:
   FakeGpioInterface();
   ~FakeGpioInterface();
 
-  void attach(uint8_t pin, FakeGpioPin* fake);
+  void attach(uint8_t pin, FakeGpioPin& fake);
+  void attach(uint8_t pin, std::unique_ptr<FakeGpioPin> fake);
 
   void detach(uint8_t pin);
 
   // Does not take ownership.
-  void attachInput(uint8_t pin, const roo_testing_transducers::Voltage& voltage);
+  void attachInput(uint8_t pin,
+                   const roo_testing_transducers::Voltage& voltage);
 
   // Takes ownership.
-  void attachInput(uint8_t pin,
-                   std::unique_ptr<const roo_testing_transducers::Voltage> voltage);
+  void attachInput(
+      uint8_t pin,
+      std::unique_ptr<const roo_testing_transducers::Voltage> voltage);
 
   FakeGpioPin& get(uint8_t pin) const;
 

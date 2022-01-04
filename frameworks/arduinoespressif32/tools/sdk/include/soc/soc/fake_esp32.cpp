@@ -801,7 +801,7 @@ void Esp32OutMatrix::assign(uint32_t gpio, uint32_t signal_idx, bool out_inv,
   }
 }
 
-void EmulatedTime::sync() {
+void EmulatedTime::sync() const {
   auto rt = rt_clock_.now() - rt_start_time_;
   if (rt > emu_uptime_ && rt - emu_uptime_ > kMaxTimeLag) {
     emu_uptime_ = rt;
@@ -817,7 +817,7 @@ void EmulatedTime::sync() {
 
 void EmulatedTime::lag(std::chrono::nanoseconds lag) { emu_uptime_ += lag; }
 
-uint64_t EmulatedTime::getTimeMicros() {
+int64_t EmulatedTime::getTimeMicros() const {
   sync();
   return std::chrono::duration_cast<std::chrono::microseconds>(emu_uptime_)
       .count();
@@ -827,3 +827,11 @@ void EmulatedTime::delayMicros(uint64_t delay) {
   lag(std::chrono::microseconds(delay));
   sync();
 }
+
+namespace roo_testing_transducers {
+
+Clock* getDefaultSystemClock() {
+  return &FakeEsp32().time();
+}
+
+}  // namespace

@@ -763,7 +763,9 @@ FakeEsp32Board::FakeEsp32Board()
           Esp32SpiInterface(SPI3, "spi3(VSPI)", VSPICLK_OUT_IDX, VSPIQ_OUT_IDX,
                             VSPID_IN_IDX, this)},
       fs_root_(default_fs_root_path()),
-      time_([this]() { flush(); }) {}
+      time_([this]() { flush(); }) {
+  google::InitGoogleLogging("ESP32 emulator");
+}
 
 void FakeEsp32Board::attachSpiDevice(SimpleFakeSpiDevice& dev, int8_t clk,
                                      int8_t miso, int8_t mosi) {
@@ -830,8 +832,6 @@ void EmulatedTime::delayMicros(uint64_t delay) {
 
 namespace roo_testing_transducers {
 
-Clock* getDefaultSystemClock() {
-  return &FakeEsp32().time();
-}
+Clock* getDefaultSystemClock() { return &FakeEsp32().time(); }
 
-}  // namespace
+}  // namespace roo_testing_transducers

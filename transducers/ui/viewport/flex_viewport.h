@@ -1,6 +1,6 @@
 #pragma once
 
-#include "roo_testing/transducers/ui/viewport.h"
+#include "roo_testing/transducers/ui/viewport/viewport.h"
 
 #include <algorithm>
 

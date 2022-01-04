@@ -1,6 +1,6 @@
 
 cc_library(
-    name = "fltk_viewport",
+    name = "fltk",
     srcs = [
         "fltk_viewport.cpp",
     ],
@@ -9,7 +9,7 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        "//roo_testing/transducers/ui:viewport",
+        "//roo_testing/transducers/ui/viewport",
         "@fltk",
     ],
 )

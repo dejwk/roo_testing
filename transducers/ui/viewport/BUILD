@@ -7,7 +7,7 @@ cc_library(
 )
 
 cc_library(
-    name = "flex_viewport",
+    name = "flex",
     srcs = [
         "flex_viewport.cpp",
     ],

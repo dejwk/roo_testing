@@ -3,7 +3,7 @@
 #include <string>
 
 #include "roo_testing/buses/spi/fake_spi.h"
-#include "roo_testing/transducers/ui/viewport.h"
+#include "roo_testing/transducers/ui/viewport/viewport.h"
 
 class FakeSsd1327Spi : public SimpleFakeSpiDevice {
  public:

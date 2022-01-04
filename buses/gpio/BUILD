@@ -6,6 +6,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "@com_github_google_glog//:glog",
+        "//roo_testing/transducers/voltage"
     ]
 )
 

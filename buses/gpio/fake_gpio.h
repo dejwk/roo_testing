@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include "roo_testing/transducers/voltage/voltage.h"
+
 class FakeGpioPin {
  public:
   enum DigitalLevel { kDigitalLow = 0, kDigitalHigh = 1, kDigitalUndef = -1 };
@@ -71,30 +73,27 @@ class SimpleFakeGpioPin : public FakeGpioPin {
   std::string name_;
 };
 
-class FakeGpioInput : public SimpleFakeGpioPin {
- public:
-  FakeGpioInput(std::function<float()> voltage)
-      : FakeGpioInput("<unnamed>", voltage) {}
-
-  FakeGpioInput(const std::string& name, std::function<float()> voltage)
-      : SimpleFakeGpioPin(name), voltage_(std::move(voltage)) {}
-
-  float read() const override { return voltage_(); }
-
- private:
-  std::function<float()> voltage_;
-};
-
 class FakeGpioInterface {
  public:
   FakeGpioInterface();
+  ~FakeGpioInterface();
 
   void attach(uint8_t pin, FakeGpioPin* fake);
+  void attachInput(uint8_t pin, const testing_transducers::Voltage& voltage);
 
   FakeGpioPin& get(uint8_t pin) const;
 
  private:
-  mutable std::vector<FakeGpioPin*> pins_;
+  void attachInternal(uint8_t pin, FakeGpioPin* fake, bool owned);
+
+  struct Pin {
+    Pin() : ptr(nullptr), owned(false) {}
+
+    FakeGpioPin* ptr;
+    bool owned;
+  };
+
+  mutable std::vector<Pin> pins_;
 };
 
 FakeGpioInterface* getGpioInterface();

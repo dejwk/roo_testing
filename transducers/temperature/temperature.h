@@ -22,14 +22,16 @@ class Temperature {
 
 class Thermometer {
  public:
-  virtual Temperature Read() const = 0;
+  virtual Temperature read() const = 0;
+
+  virtual ~Thermometer() {}
 };
 
 class FixedThermometer : public Thermometer {
  public:
   FixedThermometer(Temperature temp) : temp_(temp) {}
-  Temperature Read() const override { return temp_; }
-  void Set(Temperature temp) { temp_ = temp; }
+  Temperature read() const override { return temp_; }
+  void set(Temperature temp) { temp_ = temp; }
 
  private:
   Temperature temp_;
@@ -38,7 +40,7 @@ class FixedThermometer : public Thermometer {
 class VariableThermometer : public Thermometer {
  public:
   VariableThermometer(float* temp) : temp_(temp) {}
-  Temperature Read() const override { return Temperature::FromC(*temp_); }
+  Temperature read() const override { return Temperature::FromC(*temp_); }
 
  private:
   float* temp_;
@@ -47,7 +49,7 @@ class VariableThermometer : public Thermometer {
 class FunctionThermometer : public Thermometer {
  public:
   FunctionThermometer(std::function<Temperature()> temp) : temp_(temp) {}
-  Temperature Read() const override { return temp_(); }
+  Temperature read() const override { return temp_(); }
 
  private:
   std::function<Temperature()> temp_;

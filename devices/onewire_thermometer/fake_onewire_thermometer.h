@@ -37,16 +37,47 @@ class FakeOneWireThermometer : public FakeOneWireBaseDevice {
   };
 
   FakeOneWireThermometer(
+      const char* rom,
+      std::unique_ptr<const roo_testing_transducers::Thermometer> thermometer,
+      Power power = POWER_SUPPLIED)
+      : FakeOneWireThermometer(FakeOneWireDevice::Rom(rom),
+                               std::move(thermometer), power) {}
+
+  FakeOneWireThermometer(
       FakeOneWireDevice::Rom rom,
-      std::unique_ptr<roo_testing_transducers::Thermometer> thermometer,
+      std::unique_ptr<const roo_testing_transducers::Thermometer> thermometer,
       Power power = POWER_SUPPLIED)
       : FakeOneWireThermometer(rom, EepromState(85, 0), std::move(thermometer),
                                power) {}
 
   FakeOneWireThermometer(
       FakeOneWireDevice::Rom rom, EepromState eeprom,
-      std::unique_ptr<roo_testing_transducers::Thermometer> thermometer,
-      Power power = POWER_SUPPLIED);
+      std::unique_ptr<const roo_testing_transducers::Thermometer> thermometer,
+      Power power = POWER_SUPPLIED)
+      : FakeOneWireThermometer(rom, eeprom, thermometer.release(), true,
+                               power) {}
+
+  FakeOneWireThermometer(
+      const char* rom, const roo_testing_transducers::Thermometer& thermometer,
+      Power power = POWER_SUPPLIED)
+      : FakeOneWireThermometer(FakeOneWireDevice::Rom(rom), thermometer,
+                               power) {}
+
+  FakeOneWireThermometer(
+      FakeOneWireDevice::Rom rom,
+      const roo_testing_transducers::Thermometer& thermometer,
+      Power power = POWER_SUPPLIED)
+      : FakeOneWireThermometer(rom, EepromState(85, 0), thermometer, power) {}
+
+  FakeOneWireThermometer(
+      FakeOneWireDevice::Rom rom, EepromState eeprom,
+      const roo_testing_transducers::Thermometer& thermometer,
+      Power power = POWER_SUPPLIED)
+      : FakeOneWireThermometer(rom, eeprom, &thermometer, false, power) {}
+
+  ~FakeOneWireThermometer() {
+    if (owned_) delete (thermometer_);
+  }
 
   Power power() const { return power_; }
   void setPower(Power power) { power_ = power; }
@@ -56,6 +87,11 @@ class FakeOneWireThermometer : public FakeOneWireBaseDevice {
   bool read_function_bit() override;
 
  private:
+  FakeOneWireThermometer(
+      FakeOneWireDevice::Rom rom, EepromState eeprom,
+      const roo_testing_transducers::Thermometer* thermometer, bool owned,
+      Power power = POWER_SUPPLIED);
+
   inline bool has_configurable_resolution() const {
     return rom().model() != MODEL_DS18S20;
   }
@@ -68,7 +104,8 @@ class FakeOneWireThermometer : public FakeOneWireBaseDevice {
   void check_finish_conversion();
   void recalculate_scratch_crc();
 
-  std::unique_ptr<roo_testing_transducers::Thermometer> thermometer_;
+  const roo_testing_transducers::Thermometer* thermometer_;
+  bool owned_;
   Power power_;
 
   uint8_t scratchpad_[9];

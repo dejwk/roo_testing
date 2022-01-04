@@ -43,10 +43,12 @@ FakeOneWireThermometer::EepromState::EepromState(int8_t t_h, int8_t t_l,
 
 FakeOneWireThermometer::FakeOneWireThermometer(
     FakeOneWireDevice::Rom rom, EepromState eeprom,
-    std::unique_ptr<roo_testing_transducers::Thermometer> thermometer,
+    const roo_testing_transducers::Thermometer* thermometer,
+    bool owned,
     Power power)
     : FakeOneWireBaseDevice(rom),
-      thermometer_(std::move(thermometer)),
+      thermometer_(thermometer),
+      owned_(owned),
       power_(power),
       eeprom_(eeprom),
       conversion_in_progress_(false),
@@ -78,7 +80,7 @@ void FakeOneWireThermometer::start_function_command() {
   check_finish_conversion();
   switch (function_command()) {
     case CONVERT_T: {
-      temperature_ = thermometer_->Read();
+      temperature_ = thermometer_->read();
       conversion_in_progress_ = true;
       conversion_start_ = getSystemTimeMicros();
       break;

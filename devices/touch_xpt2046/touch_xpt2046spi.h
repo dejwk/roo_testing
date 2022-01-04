@@ -7,17 +7,21 @@ class FakeXpt2046Spi : public SimpleFakeSpiDevice {
  public:
   struct Calibration {
     Calibration(int16_t xMin, int16_t yMin, int16_t xMax, int16_t yMax)
+        : Calibration(xMin, yMin, xMax, yMax, false, false, false) {}
+
+    Calibration(int16_t xMin, int16_t yMin, int16_t xMax, int16_t yMax,
+                bool right_to_left, bool bottom_to_top, bool swap_xy)
         : xMin(xMin),
           yMin(yMin),
           xMax(xMax),
           yMax(yMax),
-          right_to_left(false),
-          bottom_to_top(false),
-          swap_xy(false) {}
+          right_to_left(right_to_left),
+          bottom_to_top(bottom_to_top),
+          swap_xy(swap_xy) {}
 
     Calibration() : Calibration(0, 0, 4095, 4095) {}
 
-    int16_t calibrate(int16_t& x, int16_t& y) {
+    void calibrate(int16_t& x, int16_t& y) {
       if (bottom_to_top) {
         y = 4095 - y;
       }
@@ -47,8 +51,7 @@ class FakeXpt2046Spi : public SimpleFakeSpiDevice {
         viewport_(viewport),
         calibration_(calibration),
         conversion_requested_(false),
-        conversion_bytes_returned_(0) {
-  }
+        conversion_bytes_returned_(0) {}
 
   void transfer(const FakeSpiInterface& spi, uint8_t* buf,
                 uint16_t bit_count) override {

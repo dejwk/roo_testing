@@ -406,14 +406,3 @@ void FltkViewport::init(int16_t width, int16_t height) {
 }
 
 }  // namespace roo_testing_transducers
-
-extern void setup();
-extern void loop();
-
-int main(int argc, char **argv) {
-  setup();
-  while (true) {
-    loop();
-    std::this_thread::sleep_for(std::chrono::microseconds(1000));
-  }
-}

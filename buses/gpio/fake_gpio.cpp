@@ -36,11 +36,14 @@ void FakeGpioInterface::attachInternal(uint8_t pin, FakeGpioPin* fake,
 
 namespace {
 
-class InputPin : public FakeGpioPin {
+class InputPin : public SimpleFakeGpioPin {
  public:
-  InputPin(const Voltage& input) : FakeGpioPin(), input_(&input) {}
+  InputPin(const Voltage* input, bool owned)
+      : SimpleFakeGpioPin(input->name()), input_(input), owned_(owned) {}
 
-  std::string name() const override { return input_->name(); }
+  ~InputPin() {
+    if (owned_) delete input_;
+  }
 
   float read() const override { return input_->read(); }
 
@@ -51,12 +54,17 @@ class InputPin : public FakeGpioPin {
 
  private:
   const Voltage* input_;
+  bool owned_;
 };
 
 }  // namespace
 
 void FakeGpioInterface::attachInput(uint8_t pin, const Voltage& input) {
-  attachInternal(pin, new InputPin(input), true);
+  attachInternal(pin, new InputPin(&input, false), true);
+}
+
+void FakeGpioInterface::attachInput(uint8_t pin, std::unique_ptr<const Voltage> input) {
+  attachInternal(pin, new InputPin(input.release(), true), true);
 }
 
 FakeGpioPin& FakeGpioInterface::get(uint8_t pin) const {

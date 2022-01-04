@@ -49,8 +49,6 @@ cc_library(
         "//roo_testing/buses/i2c",
         "//roo_testing/buses/gpio",
         "//roo_testing/buses/spi",
-        "//roo_testing/transducers/time",
-        "//roo_testing/transducers/time:default_system_clock",
         "@com_github_google_glog//:glog",
     ],
 )

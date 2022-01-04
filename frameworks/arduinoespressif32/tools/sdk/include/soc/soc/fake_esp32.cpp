@@ -1,12 +1,14 @@
 #include "fake_esp32.h"
 
-#include <unistd.h>
 #include <limits.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <cstring>
 #include <set>
+#include <thread>
 
+#include "esp32-hal-spi.h"
 #include "glog/logging.h"
 #include "soc/gpio_sig_map.h"
 #include "soc/gpio_struct.h"
@@ -581,7 +583,9 @@ Esp32SpiInterface::Esp32SpiInterface(volatile spi_def_t& spi,
       mosi_signal_(mosi_signal),
       esp32_(esp32) {}
 
-uint32_t Esp32SpiInterface::clkHz() const { return spi_.clock.val; }
+uint32_t Esp32SpiInterface::clkHz() const {
+  return spiClockDivToFrequency(spi_.clock.val);
+}
 
 SpiDataMode Esp32SpiInterface::dataMode() const {
   switch ((spi_.pin.ck_idle_edge << 1) + spi_.user.ck_out_edge) {
@@ -600,7 +604,7 @@ SpiBitOrder Esp32SpiInterface::bitOrder() const {
   return spi_.ctrl.wr_bit_order ? kSpiMsbFirst : kSpiLsbFirst;
 }
 
-void Esp32SpiInterface::transfer() {
+uint32_t Esp32SpiInterface::transfer() {
   SimpleFakeSpiDevice* input_dev = nullptr;
   uint8_t buf[64];
   int mosi_bits = spi_.mosi_dlen.usr_mosi_dbitlen + 1;
@@ -644,15 +648,16 @@ void Esp32SpiInterface::transfer() {
       memset((void*)spi_.data_buf, 0x00, (miso_bits + 7) / 8);
     }
   }
+  return mosi_bits;
 }
-
-// namespace {
 
 void spiFakeTransferOnDevice(int8_t spi_num) {
-  FakeEsp32().spi[spi_num].transfer();
+  auto& spi = FakeEsp32().spi[spi_num];
+  uint64_t cycles = spi.transfer();
+  auto lag = std::chrono::nanoseconds(1000000000LL * cycles / spi.clkHz());
+  FakeEsp32().time().lag(lag);
+  FakeEsp32().time().sync();
 }
-
-// }
 
 uint32_t Esp32SpiUsr::operator=(uint32_t val) const volatile {
   if (val == 0) return val;
@@ -757,7 +762,8 @@ FakeEsp32Board::FakeEsp32Board()
                             HSPID_IN_IDX, this),
           Esp32SpiInterface(SPI3, "spi3(VSPI)", VSPICLK_OUT_IDX, VSPIQ_OUT_IDX,
                             VSPID_IN_IDX, this)},
-      fs_root_(default_fs_root_path()) {}
+      fs_root_(default_fs_root_path()),
+      time_([this]() { flush(); }) {}
 
 void FakeEsp32Board::attachSpiDevice(SimpleFakeSpiDevice& dev, int8_t clk,
                                      int8_t miso, int8_t mosi) {
@@ -766,6 +772,12 @@ void FakeEsp32Board::attachSpiDevice(SimpleFakeSpiDevice& dev, int8_t clk,
       .miso = miso,
       .mosi = mosi,
   };
+}
+
+void FakeEsp32Board::flush() {
+  for (auto& dev : spi_devices_to_pins_) {
+    dev.first->flush();
+  }
 }
 
 void Esp32InMatrix::assign(uint32_t gpio, uint32_t signal_idx, bool inv) {
@@ -787,4 +799,31 @@ void Esp32OutMatrix::assign(uint32_t gpio, uint32_t signal_idx, bool out_inv,
   } else {
     signal_to_pins_[signal_idx] = gpio;
   }
+}
+
+void EmulatedTime::sync() {
+  auto rt = rt_clock_.now() - rt_start_time_;
+  if (rt > emu_uptime_ && rt - emu_uptime_ > kMaxTimeLag) {
+    emu_uptime_ = rt;
+  } else if (rt < emu_uptime_ && emu_uptime_ - rt > kMaxTimeAhead) {
+    std::this_thread::sleep_for(emu_uptime_ - rt - kMaxTimeAhead);
+    // Adjust the emulated time in case we overslept.
+    rt = rt_clock_.now() - rt_start_time_;
+    if (rt > emu_uptime_) {
+      emu_uptime_ = rt;
+    }
+  }
+}
+
+void EmulatedTime::lag(std::chrono::nanoseconds lag) { emu_uptime_ += lag; }
+
+uint64_t EmulatedTime::getTimeMicros() {
+  sync();
+  return std::chrono::duration_cast<std::chrono::microseconds>(emu_uptime_)
+      .count();
+}
+
+void EmulatedTime::delayMicros(uint64_t delay) {
+  lag(std::chrono::microseconds(delay));
+  sync();
 }

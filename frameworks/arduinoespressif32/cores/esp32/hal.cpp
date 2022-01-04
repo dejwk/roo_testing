@@ -20,37 +20,26 @@
 #include "hal.h"
 #include <thread>
 
-#include "roo_testing/transducers/time/clock.h"
-
-using testing_transducers::getDefaultSystemClock;
+#include "fake_esp32.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-uint64_t get_timestamp() {
-  return getDefaultSystemClock()->getTimeMicros();
-}
-
-static uint64_t start_time() {
-  static uint64_t time = get_timestamp();
-  return time;
-}
-
 int64_t esp_timer_get_time() {
   return micros();
 }
 
-unsigned long micros() { return get_timestamp() - start_time(); }
+unsigned long micros() { return FakeEsp32().time().getTimeMicros(); }
 
-unsigned long millis() { return (get_timestamp() - start_time()) / 1000; }
+unsigned long millis() { return micros() / 1000; }
 
 void delay(uint32_t delay) {
-  getDefaultSystemClock()->delayMicros(((uint64_t)delay) * 1000);
+  delayMicroseconds(delay * 1000);
 }
 
 void delayMicroseconds(uint32_t us) {
-  getDefaultSystemClock()->delayMicros(us);
+  FakeEsp32().time().delayMicros(us);
 }
 
 #ifdef __cplusplus

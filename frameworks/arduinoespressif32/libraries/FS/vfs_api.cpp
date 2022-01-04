@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "vfs_api.h"
+#include "fake_esp32.h"
 
 using namespace fs;
 
@@ -37,14 +38,17 @@ FileImplPtr VFSImpl::open(const char* path, const char* mode)
         log_e("%s does not start with /", path);
         return FileImplPtr();
     }
-
-    char * temp = (char *)malloc(strlen(path)+strlen(_mountpoint)+2);
+    const char* fs_root = FakeEsp32().fs_root().c_str();
+    char * temp = (char *)malloc(
+        strlen(fs_root)+strlen(path)+strlen(_mountpoint)+3);
+    // char * temp = (char *)malloc(strlen(path)+strlen(_mountpoint)+2);
     if(!temp) {
         log_e("malloc failed");
         return FileImplPtr();
     }
 
-    sprintf(temp,"%s%s", _mountpoint, path);
+    // sprintf(temp,"%s%s", _mountpoint, path);
+    sprintf(temp,"%s/%s%s", fs_root, _mountpoint, path);
 
     struct stat st;
     //file lound
@@ -106,19 +110,26 @@ bool VFSImpl::rename(const char* pathFrom, const char* pathTo)
         log_e("%s does not exists", pathFrom);
         return false;
     }
-    char * temp1 = (char *)malloc(strlen(pathFrom)+strlen(_mountpoint)+1);
+    const char* fs_root = FakeEsp32().fs_root().c_str();
+    char * temp1 = (char *)malloc(
+        strlen(fs_root)+strlen(pathFrom)+strlen(_mountpoint)+2);
+    // char * temp1 = (char *)malloc(strlen(pathFrom)+strlen(_mountpoint)+1);
     if(!temp1) {
         log_e("malloc failed");
         return false;
     }
-    char * temp2 = (char *)malloc(strlen(pathTo)+strlen(_mountpoint)+1);
+    char * temp2 = (char *)malloc(
+        strlen(fs_root)+strlen(pathTo)+strlen(_mountpoint)+2);
+    // char * temp2 = (char *)malloc(strlen(pathTo)+strlen(_mountpoint)+1);
     if(!temp2) {
         free(temp1);
         log_e("malloc failed");
         return false;
     }
-    sprintf(temp1,"%s%s", _mountpoint, pathFrom);
-    sprintf(temp2,"%s%s", _mountpoint, pathTo);
+    sprintf(temp1,"%s/%s%s", fs_root, _mountpoint, pathFrom);
+    sprintf(temp2,"%s/%s%s", fs_root, _mountpoint, pathTo);
+    // sprintf(temp1,"%s%s", _mountpoint, pathFrom);
+    // sprintf(temp2,"%s%s", _mountpoint, pathTo);
     auto rc = ::rename(temp1, temp2);
     free(temp1);
     free(temp2);
@@ -147,12 +158,16 @@ bool VFSImpl::remove(const char* path)
     }
     f.close();
 
-    char * temp = (char *)malloc(strlen(path)+strlen(_mountpoint)+1);
+    const char* fs_root = FakeEsp32().fs_root().c_str();
+    char * temp = (char *)malloc(
+        strlen(fs_root)+strlen(path)+strlen(_mountpoint)+2);
+    // char * temp = (char *)malloc(strlen(path)+strlen(_mountpoint)+1);
     if(!temp) {
         log_e("malloc failed");
         return false;
     }
-    sprintf(temp,"%s%s", _mountpoint, path);
+    sprintf(temp,"%s/%s%s", fs_root, _mountpoint, path);
+    // sprintf(temp,"%s%s", _mountpoint, path);
     auto rc = unlink(temp);
     free(temp);
     return rc == 0;
@@ -176,12 +191,16 @@ bool VFSImpl::mkdir(const char *path)
         return false;
     }
 
-    char * temp = (char *)malloc(strlen(path)+strlen(_mountpoint)+1);
+    const char* fs_root = FakeEsp32().fs_root().c_str();
+    char * temp = (char *)malloc(
+        strlen(fs_root)+strlen(path)+strlen(_mountpoint)+2);
+    // char * temp = (char *)malloc(strlen(path)+strlen(_mountpoint)+1);
     if(!temp) {
         log_e("malloc failed");
         return false;
     }
-    sprintf(temp,"%s%s", _mountpoint, path);
+    sprintf(temp,"%s/%s%s", fs_root, _mountpoint, path);
+    // sprintf(temp,"%s%s", _mountpoint, path);
     auto rc = ::mkdir(temp, ACCESSPERMS);
     free(temp);
     return rc == 0;
@@ -204,12 +223,16 @@ bool VFSImpl::rmdir(const char *path)
     }
     f.close();
 
-    char * temp = (char *)malloc(strlen(path)+strlen(_mountpoint)+1);
+    const char* fs_root = FakeEsp32().fs_root().c_str();
+    char * temp = (char *)malloc(
+        strlen(fs_root)+strlen(path)+strlen(_mountpoint)+2);
+    // char * temp = (char *)malloc(strlen(path)+strlen(_mountpoint)+1);
     if(!temp) {
         log_e("malloc failed");
         return false;
     }
-    sprintf(temp,"%s%s", _mountpoint, path);
+    sprintf(temp,"%s/%s%s", fs_root, _mountpoint, path);
+    // sprintf(temp,"%s%s", _mountpoint, path);
     auto rc = unlink(temp);
     free(temp);
     return rc == 0;
@@ -226,11 +249,15 @@ VFSFileImpl::VFSFileImpl(VFSImpl* fs, const char* path, const char* mode)
     , _isDirectory(false)
     , _written(false)
 {
-    char * temp = (char *)malloc(strlen(path)+strlen(_fs->_mountpoint)+1);
+    const char* fs_root = FakeEsp32().fs_root().c_str();
+    char * temp = (char *)malloc(
+        strlen(fs_root)+strlen(path)+strlen(_fs->_mountpoint)+2);
+    // char * temp = (char *)malloc(strlen(path)+strlen(_fs->_mountpoint)+1);
     if(!temp) {
         return;
     }
-    sprintf(temp,"%s%s", _fs->_mountpoint, path);
+    sprintf(temp,"%s/%s%s", fs_root, _fs->_mountpoint, path);
+    // sprintf(temp,"%s%s", _fs->_mountpoint, path);
 
     _path = strdup(path);
     if(!_path) {
@@ -315,11 +342,15 @@ void VFSFileImpl::_getStat() const
     if(!_path) {
         return;
     }
-    char * temp = (char *)malloc(strlen(_path)+strlen(_fs->_mountpoint)+1);
+    const char* fs_root = FakeEsp32().fs_root().c_str();
+    char * temp = (char *)malloc(
+        strlen(fs_root)+strlen(_path)+strlen(_fs->_mountpoint)+2);
+    // char * temp = (char *)malloc(strlen(_path)+strlen(_fs->_mountpoint)+1);
     if(!temp) {
         return;
     }
-    sprintf(temp,"%s%s", _fs->_mountpoint, _path);
+    sprintf(temp,"%s/%s%s", fs_root, _fs->_mountpoint, _path);
+    // sprintf(temp,"%s%s", _fs->_mountpoint, _path);
     if(!stat(temp, &_stat)) {
         _written = false;
     }

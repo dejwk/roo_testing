@@ -1,13 +1,16 @@
 #include "fake_esp32.h"
 
+#include <unistd.h>
+#include <limits.h>
+
 #include <algorithm>
 #include <cstring>
 #include <set>
 
 #include "glog/logging.h"
 #include "soc/gpio_sig_map.h"
-#include "soc/spi_struct.h"
 #include "soc/gpio_struct.h"
+#include "soc/spi_struct.h"
 
 FakeEsp32Board& FakeEsp32() {
   static FakeEsp32Board esp32;
@@ -729,6 +732,18 @@ Esp32GpioIn1ReadSpec::operator uint32_t() const {
   return result;
 }
 
+namespace {
+std::string default_fs_root_path() {
+  char cwd[PATH_MAX];
+  if (getcwd(cwd, sizeof(cwd)) != nullptr) {
+    return std::string(cwd) + "/fs_root";
+  } else {
+    LOG(ERROR) << "getcwd() failed";
+    return "";
+  }
+}
+}  // namespace
+
 FakeEsp32Board::FakeEsp32Board()
     : gpio(),
       in_matrix(),
@@ -741,7 +756,8 @@ FakeEsp32Board::FakeEsp32Board()
           Esp32SpiInterface(SPI2, "spi2(HSPI)", HSPICLK_OUT_IDX, HSPIQ_OUT_IDX,
                             HSPID_IN_IDX, this),
           Esp32SpiInterface(SPI3, "spi3(VSPI)", VSPICLK_OUT_IDX, VSPIQ_OUT_IDX,
-                            VSPID_IN_IDX, this)} {}
+                            VSPID_IN_IDX, this)},
+      fs_root_(default_fs_root_path()) {}
 
 void FakeEsp32Board::attachSpiDevice(SimpleFakeSpiDevice& dev, int8_t clk,
                                      int8_t miso, int8_t mosi) {

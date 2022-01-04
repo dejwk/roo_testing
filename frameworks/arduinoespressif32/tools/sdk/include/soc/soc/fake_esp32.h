@@ -97,6 +97,14 @@ class FakeEsp32Board {
     return spi_devices_to_pins_;
   }
 
+  const std::string& fs_root() const {
+    return fs_root_;
+  }
+
+  void set_fs_root(std::string fs_root) {
+    fs_root_ = std::move(fs_root);
+  }
+
  private:
   friend FakeEsp32Board& FakeEsp32();
   friend void spiFakeTransferOnDevice(int8_t spi_num);
@@ -106,6 +114,7 @@ class FakeEsp32Board {
   Esp32SpiInterface spi[4];
 
   std::map<SimpleFakeSpiDevice*, SpiPins> spi_devices_to_pins_;
+  std::string fs_root_;
 };
 
 FakeEsp32Board& FakeEsp32();

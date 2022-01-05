@@ -38,19 +38,31 @@ class FakeI2cInterface {
  public:
   FakeI2cInterface(const std::string& name) : name_(name) {}
 
-  FakeI2cInterface(std::initializer_list<FakeI2cDevice*> devices);
+  ~FakeI2cInterface();
 
   const std::string& name() const { return name_; }
 
-  void attach(FakeI2cDevice* device) {
-    attach(std::unique_ptr<FakeI2cDevice>(device));
+  void attach(FakeI2cDevice& device) { attachInternal(&device, false); }
+
+  void attach(std::unique_ptr<FakeI2cDevice> device) {
+    attachInternal(device.release(), true);
   }
-  void attach(std::unique_ptr<FakeI2cDevice> device);
+
   FakeI2cDevice* getDevice(uint16_t address) const;
 
  private:
+  struct Attachment {
+    Attachment() : ptr(nullptr), owned(false) {}
+    Attachment(FakeI2cDevice* ptr, bool owned) : ptr(ptr), owned(owned) {}
+
+    FakeI2cDevice* ptr;
+    bool owned;
+  };
+
+  void attachInternal(FakeI2cDevice* ptr, bool owned);
+
   std::string name_;
-  std::map<uint16_t, std::unique_ptr<FakeI2cDevice>> devices_;
+  std::map<uint16_t, Attachment> devices_;
 };
 
 FakeI2cInterface* getI2cInterface(uint8_t i2c_num);

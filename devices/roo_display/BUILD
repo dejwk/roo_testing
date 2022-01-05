@@ -1,8 +1,12 @@
-filegroup(
-    name = "src",
+cc_library(
+    name = "reference_device",
     srcs = [
-        "fltk_device.cpp",
-        "fltk_device.h",
+        "reference_device.cpp",
+        "reference_device.h",
     ],
+    deps = [
+        "//lib/roo_display",
+        "//roo_testing/transducers/ui/viewport",
+    ]
     visibility = ["//visibility:public"],
 )

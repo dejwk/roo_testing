@@ -14,8 +14,8 @@ uint16_t read16(uint8_t*& buf) {
 
 void FakeIli9486Spi::transfer(const FakeSpiInterface& spi, uint8_t* buf,
                               uint16_t bit_count) {
-  if (pinRST_->isDigitalLow()) return;
-  bool command = pinDC_->isDigitalLow();
+  if (pinRST_.isDigitalLow()) return;
+  bool command = pinDC_.isDigitalLow();
   if (command) {
     CHECK_EQ(16, bit_count);
     last_command_ = read16(buf);

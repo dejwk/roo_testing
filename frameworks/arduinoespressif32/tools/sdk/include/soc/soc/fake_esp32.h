@@ -86,7 +86,7 @@ class Esp32SpiInterface : public FakeSpiInterface {
   FakeEsp32Board* esp32_;
 };
 
-static constexpr auto kMaxTimeAhead = std::chrono::nanoseconds(10000);
+static constexpr auto kMaxTimeAhead = std::chrono::nanoseconds(100000);
 static constexpr auto kMaxTimeLag = std::chrono::nanoseconds(50);
 
 class EmulatedTime : public roo_testing_transducers::Clock {

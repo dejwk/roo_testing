@@ -18,9 +18,38 @@ new_local_repository(
     name = "system_libs",
     path = "/usr/lib/x86_64-linux-gnu",
     build_file_content = """
+# These are minimalistic for building fltk from source.
 cc_library(
     name = "x11",
-    srcs = ["libX11.so", "libXext.so.6", "libdl.so", "libm.so", "libpthread.so"],
+    srcs = [
+        "libX11.so",
+        "libXext.so.6",
+        "libdl.so",
+        "libm.so",
+        "libpthread.so",
+    ],
+    linkstatic = 1,
+    alwayslink = 1,
+    visibility = ["//visibility:public"],
+)
+# These are needed by the 'stock' (precompiled) version of fltk.
+cc_library(
+    name = "x11extra",
+    srcs = [
+        "libXcursor.so.1",
+        "libXft.so.2",
+        "libXfixes.so.3",
+        "libXinerama.so.1",
+        "libXrender.so.1",
+        "libfontconfig.so.1",
+    ],
+    linkstatic = 1,
+    alwayslink = 1,
+    visibility = ["//visibility:public"],
+)
+cc_library(
+    name = "fltk",
+    srcs = ["libfltk.a", "libfltk_images.a"],
     linkstatic = 1,
     alwayslink = 1,
     visibility = ["//visibility:public"],
@@ -30,6 +59,25 @@ cc_library(
 
 new_local_repository(
    name = "fltk",
-   path = "roo_testing/fltk-1.3.5",
-   build_file = "roo_testing/fltk.BUILD",
+   path = "/usr/lib/x86_64-linux-gnu",
+    build_file_content = """
+cc_library(
+    name = "fltk",
+    srcs = ["libfltk.a", "libfltk_images.a"],
+    linkstatic = 1,
+    alwayslink = 1,
+    visibility = ["//visibility:public"],
+    deps = ["@system_libs//:x11", "@system_libs//:x11extra"],
 )
+""",
+)
+
+# Uncomment this, and comment the above, and then run
+# roo_testing/import_fltk.sh
+# in order to download and build FLTK from sources.
+#
+#new_local_repository(
+#   name = "fltk",
+#   path = "roo_testing/fltk-1.3.5",
+#   build_file = "roo_testing/fltk.BUILD",
+#)

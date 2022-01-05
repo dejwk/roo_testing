@@ -3,15 +3,15 @@
 #include "roo_testing/buses/i2c/fake_i2c.h"
 #include "roo_testing/transducers/temperature/temperature.h"
 
-class FakeI2cDs3231 : public FakeI2cDevice {
+class FakeDs3231 : public FakeI2cDevice {
  public:
   enum HourMode {
     H24 = 0,
     H12 = 1,
   };
 
-  FakeI2cDs3231();
-  FakeI2cDs3231(roo_testing_transducers::Thermometer *thermometer);
+  FakeDs3231();
+  FakeDs3231(roo_testing_transducers::Thermometer *thermometer);
   Result write(uint8_t *buff, uint16_t size, bool sendStop,
                uint16_t timeOutMillis) override;
   Result read(uint8_t *buff, uint16_t size, bool sendStop,

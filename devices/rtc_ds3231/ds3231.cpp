@@ -1,10 +1,9 @@
-#include "fake_i2c_ds3231.h"
-
 #include <assert.h>
 #include <time.h>
 
 #include <cstring>
 
+#include "ds3231.h"
 #include "roo_testing/transducers/time/clock.h"
 
 using roo_testing_transducers::FixedThermometer;
@@ -30,10 +29,10 @@ enum Ds3231Reg {
   REG_TEMPERATURE = 0x11
 };
 
-FakeI2cDs3231::FakeI2cDs3231()
-    : FakeI2cDs3231(new FixedThermometer(Temperature::FromC(25))) {}
+FakeDs3231::FakeDs3231()
+    : FakeDs3231(new FixedThermometer(Temperature::FromC(25))) {}
 
-FakeI2cDs3231::FakeI2cDs3231(Thermometer *thermometer)
+FakeDs3231::FakeDs3231(Thermometer *thermometer)
     : FakeI2cDevice(0x68),
       thermometer_(thermometer),
       register_address_(0xFF),
@@ -42,9 +41,8 @@ FakeI2cDs3231::FakeI2cDs3231(Thermometer *thermometer)
   for (int i = 0; i < 0x12; ++i) registers_[i] = 0;
 }
 
-FakeI2cDevice::Result FakeI2cDs3231::write(uint8_t *buff, uint16_t size,
-                                           bool sendStop,
-                                           uint16_t timeOutMillis) {
+FakeI2cDevice::Result FakeDs3231::write(uint8_t *buff, uint16_t size,
+                                        bool sendStop, uint16_t timeOutMillis) {
   assert(size > 0);
   register_address_ = buff[0];
   tick();
@@ -54,7 +52,7 @@ FakeI2cDevice::Result FakeI2cDs3231::write(uint8_t *buff, uint16_t size,
   flush();
 }
 
-void FakeI2cDs3231::tick() {
+void FakeDs3231::tick() {
   // Set the time.
   time_t device_time = ((getSystemTimeMicros() + time_offset_) / kMicrosPerSec);
   struct tm *t = gmtime(&device_time);
@@ -95,16 +93,14 @@ void FakeI2cDs3231::tick() {
   }
 }
 
-uint8_t FakeI2cDs3231::register_read(int index) const {
-  return registers_[index];
-}
+uint8_t FakeDs3231::register_read(int index) const { return registers_[index]; }
 
-void FakeI2cDs3231::register_write(int index, uint8_t value) {
+void FakeDs3231::register_write(int index, uint8_t value) {
   registers_[index] = value;
   registers_written_[index] = true;
 }
 
-void FakeI2cDs3231::flush() {
+void FakeDs3231::flush() {
   bool seconds_written = registers_written_[0];
   bool time_written = registers_written_[0x00] || registers_written_[0x01] ||
                       registers_written_[0x02] || registers_written_[0x03] ||
@@ -146,9 +142,8 @@ void FakeI2cDs3231::flush() {
   }
 }
 
-FakeI2cDevice::Result FakeI2cDs3231::read(uint8_t *buff, uint16_t size,
-                                          bool sendStop,
-                                          uint16_t timeOutMillis) {
+FakeI2cDevice::Result FakeDs3231::read(uint8_t *buff, uint16_t size,
+                                       bool sendStop, uint16_t timeOutMillis) {
   assert(register_address_ + size < 0x12);
   tick();
   for (int i = 0; i < size; ++i) {

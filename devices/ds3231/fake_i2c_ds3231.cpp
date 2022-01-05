@@ -81,7 +81,7 @@ void FakeI2cDs3231::tick() {
   registers_[6] = dec2bcd(t->tm_year % 100);
 
   // Set the temperature reading.
-  double tempC = thermometer_->Read().AsC();
+  double tempC = thermometer_->read().AsC();
   if (tempC < -128.0) {
     tempC = -128.0;
   } else if (tempC > 127.75) {

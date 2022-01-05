@@ -234,11 +234,12 @@ class OffscreenBox : public Fl_Box {
     // long time = millis();
     Message::Content::FillRectMessage msg;
     while (queue_->popFillRectMessage(&msg)) {
+      uint32_t color_rgbi = msg.color_argb << 8;
 #ifdef FLTK_DEVICE_NOISE_BITS
-      color ^= (rand() % (1 << FLTK_DEVICE_NOISE_BITS)) * 0x01010100;
+      color_rgbi ^= (rand() % (1 << FLTK_DEVICE_NOISE_BITS)) * 0x01010100;
 #endif
       fl_rectf(msg.x0, msg.y0, msg.x1 - msg.x0 + 1, msg.y1 - msg.y0 + 1,
-               msg.color_argb << 8);
+               color_rgbi);
       ++i;
     }
     // long elapsed = millis() - time;

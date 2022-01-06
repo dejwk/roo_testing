@@ -36,9 +36,13 @@ uint32_t esp_get_minimum_free_heap_size( void ) {
   return mallinfo().uordblks; 
 }
 
-uint32_t esp_random(void) { return 1; }
+inline uint32_t esp_random(void) { return random(); }
 
-void esp_fill_random(void *buf, size_t len) {}
+inline void esp_fill_random(void *buf, size_t len) {
+  for (int i = 0; i < len; ++i) {
+    ((char*)buf)[i] = esp_random();
+  }
+}
 
 esp_err_t esp_base_mac_addr_set(uint8_t *mac) { return 0; }
 

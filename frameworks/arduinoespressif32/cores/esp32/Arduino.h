@@ -32,6 +32,8 @@
 #include <inttypes.h>
 
 #include "esp32-hal.h"
+#include "soc/spi_struct.h"
+#include "soc/gpio_struct.h"
 
 #define PI 3.1415926535897932384626433832795
 #define HALF_PI 1.5707963267948966192313216916398
@@ -192,7 +194,7 @@ extern "C" void configTzTime(const char* tz,
         const char* server1, const char* server2 = nullptr, const char* server3 = nullptr);
 
 // // WMath prototypes
-// long random(long);
+inline long random(long max) { return random(0, max); }
 #endif /* __cplusplus */
 
 // #ifndef _GLIBCXX_VECTOR

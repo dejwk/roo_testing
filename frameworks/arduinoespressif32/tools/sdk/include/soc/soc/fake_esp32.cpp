@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <random>
 #include <set>
 #include <thread>
 
@@ -828,6 +829,13 @@ int64_t EmulatedTime::getTimeMicros() const {
 void EmulatedTime::delayMicros(uint64_t delay) {
   lag(std::chrono::microseconds(delay));
   sync();
+}
+
+long random(long min, long max) {
+  static std::random_device rd;
+  static std::mt19937 gen(rd());
+  std::uniform_int_distribution<long> distrib(min, max);
+  return distrib(gen);
 }
 
 namespace roo_testing_transducers {

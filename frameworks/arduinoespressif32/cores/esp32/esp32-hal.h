@@ -60,7 +60,7 @@ inline void yield(void) {}
 // #include "esp32-hal-sigmadelta.h"
 //#include "esp32-hal-timer.h"
 // #include "esp32-hal-bt.h"
-// #include "esp32-hal-psram.h"
+#include "esp32-hal-psram.h"
 
 #ifndef BOARD_HAS_PSRAM
 #ifdef CONFIG_SPIRAM_SUPPORT

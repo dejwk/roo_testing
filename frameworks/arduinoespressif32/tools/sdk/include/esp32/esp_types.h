@@ -22,4 +22,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+typedef int TickType_t;
+
 #endif /* __ESP_TYPES_H__ */

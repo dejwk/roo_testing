@@ -59,16 +59,20 @@
 #define APP_CPU_NUM (1)
 
 /* Overall memory map */
-#define SOC_IROM_LOW    0x400D0000
-#define SOC_IROM_HIGH   0x40400000
-#define SOC_DROM_LOW    0x3F400000
-#define SOC_DROM_HIGH   0x3F800000
-#define SOC_RTC_IRAM_LOW  0x400C0000
-#define SOC_RTC_IRAM_HIGH 0x400C2000
-#define SOC_RTC_DATA_LOW  0x50000000
-#define SOC_RTC_DATA_HIGH 0x50002000
-#define SOC_EXTRAM_DATA_LOW 0x3F800000
-#define SOC_EXTRAM_DATA_HIGH 0x3FC00000
+#define SOC_IROM_LOW            0x400D0000
+#define SOC_IROM_HIGH           0x40400000
+#define SOC_DROM_LOW            0x3F400000
+#define SOC_DROM_HIGH           0x3F800000
+#define SOC_DRAM_LOW            0x3FAE0000
+#define SOC_DRAM_HIGH           0x40000000
+#define SOC_RTC_IRAM_LOW        0x400C0000
+#define SOC_RTC_IRAM_HIGH       0x400C2000
+#define SOC_RTC_DATA_LOW        0x50000000
+#define SOC_RTC_DATA_HIGH       0x50002000
+#define SOC_EXTRAM_DATA_LOW     0x3F800000
+#define SOC_EXTRAM_DATA_HIGH    0x3FC00000
+
+#define SOC_MAX_CONTIGUOUS_RAM_SIZE 0x400000 ///< Largest span of contiguous memory (DRAM or IRAM) in the address space
 
 
 #define DR_REG_DPORT_BASE                       0x3ff00000
@@ -120,6 +124,7 @@
 #define DR_REG_I2C1_EXT_BASE                    0x3ff67000
 #define DR_REG_SDMMC_BASE                       0x3ff68000
 #define DR_REG_EMAC_BASE                        0x3ff69000
+#define DR_REG_CAN_BASE                         0x3ff6B000
 #define DR_REG_PWM1_BASE                        0x3ff6C000
 #define DR_REG_I2S1_BASE                        0x3ff6D000
 #define DR_REG_UART2_BASE                       0x3ff6E000
@@ -129,10 +134,11 @@
 
 //Registers Operation {{
 #define ETS_UNCACHED_ADDR(addr) (addr)
-#define ETS_CACHED_ADDR(addr) (addr) 
+#define ETS_CACHED_ADDR(addr) (addr)
 
 #ifndef __ASSEMBLER__
 #define BIT(nr)                 (1UL << (nr))
+#define BIT64(nr)               (1ULL << (nr))
 #else
 #define BIT(nr)                 (1 << (nr))
 #endif
@@ -141,22 +147,35 @@
 
 #define IS_DPORT_REG(_r) (((_r) >= DR_REG_DPORT_BASE) && (_r) <= DR_REG_DPORT_END)
 
-#if !defined( BOOTLOADER_BUILD ) && !defined( CONFIG_FREERTOS_UNICORE ) && defined( ESP_PLATFORM )
+#if !defined( BOOTLOADER_BUILD ) && defined( CONFIG_ESP32_DPORT_WORKAROUND ) && defined( ESP_PLATFORM )
 #define ASSERT_IF_DPORT_REG(_r, OP)  TRY_STATIC_ASSERT(!IS_DPORT_REG(_r), (Cannot use OP for DPORT registers use DPORT_##OP));
 #else
 #define ASSERT_IF_DPORT_REG(_r, OP)
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+uint32_t __readPeriReg(uint32_t reg);
+void __writePeriReg(uint32_t reg, uint32_t val);
+
+#ifdef __cplusplus
+}
+#endif
+
 //write value to register
 #define REG_WRITE(_r, _v) ({                                                                                           \
             ASSERT_IF_DPORT_REG((_r), REG_WRITE);                                                                      \
-            (*(volatile uint32_t *)(_r)) = (_v);                                                                       \
+            __writePeriReg(addr, val);                                                                                 \
+            /*(*(volatile uint32_t *)(_r)) = (_v);*/                                                                   \
         })
 
 //read value from register
 #define REG_READ(_r) ({                                                                                                \
             ASSERT_IF_DPORT_REG((_r), REG_READ);                                                                       \
-            (*(volatile uint32_t *)(_r));                                                                              \
+            __readPeriReg(addr);                                                                                       \
+            /*(*(volatile uint32_t *)(_r));*/                                                                          \
         })
 
 //get bit or get bits from register
@@ -216,13 +235,15 @@
 //read value from register
 #define READ_PERI_REG(addr) ({                                                                                         \
             ASSERT_IF_DPORT_REG((addr), READ_PERI_REG);                                                                \
-            (*((volatile uint32_t *)ETS_UNCACHED_ADDR(addr)));                                                         \
+            __readPeriReg(addr);                                                                                       \
+            /*(*((volatile uint32_t *)ETS_UNCACHED_ADDR(addr)));*/                                                     \
         })
 
 //write value to register
 #define WRITE_PERI_REG(addr, val) ({                                                                                   \
             ASSERT_IF_DPORT_REG((addr), WRITE_PERI_REG);                                                               \
-            (*((volatile uint32_t *)ETS_UNCACHED_ADDR(addr))) = (uint32_t)(val);                                       \
+            __writePeriReg(addr, val);                                                                                 \
+            /* (*((volatile uint32_t *)ETS_UNCACHED_ADDR(addr))) = (uint32_t)(val);*/                                  \
         })
 
 //clear bits of register controlled by mask
@@ -282,10 +303,18 @@
 #define SOC_DROM_HIGH   0x3F800000
 #define SOC_IROM_LOW    0x400D0000
 #define SOC_IROM_HIGH   0x40400000
+#define SOC_IROM_MASK_LOW   0x40000000
+#define SOC_IROM_MASK_HIGH  0x40070000
+#define SOC_CACHE_PRO_LOW   0x40070000
+#define SOC_CACHE_PRO_HIGH  0x40078000
+#define SOC_CACHE_APP_LOW   0x40078000
+#define SOC_CACHE_APP_HIGH  0x40080000
 #define SOC_IRAM_LOW    0x40080000
 #define SOC_IRAM_HIGH   0x400A0000
 #define SOC_RTC_IRAM_LOW  0x400C0000
 #define SOC_RTC_IRAM_HIGH 0x400C2000
+#define SOC_RTC_DRAM_LOW  0x3FF80000
+#define SOC_RTC_DRAM_HIGH 0x3FF82000
 #define SOC_RTC_DATA_LOW  0x50000000
 #define SOC_RTC_DATA_HIGH 0x50002000
 

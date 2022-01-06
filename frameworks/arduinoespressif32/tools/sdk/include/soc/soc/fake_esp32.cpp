@@ -764,7 +764,7 @@ FakeEsp32Board::FakeEsp32Board()
                             VSPID_IN_IDX, this)},
       fs_root_(default_fs_root_path()),
       time_([this]() { flush(); }) {
-  google::InitGoogleLogging("ESP32 emulator");
+  google::InitGoogleLogging("ESP32_emulator");
 }
 
 void FakeEsp32Board::attachSpiDevice(SimpleFakeSpiDevice& dev, int8_t clk,

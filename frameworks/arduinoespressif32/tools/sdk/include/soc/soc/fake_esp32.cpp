@@ -831,6 +831,7 @@ void EmulatedTime::delayMicros(uint64_t delay) {
   sync();
 }
 
+// Declared in Arduino.h
 long random(long min, long max) {
   static std::random_device rd;
   static std::mt19937 gen(rd());
@@ -838,6 +839,10 @@ long random(long min, long max) {
   return distrib(gen);
 }
 
+// Declared in Arduino.h
+long map(long x, long in_min, long in_max, long out_min, long out_max) {
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
 namespace roo_testing_transducers {
 
 Clock* getDefaultSystemClock() { return &FakeEsp32().time(); }

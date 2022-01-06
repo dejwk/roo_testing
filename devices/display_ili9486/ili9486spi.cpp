@@ -19,31 +19,47 @@ void FakeIli9486Spi::transfer(const FakeSpiInterface& spi, uint8_t* buf,
     return;
   }
   bool command = pinDC_.isDigitalLow();
+  if (has_half_word_) {
+    CHECK_GE(8, bit_count) << "The bit count is not divisible by 8: "
+                           << bit_count;
+    uint16_t val = (half_word_ << 8) + *buf++;
+    has_half_word_ = false;
+    if (command) {
+      handleCmd(val & 0xFF);
+    } else {
+      buf_[buf_size_++] = val;
+      handleData();
+    }
+    // buf++;
+    bit_count -= 8;
+  }
   if (command) {
     while (bit_count >= 16) {
       handleCmd(read16(buf));
       bit_count -= 16;
     }
-    CHECK_EQ(0, bit_count)
-        << "The count of command bits must be a multiple of 16; " << bit_count
-        << " bits remained.";
   } else {
     while (bit_count >= 16) {
       buf_[buf_size_++] = read16(buf);
       handleData();
       bit_count -= 16;
     }
-    CHECK_EQ(0, bit_count)
-        << "The count of data bits must be a multiple of 16; " << bit_count
-        << " bits remained.";
   }
+  if (bit_count >= 8) {
+    has_half_word_ = true;
+    half_word_ = *buf++;
+    bit_count -= 8;
+  }
+  CHECK_EQ(0, bit_count)
+      << "The count of cmd/data bits must be a multiple of 8; " << bit_count
+      << " bits remained.";
 }
 
 void FakeIli9486Spi::handleCmd(uint16_t cmd) {
   if (!cmd_done_) {
     LOG(WARNING) << std::hex << "Warning: new command 0x" << cmd
-              << "has been received before the previous command 0x"
-              << last_command_ << " has completed.";
+                 << "has been received before the previous command 0x"
+                 << last_command_ << " has completed.";
   }
   cmd_done_ = false;
   buf_size_ = 0;
@@ -98,15 +114,15 @@ void FakeIli9486Spi::handleData() {
   switch (last_command_) {
     case 0x2A: {  // CASET
       if (buf_size_ < 4) return;
-      x0_ = (buf_[0] << 8) + buf_[1];
-      x1_ = (buf_[2] << 8) + buf_[3];
+      x0_ = ((buf_[0] & 0xFF) << 8) + (buf_[1] & 0xFF);
+      x1_ = ((buf_[2] & 0xFF) << 8) + (buf_[3] & 0xFF);
       cmd_done_ = true;
       break;
     }
     case 0x2B: {  // PASET
       if (buf_size_ < 4) return;
-      y0_ = (buf_[0] << 8) + buf_[1];
-      y1_ = (buf_[2] << 8) + buf_[3];
+      y0_ = ((buf_[0] & 0xFF) << 8) + (buf_[1] & 0xFF);
+      y1_ = ((buf_[2] & 0xFF) << 8) + (buf_[3] & 0xFF);
       cmd_done_ = true;
       break;
     }
@@ -150,13 +166,14 @@ void FakeIli9486Spi::handleData() {
 void FakeIli9486Spi::reset() {
   if (is_reset_) return;
   mad_ctl_ = 0;
-  for (int i = 0; i < 480; i+=2) {
+  for (int i = 0; i < 480; i += 2) {
     viewport_.fillRect(0, i, 319, i, 0xFFCCCCCC);
-    viewport_.fillRect(0, i+1, 319, i+1, 0xFF444444);
+    viewport_.fillRect(0, i + 1, 319, i + 1, 0xFF444444);
   }
   buf_size_ = 0;
   is_reset_ = true;
   is_inverted_ = false;
+  has_half_word_ = false;
 }
 
 void FakeIli9486Spi::writeColor(uint16_t color) {

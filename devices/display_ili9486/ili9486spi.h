@@ -20,7 +20,8 @@ class FakeIli9486Spi : public SimpleFakeSpiDevice {
         is_reset_(true),
         is_inverted_(false),
         cmd_done_(true),
-        buf_size_(0) {
+        buf_size_(0),
+        has_half_word_(false) {
     getGpioInterface()->attach(dc, pinDC_);
     getGpioInterface()->attach(rst, pinRST_);
     viewport_.init(320, 480);
@@ -76,4 +77,6 @@ class FakeIli9486Spi : public SimpleFakeSpiDevice {
   bool cmd_done_;
   uint16_t buf_[16];
   int buf_size_;
+  uint8_t half_word_;
+  bool has_half_word_;
 };

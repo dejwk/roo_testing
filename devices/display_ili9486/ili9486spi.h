@@ -16,7 +16,11 @@ class FakeIli9486Spi : public SimpleFakeSpiDevice {
         pinDC_(name + ":DC"),
         pinRST_(name + ":RESET"),
         viewport_(viewport),
-        mad_ctl_(0) {
+        mad_ctl_(0),
+        is_reset_(true),
+        is_inverted_(false),
+        cmd_done_(true),
+        buf_size_(0) {
     getGpioInterface()->attach(dc, pinDC_);
     getGpioInterface()->attach(rst, pinRST_);
     viewport_.init(320, 480);
@@ -49,6 +53,10 @@ class FakeIli9486Spi : public SimpleFakeSpiDevice {
     uint16_t val_;
   };
 
+  void handleCmd(uint16_t cmd);
+  void handleData();
+  void reset();
+
   int16_t last_command_;
 
   void writeColor(uint16_t color);
@@ -63,4 +71,9 @@ class FakeIli9486Spi : public SimpleFakeSpiDevice {
   MadCtl mad_ctl_;
 
   int16_t x0_, y0_, x1_, y1_, x_cursor_, y_cursor_;
+  bool is_reset_;
+  bool is_inverted_;
+  bool cmd_done_;
+  uint16_t buf_[16];
+  int buf_size_;
 };

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cmath>
+
 #include <stdint.h>
 #include <functional>
 
@@ -19,6 +21,10 @@ class Temperature {
   Temperature(double tempK) : tempK_(tempK) {}
   double tempK_;
 };
+
+inline bool operator==(const Temperature& a, const Temperature& b) {
+  return a.AsK() == b.AsK() || (std::isnan(a.AsK()) && std::isnan(b.AsK()));
+}
 
 class Thermometer {
  public:

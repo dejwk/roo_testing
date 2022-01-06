@@ -73,6 +73,7 @@ Another basic example is the Voltage sensor, which is a transducer that you can 
 * I2C is modeled at the interface level, bypassing some low-level OS queues and hardware pins. (As long as you use standard libraries, it doesn't matter much).
 * Simulated TFT displays don't model all commands, just the basic set used by common libraries.
 * Interrupts are not currently supported.
+* The emulator does not accurately reflect the microcontroller's performance - it tends to run faster because your computer has a faster CPU. (Notable exception is the SPI emulation, which reflects communication delays accurately). Also, your computer has way more memory, both on the heap and the stack. Finally, the int type is (most likely) 32-bit on your computer, but only 16-bit on the microcontroller. (It may be a good habit to use explicit integer types, like int16_t, in your sketches). Because of all that, your sketch may run great on the simulator, but still fail miserably on the real device.
 
 # Please get involved!
 

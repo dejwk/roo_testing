@@ -53,7 +53,7 @@ The behavior of the physical world is modeled in _transducers_, sensing or indic
 
 The transducers are used by the simulated _devices_, provided as part of the library and mimicking the real hardware, that you virtually 'connect' to your microcontroller at the beginning of the program (as illustrated in the examples). For example, the FakeOneWireThermometer device simulates an actual sensor such as DS18B20, and communicates with the emulated microcontroller using the actual One Wire protocol, but reports temperatures indicated by your custom thermometer sensor.
 
-Another basic example is the Voltage sensor, which is a transducer that you can use to feed signals to the microcontroller via its GPIO pins. Using emulated GPIO and voltage inputs, you can emulate an external logic, e.g. calculate a logical function of some GPIO outputs and feed it back to a GPIO input. 
+Another basic example is the Voltage emitter, which is a transducer that you can use to feed signals to the microcontroller via its GPIO pins. Using emulated GPIO and voltage inputs, you can emulate an external logic, e.g. calculate a logical function of some GPIO outputs and feed it back to a GPIO input. 
 
 ## What is supported
 

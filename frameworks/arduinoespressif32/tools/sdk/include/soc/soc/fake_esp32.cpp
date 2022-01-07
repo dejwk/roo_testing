@@ -763,6 +763,7 @@ FakeEsp32Board::FakeEsp32Board()
                             VSPID_IN_IDX, this)},
       fs_root_(default_fs_root_path()),
       time_([this]() { flush(); }) {
+  FLAGS_stderrthreshold = google::WARNING;
   google::InitGoogleLogging("ESP32_emulator");
 }
 

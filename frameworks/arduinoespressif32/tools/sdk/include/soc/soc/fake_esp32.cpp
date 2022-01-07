@@ -749,7 +749,7 @@ std::string default_fs_root_path() {
 }  // namespace
 
 FakeEsp32Board::FakeEsp32Board()
-    : gpio(),
+    : gpio(40),
       in_matrix(),
       out_matrix(),
       i2c{FakeI2cInterface("i2c0"), FakeI2cInterface("i2c1")},

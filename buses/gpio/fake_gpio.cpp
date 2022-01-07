@@ -74,35 +74,35 @@ class InputOutput : public FakeGpioPin {
 
 }  // namespace
 
-FakeGpioInterface::FakeGpioInterface() {}
-
-void FakeGpioInterface::attach(uint8_t pin, VoltageIO& io) {
+void FakeGpioInterface::attach(int pin, VoltageIO& io) {
   attachInternal(pin, new Output(&io, false));
 }
 
-void FakeGpioInterface::attach(uint8_t pin, std::unique_ptr<VoltageIO> io) {
+void FakeGpioInterface::attach(int pin, std::unique_ptr<VoltageIO> io) {
   attachInternal(pin, new Output(io.release(), true));
 }
 
-void FakeGpioInterface::attachOutput(uint8_t pin, VoltageSink& output) {
+void FakeGpioInterface::attachOutput(int pin, VoltageSink& output) {
   attachInternal(pin, new Output(&output, false));
 }
 
-void FakeGpioInterface::attachOutput(uint8_t pin,
+void FakeGpioInterface::attachOutput(int pin,
                                      std::unique_ptr<VoltageSink> output) {
   attachInternal(pin, new Output(output.release(), true));
 }
 
-void FakeGpioInterface::attachInput(uint8_t pin, const VoltageSource& input) {
+void FakeGpioInterface::attachInput(int pin, const VoltageSource& input) {
   attachInternal(pin, new Input(&input, false));
 }
 
 void FakeGpioInterface::attachInput(
-    uint8_t pin, std::unique_ptr<const VoltageSource> input) {
+    int pin, std::unique_ptr<const VoltageSource> input) {
   attachInternal(pin, new Input(input.release(), true));
 }
 
-void FakeGpioInterface::attachInternal(uint8_t pin, FakeGpioPin* fake) {
+void FakeGpioInterface::attachInternal(int pin, FakeGpioPin* fake) {
+  CHECK_GE(pin, 0);
+  CHECK_LT(pin, size_);
   if (pin >= pins_.size()) {
     pins_.resize(pin + 1);
   }
@@ -115,9 +115,9 @@ void FakeGpioInterface::attachInternal(uint8_t pin, FakeGpioPin* fake) {
   val.reset(fake);
 }
 
-void FakeGpioInterface::detach(uint8_t pin) { pins_[pin].reset(nullptr); }
+void FakeGpioInterface::detach(int pin) { pins_[pin].reset(nullptr); }
 
-FakeGpioPin& FakeGpioInterface::get(uint8_t pin) const {
+FakeGpioPin& FakeGpioInterface::get(int pin) const {
   if (pin >= pins_.size()) {
     pins_.resize(pin + 1);
   }

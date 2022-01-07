@@ -68,38 +68,39 @@ class FakeGpioPin {
 
 class FakeGpioInterface {
  public:
-  FakeGpioInterface();
+  FakeGpioInterface(int size) : size_(size) {}
 
   // Attaches a voltage sink. Does not take ownership.
-  void attachOutput(uint8_t pin, roo_testing_transducers::VoltageSink& voltage);
+  void attachOutput(int pin, roo_testing_transducers::VoltageSink& voltage);
 
   // Attaches a voltage sink. Takes ownership.
   void attachOutput(
-      uint8_t pin,
+      int pin,
       std::unique_ptr<roo_testing_transducers::VoltageSink> voltage);
 
   // Attaches a voltage source. Does not take ownership.
-  void attachInput(uint8_t pin,
+  void attachInput(int pin,
                    const roo_testing_transducers::VoltageSource& voltage);
 
   // Attaches a voltage source. Takes ownership.
   void attachInput(
-      uint8_t pin,
+      int pin,
       std::unique_ptr<const roo_testing_transducers::VoltageSource> voltage);
 
-  FakeGpioPin& get(uint8_t pin) const;
+  FakeGpioPin& get(int pin) const;
 
   // Attaches a bi-directional voltage device. Does not take ownership.
-  void attach(uint8_t pin, roo_testing_transducers::VoltageIO& fake);
+  void attach(int pin, roo_testing_transducers::VoltageIO& fake);
 
   // Attaches a bi-directional voltage device. Takes ownership.
-  void attach(uint8_t pin,
+  void attach(int pin,
               std::unique_ptr<roo_testing_transducers::VoltageIO> fake);
 
-  void detach(uint8_t pin);
+  void detach(int pin);
 
  private:
-  void attachInternal(uint8_t pin, FakeGpioPin* fake);
+  int size_;
+  void attachInternal(int pin, FakeGpioPin* fake);
 
   mutable std::vector<std::unique_ptr<FakeGpioPin>> pins_;
 };

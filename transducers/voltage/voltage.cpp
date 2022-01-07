@@ -16,19 +16,21 @@ const ConstVoltage& Ground() {
 
 void SimpleVoltageSink::warnIfUnwrittenTo() const {
   if (!has_been_written_) {
-    LOG(WARNING) << name()
-                 << " has never been written to; it is likely unconnected, or "
-                    "configured as an input.";
+    LOG_EVERY_N(WARNING, 10000)
+        << name()
+        << " has never been written to; it is likely unconnected, or "
+           "configured as an input.";
   }
 }
 
 void SimpleDigitalSink::warnIfUndef() const {
   if (!has_been_written_) {
-    LOG(WARNING) << name()
-                 << " has never been written to; it is likely unconnected, or "
-                    "configured as an input.";
+    LOG_EVERY_N(WARNING, 10000)
+        << name()
+        << " has never been written to; it is likely unconnected, or "
+           "configured as an input.";
   } else if (value() == kDigitalUndef) {
-    LOG(WARNING)
+    LOG_EVERY_N(WARNING, 10000)
         << name()
         << " is in the undefined logical state; it is likely an analog signal.";
   }

@@ -8,7 +8,7 @@ using namespace roo_testing_transducers;
 
 ConstVoltage digital_input(0.0);
 
-SimpleVoltage sawtooth([]() -> float {
+SimpleVoltageSource sawtooth([]() -> float {
   // Generate chainsaw from 0 to 2V, period of 10s.
   return ((millis() / 10 % 1000) / 500.0);
 });

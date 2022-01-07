@@ -28,7 +28,7 @@ struct Emulator {
 
     // When this pin gets written to, we update the value attached to pin 33.
     // Essentially, the pin #4 is 'soldered' to pin #33.
-    FakeEsp32().gpio.attach(4, trigger);
+    FakeEsp32().gpio.attachOutput(4, trigger);
   }
 } emulator;
 

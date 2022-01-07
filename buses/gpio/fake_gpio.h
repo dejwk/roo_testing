@@ -123,12 +123,12 @@ class FakeGpioInterface {
 
   // Does not take ownership.
   void attachInput(uint8_t pin,
-                   const roo_testing_transducers::Voltage& voltage);
+                   const roo_testing_transducers::VoltageSource& voltage);
 
   // Takes ownership.
   void attachInput(
       uint8_t pin,
-      std::unique_ptr<const roo_testing_transducers::Voltage> voltage);
+      std::unique_ptr<const roo_testing_transducers::VoltageSource> voltage);
 
   FakeGpioPin& get(uint8_t pin) const;
 

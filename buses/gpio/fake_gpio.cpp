@@ -4,7 +4,7 @@
 
 #include "glog/logging.h"
 
-using roo_testing_transducers::Voltage;
+using roo_testing_transducers::VoltageSource;
 
 FakeGpioInterface::FakeGpioInterface() {}
 
@@ -51,7 +51,7 @@ namespace {
 
 class InputPin : public SimpleFakeGpioPin {
  public:
-  InputPin(const Voltage* input, bool owned)
+  InputPin(const VoltageSource* input, bool owned)
       : SimpleFakeGpioPin(input->name()), input_(input), owned_(owned) {}
 
   ~InputPin() {
@@ -61,22 +61,23 @@ class InputPin : public SimpleFakeGpioPin {
   float read() const override { return input_->read(); }
 
   void onWrite(float voltage) override {
-    LOG(ERROR) << "Writing to a voltage input " << name()
-               << " is a no-op and probably a bug";
+    LOG(ERROR) << "Writing to a voltage source " << name()
+               << " is no-op and probably a bug";
   }
 
  private:
-  const Voltage* input_;
+  const VoltageSource* input_;
   bool owned_;
 };
 
 }  // namespace
 
-void FakeGpioInterface::attachInput(uint8_t pin, const Voltage& input) {
+void FakeGpioInterface::attachInput(uint8_t pin, const VoltageSource& input) {
   attachInternal(pin, new InputPin(&input, false), true);
 }
 
-void FakeGpioInterface::attachInput(uint8_t pin, std::unique_ptr<const Voltage> input) {
+void FakeGpioInterface::attachInput(
+    uint8_t pin, std::unique_ptr<const VoltageSource> input) {
   attachInternal(pin, new InputPin(input.release(), true), true);
 }
 

@@ -15,23 +15,23 @@ static constexpr DigitalLevel DigitalLevelFromVoltage(float voltage) {
                           : kDigitalUndef;
 }
 
-class Voltage {
+class VoltageSource {
  public:
-  Voltage() {}
-  virtual ~Voltage() {}
+  VoltageSource() {}
+  virtual ~VoltageSource() {}
 
   virtual std::string name() const { return "<unnamed>"; }
 
   virtual float read() const = 0;
 };
 
-class SimpleVoltage : public Voltage {
+class SimpleVoltageSource : public VoltageSource {
  public:
-  SimpleVoltage(std::function<float()> voltage)
-      : SimpleVoltage("<unnamed>", voltage) {}
+  SimpleVoltageSource(std::function<float()> voltage)
+      : SimpleVoltageSource("<unnamed>", voltage) {}
 
-  SimpleVoltage(std::string name, std::function<float()> voltage)
-      : Voltage(), name_(std::move(name)), voltage_(std::move(voltage)) {}
+  SimpleVoltageSource(std::string name, std::function<float()> voltage)
+      : VoltageSource(), name_(std::move(name)), voltage_(std::move(voltage)) {}
 
   std::string name() const { return name_; }
 
@@ -42,12 +42,12 @@ class SimpleVoltage : public Voltage {
   std::function<float()> voltage_;
 };
 
-class ConstVoltage : public Voltage {
+class ConstVoltage : public VoltageSource {
  public:
   ConstVoltage(float value) : ConstVoltage("<unnamed>", value) {}
 
   ConstVoltage(std::string name, float value)
-      : Voltage(), name_(std::move(name)), value_(std::move(value)) {}
+      : VoltageSource(), name_(std::move(name)), value_(std::move(value)) {}
 
   std::string name() const { return name_; }
 

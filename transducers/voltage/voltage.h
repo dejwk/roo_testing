@@ -3,6 +3,8 @@
 #include <functional>
 #include <string>
 
+#include "roo_testing/transducers/transducer.h"
+
 namespace roo_testing_transducers {
 
 enum DigitalLevel {
@@ -17,12 +19,10 @@ static constexpr DigitalLevel DigitalLevelFromVoltage(float voltage) {
                           : kDigitalUndef;
 }
 
-class VoltageSource {
+class VoltageSource : public Transducer {
  public:
   VoltageSource() {}
   virtual ~VoltageSource() {}
-
-  virtual const std::string& name() const { return "<unnamed>"; }
 
   virtual float read() const = 0;
 };

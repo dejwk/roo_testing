@@ -1,8 +1,7 @@
-
-
 cc_library(
     name = "voltage",
-    hdrs = ["voltage.h"],
     srcs = ["voltage.cpp"],
+    hdrs = ["voltage.h"],
     visibility = ["//visibility:public"],
+    deps = ["//roo_testing/transducers"],
 )

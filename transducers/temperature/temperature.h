@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <functional>
 
+#include "roo_testing/transducers/transducer.h"
+
 namespace roo_testing_transducers {
 
 class Temperature {
@@ -26,7 +28,7 @@ inline bool operator==(const Temperature& a, const Temperature& b) {
   return a.AsK() == b.AsK() || (std::isnan(a.AsK()) && std::isnan(b.AsK()));
 }
 
-class Thermometer {
+class Thermometer : public Transducer {
  public:
   virtual Temperature read() const = 0;
 

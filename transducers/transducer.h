@@ -7,5 +7,8 @@ class Transducer {
   Transducer() {}
   virtual ~Transducer() {}
 
-  virtual const std::string& name() const { return "<unnamed>"; }
+  virtual const std::string& name() const {
+    static std::string name = "<unnamed>";
+    return name;
+  }
 };

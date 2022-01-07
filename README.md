@@ -11,7 +11,7 @@ sudo apt-get install bazel
 mkdir foo; cd foo
 git clone git@github.com:dejwk/roo_testing.git
 cp -R roo_testing/examples/gpio/* .
-bazel run :main -- --logtostderr --v=INFO
+bazel run :main
 ```
 
 ## More interesting example
@@ -24,7 +24,7 @@ mkdir foo; cd foo
 git clone git@github.com:dejwk/roo_testing.git
 cp -R roo_testing/examples/rtc_ds3231_i2c/* .
 lib/init.sh
-bazel run :main -- --logtostderr --v=INFO
+bazel run :main
 ```
 
 ## Even more interesting example
@@ -38,7 +38,7 @@ mkdir foo; cd foo
 git clone git@github.com:dejwk/roo_testing.git
 cp -R roo_testing/examples/tft_display/* .
 lib/init.sh
-bazel run :main -- --logtostderr --v=INFO
+bazel run :main
 ```
 
 # How it works
@@ -74,6 +74,18 @@ Another basic example is the VoltageSource, which is a transducer that you can u
 * Simulated TFT displays don't model all commands, just the basic set used by common libraries.
 * Interrupts are not currently supported.
 * The emulator does not accurately reflect the microcontroller's performance - it tends to run faster because your computer has a faster CPU. (Notable exception is the SPI emulation, which reflects communication delays accurately). Also, your computer has way more memory, both on the heap and the stack. Finally, the int type is (most likely) 32-bit on your computer, but only 16-bit on the microcontroller. (It may be a good habit to use explicit integer types, like int16_t, in your sketches). Because of all that, your sketch may run great on the simulator, but still fail miserably on the real device.
+
+## Debugging with VS Code
+
+Yes! You can debug your sketches using a graphical debugger.
+
+in VS Code, navigate to Run > Add Configuration ..., then select "(gdb) Launch" as the configuration type. Change "program" to "${workspaceFolder}/bazel-bin/main", and "cwd" to "${workspaceFolder}". Finally, build the debug binary by calling
+
+```
+bazel build -c dbg :main
+```
+ 
+After that, you can Run > Start Debugging (make sure to select the just created configuration).
 
 # Please get involved!
 

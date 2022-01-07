@@ -121,6 +121,7 @@ class SimpleVoltageSink : public VoltageSink {
   void write(float voltage) override {
     if (write_fn_ != nullptr) write_fn_(voltage);
     last_written_ = voltage;
+    has_been_written_ = true;
   }
 
   float voltage() const { return last_written_; }

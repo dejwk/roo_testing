@@ -2,4 +2,7 @@
 
 #include <glog/logging.h>
 
-#include <map>
+bool SimpleFakeSpiDevice::isSelected() const {
+  cs_.warnIfUndef();
+  return cs_.isLow();
+}

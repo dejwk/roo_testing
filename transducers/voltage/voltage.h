@@ -133,11 +133,14 @@ class SimpleVoltageSink : public VoltageSink {
 
   bool isDigitalHigh() const { return digitalValue() == kDigitalHigh; }
 
+  void warnIfUnwrittenTo() const;
+
  private:
   std::string name_;
   std::function<void(float)> write_fn_;
 
   float last_written_;
+  bool has_been_written_;
 };
 
 class SimpleDigitalSink : public VoltageSink {
@@ -153,7 +156,8 @@ class SimpleDigitalSink : public VoltageSink {
       : VoltageSink(),
         name_(std::move(name)),
         write_fn_(std::move(write)),
-        last_written_(kDigitalUndef) {}
+        last_written_(kDigitalUndef),
+        has_been_written_(false) {}
 
   const std::string& name() const override { return name_; }
 
@@ -161,6 +165,7 @@ class SimpleDigitalSink : public VoltageSink {
     auto val = DigitalLevelFromVoltage(voltage);
     if (write_fn_ != nullptr) write_fn_(val);
     last_written_ = val;
+    has_been_written_ = true;
   }
 
   DigitalLevel value() const { return last_written_; }
@@ -168,11 +173,14 @@ class SimpleDigitalSink : public VoltageSink {
   bool isLow() const { return value() == kDigitalLow; }
   bool isHigh() const { return value() == kDigitalHigh; }
 
+  void warnIfUndef() const;
+
  private:
   std::string name_;
   std::function<void(DigitalLevel)> write_fn_;
 
   DigitalLevel last_written_;
+  bool has_been_written_;
 };
 
 class VoltageIO : public VoltageSource, public VoltageSink {

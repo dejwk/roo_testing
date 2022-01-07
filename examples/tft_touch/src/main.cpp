@@ -20,11 +20,15 @@ struct Emulator {
   Emulator()
       : viewport(),
         flexViewport(viewport, 2),
-        display(5, 2, 4, flexViewport),
-        touch(15, flexViewport,
+        display(flexViewport),
+        touch(flexViewport,
               FakeXpt2046Spi::Calibration(322, 196, 3899, 3691)) {
     FakeEsp32().attachSpiDevice(display, 18, 19, 23);
+    FakeEsp32().gpio.attachOutput(5, display.cs());
+    FakeEsp32().gpio.attachOutput(2, display.dc());
+    FakeEsp32().gpio.attachOutput(4, display.rst());
     FakeEsp32().attachSpiDevice(touch, 18, 19, 23);
+    FakeEsp32().gpio.attachOutput(15, touch.cs());
   }
 } emulator;
 

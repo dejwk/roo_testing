@@ -14,11 +14,13 @@ uint16_t read16(uint8_t*& buf) {
 
 void FakeIli9486Spi::transfer(const FakeSpiInterface& spi, uint8_t* buf,
                               uint16_t bit_count) {
-  if (pinRST_.isDigitalLow()) {
+  rst_.warnIfUndef();
+  dc_.warnIfUndef();
+  if (rst_.isLow()) {
     reset();
     return;
   }
-  bool command = pinDC_.isDigitalLow();
+  bool command = dc_.isLow();
   if (has_half_word_) {
     CHECK_GE(8, bit_count) << "The bit count is not divisible by 8: "
                            << bit_count;

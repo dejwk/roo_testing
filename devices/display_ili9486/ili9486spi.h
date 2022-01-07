@@ -7,14 +7,11 @@
 
 class FakeIli9486Spi : public SimpleFakeSpiDevice {
  public:
-  FakeIli9486Spi(int cs, int dc, int rst,
-                 roo_testing_transducers::Viewport& viewport,
+  FakeIli9486Spi(roo_testing_transducers::Viewport& viewport,
                  const std::string& name = "display_ILI9486")
-      : SimpleFakeSpiDevice(name, cs),
-        dc_pin_(dc),
-        rst_pin_(rst),
-        pinDC_(name + ":DC"),
-        pinRST_(name + ":RESET"),
+      : SimpleFakeSpiDevice(name),
+        dc_(name + ":DC"),
+        rst_(name + ":RESET"),
         viewport_(viewport),
         mad_ctl_(0),
         is_reset_(true),
@@ -22,21 +19,16 @@ class FakeIli9486Spi : public SimpleFakeSpiDevice {
         cmd_done_(true),
         buf_size_(0),
         has_half_word_(false) {
-    getGpioInterface()->attachOutput(dc, pinDC_);
-    getGpioInterface()->attachOutput(rst, pinRST_);
     viewport_.init(320, 480);
-  }
-
-  ~FakeIli9486Spi() {
-    getGpioInterface()->detach(dc_pin_);
-    getGpioInterface()->detach(rst_pin_);
-    SimpleFakeSpiDevice::~SimpleFakeSpiDevice();
   }
 
   void transfer(const FakeSpiInterface& spi, uint8_t* buf,
                 uint16_t bit_count) override;
 
   void flush() override { viewport_.flush(); }
+
+  roo_testing_transducers::VoltageSink& dc() { return dc_; }
+  roo_testing_transducers::VoltageSink& rst() { return rst_; }
 
  private:
   class MadCtl {
@@ -62,10 +54,8 @@ class FakeIli9486Spi : public SimpleFakeSpiDevice {
 
   void writeColor(uint16_t color);
 
-  uint8_t dc_pin_;
-  uint8_t rst_pin_;
-  roo_testing_transducers::SimpleVoltageSink pinDC_;
-  roo_testing_transducers::SimpleVoltageSink pinRST_;
+  roo_testing_transducers::SimpleDigitalSink dc_;
+  roo_testing_transducers::SimpleDigitalSink rst_;
 
   roo_testing_transducers::Viewport& viewport_;
 

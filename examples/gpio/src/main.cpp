@@ -13,7 +13,7 @@ SimpleVoltageSource sawtooth([]() -> float {
   return ((millis() / 10 % 1000) / 500.0);
 });
 
-SimpleFakeGpioOutput trigger("trigger", [](DigitalLevel level) {
+SimpleDigitalSink trigger("trigger", [](DigitalLevel level) {
   Serial.printf("Trigger detected; value: %d\n", level);
   digital_input.set(level);
 });

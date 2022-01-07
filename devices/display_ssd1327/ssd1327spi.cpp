@@ -2,8 +2,10 @@
 
 void FakeSsd1327Spi::transfer(const FakeSpiInterface& spi, uint8_t* buf,
                               uint16_t bit_count) {
-  if (pinRST_.isDigitalLow()) return;
-  bool command = pinDC_.isDigitalLow();
+  rst_.warnIfUndef();
+  dc_.warnIfUndef();
+  if (rst_.isLow()) return;
+  bool command = dc_.isLow();
   uint8_t* data = buf;
   uint8_t* end = buf + (bit_count + 7) / 8;
   if (command) {

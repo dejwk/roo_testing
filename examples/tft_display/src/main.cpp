@@ -35,8 +35,11 @@ struct Emulator {
   Emulator()
       : viewport(),
         flexViewport(viewport, 1),
-        display(5, 2, 4, flexViewport) {
+        display(flexViewport) {
     FakeEsp32().attachSpiDevice(display, 18, 19, 23);
+    FakeEsp32().gpio.attachOutput(5, display.cs());
+    FakeEsp32().gpio.attachOutput(2, display.dc());
+    FakeEsp32().gpio.attachOutput(4, display.rst());
   }
 } emulator;
 

@@ -6,12 +6,14 @@
 namespace roo_testing_transducers {
 
 enum DigitalLevel {
-  kDigitalLow = 0, kDigitalHigh = 1, kDigitalUndef = -1,
+  kDigitalLow = 0,
+  kDigitalHigh = 1,
+  kDigitalUndef = -1,
 };
 
 static constexpr DigitalLevel DigitalLevelFromVoltage(float voltage) {
   return voltage <= 0.8   ? kDigitalLow
-          : voltage >= 2.0 ? kDigitalHigh
+         : voltage >= 2.0 ? kDigitalHigh
                           : kDigitalUndef;
 }
 
@@ -20,7 +22,7 @@ class VoltageSource {
   VoltageSource() {}
   virtual ~VoltageSource() {}
 
-  virtual std::string name() const { return "<unnamed>"; }
+  virtual const std::string& name() const { return "<unnamed>"; }
 
   virtual float read() const = 0;
 };
@@ -33,7 +35,7 @@ class SimpleVoltageSource : public VoltageSource {
   SimpleVoltageSource(std::string name, std::function<float()> voltage)
       : VoltageSource(), name_(std::move(name)), voltage_(std::move(voltage)) {}
 
-  std::string name() const { return name_; }
+  const std::string& name() const { return name_; }
 
   float read() const override { return voltage_(); }
 
@@ -49,7 +51,7 @@ class ConstVoltage : public VoltageSource {
   ConstVoltage(std::string name, float value)
       : VoltageSource(), name_(std::move(name)), value_(std::move(value)) {}
 
-  std::string name() const { return name_; }
+  const std::string& name() const { return name_; }
 
   float read() const override { return value_; }
 

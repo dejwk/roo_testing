@@ -18,11 +18,6 @@ SimpleDigitalSink trigger("trigger", [](DigitalLevel level) {
   digital_input.set(level);
 });
 
-class Trigger : public SimpleFakeGpioPin {
- public:
-  Trigger() : SimpleFakeGpioPin("trigger") {}
-};
-
 // Here we attach signals to ESP32 pins.
 struct Emulator {
   Emulator() {

@@ -11,7 +11,7 @@ sudo apt-get install bazel
 mkdir foo; cd foo
 git clone git@github.com:dejwk/roo_testing.git
 cp -R roo_testing/examples/gpio/* .
-bazel run :main
+bazel run :main -- --logtostderr --v=INFO
 ```
 
 ## More interesting example
@@ -24,7 +24,7 @@ mkdir foo; cd foo
 git clone git@github.com:dejwk/roo_testing.git
 cp -R roo_testing/examples/rtc_ds3231_i2c/* .
 lib/init.sh
-bazel run :main
+bazel run :main -- --logtostderr --v=INFO
 ```
 
 ## Even more interesting example
@@ -38,7 +38,7 @@ mkdir foo; cd foo
 git clone git@github.com:dejwk/roo_testing.git
 cp -R roo_testing/examples/tft_display/* .
 lib/init.sh
-bazel run :main
+bazel run :main -- --logtostderr --v=INFO
 ```
 
 # How it works

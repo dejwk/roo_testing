@@ -16,8 +16,8 @@ class FakeSsd1327Spi : public SimpleFakeSpiDevice {
         pinDC_(name + ":DC"),
         pinRST_(name + ":RESET"),
         viewport_(viewport) {
-    getGpioInterface()->attach(dc, pinDC_);
-    getGpioInterface()->attach(rst, pinRST_);
+    getGpioInterface()->attachOutput(dc, pinDC_);
+    getGpioInterface()->attachOutput(rst, pinRST_);
     viewport_.init(128, 128);
   }
 
@@ -37,8 +37,8 @@ class FakeSsd1327Spi : public SimpleFakeSpiDevice {
 
   uint8_t dc_pin_;
   uint8_t rst_pin_;
-  SimpleFakeGpioPin pinDC_;
-  SimpleFakeGpioPin pinRST_;
+  roo_testing_transducers::SimpleVoltageSink pinDC_;
+  roo_testing_transducers::SimpleVoltageSink pinRST_;
 
   roo_testing_transducers::Viewport& viewport_;
 

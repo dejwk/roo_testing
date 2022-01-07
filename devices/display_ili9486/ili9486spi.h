@@ -22,8 +22,8 @@ class FakeIli9486Spi : public SimpleFakeSpiDevice {
         cmd_done_(true),
         buf_size_(0),
         has_half_word_(false) {
-    getGpioInterface()->attach(dc, pinDC_);
-    getGpioInterface()->attach(rst, pinRST_);
+    getGpioInterface()->attachOutput(dc, pinDC_);
+    getGpioInterface()->attachOutput(rst, pinRST_);
     viewport_.init(320, 480);
   }
 
@@ -64,8 +64,8 @@ class FakeIli9486Spi : public SimpleFakeSpiDevice {
 
   uint8_t dc_pin_;
   uint8_t rst_pin_;
-  SimpleFakeGpioPin pinDC_;
-  SimpleFakeGpioPin pinRST_;
+  roo_testing_transducers::SimpleVoltageSink pinDC_;
+  roo_testing_transducers::SimpleVoltageSink pinRST_;
 
   roo_testing_transducers::Viewport& viewport_;
 

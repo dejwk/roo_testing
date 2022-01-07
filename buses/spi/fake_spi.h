@@ -39,7 +39,7 @@ class SimpleFakeSpiDevice {
  public:
   SimpleFakeSpiDevice(const std::string& name, uint8_t cs)
       : name_(name), cs_pin_(cs), cs_(name + ":CS") {
-    getGpioInterface()->attach(cs, cs_);
+    getGpioInterface()->attachOutput(cs, cs_);
   }
 
   virtual ~SimpleFakeSpiDevice() { getGpioInterface()->detach(cs_pin_); }
@@ -56,5 +56,5 @@ class SimpleFakeSpiDevice {
  private:
   const std::string name_;
   uint8_t cs_pin_;
-  SimpleFakeGpioPin cs_;
+  roo_testing_transducers::SimpleVoltageSink cs_;
 };

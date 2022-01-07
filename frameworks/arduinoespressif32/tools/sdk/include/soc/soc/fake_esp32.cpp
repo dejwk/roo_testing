@@ -628,8 +628,8 @@ uint32_t Esp32SpiInterface::transfer() {
     if (esp32_->out_matrix.signal_for_pin(i.second.mosi) == mosi_signal_) {
       memcpy(buf, (const void*)spi_.data_buf, (mosi_bits + 7) / 8);
     } else {
-      FakeGpioPin& pin = esp32_->gpio.get(i.second.mosi);
-      if (pin.last_written() >= 1.8) {
+      const FakeGpioPin& pin = esp32_->gpio.get(i.second.mosi);
+      if (pin.isDigitalHigh()) {
         memset(buf, 0xFF, (mosi_bits + 7) / 8);
       } else {
         memset(buf, 0x00, (mosi_bits + 7) / 8);
@@ -641,9 +641,9 @@ uint32_t Esp32SpiInterface::transfer() {
     }
   }
   if (input_dev == nullptr) {
-    FakeGpioPin& pin =
+    const FakeGpioPin& pin =
         esp32_->gpio.get(esp32_->in_matrix.pin_for_signal(miso_signal_));
-    if (pin.digitalRead() == roo_testing_transducers::kDigitalHigh) {
+    if (pin.isDigitalHigh()) {
       memset((void*)spi_.data_buf, 0xFF, (miso_bits + 7) / 8);
     } else {
       memset((void*)spi_.data_buf, 0x00, (miso_bits + 7) / 8);

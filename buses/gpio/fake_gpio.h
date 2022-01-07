@@ -17,7 +17,7 @@ class FakeGpioPin {
 
   virtual ~FakeGpioPin() {}
 
-  virtual std::string name() const { return "<unnamed>"; }
+  virtual const std::string& name() const = 0;
 
   virtual float read() const {
     if (std::isnan(last_written_)) {
@@ -66,83 +66,42 @@ class FakeGpioPin {
   float last_written_;
 };
 
-class SimpleFakeGpioPin : public FakeGpioPin {
- public:
-  SimpleFakeGpioPin() : name_("<unnamed>") {}
-  SimpleFakeGpioPin(const std::string& name) : name_(name) {}
-
-  std::string name() const override { return name_; }
-
- private:
-  std::string name_;
-};
-
-class SimpleFakeGpioOutput : public SimpleFakeGpioPin {
- public:
-  SimpleFakeGpioOutput(
-      std::function<void(roo_testing_transducers::DigitalLevel)> trigger)
-      : SimpleFakeGpioPin(), trigger_(trigger) {}
-
-  SimpleFakeGpioOutput(
-      const std::string& name,
-      std::function<void(roo_testing_transducers::DigitalLevel)> trigger)
-      : SimpleFakeGpioPin(name), trigger_(trigger) {}
-
-  void onWrite(float voltage) override {
-    trigger_(roo_testing_transducers::DigitalLevelFromVoltage(voltage));
-  }
-
- private:
-  std::function<void(roo_testing_transducers::DigitalLevel)> trigger_;
-};
-
-class SimpleFakeGpioAnalogOutput : public SimpleFakeGpioPin {
- public:
-  SimpleFakeGpioAnalogOutput(std::function<void(float)> trigger)
-      : SimpleFakeGpioPin(), trigger_(trigger) {}
-
-  SimpleFakeGpioAnalogOutput(const std::string& name,
-                             std::function<void(float)> trigger)
-      : SimpleFakeGpioPin(name), trigger_(trigger) {}
-
-  void onWrite(float voltage) override { trigger_(voltage); }
-
- private:
-  std::function<void(float)> trigger_;
-};
-
 class FakeGpioInterface {
  public:
   FakeGpioInterface();
-  ~FakeGpioInterface();
 
-  void attach(uint8_t pin, FakeGpioPin& fake);
-  void attach(uint8_t pin, std::unique_ptr<FakeGpioPin> fake);
+  // Attaches a voltage sink. Does not take ownership.
+  void attachOutput(uint8_t pin, roo_testing_transducers::VoltageSink& voltage);
 
-  void detach(uint8_t pin);
+  // Attaches a voltage sink. Takes ownership.
+  void attachOutput(
+      uint8_t pin,
+      std::unique_ptr<roo_testing_transducers::VoltageSink> voltage);
 
-  // Does not take ownership.
+  // Attaches a voltage source. Does not take ownership.
   void attachInput(uint8_t pin,
                    const roo_testing_transducers::VoltageSource& voltage);
 
-  // Takes ownership.
+  // Attaches a voltage source. Takes ownership.
   void attachInput(
       uint8_t pin,
       std::unique_ptr<const roo_testing_transducers::VoltageSource> voltage);
 
   FakeGpioPin& get(uint8_t pin) const;
 
+  // Attaches a bi-directional voltage device. Does not take ownership.
+  void attach(uint8_t pin, roo_testing_transducers::VoltageIO& fake);
+
+  // Attaches a bi-directional voltage device. Takes ownership.
+  void attach(uint8_t pin,
+              std::unique_ptr<roo_testing_transducers::VoltageIO> fake);
+
+  void detach(uint8_t pin);
+
  private:
-  void attachInternal(uint8_t pin, FakeGpioPin* fake, bool owned);
+  void attachInternal(uint8_t pin, FakeGpioPin* fake);
 
-  struct Pin {
-    Pin() : ptr(nullptr), owned(false) {}
-
-    FakeGpioPin* ptr;
-    bool owned;
-  };
-
-  mutable std::vector<Pin> pins_;
+  mutable std::vector<std::unique_ptr<FakeGpioPin>> pins_;
 };
 
 FakeGpioInterface* getGpioInterface();

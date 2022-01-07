@@ -59,9 +59,10 @@ void FakeIli9486Spi::transfer(const FakeSpiInterface& spi, uint8_t* buf,
 
 void FakeIli9486Spi::handleCmd(uint16_t cmd) {
   if (!cmd_done_) {
-    LOG(WARNING) << std::hex << "Warning: new command 0x" << cmd
-                 << "has been received before the previous command 0x"
-                 << last_command_ << " has completed.";
+    LOG_EVERY_N(WARNING, 100)
+        << std::hex << "Warning: new command 0x" << cmd
+        << " has been received before the previous command 0x" << last_command_
+        << " has completed.";
   }
   cmd_done_ = false;
   buf_size_ = 0;
@@ -104,6 +105,7 @@ void FakeIli9486Spi::handleCmd(uint16_t cmd) {
     case 0x2C: {  // RAMWR.
       x_cursor_ = x0_;
       y_cursor_ = y0_;
+      cmd_done_ = true;
       break;
     }
     default: {
@@ -143,7 +145,7 @@ void FakeIli9486Spi::handleData() {
         LOG(WARNING) << "Received an unsupported value of PIXSET: 0x"
                      << std::hex << buf_[0] << ". Ignoring.";
       }
-      buf_size_ = 0;
+      cmd_done_ = true;
       break;
     }
     case 0xC0:
@@ -155,11 +157,13 @@ void FakeIli9486Spi::handleData() {
     case 0xE1: {  // PWCTRL*, VMCTRL*, NGAMCTRL
       // Silently ignore.
       buf_size_ = 0;
+      cmd_done_ = true;
       break;
     }
     default: {
       // Silently ignore.
       buf_size_ = 0;
+      cmd_done_ = true;
       break;
     }
   }

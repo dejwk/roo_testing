@@ -20,8 +20,6 @@ FakeEsp32Board& FakeEsp32() {
   return esp32;
 }
 
-FakeGpioInterface* getGpioInterface() { return &FakeEsp32().gpio; }
-
 FakeI2cInterface* getI2cInterface(uint8_t i2c_num) {
   return &FakeEsp32().i2c[i2c_num];
 }
@@ -846,5 +844,14 @@ long map(long x, long in_min, long in_max, long out_min, long out_max) {
 namespace roo_testing_transducers {
 
 Clock* getDefaultSystemClock() { return &FakeEsp32().time(); }
+
+extern "C" {
+
+void gpioFakeWrite(uint8_t pin, float voltage) {
+  FakeEsp32().gpio.get(pin).write(voltage);
+}
+
+float gpioFakeRead(uint8_t pin) { return FakeEsp32().gpio.get(pin).read(); }
+}
 
 }  // namespace roo_testing_transducers

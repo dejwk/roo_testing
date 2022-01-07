@@ -103,5 +103,3 @@ class FakeGpioInterface {
 
   mutable std::vector<std::unique_ptr<FakeGpioPin>> pins_;
 };
-
-FakeGpioInterface* getGpioInterface();

@@ -127,12 +127,3 @@ FakeGpioPin& FakeGpioInterface::get(uint8_t pin) const {
   }
   return *result;
 }
-
-extern "C" {
-
-void gpioFakeWrite(uint8_t pin, float voltage) {
-  getGpioInterface()->get(pin).write(voltage);
-}
-
-float gpioFakeRead(uint8_t pin) { return getGpioInterface()->get(pin).read(); }
-}

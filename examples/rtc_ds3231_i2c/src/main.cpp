@@ -37,5 +37,5 @@ void loop(void) {
   Serial.printf("%04d-%02d-%02d %02d:%02d:%02d\n", now.year, now.month, now.day,
                 now.hour, now.minute, now.second);
 
-  delay(999);
+  delay(1000);
 }

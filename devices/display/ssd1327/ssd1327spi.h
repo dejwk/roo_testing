@@ -9,7 +9,7 @@ class FakeSsd1327Spi : public SimpleFakeSpiDevice {
  public:
   FakeSsd1327Spi(roo_testing_transducers::Viewport& viewport,
                  const std::string& name = "display_SSD1327")
-      : SimpleFakeSpiDevice(name, cs),
+      : SimpleFakeSpiDevice(name),
         dc_(name + ":DC"),
         rst_(name + ":RESET"),
         viewport_(viewport) {

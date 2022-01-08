@@ -16,7 +16,7 @@ cc_binary(
     ],
     deps = [
         "//roo_testing/buses/onewire",
-        "//roo_testing/devices/onewire_thermometer",
+        "//roo_testing/devices/onewire/thermometer",
         "//roo_testing/frameworks/arduinoespressif32:arduino",
     ],
 )

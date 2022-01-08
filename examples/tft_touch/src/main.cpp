@@ -4,8 +4,8 @@
 
 #include "roo_testing/buses/gpio/fake_gpio.h"
 #include "roo_testing/buses/spi/fake_spi.h"
-#include "roo_testing/devices/display_ili9486/ili9486spi.h"
-#include "roo_testing/devices/touch_xpt2046/touch_xpt2046spi.h"
+#include "roo_testing/devices/display/ili9486/ili9486spi.h"
+#include "roo_testing/devices/touch/xpt2046/xpt2046spi.h"
 #include "roo_testing/transducers/ui/viewport/flex_viewport.h"
 #include "roo_testing/transducers/ui/viewport/fltk/fltk_viewport.h"
 

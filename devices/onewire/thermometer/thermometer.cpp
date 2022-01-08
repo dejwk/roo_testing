@@ -1,7 +1,6 @@
-#include "fake_onewire_thermometer.h"
+#include "roo_testing/devices/onewire/thermometer/thermometer.h"
 
 #include <stdint.h>
-
 #include <cmath>
 
 #include "roo_testing/transducers/time/clock.h"

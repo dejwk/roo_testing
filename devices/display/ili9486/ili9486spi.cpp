@@ -1,4 +1,4 @@
-#include "roo_testing/devices/display_ili9486/ili9486spi.h"
+#include "roo_testing/devices/display/ili9486/ili9486spi.h"
 
 #include <glog/logging.h>
 

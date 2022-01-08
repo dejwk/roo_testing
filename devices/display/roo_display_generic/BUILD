@@ -1,5 +1,5 @@
 cc_library(
-    name = "reference_device",
+    name = "roo_display_generic",
     srcs = [
         "reference_device.cpp",
         "reference_device.h",

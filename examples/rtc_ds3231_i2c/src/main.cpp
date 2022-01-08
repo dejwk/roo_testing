@@ -2,7 +2,7 @@
 
 #ifdef ROO_TESTING
 
-#include "roo_testing/devices/rtc_ds3231/ds3231.h"
+#include "roo_testing/devices/clock/ds3231/ds3231.h"
 
 struct Emulator {
   FakeDs3231 rtc;

@@ -14,7 +14,7 @@ cc_binary(
         "lib/Arduino-DS3231",
     ],
     deps = [
-        "//roo_testing/devices/rtc_ds3231",
+        "//roo_testing/devices/clock/ds3231",
         "//roo_testing/frameworks/arduinoespressif32:arduino",
     ],
 )

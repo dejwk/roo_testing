@@ -3,7 +3,7 @@
 
 #include <cstring>
 
-#include "ds3231.h"
+#include "roo_testing/devices/clock/ds3231/ds3231.h"
 #include "roo_testing/transducers/time/clock.h"
 
 using roo_testing_transducers::FixedThermometer;

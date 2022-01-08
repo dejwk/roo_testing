@@ -1,7 +1,7 @@
 
 
 cc_library(
-    name = "rtc_ds3231",
+    name = "ds3231",
     srcs = ["ds3231.cpp"],
     hdrs = ["ds3231.h"],
     deps = [

@@ -4,7 +4,7 @@
 
 #include "roo_testing/buses/onewire/OneWire.h"
 #include "roo_testing/buses/onewire/fake_onewire.h"
-#include "roo_testing/devices/onewire_thermometer/fake_onewire_thermometer.h"
+#include "roo_testing/devices/onewire/thermometer/thermometer.h"
 
 using namespace roo_testing_transducers;
 

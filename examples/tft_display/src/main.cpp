@@ -142,7 +142,7 @@ void loop(void) {
     {
       int16_t w = display.width();
       int16_t h = display.height();
-      DrawingContext dc(&display);
+      DrawingContext dc(display);
       dc.draw(Line(0, 0, w / 2 - 1, 0, color::Cyan));
       dc.draw(Line(0, 1, 0, h / 2 - 1, color::Cyan));
       dc.draw(Line(w / 2, 0, w - 1, 0, color::Magenta));
@@ -158,7 +158,7 @@ void loop(void) {
 
 unsigned long testFillScreen() {
   unsigned long start = micros();
-  DrawingContext dc(&display);
+  DrawingContext dc(display);
   dc.fill(color::Black);
   yield();
   dc.fill(color::Red);
@@ -197,7 +197,7 @@ class ScreenPrinter {
     y_ = y;
   }
   void println(const std::string& s) {
-    DrawingContext dc(&display);
+    DrawingContext dc(display);
     dc.setTransform(Transform()
                         .translate(0, font.metrics().glyphYMax())
                         .scale(scale_, scale_)
@@ -222,9 +222,9 @@ class ScreenPrinter {
 };
 
 unsigned long testText() {
-  DrawingContext dc(&display);
+  DrawingContext dc(display);
   dc.fill(color::Black);
-  ScreenPrinter printer(&display);
+  ScreenPrinter printer(display);
   unsigned long start = micros();
   printer.setCursor(0, 0);
   printer.setTextColor(color::White);
@@ -259,7 +259,7 @@ unsigned long testLines(Color color) {
   unsigned long start, t;
   int x1, y1, x2, y2, w = display.width(), h = display.height();
 
-  DrawingContext dc(&display);
+  DrawingContext dc(display);
   dc.fill(color::Black);
   yield();
 
@@ -317,7 +317,7 @@ unsigned long testFastLines(Color color1, Color color2) {
   unsigned long start;
   int x, y, w = display.width(), h = display.height();
 
-  DrawingContext dc(&display);
+  DrawingContext dc(display);
   dc.fill(color::Black);
   start = micros();
   for (y = 0; y < h; y += 5) dc.draw(Line(0, y, w - 1, y, color1));
@@ -330,7 +330,7 @@ unsigned long testRects(Color color) {
   unsigned long start;
   int n, i, i2, cx = display.width() / 2, cy = display.height() / 2;
 
-  DrawingContext dc(&display);
+  DrawingContext dc(display);
   dc.fill(color::Black);
   n = min(display.width(), display.height());
   start = micros();
@@ -346,7 +346,7 @@ unsigned long testFilledRects(Color color1, Color color2) {
   unsigned long start, t = 0;
   int n, i, i2, cx = display.width() / 2 - 1, cy = display.height() / 2 - 1;
 
-  DrawingContext dc(&display);
+  DrawingContext dc(display);
   dc.fill(color::Black);
   n = min(display.width(), display.height());
   for (i = n; i > 0; i -= 6) {
@@ -367,7 +367,7 @@ unsigned long testFilledCircles(uint8_t radius, Color color) {
   unsigned long start;
   int x, y, w = display.width(), h = display.height(), r2 = radius * 2;
 
-  DrawingContext dc(&display);
+  DrawingContext dc(display);
   dc.fill(color::Black);
   start = micros();
   for (x = radius; x < w; x += r2) {
@@ -384,7 +384,7 @@ unsigned long testCircles(uint8_t radius, Color color) {
   int x, y, r2 = radius * 2, w = display.width() + radius,
             h = display.height() + radius;
 
-  DrawingContext dc(&display);
+  DrawingContext dc(display);
   // Screen is not cleared for this one -- this is
   // intentional and does not affect the reported time.
   start = micros();
@@ -401,7 +401,7 @@ unsigned long testTriangles() {
   unsigned long start;
   int n, i, cx = display.width() / 2 - 1, cy = display.height() / 2 - 1;
 
-  DrawingContext dc(&display);
+  DrawingContext dc(display);
   dc.fill(color::Black);
   n = min(cx, cy);
   start = micros();
@@ -419,7 +419,7 @@ unsigned long testFilledTriangles() {
   unsigned long start, t = 0;
   int i, cx = display.width() / 2 - 1, cy = display.height() / 2 - 1;
 
-  DrawingContext dc(&display);
+  DrawingContext dc(display);
   dc.fill(color::Black);
   start = micros();
   for (i = min(cx, cy); i > 10; i -= 5) {
@@ -439,7 +439,7 @@ unsigned long testRoundRects() {
   unsigned long start;
   int w, i, i2, cx = display.width() / 2 - 1, cy = display.height() / 2 - 1;
 
-  DrawingContext dc(&display);
+  DrawingContext dc(display);
   dc.fill(color::Black);
   w = min(display.width(), display.height());
   start = micros();
@@ -456,7 +456,7 @@ unsigned long testFilledRoundRects() {
   unsigned long start;
   int i, i2, cx = display.width() / 2 - 1, cy = display.height() / 2 - 1;
 
-  DrawingContext dc(&display);
+  DrawingContext dc(display);
   dc.fill(color::Black);
   start = micros();
   for (i = min(display.width(), display.height()); i > 20; i -= 6) {

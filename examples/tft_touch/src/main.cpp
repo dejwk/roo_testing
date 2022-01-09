@@ -68,7 +68,7 @@ void loop(void) {
   bool touched = display.getTouch(&x, &y);
   if (touched) {
     was_touched = true;
-    DrawingContext dc(&display);
+    DrawingContext dc(display);
     dc.draw(Line(0, y, display.width() - 1, y, color::Red));
     dc.draw(Line(x, 0, x, display.height() - 1, color::Red));
     if (x != old_x) {
@@ -85,7 +85,7 @@ void loop(void) {
     if (was_touched) {
       Serial.println("Released!");
       was_touched = false;
-      DrawingContext dc(&display);
+      DrawingContext dc(display);
       dc.draw(Line(0, old_y, display.width() - 1, old_y, color::DarkGray));
       dc.draw(Line(old_x, 0, old_x, display.height() - 1, color::DarkGray));
     }

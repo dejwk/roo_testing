@@ -175,7 +175,7 @@ void FakeSt77xxSpi::writeColor(uint16_t color) {
   if (mad_ctl_.my()) {
     y = height_ - y;
   }
-  if (!mad_ctl_.mx()) {
+  if (mad_ctl_.mx()) {
     x = width_ - x;
   }
   viewport_.fillRect(x, y, x, y, argb);

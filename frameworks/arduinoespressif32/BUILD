@@ -11,6 +11,7 @@ cc_library(
     name = "arduino",
     srcs = glob(["cores/esp32/*hal*.c"]) + glob(
         ["**/*.cpp"],
+        exclude = ["cores/esp32/main.cpp"],
     ) + glob([
         "tools/sdk/src/*.c",
     ]) + glob([

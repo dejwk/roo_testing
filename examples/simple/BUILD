@@ -6,6 +6,6 @@ cc_binary(
         "ARDUINO=10805",
     ],
     deps = [
-        "//roo_testing/frameworks/arduinoespressif32:arduino",
+        "//roo_testing/frameworks/arduinoespressif32:arduino_main",
     ],
 )

@@ -7,18 +7,19 @@ cc_library(
 )
 
 cc_library(
-    name = "arduino_main",
-    srcs = glob(["arduino_main.cpp"]),
+    name = "arduino",
     visibility = ["//visibility:public"],
+    linkstatic = 1,
     deps = [
-        ":arduino",
+        "//roo_testing/frameworks/arduinoespressif32:arduino",
     ],
 )
 
 cc_library(
-    name = "arduino",
+    name = "arduino_main",
     visibility = ["//visibility:public"],
+    linkstatic = 1,
     deps = [
-        "//roo_testing/frameworks/arduinoespressif32:arduino",
+        "//roo_testing/frameworks/arduinoespressif32:arduino_main",
     ],
 )

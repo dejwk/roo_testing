@@ -46,7 +46,7 @@ Ili9486spi<5, 2, 4> device;
 TouchXpt2046Uncalibrated<15> touch_raw;
 TouchXpt2046<15> touch(TouchCalibration(322, 196, 3899, 3691));
 
-Display display(&device, &touch);
+Display display(device, touch);
 
 int16_t x, y;
 bool was_touched;
@@ -65,7 +65,7 @@ void loop(void) {
   int16_t old_x = x;
   int16_t old_y = y;
   unsigned long start = millis();
-  bool touched = display.getTouch(&x, &y);
+  bool touched = display.getTouch(x, y);
   if (touched) {
     was_touched = true;
     DrawingContext dc(display);

@@ -56,7 +56,7 @@ using namespace roo_display;
 #include "roo_display/driver/ili9486.h"
 Ili9486spi<5, 2, 4> device;
 
-Display display(&device, nullptr);
+Display display(device);
 FontAdafruitFixed5x7 font;
 
 unsigned long testFillScreen();
@@ -190,7 +190,7 @@ class StringPrinter : public Print {
 
 class ScreenPrinter {
  public:
-  ScreenPrinter(Display* display)
+  ScreenPrinter(Display& display)
       : display_(display), x_(0), y_(0), scale_(1) {}
   void setCursor(int16_t x, int16_t y) {
     x_ = x;
@@ -215,7 +215,7 @@ class ScreenPrinter {
   void setTextSize(int16_t size) { scale_ = size; }
 
  private:
-  Display* display_;
+  Display& display_;
   int16_t x_, y_;
   int16_t scale_;
   Color color_;

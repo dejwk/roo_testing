@@ -483,12 +483,12 @@ WiFiGenericClass::WiFiGenericClass()
 //  * set new mode
 //  * @param m WiFiMode_t
 //  */
-// bool WiFiGenericClass::mode(wifi_mode_t m)
-// {
-//     wifi_mode_t cm = getMode();
-//     if(cm == m) {
-//         return true;
-//     }
+bool WiFiGenericClass::mode(wifi_mode_t m)
+{
+    wifi_mode_t cm = getMode();
+    if(cm == m) {
+        return true;
+    }
 //     if(!cm && m){
 //         if(!espWiFiStart(_persistent)){
 //             return false;
@@ -503,8 +503,8 @@ WiFiGenericClass::WiFiGenericClass()
 //         log_e("Could not set mode! %u", err);
 //         return false;
 //     }
-//     return true;
-// }
+    return true;
+}
 
 /**
  * get WiFi mode

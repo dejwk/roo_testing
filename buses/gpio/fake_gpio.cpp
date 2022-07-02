@@ -103,7 +103,7 @@ void FakeGpioInterface::attachInput(
 void FakeGpioInterface::attachInternal(int pin, FakeGpioPin* fake) {
   CHECK_GE(pin, 0);
   CHECK_LT(pin, size_);
-  if (pin >= pins_.size()) {
+  if ((size_t)pin >= pins_.size()) {
     pins_.resize(pin + 1);
   }
   auto& val = pins_[pin];
@@ -118,7 +118,7 @@ void FakeGpioInterface::attachInternal(int pin, FakeGpioPin* fake) {
 void FakeGpioInterface::detach(int pin) { pins_[pin].reset(nullptr); }
 
 FakeGpioPin& FakeGpioInterface::get(int pin) const {
-  if (pin >= pins_.size()) {
+  if ((size_t)pin >= pins_.size()) {
     pins_.resize(pin + 1);
   }
   auto& result = pins_[pin];

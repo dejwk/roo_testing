@@ -4,6 +4,8 @@
 #include <functional>
 #include <map>
 
+#include "fake_esp32_nvs.h"
+
 #include "roo_testing/buses/gpio/fake_gpio.h"
 #include "roo_testing/buses/i2c/fake_i2c.h"
 #include "roo_testing/buses/spi/fake_spi.h"
@@ -128,6 +130,8 @@ class FakeEsp32Board {
   Esp32OutMatrix out_matrix;
 
   FakeI2cInterface i2c[2];
+
+  Nvs nvs;
 
   EmulatedTime& time() { return time_; }
   const EmulatedTime& time() const { return time_; }

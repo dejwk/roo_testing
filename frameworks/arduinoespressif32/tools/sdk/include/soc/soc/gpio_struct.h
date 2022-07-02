@@ -63,7 +63,7 @@ class Esp32GpioInReadSpec {
     return Esp32GpioInReadSpec(((mask >> shift) & sel) << shift, shift);
   }
 
-  operator uint32_t() const;
+  explicit operator uint32_t() const;
 
  private:
   uint32_t mask;
@@ -82,8 +82,8 @@ class Esp32GpioIn {
     return Esp32GpioInReadSpec() & sel;
   }
 
-  operator uint32_t() const {
-    return Esp32GpioInReadSpec();
+  explicit operator uint32_t() const {
+    return uint32_t(Esp32GpioInReadSpec());
   }
 
  private:
@@ -105,7 +105,7 @@ class Esp32GpioIn1ReadSpec {
     return Esp32GpioIn1ReadSpec(((mask >> shift) & sel) << shift, shift);
   }
 
-  operator uint32_t() const;
+  explicit operator uint32_t() const;
 
  private:
   uint32_t mask;
@@ -124,8 +124,8 @@ class Esp32GpioIn1 {
     return Esp32GpioIn1ReadSpec() & sel;
   }
 
-  operator uint32_t() const {
-    return Esp32GpioIn1ReadSpec();
+  explicit operator uint32_t() const {
+    return uint32_t(Esp32GpioIn1ReadSpec());
   }
 
  private:

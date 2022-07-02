@@ -9,6 +9,8 @@
 #include "fake_esp32_nvs.h"
 #include "fake_esp32_wifi.h"
 
+#include "fake_esp32_nvs.h"
+
 #include "roo_testing/buses/gpio/fake_gpio.h"
 #include "roo_testing/buses/i2c/fake_i2c.h"
 #include "roo_testing/buses/spi/fake_spi.h"
@@ -135,6 +137,8 @@ class FakeEsp32Board {
 
   FakeI2cInterface i2c[2];
   Esp32Wifi wifi;
+
+  Nvs nvs;
 
   Nvs nvs;
 

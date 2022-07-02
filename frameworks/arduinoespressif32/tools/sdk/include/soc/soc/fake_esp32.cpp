@@ -746,6 +746,17 @@ std::string default_fs_root_path() {
     return "";
   }
 }
+
+std::string default_nvs_file() {
+  char cwd[PATH_MAX];
+  if (getcwd(cwd, sizeof(cwd)) != nullptr) {
+    return std::string(cwd) + "/nvs.txt";
+  } else {
+    LOG(ERROR) << "getcwd() failed";
+    return "";
+  }
+}
+
 }  // namespace
 
 FakeEsp32Board::FakeEsp32Board()
@@ -753,6 +764,7 @@ FakeEsp32Board::FakeEsp32Board()
       in_matrix(),
       out_matrix(),
       i2c{FakeI2cInterface("i2c0"), FakeI2cInterface("i2c1")},
+      nvs(default_nvs_file()),
       spi{Esp32SpiInterface(SPI0, "spi0(internal)", SPICLK_OUT_IDX,
                             SPIQ_OUT_IDX, SPID_IN_IDX, this),
           Esp32SpiInterface(SPI1, "spi1(FSPI)", SPICLK_OUT_IDX, SPIQ_OUT_IDX,

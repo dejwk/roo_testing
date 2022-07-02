@@ -1,0 +1,38 @@
+syntax = "proto2";
+
+package roo_testing.esp32.nvs;
+
+enum Type {
+  I8 = 0;
+  U8 = 1;
+  I16 = 2;
+  U16 = 3;
+  I32 = 4;
+  U32 = 5;
+  I64 = 6;
+  U64 = 7;
+  STR = 8;
+  BLOB = 9;
+};
+
+message EntryValue {
+  required Type type = 1;
+  oneof Value {
+    int64 sint_value = 2;
+    uint64 uint_value = 3;
+    string str_value = 4;
+    bytes blob_value = 5;
+  }
+}
+
+message Namespace {
+  map<string, EntryValue> entries = 1;
+}
+
+message Partition {
+  map<string, Namespace> name_spaces = 1;
+}
+
+message Nvs {
+  map<string, Partition> partitions = 1;
+}

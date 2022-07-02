@@ -1,3 +1,5 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+
 cc_library(
     name = "arduino_main",
     srcs = glob(["cores/esp32/main.cpp"]),
@@ -5,6 +7,16 @@ cc_library(
     deps = [
         ":arduino",
     ],
+)
+
+proto_library(
+  name = "nvs_proto",
+  srcs = ["tools/sdk/include/nvs_flash/include/storage.proto"],
+)
+
+cc_proto_library(
+  name = "nvs_cc_proto",
+  deps = [":nvs_proto"],
 )
 
 cc_library(
@@ -22,6 +34,7 @@ cc_library(
     includes = [
         "cores/esp32/",
         "libraries/FS",
+        "libraries/Preferences/src",
         "libraries/SD/src",
         "libraries/SPI/src",
         "libraries/SPIFFS",
@@ -34,6 +47,7 @@ cc_library(
         "tools/sdk/include/ethernet",
         "tools/sdk/include/fatfs",
         "tools/sdk/include/log",
+        "tools/sdk/include/nvs_flash/include",
         "tools/sdk/include/sdmmc",
         "tools/sdk/include/soc",
         "tools/sdk/include/soc/soc",
@@ -51,5 +65,6 @@ cc_library(
         "//roo_testing/buses/spi",
         "//roo_testing/transducers/time",
         "@com_github_google_glog//:glog",
+        ":nvs_cc_proto"
     ],
 )

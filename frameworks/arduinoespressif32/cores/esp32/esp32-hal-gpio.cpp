@@ -244,9 +244,9 @@ extern int IRAM_ATTR __digitalRead(uint8_t pin)
         return output_level[pin];
     }
     if(pin < 32) {
-        return (GPIO.in >> pin) & 0x1;
+        return uint32_t((GPIO.in >> pin) & 0x1);
     } else if(pin < 40) {
-        return (GPIO.in1.val >> (pin - 32)) & 0x1;
+        return uint32_t((GPIO.in1.val >> (pin - 32)) & 0x1);
     }
     // return gpioFakeRead(pin) > VOLTAGE_THRESHOLD;
 }

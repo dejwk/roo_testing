@@ -764,6 +764,7 @@ FakeEsp32Board::FakeEsp32Board()
       in_matrix(),
       out_matrix(),
       i2c{FakeI2cInterface("i2c0"), FakeI2cInterface("i2c1")},
+      wifi(),
       nvs(default_nvs_file()),
       spi{Esp32SpiInterface(SPI0, "spi0(internal)", SPICLK_OUT_IDX,
                             SPIQ_OUT_IDX, SPID_IN_IDX, this),

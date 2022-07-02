@@ -23,6 +23,9 @@
 #ifndef ESP32WIFISCAN_H_
 #define ESP32WIFISCAN_H_
 
+#include <mutex>
+#include <condition_variable>
+
 #include "WiFiType.h"
 #include "WiFiGeneric.h"
 
@@ -56,6 +59,11 @@ protected:
 
     static void * _getScanInfoByIndex(int i);
 
+private:
+    static std::mutex mutex_;
+    static std::condition_variable condvar_;
+    static bool scanning_;
+    static bool scan_done_;
 };
 
 

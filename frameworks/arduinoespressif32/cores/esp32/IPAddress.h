@@ -91,6 +91,7 @@ public:
     friend class DNSClient;
 };
 
+#undef INADDR_NONE
 const IPAddress INADDR_NONE(0, 0, 0, 0);
 
 #endif

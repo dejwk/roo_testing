@@ -64,6 +64,7 @@ cc_library(
         "//roo_testing/buses/gpio",
         "//roo_testing/buses/spi",
         "//roo_testing/transducers/time",
+        "//roo_testing/transducers/wifi",
         "@com_github_google_glog//:glog",
         ":nvs_cc_proto"
     ],

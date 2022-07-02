@@ -3,13 +3,17 @@
 #include <chrono>
 #include <functional>
 #include <map>
+#include <thread>
 
+#include "esp_err.h"
 #include "fake_esp32_nvs.h"
+#include "fake_esp32_wifi.h"
 
 #include "roo_testing/buses/gpio/fake_gpio.h"
 #include "roo_testing/buses/i2c/fake_i2c.h"
 #include "roo_testing/buses/spi/fake_spi.h"
 #include "roo_testing/transducers/time/clock.h"
+#include "roo_testing/transducers/wifi/wifi.h"
 
 static constexpr uint16_t kMatrixDetachOutSig = 0x100;
 
@@ -130,6 +134,7 @@ class FakeEsp32Board {
   Esp32OutMatrix out_matrix;
 
   FakeI2cInterface i2c[2];
+  Esp32Wifi wifi;
 
   Nvs nvs;
 

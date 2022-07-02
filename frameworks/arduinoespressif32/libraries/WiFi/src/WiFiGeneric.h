@@ -30,6 +30,8 @@
 #include "WiFiType.h"
 #include "esp_wifi_types.h"
 
+#include "IPAddress.h"
+
 //typedef void (*WiFiEventCb)(system_event_id_t event);
 //typedef std::function<void(system_event_id_t event, system_event_info_t info)> WiFiEventFuncCb;
 //typedef void (*WiFiEventSysCb)(system_event_t *event);
@@ -79,8 +81,8 @@ class WiFiGenericClass
     //void removeEvent(WiFiEventSysCb cbEvent, system_event_id_t event = SYSTEM_EVENT_MAX);
     //void removeEvent(wifi_event_id_t id);
 
-    static int getStatusBits();
-    static int waitStatusBits(int bits, uint32_t timeout_ms);
+    // static int getStatusBits();
+    // static int waitStatusBits(int bits, uint32_t timeout_ms);
 
     int32_t channel(void);
 
@@ -104,8 +106,8 @@ class WiFiGenericClass
     static bool _persistent;
     static wifi_mode_t _forceSleepLastMode;
 
-    static int setStatusBits(int bits);
-    static int clearStatusBits(int bits);
+    // static int setStatusBits(int bits);
+    // static int clearStatusBits(int bits);
 
   public:
     static int hostByName(const char *aHostname, IPAddress &aResult);

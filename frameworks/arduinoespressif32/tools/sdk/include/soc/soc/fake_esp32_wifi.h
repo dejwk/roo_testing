@@ -177,6 +177,10 @@ class Esp32WifiAdapter {
       return ESP_OK;
     }
     state_ = DISCONNECTING;
+    std::thread t([this]() {
+      delayedNotifyDisconnected(*connection_, 200, WIFI_REASON_UNSPECIFIED);
+    });
+    t.detach();
     return ESP_OK;
   }
 
@@ -282,6 +286,25 @@ class Esp32WifiAdapter {
     {
       std::unique_lock<std::mutex> lock(mutex_);
       if (state_ != CONNECTED) return;
+    }
+    WiFiGenericClass::_eventCallback(nullptr, &event);
+  }
+
+  void delayedNotifyDisconnected(
+      const roo_testing_transducers::wifi::Connection& conn, uint32_t delay_ms,
+      uint8_t reason) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
+    const roo_testing_transducers::wifi::AccessPoint& ap = conn.access_point();
+    system_event_t event;
+    event.event_id = SYSTEM_EVENT_STA_DISCONNECTED;
+    toCharArray(ap.ssid(), event.event_info.disconnected.ssid, 33);
+    event.event_info.disconnected.ssid_len = ap.ssid().size();
+    toBSSID(ap.macAddress(), event.event_info.disconnected.bssid);
+    event.event_info.disconnected.reason = reason;
+    {
+      std::unique_lock<std::mutex> lock(mutex_);
+      if (state_ != DISCONNECTING) return;
+      state_ = DISCONNECTED;
     }
     WiFiGenericClass::_eventCallback(nullptr, &event);
   }

@@ -262,8 +262,10 @@ esp_err_t Nvs::get_str(nvs_handle_t handle, const char* key, char* value,
   roo_testing::esp32::nvs::EntryValue val;
   esp_err_t err = get(handle, key, roo_testing::esp32::nvs::STR, val);
   if (err != ESP_OK) return err;
-  size_t actual = std::max(*length, val.str_value().size());
-  memcpy(value, val.str_value().c_str(), actual);
+  size_t actual = std::max(*length, val.str_value().size() + 1);
+  if (value != nullptr) {
+    memcpy(value, val.str_value().c_str(), actual);
+  }
   *length = actual;
   return ESP_OK;
 }

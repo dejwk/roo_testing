@@ -6,7 +6,8 @@ roo_testing_transducers::wifi::Environment empty_env;
 }
 
 Esp32WifiAdapter::Esp32WifiAdapter()
-      : scan_completed_(false),
+      : mac_address_(0x78, 0x21, 0x84, 0x01, 0x01, 0x01),
         env_(&empty_env),
-        connected_(false) {}
+        scan_completed_(false),
+        state_(DISCONNECTED) {}
 

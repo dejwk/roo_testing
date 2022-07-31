@@ -23,6 +23,7 @@
 #ifndef ESP32WIFISTA_H_
 #define ESP32WIFISTA_H_
 
+#include <mutex>
 
 #include "WiFiType.h"
 #include "WiFiGeneric.h"
@@ -81,7 +82,9 @@ public:
 
     int8_t RSSI();
 
+    static std::mutex mutex_;
     static void _setStatus(wl_status_t status);
+
 protected:
     static bool _useStaticIp;
     static bool _autoReconnect;

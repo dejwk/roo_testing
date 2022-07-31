@@ -26,17 +26,20 @@
 #include <esp_err.h>
 #include "soc/soc.h"
 //#include <esp_event_loop.h>
+
+#include <esp_event.h>
+
 #include <functional>
 #include "WiFiType.h"
 #include "esp_wifi_types.h"
 
 #include "IPAddress.h"
 
-//typedef void (*WiFiEventCb)(system_event_id_t event);
-//typedef std::function<void(system_event_id_t event, system_event_info_t info)> WiFiEventFuncCb;
-//typedef void (*WiFiEventSysCb)(system_event_t *event);
+typedef void (*WiFiEventCb)(system_event_id_t event);
+typedef std::function<void(system_event_id_t event, system_event_info_t info)> WiFiEventFuncCb;
+typedef void (*WiFiEventSysCb)(system_event_t *event);
 
-//typedef size_t wifi_event_id_t;
+typedef size_t wifi_event_id_t;
 
 typedef enum {
     WIFI_POWER_19_5dBm = 78,// 19.5dBm
@@ -74,12 +77,12 @@ class WiFiGenericClass
   public:
     WiFiGenericClass();
 
-    //wifi_event_id_t onEvent(WiFiEventCb cbEvent, system_event_id_t event = SYSTEM_EVENT_MAX);
-    //wifi_event_id_t onEvent(WiFiEventFuncCb cbEvent, system_event_id_t event = SYSTEM_EVENT_MAX);
-    //wifi_event_id_t onEvent(WiFiEventSysCb cbEvent, system_event_id_t event = SYSTEM_EVENT_MAX);
-    //void removeEvent(WiFiEventCb cbEvent, system_event_id_t event = SYSTEM_EVENT_MAX);
-    //void removeEvent(WiFiEventSysCb cbEvent, system_event_id_t event = SYSTEM_EVENT_MAX);
-    //void removeEvent(wifi_event_id_t id);
+    wifi_event_id_t onEvent(WiFiEventCb cbEvent, system_event_id_t event = SYSTEM_EVENT_MAX);
+    wifi_event_id_t onEvent(WiFiEventFuncCb cbEvent, system_event_id_t event = SYSTEM_EVENT_MAX);
+    wifi_event_id_t onEvent(WiFiEventSysCb cbEvent, system_event_id_t event = SYSTEM_EVENT_MAX);
+    void removeEvent(WiFiEventCb cbEvent, system_event_id_t event = SYSTEM_EVENT_MAX);
+    void removeEvent(WiFiEventSysCb cbEvent, system_event_id_t event = SYSTEM_EVENT_MAX);
+    void removeEvent(wifi_event_id_t id);
 
     // static int getStatusBits();
     // static int waitStatusBits(int bits, uint32_t timeout_ms);
@@ -100,7 +103,7 @@ class WiFiGenericClass
     bool setTxPower(wifi_power_t power);
     wifi_power_t getTxPower();
 
-    //static esp_err_t _eventCallback(void *arg, system_event_t *event);
+    static esp_err_t _eventCallback(void *arg, system_event_t *event);
 
   protected:
     static bool _persistent;

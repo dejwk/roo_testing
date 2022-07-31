@@ -136,9 +136,7 @@ class FakeEsp32Board {
   Esp32OutMatrix out_matrix;
 
   FakeI2cInterface i2c[2];
-  Esp32Wifi wifi;
-
-  Nvs nvs;
+  Esp32WifiAdapter wifi;
 
   Nvs nvs;
 

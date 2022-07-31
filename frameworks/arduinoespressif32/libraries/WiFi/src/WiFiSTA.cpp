@@ -81,19 +81,22 @@ bool WiFiSTAClass::_useStaticIp = false;
 static wl_status_t _sta_status = WL_NO_SHIELD;
 // static EventGroupHandle_t _sta_status_group = NULL;
 
-// void WiFiSTAClass::_setStatus(wl_status_t status)
-// {
-//     if(!_sta_status_group){
-//         _sta_status_group = xEventGroupCreate();
-//         if(!_sta_status_group){
-//             log_e("STA Status Group Create Failed!");
-//             _sta_status = status;
-//             return;
-//         }
-//     }
-//     xEventGroupClearBits(_sta_status_group, 0x00FFFFFF);
-//     xEventGroupSetBits(_sta_status_group, status);
-// }
+std::mutex WiFiSTAClass::mutex_;
+
+void WiFiSTAClass::_setStatus(wl_status_t status)
+{
+    std::unique_lock<std::mutex> lock(mutex_) ;
+    // if(!_sta_status_group){
+    //     _sta_status_group = xEventGroupCreate();
+    //     if(!_sta_status_group){
+    //         log_e("STA Status Group Create Failed!");
+            _sta_status = status;
+        //     return;
+        // }
+    // }
+    // xEventGroupClearBits(_sta_status_group, 0x00FFFFFF);
+    // xEventGroupSetBits(_sta_status_group, status);
+}
 
 /**
  * Return Connection status.
@@ -102,6 +105,7 @@ static wl_status_t _sta_status = WL_NO_SHIELD;
  */
 wl_status_t WiFiSTAClass::status()
 {
+    std::unique_lock<std::mutex> lock(mutex_) ;
     // if(!_sta_status_group){
         return _sta_status;
     // }

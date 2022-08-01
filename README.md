@@ -9,7 +9,7 @@ I built it to test my sketches that tend to use a variety of external devices, f
 ```
 sudo apt-get install bazel
 mkdir foo; cd foo
-git clone git@github.com:dejwk/roo_testing.git
+git clone https://github.com/dejwk/roo_testing.git
 cp -R roo_testing/examples/gpio/* .
 bazel run :main
 ```
@@ -21,7 +21,7 @@ Now let's look at an example that simulates an external I2C real-time clock, usi
 ```
 sudo apt-get install bazel
 mkdir foo; cd foo
-git clone git@github.com:dejwk/roo_testing.git
+git clone https://github.com/dejwk/roo_testing.git
 cp -R roo_testing/examples/rtc_ds3231_i2c/* .
 lib/init.sh
 bazel run :main
@@ -35,7 +35,7 @@ Now let's simulate a SPI-based TFT display. This example requires an FLTK librar
 sudo apt-get install bazel
 sudo apt-get install libfltk1.3-dev
 mkdir foo; cd foo
-git clone git@github.com:dejwk/roo_testing.git
+git clone https://github.com/dejwk/roo_testing.git
 cp -R roo_testing/examples/tft_display/* .
 lib/init.sh
 bazel run :main

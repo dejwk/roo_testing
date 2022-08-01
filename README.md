@@ -62,13 +62,14 @@ Another basic example is the VoltageSource, which is a transducer that you can u
 * I2C
 * Networking
 * SPIFFS, mouting a local directory
+* NVS, using a local file for storage
 * SD (rudimentary)
 * External devices: a couple of TFT displays, the DS3231 real time clock, and the temperature sensors using the OneWire interface.
 
 ## Limitations (call for contributors!)
 
 * Only the Arduino framework is supported for now.
-* Networking is very rudimentary: most functions are no-op, and the network bridges to your native connection. As long as your computer is connected to the network, the emulated microcontroller will also have network access.
+* WiFi is incomplete; only the station mode is reasonably emulated. Some functions are no-op. The network bridges to your native connection. As long as your computer is connected to the network, the emulated microcontroller will also have network access.
 * SD is also very rudimentary; it redirects file system operations to a local directory, without emulating any of the SPI protocol. (The consequence is, for example, that performance is unrealistically fast).
 * I2C is modeled at the interface level, bypassing some low-level OS queues and hardware pins. (As long as you use standard libraries, it doesn't matter much).
 * Simulated TFT displays don't model all commands, just the basic set used by common libraries.

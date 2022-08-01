@@ -169,18 +169,22 @@ class Esp32WifiAdapter {
   }
 
   esp_err_t disconnect() {
-    std::unique_lock<std::mutex> lock(mutex_);
-    if (state_ == DISCONNECTED || state_ == DISCONNECTING) return ESP_OK;
-    if (state_ == CONNECTING) {
-      state_ = DISCONNECTED;
-      connection_ = nullptr;
-      return ESP_OK;
+    // Make the disconnect synchronous so that reconnect blocks.
+    {
+      std::unique_lock<std::mutex> lock(mutex_);
+      if (state_ == DISCONNECTED || state_ == DISCONNECTING) return ESP_OK;
+      if (state_ == CONNECTING) {
+        state_ = DISCONNECTED;
+        connection_ = nullptr;
+        return ESP_OK;
+      }
+      state_ = DISCONNECTING;
     }
-    state_ = DISCONNECTING;
     std::thread t([this]() {
       delayedNotifyDisconnected(*connection_, 200, WIFI_REASON_UNSPECIFIED);
     });
-    t.detach();
+    // t.detach();
+    t.join();
     return ESP_OK;
   }
 

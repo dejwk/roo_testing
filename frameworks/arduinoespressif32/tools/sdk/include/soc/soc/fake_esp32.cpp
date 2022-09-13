@@ -11,7 +11,6 @@
 
 #include "esp32-hal-spi.h"
 #include "glog/logging.h"
-#include "soc/gpio_struct.h"
 #include "soc/spi_struct.h"
 
 FakeEsp32Board& FakeEsp32() {
@@ -22,8 +21,6 @@ FakeEsp32Board& FakeEsp32() {
 FakeI2cInterface* getI2cInterface(uint8_t i2c_num) {
   return &FakeEsp32().i2c[i2c_num];
 }
-
-gpio_dev_t GPIO;
 
 namespace {
 
@@ -673,66 +670,6 @@ uint32_t Esp32SpiUsr::operator=(uint32_t val) const volatile {
     spiFakeTransferOnDevice(3);
   }
   return val;
-}
-
-uint32_t Esp32GpioOutW1tc::operator=(uint32_t val) const {
-  uint32_t result = val;
-  for (int i = 0; i < 32; ++i) {
-    if (val & 1) FakeEsp32().gpio.get(i).digitalWriteLow();
-    val >>= 1;
-  }
-  return result;
-}
-
-uint32_t Esp32GpioOutW1ts::operator=(uint32_t val) const {
-  uint32_t result = val;
-  for (int i = 0; i < 32; ++i) {
-    if (val & 1) FakeEsp32().gpio.get(i).digitalWriteHigh();
-    val >>= 1;
-  }
-  return result;
-}
-
-uint32_t Esp32GpioOut1W1tc::operator=(uint32_t val) const {
-  uint32_t result = val;
-  for (int i = 32; i < 40; ++i) {
-    if (val & 1) FakeEsp32().gpio.get(i).digitalWriteLow();
-    val >>= 1;
-  }
-  return result;
-}
-
-uint32_t Esp32GpioOut1W1ts::operator=(uint32_t val) const {
-  uint32_t result = val;
-  for (int i = 32; i < 40; ++i) {
-    if (val & 1) FakeEsp32().gpio.get(i).digitalWriteHigh();
-    val >>= 1;
-  }
-  return result;
-}
-
-Esp32GpioInReadSpec::operator uint32_t() const {
-  uint32_t val = mask;
-  uint32_t result = 0;
-  for (int i = 0; i < 32; ++i) {
-    if (val & 1) {
-      result |= (FakeEsp32().gpio.get(i).read() > 1.7) << i;
-    }
-    val >>= 1;
-  }
-  return result >> shift;
-}
-
-Esp32GpioIn1ReadSpec::operator uint32_t() const {
-  uint32_t val = mask;
-  uint32_t result = 0;
-  for (int i = 32; i < 40; ++i) {
-    if (val & 1) {
-      result |= (FakeEsp32().gpio.get(i).read() > 1.7) << (i - 32);
-    }
-    val >>= 1;
-  }
-  return result >> shift;
 }
 
 namespace {

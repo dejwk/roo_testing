@@ -5,7 +5,6 @@
 #include <map>
 #include <thread>
 
-#include "esp_err.h"
 #include "fake_esp32_nvs.h"
 #include "fake_esp32_wifi.h"
 

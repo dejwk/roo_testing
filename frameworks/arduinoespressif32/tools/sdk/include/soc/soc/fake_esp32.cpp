@@ -11,7 +11,6 @@
 
 #include "esp32-hal-spi.h"
 #include "glog/logging.h"
-#include "soc/gpio_sig_map.h"
 #include "soc/gpio_struct.h"
 #include "soc/spi_struct.h"
 
@@ -766,14 +765,14 @@ FakeEsp32Board::FakeEsp32Board()
       i2c{FakeI2cInterface("i2c0"), FakeI2cInterface("i2c1")},
       wifi(),
       nvs(default_nvs_file()),
-      spi{Esp32SpiInterface(SPI0, "spi0(internal)", SPICLK_OUT_IDX,
-                            SPIQ_OUT_IDX, SPID_IN_IDX, this),
-          Esp32SpiInterface(SPI1, "spi1(FSPI)", SPICLK_OUT_IDX, SPIQ_OUT_IDX,
-                            SPID_IN_IDX, this),
-          Esp32SpiInterface(SPI2, "spi2(HSPI)", HSPICLK_OUT_IDX, HSPIQ_OUT_IDX,
-                            HSPID_IN_IDX, this),
-          Esp32SpiInterface(SPI3, "spi3(VSPI)", VSPICLK_OUT_IDX, VSPIQ_OUT_IDX,
-                            VSPID_IN_IDX, this)},
+      spi{Esp32SpiInterface(SPI0, "spi0(internal)", /*SPICLK_OUT_IDX*/ 0,
+                            /*SPIQ_OUT_IDX*/ 1, /*SPID_IN_IDX*/ 2, this),
+          Esp32SpiInterface(SPI1, "spi1(FSPI)", /*SPICLK_OUT_IDX*/ 0, /*SPIQ_OUT_IDX*/ 1,
+                            /*SPID_IN_IDX*/ 2, this),
+          Esp32SpiInterface(SPI2, "spi2(HSPI)", /*HSPICLK_OUT_IDX*/ 8, /*HSPIQ_OUT_IDX*/ 9,
+                            /*HSPID_IN_IDX*/ 10, this),
+          Esp32SpiInterface(SPI3, "spi3(VSPI)", /*VSPICLK_OUT_IDX*/ 63, /*VSPIQ_OUT_IDX*/ 64,
+                            /*VSPID_IN_IDX*/ 65, this)},
       fs_root_(default_fs_root_path()),
       time_([this]() { flush(); }) {
   FLAGS_stderrthreshold = google::WARNING;

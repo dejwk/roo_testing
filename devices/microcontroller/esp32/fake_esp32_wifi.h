@@ -1,19 +1,50 @@
 #pragma once
 
-#include <chrono>
-#include <functional>
-#include <map>
-#include <thread>
+// #include <chrono>
+// #include <functional>
+// #include <map>
+// #include <thread>
 
-#include "WiFiScan.h"
-#include "esp_err.h"
-#include "esp_wifi.h"
-#include "fake_esp32_nvs.h"
-#include "roo_testing/buses/gpio/fake_gpio.h"
-#include "roo_testing/buses/i2c/fake_i2c.h"
-#include "roo_testing/buses/spi/fake_spi.h"
-#include "roo_testing/transducers/time/clock.h"
+// #include "WiFiScan.h"
+// #include "esp_err.h"
+// #include "esp_wifi.h"
+// #include "fake_esp32_nvs.h"
+// #include "roo_testing/buses/gpio/fake_gpio.h"
+// #include "roo_testing/buses/i2c/fake_i2c.h"
+// #include "roo_testing/buses/spi/fake_spi.h"
+// #include "roo_testing/transducers/time/clock.h"
+
+#include <cstring>
+
 #include "roo_testing/transducers/wifi/wifi.h"
+
+#include "fake_esp32_err.h"
+#include "fake_esp32_wifi_types.h"
+#include "fake_esp32_wifi_interface.h"
+
+typedef int32_t esp_err_t;
+
+#define ESP_ERR_WIFI_NOT_INIT    (ESP_ERR_WIFI_BASE + 1)   /*!< WiFi driver was not installed by esp_wifi_init */
+#define ESP_ERR_WIFI_NOT_STARTED (ESP_ERR_WIFI_BASE + 2)   /*!< WiFi driver was not started by esp_wifi_start */
+#define ESP_ERR_WIFI_NOT_STOPPED (ESP_ERR_WIFI_BASE + 3)   /*!< WiFi driver was not stopped by esp_wifi_stop */
+#define ESP_ERR_WIFI_IF          (ESP_ERR_WIFI_BASE + 4)   /*!< WiFi interface error */
+#define ESP_ERR_WIFI_MODE        (ESP_ERR_WIFI_BASE + 5)   /*!< WiFi mode error */
+#define ESP_ERR_WIFI_STATE       (ESP_ERR_WIFI_BASE + 6)   /*!< WiFi internal state error */
+#define ESP_ERR_WIFI_CONN        (ESP_ERR_WIFI_BASE + 7)   /*!< WiFi internal control block of station or soft-AP error */
+#define ESP_ERR_WIFI_NVS         (ESP_ERR_WIFI_BASE + 8)   /*!< WiFi internal NVS module error */
+#define ESP_ERR_WIFI_MAC         (ESP_ERR_WIFI_BASE + 9)   /*!< MAC address is invalid */
+#define ESP_ERR_WIFI_SSID        (ESP_ERR_WIFI_BASE + 10)   /*!< SSID is invalid */
+#define ESP_ERR_WIFI_PASSWORD    (ESP_ERR_WIFI_BASE + 11)  /*!< Password is invalid */
+#define ESP_ERR_WIFI_TIMEOUT     (ESP_ERR_WIFI_BASE + 12)  /*!< Timeout error */
+#define ESP_ERR_WIFI_WAKE_FAIL   (ESP_ERR_WIFI_BASE + 13)  /*!< WiFi is in sleep state(RF closed) and wakeup fail */
+#define ESP_ERR_WIFI_WOULD_BLOCK (ESP_ERR_WIFI_BASE + 14)  /*!< The caller would block */
+#define ESP_ERR_WIFI_NOT_CONNECT (ESP_ERR_WIFI_BASE + 15)  /*!< Station still in disconnect status */
+
+#define ESP_ERR_WIFI_POST        (ESP_ERR_WIFI_BASE + 18)  /*!< Failed to post the event to WiFi task */
+#define ESP_ERR_WIFI_INIT_STATE  (ESP_ERR_WIFI_BASE + 19)  /*!< Invalid WiFi state when init/deinit is called */
+#define ESP_ERR_WIFI_STOP_STATE  (ESP_ERR_WIFI_BASE + 20)  /*!< Returned when WiFi is stopping */
+#define ESP_ERR_WIFI_NOT_ASSOC   (ESP_ERR_WIFI_BASE + 21)  /*!< The WiFi connection is not associated */
+#define ESP_ERR_WIFI_TX_DISALLOW (ESP_ERR_WIFI_BASE + 22)  /*!< The WiFi TX is disallowed */
 
 namespace {
 
@@ -71,6 +102,19 @@ inline wifi_ap_record_t toApRecord(
 }
 
 }  // namespace
+
+void notifyScanDone(int num_networks);
+
+void notifyNoAp(const std::string& ssid,
+                const roo_testing_transducers::wifi::MacAddress* mac_address);
+
+void notifyWrongPassword(const roo_testing_transducers::wifi::Connection& conn);
+
+void notifyConnected(const roo_testing_transducers::wifi::Connection& conn);
+
+void notifyGotIp(const roo_testing_transducers::wifi::Connection& conn);
+
+void notifyDisconnected(const roo_testing_transducers::wifi::Connection& conn);
 
 class Esp32WifiAdapter {
  public:
@@ -207,11 +251,7 @@ class Esp32WifiAdapter {
       scan_completed_ = true;
       scan_result_ = ESP_OK;
     }
-    system_event_t event;
-    event.event_id = SYSTEM_EVENT_SCAN_DONE;
-    event.event_info.scan_done = {
-        .status = 0, .number = (uint8_t)known_networks_.size(), .scan_id = 0};
-    WiFiGenericClass::_eventCallback(nullptr, &event);
+    notifyScanDone(known_networks_.size());
   }
 
   void delayedNotifyNoAP(
@@ -219,14 +259,14 @@ class Esp32WifiAdapter {
       const roo_testing_transducers::wifi::MacAddress* mac_address,
       uint32_t delay_ms) {
     std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
-    system_event_t event;
-    event.event_id = SYSTEM_EVENT_STA_DISCONNECTED;
-    event.event_info.disconnected.reason = WIFI_REASON_NO_AP_FOUND;
-    toCharArray(ssid, event.event_info.disconnected.ssid, 33);
-    event.event_info.disconnected.ssid_len = ssid.size();
-    if (mac_address != nullptr) {
-      toBSSID(*mac_address, event.event_info.disconnected.bssid);
-    }
+    // system_event_t event;
+    // event.event_id = SYSTEM_EVENT_STA_DISCONNECTED;
+    // event.event_info.disconnected.reason = WIFI_REASON_NO_AP_FOUND;
+    // toCharArray(ssid, event.event_info.disconnected.ssid, 33);
+    // event.event_info.disconnected.ssid_len = ssid.size();
+    // if (mac_address != nullptr) {
+    //   toBSSID(*mac_address, event.event_info.disconnected.bssid);
+    // }
     bool notify = false;
     {
       std::unique_lock<std::mutex> lock(mutex_);
@@ -235,7 +275,7 @@ class Esp32WifiAdapter {
       state_ = DISCONNECTED;
     }
     if (notify) {
-      WiFiGenericClass::_eventCallback(nullptr, &event);
+      notifyNoAp(ssid, mac_address);
     }
   }
 
@@ -243,39 +283,39 @@ class Esp32WifiAdapter {
       const roo_testing_transducers::wifi::Connection& conn,
       uint32_t delay_ms) {
     std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
-    const roo_testing_transducers::wifi::AccessPoint& ap = conn.access_point();
-    system_event_t event;
-    event.event_id = SYSTEM_EVENT_STA_DISCONNECTED;
-    event.event_info.disconnected.reason = WIFI_REASON_AUTH_FAIL;
-    toCharArray(ap.ssid(), event.event_info.disconnected.ssid, 33);
-    event.event_info.disconnected.ssid_len = ap.ssid().size();
-    toBSSID(ap.macAddress(), event.event_info.disconnected.bssid);
+    // const roo_testing_transducers::wifi::AccessPoint& ap = conn.access_point();
+    // system_event_t event;
+    // event.event_id = SYSTEM_EVENT_STA_DISCONNECTED;
+    // event.event_info.disconnected.reason = WIFI_REASON_AUTH_FAIL;
+    // toCharArray(ap.ssid(), event.event_info.disconnected.ssid, 33);
+    // event.event_info.disconnected.ssid_len = ap.ssid().size();
+    // toBSSID(ap.macAddress(), event.event_info.disconnected.bssid);
     {
       std::unique_lock<std::mutex> lock(mutex_);
       if (state_ != CONNECTING) return;
       state_ = DISCONNECTED;
     }
-    WiFiGenericClass::_eventCallback(nullptr, &event);
+    notifyWrongPassword(conn);
   }
 
   void delayedNotifyConnected(
       const roo_testing_transducers::wifi::Connection& conn,
       uint32_t delay_ms) {
     std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
-    const roo_testing_transducers::wifi::AccessPoint& ap = conn.access_point();
-    system_event_t event;
-    event.event_id = SYSTEM_EVENT_STA_CONNECTED;
-    event.event_info.connected.authmode = toAuthMode(ap.auth_mode());
-    event.event_info.connected.channel = ap.channel();
-    toCharArray(ap.ssid(), event.event_info.connected.ssid, 33);
-    event.event_info.connected.ssid_len = ap.ssid().size();
-    toBSSID(ap.macAddress(), event.event_info.connected.bssid);
+    // const roo_testing_transducers::wifi::AccessPoint& ap = conn.access_point();
+    // system_event_t event;
+    // event.event_id = SYSTEM_EVENT_STA_CONNECTED;
+    // event.event_info.connected.authmode = toAuthMode(ap.auth_mode());
+    // event.event_info.connected.channel = ap.channel();
+    // toCharArray(ap.ssid(), event.event_info.connected.ssid, 33);
+    // event.event_info.connected.ssid_len = ap.ssid().size();
+    // toBSSID(ap.macAddress(), event.event_info.connected.bssid);
     {
       std::unique_lock<std::mutex> lock(mutex_);
       if (state_ != CONNECTING) return;
       state_ = CONNECTED;
     }
-    WiFiGenericClass::_eventCallback(nullptr, &event);
+    notifyConnected(conn);
     std::thread t([this]() { delayedNotifyGotIP(*connection_, 300); });
     t.detach();
   }
@@ -283,34 +323,34 @@ class Esp32WifiAdapter {
   void delayedNotifyGotIP(const roo_testing_transducers::wifi::Connection& conn,
                           uint32_t delay_ms) {
     std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
-    const roo_testing_transducers::wifi::AccessPoint& ap = conn.access_point();
-    system_event_t event;
-    event.event_id = SYSTEM_EVENT_STA_GOT_IP;
+    // const roo_testing_transducers::wifi::AccessPoint& ap = conn.access_point();
+    // system_event_t event;
+    // event.event_id = SYSTEM_EVENT_STA_GOT_IP;
     // event.event_info.got_ip.if_index = 0;
     {
       std::unique_lock<std::mutex> lock(mutex_);
       if (state_ != CONNECTED) return;
     }
-    WiFiGenericClass::_eventCallback(nullptr, &event);
+    notifyGotIp(conn);
   }
 
   void delayedNotifyDisconnected(
       const roo_testing_transducers::wifi::Connection& conn, uint32_t delay_ms,
       uint8_t reason) {
     std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
-    const roo_testing_transducers::wifi::AccessPoint& ap = conn.access_point();
-    system_event_t event;
-    event.event_id = SYSTEM_EVENT_STA_DISCONNECTED;
-    toCharArray(ap.ssid(), event.event_info.disconnected.ssid, 33);
-    event.event_info.disconnected.ssid_len = ap.ssid().size();
-    toBSSID(ap.macAddress(), event.event_info.disconnected.bssid);
-    event.event_info.disconnected.reason = reason;
+    // const roo_testing_transducers::wifi::AccessPoint& ap = conn.access_point();
+    // system_event_t event;
+    // event.event_id = SYSTEM_EVENT_STA_DISCONNECTED;
+    // toCharArray(ap.ssid(), event.event_info.disconnected.ssid, 33);
+    // event.event_info.disconnected.ssid_len = ap.ssid().size();
+    // toBSSID(ap.macAddress(), event.event_info.disconnected.bssid);
+    // event.event_info.disconnected.reason = reason;
     {
       std::unique_lock<std::mutex> lock(mutex_);
       if (state_ != DISCONNECTING) return;
       state_ = DISCONNECTED;
     }
-    WiFiGenericClass::_eventCallback(nullptr, &event);
+    notifyDisconnected(conn);
   }
 
   // Checks if there is an AP matching the sta_config_ criteria.

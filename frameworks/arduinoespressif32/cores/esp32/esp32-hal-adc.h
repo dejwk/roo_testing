@@ -33,8 +33,8 @@ typedef enum {
     ADC_11db
 } adc_attenuation_t;
 
-void gpioFakeWrite(uint8_t pin, float voltage);
-float gpioFakeRead(uint8_t pin);
+// void gpioFakeWrite(uint8_t pin, float voltage);
+// float gpioFakeRead(uint8_t pin);
 
 /*
  * Get ADC value for pin

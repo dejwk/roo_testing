@@ -9,9 +9,9 @@
 #include <set>
 #include <thread>
 
-#include "esp32-hal-spi.h"
+// #include "esp32-hal-spi.h"
 #include "glog/logging.h"
-#include "soc/spi_struct.h"
+// #include "soc/spi_struct.h"
 
 FakeEsp32Board& FakeEsp32() {
   static FakeEsp32Board esp32;
@@ -29,17 +29,6 @@ Esp32InMatrix::Esp32InMatrix() {
 Esp32OutMatrix::Esp32OutMatrix() {
   std::fill(&pin_to_signal_[0], &pin_to_signal_[40], kMatrixDetachInUndefPin);
 }
-
-Esp32SpiInterface::Esp32SpiInterface(volatile SpiDevType& spi,
-                                     const std::string& name,
-                                     uint8_t clk_signal, uint8_t miso_signal,
-                                     uint8_t mosi_signal, FakeEsp32Board* esp32)
-    : FakeSpiInterface(name),
-      spi_(spi),
-      clk_signal_(clk_signal),
-      miso_signal_(miso_signal),
-      mosi_signal_(mosi_signal),
-      esp32_(esp32) {}
 
 namespace {
 
@@ -138,14 +127,5 @@ long map(long x, long in_min, long in_max, long out_min, long out_max) {
 namespace roo_testing_transducers {
 
 Clock* getDefaultSystemClock() { return &FakeEsp32().time(); }
-
-extern "C" {
-
-void gpioFakeWrite(uint8_t pin, float voltage) {
-  FakeEsp32().gpio.get(pin).write(voltage);
-}
-
-float gpioFakeRead(uint8_t pin) { return FakeEsp32().gpio.get(pin).read(); }
-}
 
 }  // namespace roo_testing_transducers

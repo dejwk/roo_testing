@@ -1,15 +1,18 @@
+// #include "fake_esp32_soc_gpio.h"
+
+// #include <limits.h>
+// #include <unistd.h>
+
+// #include <algorithm>
+// #include <cstring>
+// #include <random>
+// #include <set>
+// #include <thread>
+
+// #include "soc/gpio_struct.h"
 #include "fake_esp32_soc_gpio.h"
+#include "fake_esp32_soc_gpio_struct.h"
 
-#include <limits.h>
-#include <unistd.h>
-
-#include <algorithm>
-#include <cstring>
-#include <random>
-#include <set>
-#include <thread>
-
-#include "soc/gpio_struct.h"
 #include "fake_esp32.h"
 
 gpio_dev_t GPIO;

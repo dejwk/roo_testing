@@ -1,6 +1,6 @@
 #include "gpio.h"
 
-#include "fake_esp32.h"
+#include "roo_testing/devices/microcontroller/esp32/fake_esp32.h"
 
 extern "C" {
 

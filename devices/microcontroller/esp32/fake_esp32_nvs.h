@@ -1,13 +1,13 @@
 #pragma once
 
-#include <chrono>
-#include <functional>
-#include <map>
-#include <thread>
+#include <inttypes.h>
 
-#include "esp_err.h"
-#include "nvs.h"
-#include "roo_testing/frameworks/arduinoespressif32/tools/sdk/include/nvs_flash/include/storage.pb.h"
+// #include "esp_err.h"
+// #include "nvs.h"
+#include "roo_testing/devices/microcontroller/esp32/storage.pb.h"
+
+typedef int32_t esp_err_t;
+typedef uint32_t nvs_handle_t;
 
 class Nvs {
  public:

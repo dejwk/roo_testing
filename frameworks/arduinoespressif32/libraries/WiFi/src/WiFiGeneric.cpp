@@ -25,6 +25,8 @@
 #include "WiFi.h"
 #include "WiFiGeneric.h"
 
+#include "roo_testins/transducers/wifi/wifi.h"
+
 extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
@@ -41,7 +43,6 @@ extern "C" {
 //#include "lwip/err.h"
 //#include "lwip/dns.h"
 #include "esp_ipc.h"
-
 
 } //extern "C"
 
@@ -331,6 +332,126 @@ void WiFiGenericClass::removeEvent(wifi_event_id_t id)
             cbEventList.erase(cbEventList.begin() + i);
         }
     }
+}
+
+namespace {
+
+// inline wifi_auth_mode_t toAuthMode(
+//     const roo_testing_transducers::wifi::AuthMode auth_mode) {
+//   return (wifi_auth_mode_t)auth_mode;
+// }
+
+inline void toBSSID(
+    const roo_testing_transducers::wifi::MacAddress& mac_address,
+    uint8_t* bssid) {
+  bssid[0] = mac_address.get(0);
+  bssid[1] = mac_address.get(1);
+  bssid[2] = mac_address.get(2);
+  bssid[3] = mac_address.get(3);
+  bssid[4] = mac_address.get(4);
+  bssid[5] = mac_address.get(5);
+}
+
+// inline std::string fromCharArray(const char* cstr) {
+//   return std::string(cstr, strlen(cstr));
+// }
+
+inline void toCharArray(const std::string& in, uint8_t* out, int maxlen) {
+  size_t len = in.size() + 1;
+  if (len > maxlen) len = maxlen;
+  memcpy(out, in.c_str(), len);
+}
+
+// inline wifi_ap_record_t toApRecord(
+//     const roo_testing_transducers::wifi::AccessPoint& ap) {
+//   wifi_ap_record_t record;
+//   toBSSID(ap.macAddress(), record.bssid);
+//   toCharArray(ap.ssid(), record.ssid, 33);
+//   record.primary = ap.channel();
+//   record.second = WIFI_SECOND_CHAN_NONE;
+//   record.rssi = ap.rssi();
+//   record.authmode = toAuthMode(ap.auth_mode());
+//   record.pairwise_cipher = WIFI_CIPHER_TYPE_NONE;
+//   record.group_cipher = WIFI_CIPHER_TYPE_NONE;
+//   record.ant = WIFI_ANT_ANT0;
+//   record.phy_11b = 1;
+//   record.phy_11g = 1;
+//   record.phy_11n = 1;
+//   record.phy_lr = 0;
+//   record.wps = 0;
+//   // record.ftm_responder = 0;
+//   // record.ftm_initiator = 0;
+//   record.country = {.cc = "PL",
+//                     .schan = 11,
+//                     .nchan = 1,
+//                     .max_tx_power = 0,
+//                     .policy = WIFI_COUNTRY_POLICY_AUTO};
+//   return record;
+// }
+
+}  // namespace
+
+void notifyScanDone(int num_networks) {
+    system_event_t event;
+    event.event_id = SYSTEM_EVENT_SCAN_DONE;
+    event.event_info.scan_done = {
+        .status = 0, .number = (uint8_t)num_networks, .scan_id = 0};
+    WiFiGenericClass::_eventCallback(nullptr, &event);
+}
+
+void notifyNoAp(const std::string& ssid,
+                const roo_testing_transducers::wifi::MacAddress* mac_address) {
+    const roo_testing_transducers::wifi::AccessPoint& ap = conn.access_point();
+    system_event_t event;
+    event.event_id = SYSTEM_EVENT_STA_DISCONNECTED;
+    event.event_info.disconnected.reason = WIFI_REASON_NO_AP_FOUND;
+    toCharArray(ssid, event.event_info.disconnected.ssid, 33);
+    event.event_info.disconnected.ssid_len = ssid.size();
+    if (mac_address != nullptr) {
+      toBSSID(*mac_address, event.event_info.disconnected.bssid);
+    }
+    WiFiGenericClass::_eventCallback(nullptr, &event);
+}
+
+void notifyWrongPassword(const roo_testing_transducers::wifi::Connection& conn) {
+    const roo_testing_transducers::wifi::AccessPoint& ap = conn.access_point();
+    system_event_t event;
+    event.event_id = SYSTEM_EVENT_STA_DISCONNECTED;
+    event.event_info.disconnected.reason = WIFI_REASON_AUTH_FAIL;
+    toCharArray(ap.ssid(), event.event_info.disconnected.ssid, 33);
+    event.event_info.disconnected.ssid_len = ap.ssid().size();
+    toBSSID(ap.macAddress(), event.event_info.disconnected.bssid);
+    WiFiGenericClass::_eventCallback(nullptr, &event);
+}
+
+void notifyConnected(const roo_testing_transducers::wifi::Connection& conn) {
+    const roo_testing_transducers::wifi::AccessPoint& ap = conn.access_point();
+    system_event_t event;
+    event.event_id = SYSTEM_EVENT_STA_CONNECTED;
+    event.event_info.connected.authmode = toAuthMode(ap.auth_mode());
+    event.event_info.connected.channel = ap.channel();
+    toCharArray(ap.ssid(), event.event_info.connected.ssid, 33);
+    event.event_info.connected.ssid_len = ap.ssid().size();
+    toBSSID(ap.macAddress(), event.event_info.connected.bssid);
+    WiFiGenericClass::_eventCallback(nullptr, &event);
+}
+
+void notifyGotIP(const roo_testing_transducers::wifi::Connection& conn) {
+    system_event_t event;
+    event.event_id = SYSTEM_EVENT_STA_GOT_IP;
+    event.event_info.got_ip.if_index = 0;
+    WiFiGenericClass::_eventCallback(nullptr, &event);
+}
+
+void notifyDisconnected(const roo_testing_transducers::wifi::Connection& conn) {
+    const roo_testing_transducers::wifi::AccessPoint& ap = conn.access_point();
+    system_event_t event;
+    event.event_id = SYSTEM_EVENT_STA_DISCONNECTED;
+    toCharArray(ap.ssid(), event.event_info.disconnected.ssid, 33);
+    event.event_info.disconnected.ssid_len = ap.ssid().size();
+    toBSSID(ap.macAddress(), event.event_info.disconnected.bssid);
+    event.event_info.disconnected.reason = reason;
+    WiFiGenericClass::_eventCallback(nullptr, &event);
 }
 
 /**

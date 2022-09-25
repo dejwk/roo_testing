@@ -16,6 +16,6 @@
 
 #include <stdint.h>
 
-#include "fake_esp32_soc_gpio_struct.h"
+#include "roo_testing/devices/microcontroller/esp32/fake_esp32_soc_gpio_struct.h"
 
 #endif  /* _SOC_GPIO_STRUCT_H_ */

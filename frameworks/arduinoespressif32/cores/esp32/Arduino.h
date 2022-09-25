@@ -20,8 +20,6 @@
 #ifndef Arduino_h
 #define Arduino_h
 
-#include "fake_esp32.h"
-
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdarg.h>

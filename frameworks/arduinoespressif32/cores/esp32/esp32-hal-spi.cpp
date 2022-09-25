@@ -28,11 +28,6 @@
 // #include "soc/dport_reg.h"
 #include "soc/rtc.h"
 
-spi_dev_t SPI0;                                      /* SPI0 IS FOR INTERNAL USE*/
-spi_dev_t SPI1;
-spi_dev_t SPI2;
-spi_dev_t SPI3;
-
 #define SPI_CLK_IDX(p)  ((p==0)?SPICLK_OUT_IDX:((p==1)?SPICLK_OUT_IDX:((p==2)?HSPICLK_OUT_IDX:((p==3)?VSPICLK_OUT_IDX:0))))
 #define SPI_MISO_IDX(p) ((p==0)?SPIQ_OUT_IDX:((p==1)?SPIQ_OUT_IDX:((p==2)?HSPIQ_OUT_IDX:((p==3)?VSPIQ_OUT_IDX:0))))
 #define SPI_MOSI_IDX(p) ((p==0)?SPID_IN_IDX:((p==1)?SPID_IN_IDX:((p==2)?HSPID_IN_IDX:((p==3)?VSPID_IN_IDX:0))))

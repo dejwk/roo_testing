@@ -81,4 +81,5 @@ void gpioFakeWrite(uint8_t pin, float voltage) {
 }
 
 float gpioFakeRead(uint8_t pin) { return FakeEsp32().gpio.get(pin).read(); }
+
 }

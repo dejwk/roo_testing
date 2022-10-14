@@ -9,9 +9,7 @@
 #include <set>
 #include <thread>
 
-// #include "esp32-hal-spi.h"
 #include "glog/logging.h"
-// #include "soc/spi_struct.h"
 
 FakeEsp32Board& FakeEsp32() {
   static FakeEsp32Board esp32;
@@ -58,21 +56,43 @@ FakeEsp32Board::FakeEsp32Board()
     : gpio(40),
       in_matrix(),
       out_matrix(),
+      uart_{Esp32UartInterface("uart0", /* U0TXD_OUT_IDX*/ 14,
+                               /* U0RXD_IN_IDX*/ 14, this),
+            Esp32UartInterface("uart1", /* U0TXD_OUT_IDX*/ 17,
+                               /* U0RXD_IN_IDX*/ 17, this),
+            Esp32UartInterface("uart2", /* U0TXD_OUT_IDX*/ 198,
+                               /* U0RXD_IN_IDX*/ 198, this)},
       i2c{FakeI2cInterface("i2c0"), FakeI2cInterface("i2c1")},
+      adc_{
+        Esp32Adc(*this, {36, 37, 38, 39, 32, 33, 34, 35, -1, -1}),
+        Esp32Adc(*this, {4, 0, 2, 15, 13, 12, 14, 27, 25, 26})
+      },
       wifi(),
       nvs(default_nvs_file()),
       spi{Esp32SpiInterface(SPI0, "spi0(internal)", /*SPICLK_OUT_IDX*/ 0,
                             /*SPIQ_OUT_IDX*/ 1, /*SPID_IN_IDX*/ 2, this),
-          Esp32SpiInterface(SPI1, "spi1(FSPI)", /*SPICLK_OUT_IDX*/ 0, /*SPIQ_OUT_IDX*/ 1,
+          Esp32SpiInterface(SPI1, "spi1(FSPI)", /*SPICLK_OUT_IDX*/ 0,
+                            /*SPIQ_OUT_IDX*/ 1,
                             /*SPID_IN_IDX*/ 2, this),
-          Esp32SpiInterface(SPI2, "spi2(HSPI)", /*HSPICLK_OUT_IDX*/ 8, /*HSPIQ_OUT_IDX*/ 9,
+          Esp32SpiInterface(SPI2, "spi2(HSPI)", /*HSPICLK_OUT_IDX*/ 8,
+                            /*HSPIQ_OUT_IDX*/ 9,
                             /*HSPID_IN_IDX*/ 10, this),
-          Esp32SpiInterface(SPI3, "spi3(VSPI)", /*VSPICLK_OUT_IDX*/ 63, /*VSPIQ_OUT_IDX*/ 64,
+          Esp32SpiInterface(SPI3, "spi3(VSPI)", /*VSPICLK_OUT_IDX*/ 63,
+                            /*VSPIQ_OUT_IDX*/ 64,
                             /*VSPID_IN_IDX*/ 65, this)},
       fs_root_(default_fs_root_path()),
       time_([this]() { flush(); }) {
   FLAGS_stderrthreshold = google::WARNING;
-  google::InitGoogleLogging("ESP32_emulator");
+  attachUartDevice(*(new ConsoleUartDevice()), 1, 3);
+  out_matrix.assign(1, 14, false, false);
+}
+
+void FakeEsp32Board::attachUartDevice(FakeUartDevice& dev, int8_t tx,
+                                      int8_t rx) {
+  uart_devices_to_pins_[&dev] = UartPins{
+      .tx = tx,
+      .rx = rx,
+  };
 }
 
 void FakeEsp32Board::attachSpiDevice(SimpleFakeSpiDevice& dev, int8_t clk,

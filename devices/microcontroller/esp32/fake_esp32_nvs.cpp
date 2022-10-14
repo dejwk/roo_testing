@@ -57,7 +57,9 @@ Nvs::Nvs(const std::string& path) : path_(path), next_id_(0) {
     std::ifstream input_file(path);
     if (!input_file.is_open()) {
       std::cerr << "WARNING: could not open the NVS storage file - '" << path
-                << "'" << std::endl;
+                << "'. Creating new one." << std::endl;
+      // Try creating a new file.
+      save();
       return;
     }
     std::cout << "NVS storage file opened: " << path << std::endl;

@@ -1,13 +1,13 @@
 #pragma once
 
-#include <chrono>
-#include <functional>
 #include <map>
-#include <thread>
 
+#include "fake_esp32_adc.h"
 #include "fake_esp32_nvs.h"
 #include "fake_esp32_spi.h"
+#include "fake_esp32_reg.h"
 #include "fake_esp32_time.h"
+#include "fake_esp32_uart.h"
 #include "fake_esp32_wifi.h"
 
 #include "fake_esp32_spi_struct.h"
@@ -15,6 +15,7 @@
 #include "roo_testing/buses/gpio/fake_gpio.h"
 #include "roo_testing/buses/i2c/fake_i2c.h"
 #include "roo_testing/buses/spi/fake_spi.h"
+#include "roo_testing/buses/uart/fake_uart.h"
 #include "roo_testing/transducers/wifi/wifi.h"
 
 static constexpr uint16_t kMatrixDetachOutSig = 0x100;
@@ -54,6 +55,11 @@ class Esp32OutMatrix {
   std::map<uint8_t, uint8_t> signal_to_pins_;
 };
 
+struct UartPins {
+  int8_t tx;
+  int8_t rx;
+};
+
 struct SpiPins {
   int8_t clk;
   int8_t miso;
@@ -75,8 +81,14 @@ class FakeEsp32Board {
   EmulatedTime& time() { return time_; }
   const EmulatedTime& time() const { return time_; }
 
+  void attachUartDevice(FakeUartDevice& dev, int8_t tx, int8_t rx);
+
   void attachSpiDevice(SimpleFakeSpiDevice& dev, int8_t clk, int8_t miso,
                        int8_t mosi);
+
+  const std::map<FakeUartDevice*, UartPins>& uart_devices() const {
+    return uart_devices_to_pins_;
+  }
 
   const std::map<SimpleFakeSpiDevice*, SpiPins>& spi_devices() const {
     return spi_devices_to_pins_;
@@ -88,15 +100,28 @@ class FakeEsp32Board {
 
   void set_fs_root(std::string fs_root) { fs_root_ = std::move(fs_root); }
 
+  Esp32UartInterface uart(int idx) {
+    return uart_[idx];
+  }
+
+  EspReg& reg() { return reg_; }
+  Esp32Adc& adc(int idx) { return adc_[idx]; }
+
  private:
   friend FakeEsp32Board& FakeEsp32();
   friend void spiFakeTransferOnDevice(int8_t spi_num);
 
   FakeEsp32Board();
 
+  EspReg reg_;
+
+  Esp32UartInterface uart_[3];
   Esp32SpiInterface spi[4];
+  Esp32Adc adc_[2];
 
   std::map<SimpleFakeSpiDevice*, SpiPins> spi_devices_to_pins_;
+  std::map<FakeUartDevice*, UartPins> uart_devices_to_pins_;
+
   std::string fs_root_;
   EmulatedTime time_;
 };

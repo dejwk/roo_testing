@@ -11,7 +11,7 @@ cc_library(
     visibility = ["//visibility:public"],
     linkstatic = 1,
     deps = [
-        "//roo_testing/frameworks/arduinoespressif32:arduino",
+        "//roo_testing/frameworks/arduino-esp32-2.0.4/cores/esp32",
     ],
 )
 
@@ -20,6 +20,6 @@ cc_library(
     visibility = ["//visibility:public"],
     linkstatic = 1,
     deps = [
-        "//roo_testing/frameworks/arduinoespressif32:arduino_main",
+        "//roo_testing/frameworks/arduino-esp32-2.0.4/cores/esp32:main",
     ],
 )

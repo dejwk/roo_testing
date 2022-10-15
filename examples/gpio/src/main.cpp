@@ -3,6 +3,7 @@
 #ifdef ROO_TESTING
 
 #include "roo_testing/transducers/voltage/voltage.h"
+#include "roo_testing/devices/microcontroller/esp32/fake_esp32.h"
 
 using namespace roo_testing_transducers;
 

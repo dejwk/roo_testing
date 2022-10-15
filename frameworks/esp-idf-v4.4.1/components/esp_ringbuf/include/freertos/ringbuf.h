@@ -73,7 +73,7 @@ typedef struct xSTATIC_RINGBUFFER {
     BaseType_t xDummy3;
     void *pvDummy4[11];
     StaticSemaphore_t xDummy5[2];
-    // portMUX_TYPE muxDummy;
+    portMUX_TYPE muxDummy;
     /** @endcond */
 } StaticRingbuffer_t;
 #endif

@@ -17,6 +17,6 @@ cc_binary(
     deps = [
         "//roo_testing/buses/onewire",
         "//roo_testing/devices/onewire/thermometer",
-        "//roo_testing/frameworks/arduinoespressif32:arduino_main",
+        "//roo_testing/frameworks/arduino-esp32-2.0.4/cores/esp32:main",
     ],
 )

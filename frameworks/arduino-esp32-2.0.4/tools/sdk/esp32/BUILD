@@ -33,7 +33,7 @@ cc_library(
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:soc_esp32",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_ipc",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_ringbuf:include",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_ringbuf",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp32:include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_netif:include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_rom",

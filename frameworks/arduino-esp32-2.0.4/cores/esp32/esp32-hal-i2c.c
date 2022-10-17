@@ -130,89 +130,89 @@ esp_err_t i2cDeinit(uint8_t i2c_num){
     return err;
 }
 
-esp_err_t i2cWrite(uint8_t i2c_num, uint16_t address, const uint8_t* buff, size_t size, uint32_t timeOutMillis){
-    esp_err_t ret = ESP_FAIL;
-    i2c_cmd_handle_t cmd = NULL;
-    if(i2c_num >= SOC_I2C_NUM){
-        return ESP_ERR_INVALID_ARG;
-    }
-#if !CONFIG_DISABLE_HAL_LOCKS
-    //acquire lock
-    if(bus[i2c_num].lock == NULL || xSemaphoreTake(bus[i2c_num].lock, portMAX_DELAY) != pdTRUE){
-        log_e("could not acquire lock");
-        return ret;
-    }
-#endif
-    if(!bus[i2c_num].initialized){
-        log_e("bus is not initialized");
-        goto end;
-    }
+// esp_err_t i2cWrite(uint8_t i2c_num, uint16_t address, const uint8_t* buff, size_t size, uint32_t timeOutMillis){
+//     esp_err_t ret = ESP_FAIL;
+//     i2c_cmd_handle_t cmd = NULL;
+//     if(i2c_num >= SOC_I2C_NUM){
+//         return ESP_ERR_INVALID_ARG;
+//     }
+// #if !CONFIG_DISABLE_HAL_LOCKS
+//     //acquire lock
+//     if(bus[i2c_num].lock == NULL || xSemaphoreTake(bus[i2c_num].lock, portMAX_DELAY) != pdTRUE){
+//         log_e("could not acquire lock");
+//         return ret;
+//     }
+// #endif
+//     if(!bus[i2c_num].initialized){
+//         log_e("bus is not initialized");
+//         goto end;
+//     }
     
-    //short implementation does not support zero size writes (example when scanning) PR in IDF?
-    //ret =  i2c_master_write_to_device((i2c_port_t)i2c_num, address, buff, size, timeOutMillis / portTICK_RATE_MS);
+//     //short implementation does not support zero size writes (example when scanning) PR in IDF?
+//     //ret =  i2c_master_write_to_device((i2c_port_t)i2c_num, address, buff, size, timeOutMillis / portTICK_RATE_MS);
 
-    ret = ESP_OK;
-    uint8_t cmd_buff[I2C_LINK_RECOMMENDED_SIZE(1)] = { 0 };
-    cmd = i2c_cmd_link_create_static(cmd_buff, I2C_LINK_RECOMMENDED_SIZE(1));
-    ret = i2c_master_start(cmd);
-    if (ret != ESP_OK) {
-        goto end;
-    }
-    ret = i2c_master_write_byte(cmd, (address << 1) | I2C_MASTER_WRITE, true);
-    if (ret != ESP_OK) {
-        goto end;
-    }
-    if(size){
-        ret = i2c_master_write(cmd, buff, size, true);
-        if (ret != ESP_OK) {
-            goto end;
-        }
-    }
-    ret = i2c_master_stop(cmd);
-    if (ret != ESP_OK) {
-        goto end;
-    }
-    ret = i2c_master_cmd_begin((i2c_port_t)i2c_num, cmd, timeOutMillis / portTICK_RATE_MS);
+//     ret = ESP_OK;
+//     uint8_t cmd_buff[I2C_LINK_RECOMMENDED_SIZE(1)] = { 0 };
+//     cmd = i2c_cmd_link_create_static(cmd_buff, I2C_LINK_RECOMMENDED_SIZE(1));
+//     ret = i2c_master_start(cmd);
+//     if (ret != ESP_OK) {
+//         goto end;
+//     }
+//     ret = i2c_master_write_byte(cmd, (address << 1) | I2C_MASTER_WRITE, true);
+//     if (ret != ESP_OK) {
+//         goto end;
+//     }
+//     if(size){
+//         ret = i2c_master_write(cmd, buff, size, true);
+//         if (ret != ESP_OK) {
+//             goto end;
+//         }
+//     }
+//     ret = i2c_master_stop(cmd);
+//     if (ret != ESP_OK) {
+//         goto end;
+//     }
+//     ret = i2c_master_cmd_begin((i2c_port_t)i2c_num, cmd, timeOutMillis / portTICK_RATE_MS);
 
-end:
-    if(cmd != NULL){
-        i2c_cmd_link_delete_static(cmd);
-    }
-#if !CONFIG_DISABLE_HAL_LOCKS
-    //release lock
-    xSemaphoreGive(bus[i2c_num].lock);
-#endif
-    return ret;
-}
+// end:
+//     if(cmd != NULL){
+//         i2c_cmd_link_delete_static(cmd);
+//     }
+// #if !CONFIG_DISABLE_HAL_LOCKS
+//     //release lock
+//     xSemaphoreGive(bus[i2c_num].lock);
+// #endif
+//     return ret;
+// }
 
-esp_err_t i2cRead(uint8_t i2c_num, uint16_t address, uint8_t* buff, size_t size, uint32_t timeOutMillis, size_t *readCount){
-    esp_err_t ret = ESP_FAIL;
-    if(i2c_num >= SOC_I2C_NUM){
-        return ESP_ERR_INVALID_ARG;
-    }
-#if !CONFIG_DISABLE_HAL_LOCKS
-    //acquire lock
-    if(bus[i2c_num].lock == NULL || xSemaphoreTake(bus[i2c_num].lock, portMAX_DELAY) != pdTRUE){
-        log_e("could not acquire lock");
-        return ret;
-    }
-#endif
-    if(!bus[i2c_num].initialized){
-        log_e("bus is not initialized");
-    } else {
-        ret = i2c_master_read_from_device((i2c_port_t)i2c_num, address, buff, size, timeOutMillis / portTICK_RATE_MS);
-        if(ret == ESP_OK){
-            *readCount = size;
-        } else {
-            *readCount = 0;
-        }
-    }
-#if !CONFIG_DISABLE_HAL_LOCKS
-    //release lock
-    xSemaphoreGive(bus[i2c_num].lock);
-#endif
-    return ret;
-}
+// esp_err_t i2cRead(uint8_t i2c_num, uint16_t address, uint8_t* buff, size_t size, uint32_t timeOutMillis, size_t *readCount){
+//     esp_err_t ret = ESP_FAIL;
+//     if(i2c_num >= SOC_I2C_NUM){
+//         return ESP_ERR_INVALID_ARG;
+//     }
+// #if !CONFIG_DISABLE_HAL_LOCKS
+//     //acquire lock
+//     if(bus[i2c_num].lock == NULL || xSemaphoreTake(bus[i2c_num].lock, portMAX_DELAY) != pdTRUE){
+//         log_e("could not acquire lock");
+//         return ret;
+//     }
+// #endif
+//     if(!bus[i2c_num].initialized){
+//         log_e("bus is not initialized");
+//     } else {
+//         ret = i2c_master_read_from_device((i2c_port_t)i2c_num, address, buff, size, timeOutMillis / portTICK_RATE_MS);
+//         if(ret == ESP_OK){
+//             *readCount = size;
+//         } else {
+//             *readCount = 0;
+//         }
+//     }
+// #if !CONFIG_DISABLE_HAL_LOCKS
+//     //release lock
+//     xSemaphoreGive(bus[i2c_num].lock);
+// #endif
+//     return ret;
+// }
 
 esp_err_t i2cWriteReadNonStop(uint8_t i2c_num, uint16_t address, const uint8_t* wbuff, size_t wsize, uint8_t* rbuff, size_t rsize, uint32_t timeOutMillis, size_t *readCount){
     esp_err_t ret = ESP_FAIL;

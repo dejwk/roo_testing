@@ -147,11 +147,12 @@ static inline void i2c_ll_set_bus_timing(i2c_dev_t *hw, i2c_clk_cal_t *bus_cfg)
  *
  * @return None
  */
-static inline void i2c_ll_txfifo_rst(i2c_dev_t *hw)
-{
-    hw->fifo_conf.tx_fifo_rst = 1;
-    hw->fifo_conf.tx_fifo_rst = 0;
-}
+// static inline void i2c_ll_txfifo_rst(i2c_dev_t *hw)
+// {
+//     hw->fifo_conf.tx_fifo_rst = 1;
+//     hw->fifo_conf.tx_fifo_rst = 0;
+// }
+void i2c_ll_txfifo_rst(i2c_dev_t *hw);
 
 /**
  * @brief  Reset I2C rxFIFO
@@ -482,10 +483,11 @@ static inline uint32_t i2c_ll_get_tout(i2c_dev_t *hw)
  *
  * @return None
  */
-static inline void i2c_ll_trans_start(i2c_dev_t *hw)
-{
-    hw->ctr.trans_start = 1;
-}
+// static inline void i2c_ll_trans_start(i2c_dev_t *hw)
+// {
+//     hw->ctr.trans_start = 1;
+// }
+void i2c_ll_trans_start(i2c_dev_t *hw);
 
 /**
  * @brief Get I2C start timing configuration

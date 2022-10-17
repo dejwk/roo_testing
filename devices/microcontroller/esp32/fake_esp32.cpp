@@ -16,10 +16,6 @@ FakeEsp32Board& FakeEsp32() {
   return esp32;
 }
 
-FakeI2cInterface* getI2cInterface(uint8_t i2c_num) {
-  return &FakeEsp32().i2c[i2c_num];
-}
-
 Esp32InMatrix::Esp32InMatrix() {
   std::fill(&signal_to_pin_[0], &signal_to_pin_[256], kMatrixDetachInUndefPin);
 }
@@ -62,10 +58,15 @@ FakeEsp32Board::FakeEsp32Board()
                                /* U0RXD_IN_IDX*/ 17, this),
             Esp32UartInterface("uart2", /* U0TXD_OUT_IDX*/ 198,
                                /* U0RXD_IN_IDX*/ 198, this)},
-      i2c{FakeI2cInterface("i2c0"), FakeI2cInterface("i2c1")},
+      // i2c{FakeI2cInterface("i2c0"), FakeI2cInterface("i2c1")},
+      reg_(*this),
       adc_{
         Esp32Adc(*this, {36, 37, 38, 39, 32, 33, 34, 35, -1, -1}),
         Esp32Adc(*this, {4, 0, 2, 15, 13, 12, 14, 27, 25, 26})
+      },
+      i2c_{
+        Esp32I2c(*this, "i2c0", /*I2CEXT0_SDA_*_IDX*/ 30, /*I2CEXT0_SCL_*_IDX8*/ 29),
+        Esp32I2c(*this, "i2c1", /*I2CEXT1_SDA_*_IDX*/ 96, /*I2CEXT1_SCL_*_IDX8*/ 95),
       },
       wifi(),
       nvs(default_nvs_file()),
@@ -92,6 +93,14 @@ void FakeEsp32Board::attachUartDevice(FakeUartDevice& dev, int8_t tx,
   uart_devices_to_pins_[&dev] = UartPins{
       .tx = tx,
       .rx = rx,
+  };
+}
+
+void FakeEsp32Board::attachI2cDevice(FakeI2cDevice& dev, int8_t sda,
+                                      int8_t scl) {
+  i2c_devices_to_pins_[&dev] = I2cPins{
+      .sda = sda,
+      .scl = scl,
   };
 }
 

@@ -5,6 +5,7 @@ cc_library(
         "ets_sys.cpp", 
         "gpio.cpp",
         "itoa.c",
+        "linux/esp_rom_sys.c",
     ],
     hdrs = glob(["**/*.h"]),
     includes = [

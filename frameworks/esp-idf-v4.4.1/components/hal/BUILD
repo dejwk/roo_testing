@@ -149,6 +149,29 @@ cc_library(
 )
 
 cc_library(
+    name = "i2c_hal",
+    srcs = ["i2c_hal.c", "i2c_hal_iram.c"],
+    hdrs = [
+        "include/hal/i2c_hal.h",
+        "include/hal/i2c_types.h",
+        ],
+    defines = ["CONFIG_IDF_TARGET_ESP32"],
+    includes = [
+        "include",
+        # "platform_port/include",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:i2c",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32/include",
+    ]
+)
+
+cc_library(
     name = "i2s_hal",
     srcs = ["i2s_hal.c"],
     hdrs = [

@@ -3,6 +3,7 @@
 #include <map>
 
 #include "fake_esp32_adc.h"
+#include "fake_esp32_i2c.h"
 #include "fake_esp32_nvs.h"
 #include "fake_esp32_spi.h"
 #include "fake_esp32_reg.h"
@@ -60,6 +61,11 @@ struct UartPins {
   int8_t rx;
 };
 
+struct I2cPins {
+  int8_t sda;
+  int8_t scl;
+};
+
 struct SpiPins {
   int8_t clk;
   int8_t miso;
@@ -73,7 +79,6 @@ class FakeEsp32Board {
   Esp32InMatrix in_matrix;
   Esp32OutMatrix out_matrix;
 
-  FakeI2cInterface i2c[2];
   Esp32WifiAdapter wifi;
 
   Nvs nvs;
@@ -83,11 +88,17 @@ class FakeEsp32Board {
 
   void attachUartDevice(FakeUartDevice& dev, int8_t tx, int8_t rx);
 
+  void attachI2cDevice(FakeI2cDevice& dev, int8_t sda, int8_t scl);
+
   void attachSpiDevice(SimpleFakeSpiDevice& dev, int8_t clk, int8_t miso,
                        int8_t mosi);
 
   const std::map<FakeUartDevice*, UartPins>& uart_devices() const {
     return uart_devices_to_pins_;
+  }
+
+  const std::map<FakeI2cDevice*, I2cPins>& i2c_devices() const {
+    return i2c_devices_to_pins_;
   }
 
   const std::map<SimpleFakeSpiDevice*, SpiPins>& spi_devices() const {
@@ -106,6 +117,7 @@ class FakeEsp32Board {
 
   EspReg& reg() { return reg_; }
   Esp32Adc& adc(int idx) { return adc_[idx]; }
+  Esp32I2c& i2c(int idx) { return i2c_[idx]; }
 
  private:
   friend FakeEsp32Board& FakeEsp32();
@@ -116,11 +128,13 @@ class FakeEsp32Board {
   EspReg reg_;
 
   Esp32UartInterface uart_[3];
-  Esp32SpiInterface spi[4];
   Esp32Adc adc_[2];
+  Esp32I2c i2c_[2];
+  Esp32SpiInterface spi[4];
 
-  std::map<SimpleFakeSpiDevice*, SpiPins> spi_devices_to_pins_;
   std::map<FakeUartDevice*, UartPins> uart_devices_to_pins_;
+  std::map<FakeI2cDevice*, I2cPins> i2c_devices_to_pins_;
+  std::map<SimpleFakeSpiDevice*, SpiPins> spi_devices_to_pins_;
 
   std::string fs_root_;
   EmulatedTime time_;

@@ -55,11 +55,14 @@ extern "C" {
 //    so that reading on different CPUs no longer causes random errors APB register.
 
 // _DPORT_REG_WRITE & DPORT_REG_WRITE are equivalent.
-#define _DPORT_REG_READ(_r)        (*(volatile uint32_t *)(_r))
-#define _DPORT_REG_WRITE(_r, _v)   (*(volatile uint32_t *)(_r)) = (_v)
+// #define _DPORT_REG_READ(_r)        (*(volatile uint32_t *)(_r))
+// #define _DPORT_REG_WRITE(_r, _v)   (*(volatile uint32_t *)(_r)) = (_v)
+
+#define _DPORT_REG_READ(_r)        (fake_esp32_read_reg((_r), 0xFFFFFFFF))
+// #define _DPORT_REG_WRITE(_r, _v)   (*(volatile uint32_t *)(_r)) = (_v)
 
 // Write value to DPORT register (does not require protecting)
-#define DPORT_REG_WRITE(_r, _v)   _DPORT_REG_WRITE((_r), (_v))
+#define DPORT_REG_WRITE(_r, _v)   (fake_esp32_write_reg((_r), 0xFFFFFFFF, (_v)))
 
 /**
  * @brief Read value from register, SMP-safe version.
@@ -150,8 +153,8 @@ static inline uint32_t IRAM_ATTR DPORT_SEQUENCE_REG_READ(uint32_t reg)
 #define DPORT_FIELD_TO_VALUE2(_f, _v) (((_v)<<_f##_S) & (_f))
 
 //Register read macros with an underscore prefix access DPORT memory directly. In IDF apps, use the non-underscore versions to be SMP-safe.
-#define _DPORT_READ_PERI_REG(addr) (*((volatile uint32_t *)(addr)))
-#define _DPORT_WRITE_PERI_REG(addr, val) (*((volatile uint32_t *)(addr))) = (uint32_t)(val)
+#define _DPORT_READ_PERI_REG(addr) (fake_esp32_read_reg((addr), 0xFFFFFFFF))
+#define _DPORT_WRITE_PERI_REG(addr, val) (fake_esp32_write_reg((addr), 0xFFFFFFFF, (val)))
 #define _DPORT_REG_SET_BIT(_r, _b)  _DPORT_REG_WRITE((_r), (_DPORT_REG_READ(_r)|(_b)))
 #define _DPORT_REG_CLR_BIT(_r, _b)  _DPORT_REG_WRITE((_r), (_DPORT_REG_READ(_r) & (~(_b))))
 

@@ -40,7 +40,7 @@ extern "C" {
  * @brief Minimum size, in bytes, of the internal private structure used to describe
  * I2C commands link.
  */
-#define I2C_INTERNAL_STRUCT_SIZE (24)
+#define I2C_INTERNAL_STRUCT_SIZE (40)
 
 /**
  * @brief The following macro is used to determine the recommended size of the

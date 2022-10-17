@@ -9,10 +9,7 @@
 struct Emulator {
   FakeDs3231 rtc;
   Emulator() {
-    // NOTE: the I2C emulation is implemented at the interface level, not
-    // hardware level (for now) - i.e. the devices get attached directly to the
-    // ESP32 I2C bus, and not indirectly via pins.
-    FakeEsp32().i2c[0].attach(rtc);
+    FakeEsp32().attachI2cDevice(rtc, 21, 22);
   }
 } emulator;
 

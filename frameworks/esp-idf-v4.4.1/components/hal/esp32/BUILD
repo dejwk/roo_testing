@@ -100,6 +100,21 @@ cc_library(
 )
 
 cc_library(
+    name = "i2c",
+    srcs = ["i2c.cpp"],
+    hdrs = ["include/hal/i2c_ll.h"],
+    includes = [
+        "include"
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:include",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
+    ]
+)
+
+cc_library(
     name = "i2s",
     hdrs = ["include/hal/i2s_ll.h"],
     includes = [
@@ -121,5 +136,22 @@ cc_library(
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:interrupt_controller_hal_public",
+    ]
+)
+
+cc_library(
+    name = "clk_gate",
+    # srcs = ["interrupt_descriptor_table.c"],
+    hdrs = ["include/hal/clk_gate_ll.h"],
+    includes = [
+        "include"
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:soc_esp32",
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc",
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
+        # "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:interrupt_controller_hal_public",
     ]
 )

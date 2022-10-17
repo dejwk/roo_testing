@@ -33,7 +33,7 @@ FakeDs3231::FakeDs3231()
     : FakeDs3231(new FixedThermometer(Temperature::FromC(25))) {}
 
 FakeDs3231::FakeDs3231(Thermometer *thermometer)
-    : FakeI2cDevice(0x68),
+    : FakeI2cDevice("DS3231", 0x68),
       thermometer_(thermometer),
       register_address_(0xFF),
       time_offset_(0),
@@ -41,13 +41,13 @@ FakeDs3231::FakeDs3231(Thermometer *thermometer)
   for (int i = 0; i < 0x12; ++i) registers_[i] = 0;
 }
 
-FakeI2cDevice::Result FakeDs3231::write(uint8_t *buff, uint16_t size,
+FakeI2cDevice::Result FakeDs3231::write(const uint8_t *buf, uint16_t size,
                                         bool sendStop, uint16_t timeOutMillis) {
   assert(size > 0);
-  register_address_ = buff[0];
+  register_address_ = buf[0];
   tick();
   for (int i = 0; i < size - 1; ++i) {
-    register_write((register_address_ + i) % 0x12, buff[i + 1]);
+    register_write((register_address_ + i) % 0x12, buf[i + 1]);
   }
   flush();
 }

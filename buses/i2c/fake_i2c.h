@@ -20,10 +20,14 @@ class FakeI2cDevice {
     I2C_ERROR_NO_BEGIN
   };
 
-  FakeI2cDevice(uint16_t address) : address_(address) {}
+  FakeI2cDevice(const std::string& name, uint16_t address)
+      : name_(name), address_(address) {}
+
   virtual ~FakeI2cDevice() {}
 
-  virtual Result write(uint8_t* buff, uint16_t size, bool sendStop,
+  const std::string& name() const { return name_; }
+
+  virtual Result write(const uint8_t* buf, uint16_t size, bool sendStop,
                        uint16_t timeOutMillis) = 0;
   virtual Result read(uint8_t* buff, uint16_t size, bool sendStop,
                       uint16_t timeOutMillis) = 0;
@@ -31,6 +35,7 @@ class FakeI2cDevice {
   uint16_t address() const { return address_; }
 
  private:
+  const std::string name_;
   uint16_t address_;
 };
 

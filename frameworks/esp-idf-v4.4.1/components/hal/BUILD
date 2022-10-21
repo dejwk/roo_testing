@@ -3,7 +3,6 @@ cc_library(
     hdrs = glob(["include/**/*.h"]),
     includes = [
         "include",
-        # "platform_port/include",
     ],
     visibility = ["//visibility:public"],
 )
@@ -37,15 +36,11 @@ cc_library(
     defines = ["CONFIG_IDF_TARGET_ESP32"],
     includes = [
         "include",
-        # "platform_port/include",
     ],
     visibility = ["//visibility:public"],
     deps = [
-        # "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:cpu",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32/include",
     ]
 )
 
@@ -59,15 +54,12 @@ cc_library(
     defines = ["CONFIG_IDF_TARGET_ESP32"],
     includes = [
         "include",
-        # "platform_port/include",
     ],
     visibility = ["//visibility:public"],
     deps = [
-        # "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:touch_sensor",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32/include",
     ]
 )
 
@@ -81,41 +73,14 @@ cc_library(
     defines = ["CONFIG_IDF_TARGET_ESP32"],
     includes = [
         "include",
-        # "platform_port/include",
     ],
     visibility = ["//visibility:public"],
     deps = [
-        # "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:gpio",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32/include",
     ]
 )
-
-# cc_library(
-#     name = "dma_hal",
-#     srcs = ["dma_hal.c"],
-#     hdrs = [
-#         "include/hal/dma_hal.h",
-#         "include/hal/dma_types.h",
-#         ],
-#     defines = ["CONFIG_IDF_TARGET_ESP32"],
-#     includes = [
-#         "include",
-#         # "platform_port/include",
-#     ],
-#     visibility = ["//visibility:public"],
-#     deps = [
-#         # "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
-#         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
-#         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:dma",
-#         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
-#         # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
-#         # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32/include",
-#     ]
-# )
 
 cc_library(
     name = "adc_hal",
@@ -130,12 +95,10 @@ cc_library(
     defines = ["CONFIG_IDF_TARGET_ESP32"],
     includes = [
         "include",
-        # "platform_port/include",
     ],
     visibility = ["//visibility:public"],
     deps = [
         ":i2s_hal",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/driver/esp32:include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_rom",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
@@ -143,8 +106,6 @@ cc_library(
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:adc",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/newlib:assert",
         "//roo_testing/devices/microcontroller/esp32",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32/include",
     ]
 )
 
@@ -158,16 +119,12 @@ cc_library(
     defines = ["CONFIG_IDF_TARGET_ESP32"],
     includes = [
         "include",
-        # "platform_port/include",
     ],
     visibility = ["//visibility:public"],
     deps = [
-        # "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:i2c",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32/include",
     ]
 )
 
@@ -181,16 +138,12 @@ cc_library(
     defines = ["CONFIG_IDF_TARGET_ESP32"],
     includes = [
         "include",
-        # "platform_port/include",
     ],
     visibility = ["//visibility:public"],
     deps = [
-        # "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:i2s",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32/include",
     ]
 )
 
@@ -203,16 +156,10 @@ cc_library(
     defines = ["CONFIG_IDF_TARGET_ESP32"],
     includes = [
         "include",
-        # "platform_port/include",
     ],
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
-        # # "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:cpu",
-        # # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
-        # # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32/include",
     ]
 )
 
@@ -226,34 +173,10 @@ cc_library(
     defines = ["CONFIG_IDF_TARGET_ESP32"],
     includes = [
         "include",
-        # "platform_port/include",
     ],
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:interrupt_controller",
-        # # "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:cpu",
-        # # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
-        # # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32/include",
     ]
 )
-
-# cc_library(
-#     name = "assert",
-#     # srcs = ["assert.c"],
-#     hdrs = [
-#         "platform_port/include/hal/assert.h",
-#         ],
-#     defines = ["CONFIG_IDF_TARGET_ESP32"],
-#     includes = [
-#         "platform_port/include",
-#         # "platform_port/include",
-#     ],
-#     visibility = ["//visibility:public"],
-#     deps = [
-#         # "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
-#         # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:cpu",
-#     ]
-# )

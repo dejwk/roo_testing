@@ -11,6 +11,7 @@ cc_library(
     includes = ["."],
     linkstatic = 1,
     deps = [
+        "//roo_testing/devices/microcontroller/esp32",
         "//roo_testing/frameworks/arduino-esp32-2.0.4/tools/sdk/esp32",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_ringbuf",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc",
@@ -28,6 +29,7 @@ cc_library(
         ":esp32",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
+        "//roo_testing/frameworks/arduino-esp32-2.0.4/libraries/SPI",
         "//roo_testing/frameworks/arduino-esp32-2.0.4/libraries/Wire",
         ],
 )

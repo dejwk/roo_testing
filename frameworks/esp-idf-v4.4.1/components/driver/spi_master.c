@@ -117,7 +117,7 @@ We have two bits to control the interrupt:
 #include "esp_log.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
-#include "soc/soc_memory_layout.h"
+// #include "soc/soc_memory_layout.h"
 #include "driver/gpio.h"
 #include "hal/spi_hal.h"
 #include "esp_heap_caps.h"

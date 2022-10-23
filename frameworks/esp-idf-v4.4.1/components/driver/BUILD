@@ -54,13 +54,11 @@ cc_library(
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/freertos",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:intr_alloc",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_pm/include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_ringbuf",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:i2c_hal",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:gpio_hal",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:rtc_io_hal",
     ]
 )
 
@@ -79,7 +77,6 @@ cc_library(
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_ringbuf",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/freertos",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:adc_hal",
-#        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:dma_hal",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:gpio_hal",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:rtc_io_hal",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/log",
@@ -109,6 +106,24 @@ cc_library(
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:adc_hal",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:gpio_hal",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:i2s_hal",
+    ]
+)
+
+cc_library(
+    name = "spi",
+    srcs = [
+        "spi_master.c",
+        "spi_slave.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = [
+        "include"
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_pm/include",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:spi_hal",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:intr_alloc",
     ]
 )
 

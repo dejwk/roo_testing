@@ -11,11 +11,6 @@
 
 #include "glog/logging.h"
 
-FakeEsp32Board& FakeEsp32() {
-  static FakeEsp32Board esp32;
-  return esp32;
-}
-
 Esp32InMatrix::Esp32InMatrix() {
   std::fill(&signal_to_pin_[0], &signal_to_pin_[256], kMatrixDetachInUndefPin);
 }
@@ -47,6 +42,17 @@ std::string default_nvs_file() {
 }
 
 }  // namespace
+
+FakeEsp32Board* CreateEsp32Board() {
+  google::InitGoogleLogging("ESP32");
+  FLAGS_logtostderr = false;
+  return new FakeEsp32Board();
+}
+
+FakeEsp32Board& FakeEsp32() {
+  static FakeEsp32Board* esp32 = CreateEsp32Board();
+  return *esp32;
+}
 
 FakeEsp32Board::FakeEsp32Board()
     : gpio(40),
@@ -83,6 +89,7 @@ FakeEsp32Board::FakeEsp32Board()
                             /*VSPID_IN_IDX*/ 65, this)},
       fs_root_(default_fs_root_path()),
       time_([this]() { flush(); }) {
+  FLAGS_alsologtostderr = true;
   FLAGS_stderrthreshold = google::WARNING;
   attachUartDevice(*(new ConsoleUartDevice()), 1, 3);
   out_matrix.assign(1, 14, false, false);

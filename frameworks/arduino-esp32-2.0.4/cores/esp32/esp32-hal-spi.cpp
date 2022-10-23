@@ -19,7 +19,9 @@
 #include "freertos/semphr.h"
 #include "esp_attr.h"
 #include "soc/spi_reg.h"
-#include "soc/spi_struct.h"
+// #include "soc/spi_struct.h"
+#include "roo_testing/devices/microcontroller/esp32/fake_esp32_spi_struct.h"
+
 #include "soc/io_mux_reg.h"
 #include "soc/gpio_sig_map.h"
 #include "soc/rtc.h"
@@ -118,43 +120,49 @@ struct spi_struct_t {
 #define SPI_MUTEX_LOCK()
 #define SPI_MUTEX_UNLOCK()
 
-static spi_t _spi_bus_array[] = {
-#if CONFIG_IDF_TARGET_ESP32S2
-    {(volatile spi_dev_t *)(DR_REG_SPI1_BASE), 0},
-    {(volatile spi_dev_t *)(DR_REG_SPI2_BASE), 1},
-    {(volatile spi_dev_t *)(DR_REG_SPI3_BASE), 2}
-#elif CONFIG_IDF_TARGET_ESP32S3
-    {(volatile spi_dev_t *)(DR_REG_SPI2_BASE), 0},
-    {(volatile spi_dev_t *)(DR_REG_SPI3_BASE), 1}
-#elif CONFIG_IDF_TARGET_ESP32C3
-    {(volatile spi_dev_t *)(DR_REG_SPI2_BASE), 0}
-#else
-    {(volatile spi_dev_t *)(DR_REG_SPI0_BASE), 0},
-    {(volatile spi_dev_t *)(DR_REG_SPI1_BASE), 1},
-    {(volatile spi_dev_t *)(DR_REG_SPI2_BASE), 2},
-    {(volatile spi_dev_t *)(DR_REG_SPI3_BASE), 3}
-#endif
-};
+// static spi_t _spi_bus_array[] = {
+// #if CONFIG_IDF_TARGET_ESP32S2
+//     {(volatile spi_dev_t *)(DR_REG_SPI1_BASE), 0},
+//     {(volatile spi_dev_t *)(DR_REG_SPI2_BASE), 1},
+//     {(volatile spi_dev_t *)(DR_REG_SPI3_BASE), 2}
+// #elif CONFIG_IDF_TARGET_ESP32S3
+//     {(volatile spi_dev_t *)(DR_REG_SPI2_BASE), 0},
+//     {(volatile spi_dev_t *)(DR_REG_SPI3_BASE), 1}
+// #elif CONFIG_IDF_TARGET_ESP32C3
+//     {(volatile spi_dev_t *)(DR_REG_SPI2_BASE), 0}
+// #else
+//     {(volatile spi_dev_t *)(DR_REG_SPI0_BASE), 0},
+//     {(volatile spi_dev_t *)(DR_REG_SPI1_BASE), 1},
+//     {(volatile spi_dev_t *)(DR_REG_SPI2_BASE), 2},
+//     {(volatile spi_dev_t *)(DR_REG_SPI3_BASE), 3}
+// #endif
+// };
 #else
 #define SPI_MUTEX_LOCK()    do {} while (xSemaphoreTake(spi->lock, portMAX_DELAY) != pdPASS)
 #define SPI_MUTEX_UNLOCK()  xSemaphoreGive(spi->lock)
 
+static volatile spi_dev_t spi_[4];
+
 static spi_t _spi_bus_array[] = {
-#if CONFIG_IDF_TARGET_ESP32S2
-    {(volatile spi_dev_t *)(DR_REG_SPI1_BASE), NULL, 0},
-    {(volatile spi_dev_t *)(DR_REG_SPI2_BASE), NULL, 1},
-    {(volatile spi_dev_t *)(DR_REG_SPI3_BASE), NULL, 2}
-#elif CONFIG_IDF_TARGET_ESP32S3
-    {(volatile spi_dev_t *)(DR_REG_SPI2_BASE), NULL, 0},
-    {(volatile spi_dev_t *)(DR_REG_SPI3_BASE), NULL, 1}
-#elif CONFIG_IDF_TARGET_ESP32C3
-    {(volatile spi_dev_t *)(DR_REG_SPI2_BASE), NULL, 0}
-#else
-    {(volatile spi_dev_t *)(DR_REG_SPI0_BASE), NULL, 0},
-    {(volatile spi_dev_t *)(DR_REG_SPI1_BASE), NULL, 1},
-    {(volatile spi_dev_t *)(DR_REG_SPI2_BASE), NULL, 2},
-    {(volatile spi_dev_t *)(DR_REG_SPI3_BASE), NULL, 3}
-#endif
+    {&SPI0, NULL, 0},
+    {&SPI1, NULL, 1},
+    {&SPI2, NULL, 2},
+    {&SPI3, NULL, 3},
+// #if CONFIG_IDF_TARGET_ESP32S2
+//     {(volatile spi_dev_t *)(DR_REG_SPI1_BASE), NULL, 0},
+//     {(volatile spi_dev_t *)(DR_REG_SPI2_BASE), NULL, 1},
+//     {(volatile spi_dev_t *)(DR_REG_SPI3_BASE), NULL, 2}
+// #elif CONFIG_IDF_TARGET_ESP32S3
+//     {(volatile spi_dev_t *)(DR_REG_SPI2_BASE), NULL, 0},
+//     {(volatile spi_dev_t *)(DR_REG_SPI3_BASE), NULL, 1}
+// #elif CONFIG_IDF_TARGET_ESP32C3
+//     {(volatile spi_dev_t *)(DR_REG_SPI2_BASE), NULL, 0}
+// #else
+//     {(volatile spi_dev_t *)(DR_REG_SPI0_BASE), NULL, 0},
+//     {(volatile spi_dev_t *)(DR_REG_SPI1_BASE), NULL, 1},
+//     {(volatile spi_dev_t *)(DR_REG_SPI2_BASE), NULL, 2},
+//     {(volatile spi_dev_t *)(DR_REG_SPI3_BASE), NULL, 3}
+// #endif
 };
 #endif
 
@@ -1545,7 +1553,7 @@ uint32_t spiFrequencyToClockDiv(uint32_t freq)
                 memcpy(&bestReg, &reg, sizeof(bestReg));
                 break;
             } else if(calFreq < (int32_t) freq) {
-                if(abs(freq - calFreq) < abs(freq - bestFreq)) {
+                if(abs((int32_t)freq - calFreq) < abs((int32_t)freq - bestFreq)) {
                     bestFreq = calFreq;
                     memcpy(&bestReg, &reg, sizeof(bestReg));
                 }

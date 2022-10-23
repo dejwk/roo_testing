@@ -120,7 +120,7 @@ class FakeEsp32Board {
   Esp32I2c& i2c(int idx) { return i2c_[idx]; }
 
  private:
-  friend FakeEsp32Board& FakeEsp32();
+  friend FakeEsp32Board* CreateEsp32Board();
   friend void spiFakeTransferOnDevice(int8_t spi_num);
 
   FakeEsp32Board();

@@ -12,8 +12,24 @@ void vAssertCalled(const char* const pcFileName, unsigned long ulLine) {
   LOG(FATAL) << "ASSERTION FAILED in " << pcFileName << ":" << ulLine;
 }
 
-void vApplicationTickHook( void ) {}
-void vApplicationIdleHook( void ) {}
+void vApplicationTickHook( void ) {
+  timespec t = {
+	.tv_sec = 0,
+	.tv_nsec = 5,
+  };
+  nanosleep(&t, nullptr);
+
+}
+
+void vApplicationIdleHook( void ) {
+
+  timespec t = {
+	.tv_sec = 1,
+	.tv_nsec = 0,
+  };
+  nanosleep(&t, nullptr);
+}
+
 void vApplicationDaemonTaskStartupHook( void ) {}
 
 void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackType_t **ppxIdleTaskStackBuffer, uint32_t *pulIdleTaskStackSize )

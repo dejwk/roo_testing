@@ -80,6 +80,23 @@ cc_library(
 )
 
 cc_library(
+    name = "spi",
+    hdrs = [
+        "include/hal/spi_ll.h",
+    ],
+    includes = [
+        "include"
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_rom",
+        ":gpio",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
+    ]
+)
+
+cc_library(
     name = "i2c",
     srcs = ["i2c.cpp"],
     hdrs = ["include/hal/i2c_ll.h"],

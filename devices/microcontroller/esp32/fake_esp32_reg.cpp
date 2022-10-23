@@ -3,6 +3,7 @@
 #include "fake_esp32.h"
 #include "fake_esp32_i2c.h"
 #include "glog/logging.h"
+#include "glog/raw_logging.h"
 
 namespace {
 std::string hex32(uint32_t val) {
@@ -39,8 +40,8 @@ uint32_t& EspReg::reg(uint32_t addr) {
 }
 
 void EspReg::write(uint32_t addr, uint32_t mask, uint32_t val) {
-  LOG(INFO) << "Reg wr: " << hex32(addr) << ", " << hex32(mask) << " <- "
-            << hex32(val);
+  RAW_LOG(INFO, "Reg wr: %s & %s <- %s", hex32(addr).c_str(),
+          hex32(mask).c_str(), hex32(val).c_str());
   addr = remap(addr);
   switch (addr) {
     case remap(0x6001301C): {
@@ -64,7 +65,7 @@ void EspReg::write(uint32_t addr, uint32_t mask, uint32_t val) {
 uint32_t EspReg::read(uint32_t addr, uint32_t mask) {
   // Default to read-through.
   uint32_t val = reg(addr) & mask;
-  LOG(INFO) << "Reg rd: " << hex32(addr) << ", " << hex32(mask) << " -> "
-            << hex32(val);
+  RAW_LOG(INFO, "Reg rd: %s & %s -> %s", hex32(addr).c_str(),
+          hex32(mask).c_str(), hex32(val).c_str());
   return val;
 }

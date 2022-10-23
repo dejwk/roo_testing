@@ -19,6 +19,8 @@
 
 #ifdef ROO_TESTING
 
+#include "roo_testing/devices/microcontroller/esp32/fake_esp32.h"
+
 #include "roo_testing/devices/display/ili9486/ili9486spi.h"
 #include "roo_testing/transducers/ui/viewport/flex_viewport.h"
 #include "roo_testing/transducers/ui/viewport/fltk/fltk_viewport.h"
@@ -202,7 +204,7 @@ class ScreenPrinter {
                         .translate(0, font.metrics().glyphYMax())
                         .scale(scale_, scale_)
                         .translate(x_, y_));
-    dc.draw(StringViewLabel(font, s, color_));
+    dc.draw(StringViewLabel(s, font, color_));
     y_ += font.metrics().linespace() * scale_;
   }
   void println(double d) {

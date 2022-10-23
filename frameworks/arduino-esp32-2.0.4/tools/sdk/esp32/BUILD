@@ -26,6 +26,7 @@ cc_library(
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/driver:i2c",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/driver:i2s",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/driver:rtc_io",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/driver:spi",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/driver:include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/driver/esp32:include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_adc_cal",

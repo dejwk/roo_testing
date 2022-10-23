@@ -4,5 +4,5 @@
 void initLogging(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   FLAGS_alsologtostderr=true;
-  google::InitGoogleLogging(argv[0]);
+  // google::InitGoogleLogging(argv[0]);
 }

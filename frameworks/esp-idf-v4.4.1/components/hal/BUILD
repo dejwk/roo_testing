@@ -27,6 +27,31 @@ cc_library(
 )
 
 cc_library(
+    name = "spi_hal",
+    srcs = [
+        "spi_hal.c"
+    ],
+    hdrs = [
+        "include/hal/spi_hal.h",
+        # "include/hal/spi_master_hal.h",
+        "include/hal/spi_slave_hal.h",
+        "include/hal/spi_types.h",
+        # "include/hal/rtc_io_types.h",
+        # "include/hal/gpio_types.h",
+        ],
+    defines = ["CONFIG_IDF_TARGET_ESP32"],
+    includes = [
+        "include",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:spi",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/log",
+    ]
+)
+
+cc_library(
     name = "cpu_hal",
     srcs = ["cpu_hal.c"],
     hdrs = [

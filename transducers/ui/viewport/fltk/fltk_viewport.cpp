@@ -6,6 +6,8 @@
 #include <queue>
 #include <thread>
 
+#include <signal.h>
+
 // #define FLTK_DEVICE_NOISE_BITS 6
 // #define FLTK_MAX_PIXELS_PER_MS 100
 
@@ -381,6 +383,11 @@ class DeviceManager {
 };
 
 extern "C" void *device_func(void *p) {
+  sigset_t set;
+  sigfillset( &set );
+
+  pthread_sigmask( SIG_SETMASK, &set, NULL );
+
   DeviceManager *manager = (DeviceManager *)p;
   manager->run();
   return nullptr;

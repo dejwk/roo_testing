@@ -71,7 +71,11 @@ uint32_t rtc_clk_slow_freq_get_hz() {
 // void rtc_clk_cpu_freq_to_config(rtc_cpu_freq_t cpu_freq, rtc_cpu_freq_config_t* out_config);
 
 bool rtc_clk_cpu_freq_mhz_to_config(uint32_t freq_mhz, rtc_cpu_freq_config_t* out_config) {
-    return false;
+    out_config->freq_mhz = freq_mhz;
+    out_config->div = 1;
+    out_config->source_freq_mhz = freq_mhz;
+    out_config->source = RTC_CPU_FREQ_SRC_XTAL;
+    return true;
 }
 
 void rtc_clk_cpu_freq_set_config(const rtc_cpu_freq_config_t* config) {

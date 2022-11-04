@@ -76,11 +76,11 @@ extern "C" {
  */
 static inline uint32_t IRAM_ATTR DPORT_REG_READ(uint32_t reg)
 {
-#if defined(BOOTLOADER_BUILD) || !defined(CONFIG_ESP32_DPORT_WORKAROUND) || !defined(ESP_PLATFORM)
+// #if defined(BOOTLOADER_BUILD) || !defined(CONFIG_ESP32_DPORT_WORKAROUND) || !defined(ESP_PLATFORM)
     return _DPORT_REG_READ(reg);
-#else
-    return esp_dport_access_reg_read(reg);
-#endif
+// #else
+//     return esp_dport_access_reg_read(reg);
+// #endif
 }
 
 /**
@@ -169,11 +169,11 @@ static inline uint32_t IRAM_ATTR DPORT_SEQUENCE_REG_READ(uint32_t reg)
  */
 static inline uint32_t IRAM_ATTR DPORT_READ_PERI_REG(uint32_t reg)
 {
-#if defined(BOOTLOADER_BUILD) || !defined(CONFIG_ESP32_DPORT_WORKAROUND) || !defined(ESP_PLATFORM)
+// #if defined(BOOTLOADER_BUILD) || !defined(CONFIG_ESP32_DPORT_WORKAROUND) || !defined(ESP_PLATFORM)
     return _DPORT_REG_READ(reg);
-#else
-    return esp_dport_access_reg_read(reg);
-#endif
+// #else
+//     return esp_dport_access_reg_read(reg);
+// #endif
 }
 
 //write value to register

@@ -21,6 +21,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#include <hal/assert.h>
+
 #include_next <assert.h>
 
 /* moved part of libc provided assert to here allows

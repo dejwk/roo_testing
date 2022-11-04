@@ -6,4 +6,7 @@ cc_library(
         "include"
     ],
     visibility = ["//visibility:public"],
+    deps = [
+        "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
+    ],
 )

@@ -35,11 +35,31 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
+        ":rtc_io",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/freertos",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:intr_alloc",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:gpio_hal",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:rtc_io_hal",
+    ]
+)
+
+cc_library(
+    name = "uart",
+    srcs = ["uart.c"],
+    hdrs = glob(["**/*.h"]),
+    includes = [
+        "include"
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common",
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/freertos",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:intr_alloc",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_ringbuf",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:gpio_hal",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:uart_hal",
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:rtc_io_hal",
     ]
 )
 
@@ -112,12 +132,15 @@ cc_library(
 cc_library(
     name = "spi",
     srcs = [
+        "spi_common.c",
         "spi_master.c",
         "spi_slave.c",
+        "spi_bus_lock.c",
     ],
     hdrs = glob(["**/*.h"]),
     includes = [
-        "include"
+        "include",
+        "include/driver",
     ],
     visibility = ["//visibility:public"],
     deps = [

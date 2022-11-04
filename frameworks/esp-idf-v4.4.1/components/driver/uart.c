@@ -25,6 +25,8 @@
 #include "sdkconfig.h"
 #include "esp_rom_gpio.h"
 
+#include "esp_heap_caps.h"
+
 #if CONFIG_IDF_TARGET_ESP32
 #include "esp32/clk.h"
 #elif CONFIG_IDF_TARGET_ESP32S2

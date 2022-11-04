@@ -15,7 +15,7 @@
 #ifndef NVS_ENCRYPTED_PARTITION_HPP_
 #define NVS_ENCRYPTED_PARTITION_HPP_
 
-#include "mbedtls/aes.h"
+// #include "mbedtls/aes.h"
 #include "nvs_flash.h"
 #include "nvs_partition.hpp"
 
@@ -34,8 +34,8 @@ public:
     esp_err_t write(size_t dst_offset, const void* src, size_t size) override;
 
 protected:
-    mbedtls_aes_xts_context mEctxt;
-    mbedtls_aes_xts_context mDctxt;
+    // mbedtls_aes_xts_context mEctxt;
+    // mbedtls_aes_xts_context mDctxt;
 };
 
 } // nvs

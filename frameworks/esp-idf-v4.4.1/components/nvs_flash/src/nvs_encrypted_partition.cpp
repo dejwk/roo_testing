@@ -23,18 +23,18 @@ NVSEncryptedPartition::NVSEncryptedPartition(const esp_partition_t *partition)
 
 esp_err_t NVSEncryptedPartition::init(nvs_sec_cfg_t* cfg)
 {
-    uint8_t* eky = reinterpret_cast<uint8_t*>(cfg);
+    // uint8_t* eky = reinterpret_cast<uint8_t*>(cfg);
 
-    mbedtls_aes_xts_init(&mEctxt);
-    mbedtls_aes_xts_init(&mDctxt);
+    // mbedtls_aes_xts_init(&mEctxt);
+    // mbedtls_aes_xts_init(&mDctxt);
 
-    if (mbedtls_aes_xts_setkey_enc(&mEctxt, eky, 2 * NVS_KEY_SIZE * 8) != 0) {
-        return ESP_ERR_NVS_XTS_CFG_FAILED;
-    }
+    // if (mbedtls_aes_xts_setkey_enc(&mEctxt, eky, 2 * NVS_KEY_SIZE * 8) != 0) {
+    //     return ESP_ERR_NVS_XTS_CFG_FAILED;
+    // }
 
-    if (mbedtls_aes_xts_setkey_dec(&mDctxt, eky, 2 * NVS_KEY_SIZE * 8) != 0) {
-        return ESP_ERR_NVS_XTS_CFG_FAILED;
-    }
+    // if (mbedtls_aes_xts_setkey_dec(&mDctxt, eky, 2 * NVS_KEY_SIZE * 8) != 0) {
+    //     return ESP_ERR_NVS_XTS_CFG_FAILED;
+    // }
 
     return ESP_OK;
 }
@@ -61,11 +61,11 @@ esp_err_t NVSEncryptedPartition::read(size_t src_offset, void* dst, size_t size)
 
     memcpy(data_unit, &relAddr, sizeof(relAddr));
 
-    uint8_t *destination = reinterpret_cast<uint8_t*>(dst);
+    // uint8_t *destination = reinterpret_cast<uint8_t*>(dst);
 
-    if (mbedtls_aes_crypt_xts(&mDctxt, MBEDTLS_AES_DECRYPT, size, data_unit, destination, destination) != 0)  {
-        return ESP_ERR_NVS_XTS_DECR_FAILED;
-    }
+    // if (mbedtls_aes_crypt_xts(&mDctxt, MBEDTLS_AES_DECRYPT, size, data_unit, destination, destination) != 0)  {
+    //     return ESP_ERR_NVS_XTS_DECR_FAILED;
+    // }
 
     return ESP_OK;
 }
@@ -99,15 +99,15 @@ esp_err_t NVSEncryptedPartition::write(size_t addr, const void* src, size_t size
         uint32_t *addr_loc = (uint32_t*) &data_unit[0];
 
         *addr_loc = relAddr + offset;
-        if (mbedtls_aes_crypt_xts(&mEctxt,
-                                  MBEDTLS_AES_ENCRYPT,
-                                  entrySize,
-                                  data_unit,
-                                  buf + offset,
-                                  buf + offset) != 0)  {
-            delete buf;
-            return ESP_ERR_NVS_XTS_ENCR_FAILED;
-        }
+        // if (mbedtls_aes_crypt_xts(&mEctxt,
+        //                           MBEDTLS_AES_ENCRYPT,
+        //                           entrySize,
+        //                           data_unit,
+        //                           buf + offset,
+        //                           buf + offset) != 0)  {
+        //     delete buf;
+        //     return ESP_ERR_NVS_XTS_ENCR_FAILED;
+        // }
     }
 
     // write data

@@ -18,11 +18,13 @@
 #include "intrusive_list.h"
 #include "nvs_platform.hpp"
 #include "nvs_partition_manager.hpp"
-#include "esp_partition.h"
+// #include "esp_partition.h"
 #include <functional>
 #include "nvs_handle_simple.hpp"
 #include "esp_err.h"
 #include <esp_rom_crc.h>
+
+#include "roo_testing/devices/microcontroller/esp32/fake_esp32.h"
 
 // Uncomment this line to force output from this module
 // #define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
@@ -132,11 +134,13 @@ extern "C" esp_err_t nvs_flash_init_partition(const char *part_name)
     }
     Lock lock;
 
-    return NVSPartitionManager::get_instance()->init_partition(part_name);
+    // return NVSPartitionManager::get_instance()->init_partition(part_name);
+    return FakeEsp32().nvs.init(part_name);
 }
 
 extern "C" esp_err_t nvs_flash_init(void)
 {
+    return ESP_OK;
 #ifdef CONFIG_NVS_ENCRYPTION
     esp_err_t ret = ESP_FAIL;
     const esp_partition_t *key_part = esp_partition_find_first(
@@ -281,65 +285,73 @@ extern "C" esp_err_t nvs_open_from_partition(const char *part_name, const char* 
     Lock lock;
     ESP_LOGD(TAG, "%s %s %d", __func__, name, open_mode);
 
-    NVSHandleSimple *handle;
-    esp_err_t result = NVSPartitionManager::get_instance()->open_handle(part_name, name, open_mode, &handle);
-    if (result == ESP_OK) {
-        NVSHandleEntry *entry = new (std::nothrow) NVSHandleEntry(handle, part_name);
-        if (entry) {
-            s_nvs_handles.push_back(entry);
-            *out_handle = entry->mHandle;
-        } else {
-            delete handle;
-            return ESP_ERR_NO_MEM;
-        }
-    }
+    // NVSHandleSimple *handle;
+    // esp_err_t result = NVSPartitionManager::get_instance()->open_handle(part_name, name, open_mode, &handle);
+    // if (result == ESP_OK) {
+    //     NVSHandleEntry *entry = new (std::nothrow) NVSHandleEntry(handle, part_name);
+    //     if (entry) {
+    //         s_nvs_handles.push_back(entry);
+    //         *out_handle = entry->mHandle;
+    //     } else {
+    //         delete handle;
+    //         return ESP_ERR_NO_MEM;
+    //     }
+    // }
 
-    return result;
+    // return result;
+    return FakeEsp32().nvs.open(part_name, name, (open_mode == NVS_READONLY),
+                                out_handle);
 }
 
 extern "C" esp_err_t nvs_open(const char* name, nvs_open_mode_t open_mode, nvs_handle_t *out_handle)
 {
-    return nvs_open_from_partition(NVS_DEFAULT_PART_NAME, name, open_mode, out_handle);
+    // return nvs_open_from_partition(NVS_DEFAULT_PART_NAME, name, open_mode, out_handle);
+    FakeEsp32().nvs.init("nvs");
+    return nvs_open_from_partition("nvs", name, open_mode, out_handle);
 }
 
 extern "C" void nvs_close(nvs_handle_t handle)
 {
     Lock lock;
     ESP_LOGD(TAG, "%s %d", __func__, static_cast<int>(handle));
-    auto it = find_if(begin(s_nvs_handles), end(s_nvs_handles), [=](NVSHandleEntry& e) -> bool {
-        return e.mHandle == handle;
-    });
-    if (it == end(s_nvs_handles)) {
-        return;
-    }
-    s_nvs_handles.erase(it);
-    delete static_cast<NVSHandleEntry*>(it);
+    // auto it = find_if(begin(s_nvs_handles), end(s_nvs_handles), [=](NVSHandleEntry& e) -> bool {
+    //     return e.mHandle == handle;
+    // });
+    // if (it == end(s_nvs_handles)) {
+    //     return;
+    // }
+    // s_nvs_handles.erase(it);
+    // delete static_cast<NVSHandleEntry*>(it);
+
+    FakeEsp32().nvs.close(handle); 
 }
 
 extern "C" esp_err_t nvs_erase_key(nvs_handle_t c_handle, const char* key)
 {
     Lock lock;
     ESP_LOGD(TAG, "%s %s\r\n", __func__, key);
-    NVSHandleSimple *handle;
-    auto err = nvs_find_ns_handle(c_handle, &handle);
-    if (err != ESP_OK) {
-        return err;
-    }
+    // NVSHandleSimple *handle;
+    // auto err = nvs_find_ns_handle(c_handle, &handle);
+    // if (err != ESP_OK) {
+    //     return err;
+    // }
 
-    return handle->erase_item(key);
+    // return handle->erase_item(key);
+    return FakeEsp32().nvs.erase_key(c_handle, key);
 }
 
 extern "C" esp_err_t nvs_erase_all(nvs_handle_t c_handle)
 {
     Lock lock;
     ESP_LOGD(TAG, "%s\r\n", __func__);
-    NVSHandleSimple *handle;
-    auto err = nvs_find_ns_handle(c_handle, &handle);
-    if (err != ESP_OK) {
-        return err;
-    }
+    // NVSHandleSimple *handle;
+    // auto err = nvs_find_ns_handle(c_handle, &handle);
+    // if (err != ESP_OK) {
+    //     return err;
+    // }
 
-    return handle->erase_all();
+    // return handle->erase_all();
+    return FakeEsp32().nvs.erase_all(c_handle);
 }
 
 template<typename T>
@@ -358,78 +370,90 @@ static esp_err_t nvs_set(nvs_handle_t c_handle, const char* key, T value)
 
 extern "C" esp_err_t nvs_set_i8  (nvs_handle_t handle, const char* key, int8_t value)
 {
-    return nvs_set(handle, key, value);
+    // return nvs_set(handle, key, value);
+    return FakeEsp32().nvs.set_i8(handle, key, value);
 }
 
 extern "C" esp_err_t nvs_set_u8  (nvs_handle_t handle, const char* key, uint8_t value)
 {
-    return nvs_set(handle, key, value);
+    // return nvs_set(handle, key, value);
+    return FakeEsp32().nvs.set_u8(handle, key, value);
 }
 
 extern "C" esp_err_t nvs_set_i16 (nvs_handle_t handle, const char* key, int16_t value)
 {
-    return nvs_set(handle, key, value);
+    // return nvs_set(handle, key, value);
+    return FakeEsp32().nvs.set_i16(handle, key, value);
 }
 
 extern "C" esp_err_t nvs_set_u16 (nvs_handle_t handle, const char* key, uint16_t value)
 {
-    return nvs_set(handle, key, value);
+    // return nvs_set(handle, key, value);
+    return FakeEsp32().nvs.set_u16(handle, key, value);
 }
 
 extern "C" esp_err_t nvs_set_i32 (nvs_handle_t handle, const char* key, int32_t value)
 {
-    return nvs_set(handle, key, value);
+    // return nvs_set(handle, key, value);
+    return FakeEsp32().nvs.set_i32(handle, key, value);
 }
 
 extern "C" esp_err_t nvs_set_u32 (nvs_handle_t handle, const char* key, uint32_t value)
 {
-    return nvs_set(handle, key, value);
+    // return nvs_set(handle, key, value);
+    return FakeEsp32().nvs.set_u32(handle, key, value);
 }
 
 extern "C" esp_err_t nvs_set_i64 (nvs_handle_t handle, const char* key, int64_t value)
 {
-    return nvs_set(handle, key, value);
+    // return nvs_set(handle, key, value);
+    return FakeEsp32().nvs.set_i64(handle, key, value);
 }
 
 extern "C" esp_err_t nvs_set_u64 (nvs_handle_t handle, const char* key, uint64_t value)
 {
-    return nvs_set(handle, key, value);
+    // return nvs_set(handle, key, value);
+    return FakeEsp32().nvs.set_u64(handle, key, value);
 }
 
 extern "C" esp_err_t nvs_commit(nvs_handle_t c_handle)
 {
     Lock lock;
-    // no-op for now, to be used when intermediate cache is added
-    NVSHandleSimple *handle;
-    auto err = nvs_find_ns_handle(c_handle, &handle);
-    if (err != ESP_OK) {
-        return err;
-    }
-    return handle->commit();
+    // // no-op for now, to be used when intermediate cache is added
+    // NVSHandleSimple *handle;
+    // auto err = nvs_find_ns_handle(c_handle, &handle);
+    // if (err != ESP_OK) {
+    //     return err;
+    // }
+    // return handle->commit();
+
+    return FakeEsp32().nvs.commit();
 }
 
 extern "C" esp_err_t nvs_set_str(nvs_handle_t c_handle, const char* key, const char* value)
 {
     Lock lock;
     ESP_LOGD(TAG, "%s %s %s", __func__, key, value);
-    NVSHandleSimple *handle;
-    auto err = nvs_find_ns_handle(c_handle, &handle);
-    if (err != ESP_OK) {
-        return err;
-    }
-    return handle->set_string(key, value);
+    // NVSHandleSimple *handle;
+    // auto err = nvs_find_ns_handle(c_handle, &handle);
+    // if (err != ESP_OK) {
+    //     return err;
+    // }
+    // return handle->set_string(key, value);
+    return FakeEsp32().nvs.set_str(c_handle, key, value);
 }
 
 extern "C" esp_err_t nvs_set_blob(nvs_handle_t c_handle, const char* key, const void* value, size_t length)
 {
     Lock lock;
     ESP_LOGD(TAG, "%s %s %d", __func__, key, static_cast<int>(length));
-    NVSHandleSimple *handle;
-    auto err = nvs_find_ns_handle(c_handle, &handle);
-    if (err != ESP_OK) {
-        return err;
-    }
-    return handle->set_blob(key, value, length);
+    // NVSHandleSimple *handle;
+    // auto err = nvs_find_ns_handle(c_handle, &handle);
+    // if (err != ESP_OK) {
+    //     return err;
+    // }
+    // return handle->set_blob(key, value, length);
+    return FakeEsp32().nvs.set_blob(c_handle, key, value, length);
 }
 
 
@@ -448,42 +472,50 @@ static esp_err_t nvs_get(nvs_handle_t c_handle, const char* key, T* out_value)
 
 extern "C" esp_err_t nvs_get_i8  (nvs_handle_t c_handle, const char* key, int8_t* out_value)
 {
-    return nvs_get(c_handle, key, out_value);
+    // return nvs_get(c_handle, key, out_value);
+    return FakeEsp32().nvs.get_i8(c_handle, key, out_value);
 }
 
 extern "C" esp_err_t nvs_get_u8  (nvs_handle_t c_handle, const char* key, uint8_t* out_value)
 {
-    return nvs_get(c_handle, key, out_value);
+    // return nvs_get(c_handle, key, out_value);
+    return FakeEsp32().nvs.get_u8(c_handle, key, out_value);
 }
 
 extern "C" esp_err_t nvs_get_i16 (nvs_handle_t c_handle, const char* key, int16_t* out_value)
 {
-    return nvs_get(c_handle, key, out_value);
+    // return nvs_get(c_handle, key, out_value);
+    return FakeEsp32().nvs.get_i16(c_handle, key, out_value);
 }
 
 extern "C" esp_err_t nvs_get_u16 (nvs_handle_t c_handle, const char* key, uint16_t* out_value)
 {
-    return nvs_get(c_handle, key, out_value);
+    // return nvs_get(c_handle, key, out_value);
+    return FakeEsp32().nvs.get_u16(c_handle, key, out_value);
 }
 
 extern "C" esp_err_t nvs_get_i32 (nvs_handle_t c_handle, const char* key, int32_t* out_value)
 {
-    return nvs_get(c_handle, key, out_value);
+    // return nvs_get(c_handle, key, out_value);
+    return FakeEsp32().nvs.get_i32(c_handle, key, out_value);
 }
 
 extern "C" esp_err_t nvs_get_u32 (nvs_handle_t c_handle, const char* key, uint32_t* out_value)
 {
-    return nvs_get(c_handle, key, out_value);
+    // return nvs_get(c_handle, key, out_value);
+    return FakeEsp32().nvs.get_u32(c_handle, key, out_value);
 }
 
 extern "C" esp_err_t nvs_get_i64 (nvs_handle_t c_handle, const char* key, int64_t* out_value)
 {
-    return nvs_get(c_handle, key, out_value);
+    // return nvs_get(c_handle, key, out_value);
+    return FakeEsp32().nvs.get_i64(c_handle, key, out_value);
 }
 
 extern "C" esp_err_t nvs_get_u64 (nvs_handle_t c_handle, const char* key, uint64_t* out_value)
 {
-    return nvs_get(c_handle, key, out_value);
+    // return nvs_get(c_handle, key, out_value);
+    return FakeEsp32().nvs.get_u64(c_handle, key, out_value);
 }
 
 static esp_err_t nvs_get_str_or_blob(nvs_handle_t c_handle, nvs::ItemType type, const char* key, void* out_value, size_t* length)
@@ -518,37 +550,42 @@ static esp_err_t nvs_get_str_or_blob(nvs_handle_t c_handle, nvs::ItemType type, 
 
 extern "C" esp_err_t nvs_get_str(nvs_handle_t c_handle, const char* key, char* out_value, size_t* length)
 {
-    return nvs_get_str_or_blob(c_handle, nvs::ItemType::SZ, key, out_value, length);
+    // return nvs_get_str_or_blob(c_handle, nvs::ItemType::SZ, key, out_value, length);
+    return FakeEsp32().nvs.get_str(c_handle, key, out_value, length);
 }
 
 extern "C" esp_err_t nvs_get_blob(nvs_handle_t c_handle, const char* key, void* out_value, size_t* length)
 {
-    return nvs_get_str_or_blob(c_handle, nvs::ItemType::BLOB, key, out_value, length);
+    // return nvs_get_str_or_blob(c_handle, nvs::ItemType::BLOB, key, out_value, length);
+    return FakeEsp32().nvs.get_blob(c_handle, key, (char*)out_value, length);
 }
 
 extern "C" esp_err_t nvs_get_stats(const char* part_name, nvs_stats_t* nvs_stats)
 {
     Lock lock;
-    nvs::Storage* pStorage;
+    // nvs::Storage* pStorage;
 
-    if (nvs_stats == nullptr) {
-        return ESP_ERR_INVALID_ARG;
-    }
-    nvs_stats->used_entries     = 0;
-    nvs_stats->free_entries     = 0;
-    nvs_stats->total_entries    = 0;
-    nvs_stats->namespace_count  = 0;
+    // if (nvs_stats == nullptr) {
+    //     return ESP_ERR_INVALID_ARG;
+    // }
+    // nvs_stats->used_entries     = 0;
+    // nvs_stats->free_entries     = 0;
+    // nvs_stats->total_entries    = 0;
+    // nvs_stats->namespace_count  = 0;
 
-    pStorage = lookup_storage_from_name((part_name == nullptr) ? NVS_DEFAULT_PART_NAME : part_name);
-    if (pStorage == nullptr) {
-        return ESP_ERR_NVS_NOT_INITIALIZED;
-    }
+    // pStorage = lookup_storage_from_name((part_name == nullptr) ? NVS_DEFAULT_PART_NAME : part_name);
+    // if (pStorage == nullptr) {
+    //     return ESP_ERR_NVS_NOT_INITIALIZED;
+    // }
 
-    if(!pStorage->isValid()){
-        return ESP_ERR_NVS_INVALID_STATE;
-    }
+    // if(!pStorage->isValid()){
+    //     return ESP_ERR_NVS_INVALID_STATE;
+    // }
 
-    return pStorage->fillStats(*nvs_stats);
+    // return pStorage->fillStats(*nvs_stats);
+
+    nvs_stats->free_entries = 1000;
+    return ESP_OK;
 }
 
 extern "C" esp_err_t nvs_get_used_entry_count(nvs_handle_t c_handle, size_t* used_entries)

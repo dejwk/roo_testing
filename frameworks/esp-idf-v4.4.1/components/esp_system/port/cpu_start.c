@@ -14,11 +14,11 @@
 #include "esp_log.h"
 #include "esp_system.h"
 
-#include "esp_efuse.h"
-#include "cache_err_int.h"
-#include "esp_clk_internal.h"
+// #include "esp_efuse.h"
+// #include "cache_err_int.h"
+// #include "esp_clk_internal.h"
 
-#include "esp_rom_efuse.h"
+// #include "esp_rom_efuse.h"
 #include "esp_rom_uart.h"
 #include "esp_rom_sys.h"
 #include "sdkconfig.h"
@@ -112,12 +112,12 @@
 #include "esp_private/startup_internal.h"
 #include "esp_private/system_internal.h"
 
-extern int _bss_start;
-extern int _bss_end;
-extern int _rtc_bss_start;
-extern int _rtc_bss_end;
+// extern int _bss_start;
+// extern int _bss_end;
+// extern int _rtc_bss_start;
+// extern int _rtc_bss_end;
 
-extern int _vector_table;
+// extern int _vector_table;
 
 static const char *TAG = "cpu_start";
 
@@ -158,19 +158,19 @@ void startup_resume_other_cores(void)
 
 void IRAM_ATTR call_start_cpu1(void)
 {
-    cpu_hal_set_vecbase(&_vector_table);
+    // cpu_hal_set_vecbase(&_vector_table);
 
-    ets_set_appcpu_boot_addr(0);
+    // ets_set_appcpu_boot_addr(0);
 
-    bootloader_init_mem();
+    // bootloader_init_mem();
 
-#if CONFIG_ESP_CONSOLE_UART_NONE
-    esp_rom_install_channel_putc(1, NULL);
-    esp_rom_install_channel_putc(2, NULL);
-#else // CONFIG_ESP_CONSOLE_UART_NONE
-    esp_rom_install_uart_printf();
-    esp_rom_uart_set_as_console(CONFIG_ESP_CONSOLE_UART_NUM);
-#endif
+// #if CONFIG_ESP_CONSOLE_UART_NONE
+//     esp_rom_install_channel_putc(1, NULL);
+//     esp_rom_install_channel_putc(2, NULL);
+// #else // CONFIG_ESP_CONSOLE_UART_NONE
+//     esp_rom_install_uart_printf();
+//     esp_rom_uart_set_as_console(CONFIG_ESP_CONSOLE_UART_NUM);
+// #endif
 
 #if CONFIG_IDF_TARGET_ESP32
     DPORT_REG_SET_BIT(DPORT_APP_CPU_RECORD_CTRL_REG, DPORT_APP_CPU_PDEBUG_ENABLE | DPORT_APP_CPU_RECORD_ENABLE);
@@ -186,9 +186,9 @@ void IRAM_ATTR call_start_cpu1(void)
     // Clear interrupt matrix for APP CPU core
     core_intr_matrix_clear();
 
-    //Take care putting stuff here: if asked, FreeRTOS will happily tell you the scheduler
-    //has started, but it isn't active *on this CPU* yet.
-    esp_cache_err_int_init();
+    // //Take care putting stuff here: if asked, FreeRTOS will happily tell you the scheduler
+    // //has started, but it isn't active *on this CPU* yet.
+    // esp_cache_err_int_init();
 
 #if (CONFIG_IDF_TARGET_ESP32 && CONFIG_ESP32_TRAX_TWOBANKS) || \
     (CONFIG_IDF_TARGET_ESP32S3 && CONFIG_ESP32S3_TRAX_TWOBANKS)
@@ -224,7 +224,7 @@ static void start_other_core(void)
     Cache_Read_Enable(1);
 #endif
 
-    esp_cpu_unstall(1);
+    // esp_cpu_unstall(1);
 
     // Enable clock and reset APP CPU. Note that OpenOCD may have already
     // enabled clock and taken APP CPU out of reset. In this case don't reset
@@ -245,17 +245,17 @@ static void start_other_core(void)
         REG_CLR_BIT(SYSTEM_CORE_1_CONTROL_0_REG, SYSTEM_CONTROL_CORE_1_RESETING);
     }
 #endif
-    ets_set_appcpu_boot_addr((uint32_t)call_start_cpu1);
+    // ets_set_appcpu_boot_addr((uint32_t)call_start_cpu1);
 
-    bool cpus_up = false;
+    // bool cpus_up = false;
 
-    while (!cpus_up) {
-        cpus_up = true;
-        for (int i = 0; i < SOC_CPU_CORES_NUM; i++) {
-            cpus_up &= s_cpu_up[i];
-        }
-        esp_rom_delay_us(100);
-    }
+    // while (!cpus_up) {
+    //     cpus_up = true;
+    //     for (int i = 0; i < SOC_CPU_CORES_NUM; i++) {
+    //         cpus_up &= s_cpu_up[i];
+    //     }
+    //     esp_rom_delay_us(100);
+    // }
 }
 #endif // !CONFIG_ESP_SYSTEM_SINGLE_CORE_MODE
 
@@ -290,8 +290,8 @@ void IRAM_ATTR call_start_cpu0(void)
     );
 #endif
 
-    // Move exception vectors to IRAM
-    cpu_hal_set_vecbase(&_vector_table);
+    // // Move exception vectors to IRAM
+    // cpu_hal_set_vecbase(&_vector_table);
 
     rst_reas[0] = esp_rom_get_reset_reason(0);
 #if !CONFIG_ESP_SYSTEM_SINGLE_CORE_MODE
@@ -312,18 +312,18 @@ void IRAM_ATTR call_start_cpu0(void)
     }
 #endif
 
-    //Clear BSS. Please do not attempt to do any complex stuff (like early logging) before this.
-    memset(&_bss_start, 0, (&_bss_end - &_bss_start) * sizeof(_bss_start));
+    // //Clear BSS. Please do not attempt to do any complex stuff (like early logging) before this.
+    // memset(&_bss_start, 0, (&_bss_end - &_bss_start) * sizeof(_bss_start));
 
-#if defined(CONFIG_IDF_TARGET_ESP32) && defined(CONFIG_ESP32_IRAM_AS_8BIT_ACCESSIBLE_MEMORY)
-    // Clear IRAM BSS
-    memset(&_iram_bss_start, 0, (&_iram_bss_end - &_iram_bss_start) * sizeof(_iram_bss_start));
-#endif
+// #if defined(CONFIG_IDF_TARGET_ESP32) && defined(CONFIG_ESP32_IRAM_AS_8BIT_ACCESSIBLE_MEMORY)
+//     // Clear IRAM BSS
+//     memset(&_iram_bss_start, 0, (&_iram_bss_end - &_iram_bss_start) * sizeof(_iram_bss_start));
+// #endif
 
-    /* Unless waking from deep sleep (implying RTC memory is intact), clear RTC bss */
-    if (rst_reas[0] != RESET_REASON_CORE_DEEP_SLEEP) {
-        memset(&_rtc_bss_start, 0, (&_rtc_bss_end - &_rtc_bss_start) * sizeof(_rtc_bss_start));
-    }
+//     /* Unless waking from deep sleep (implying RTC memory is intact), clear RTC bss */
+//     if (rst_reas[0] != RESET_REASON_CORE_DEEP_SLEEP) {
+//         memset(&_rtc_bss_start, 0, (&_rtc_bss_end - &_rtc_bss_start) * sizeof(_rtc_bss_start));
+//     }
 
 #if CONFIG_IDF_TARGET_ESP32S2
     /* Configure the mode of instruction cache : cache size, cache associated ways, cache line size. */
@@ -376,9 +376,9 @@ void IRAM_ATTR call_start_cpu0(void)
     }
 #endif
     esp_mspi_pin_init();
-    // For Octal flash, it's hard to implement a read_id function in OPI mode for all vendors.
-    // So we have to read it here in SPI mode, before entering the OPI mode.
-    bootloader_flash_update_id();
+    // // For Octal flash, it's hard to implement a read_id function in OPI mode for all vendors.
+    // // So we have to read it here in SPI mode, before entering the OPI mode.
+    // bootloader_flash_update_id();
     /**
      * This function initialise the Flash chip to the user-defined settings.
      *
@@ -392,7 +392,7 @@ void IRAM_ATTR call_start_cpu0(void)
     spi_timing_flash_tuning();
 #endif
 
-    bootloader_init_mem();
+    // bootloader_init_mem();
 #if CONFIG_SPIRAM_BOOT_INIT
     if (esp_spiram_init() != ESP_OK) {
 #if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32S2
@@ -526,22 +526,22 @@ void IRAM_ATTR call_start_cpu0(void)
     esp_clk_init();
     esp_perip_clk_init();
 
-    // Now that the clocks have been set-up, set the startup time from RTC
-    // and default RTC-backed system time provider.
-    g_startup_time = esp_rtc_get_time_us();
+    // // Now that the clocks have been set-up, set the startup time from RTC
+    // // and default RTC-backed system time provider.
+    // g_startup_time = esp_rtc_get_time_us();
 
     // Clear interrupt matrix for PRO CPU core
     core_intr_matrix_clear();
 
 #ifndef CONFIG_IDF_ENV_FPGA // TODO: on FPGA it should be possible to configure this, not currently working with APB_CLK_FREQ changed
-#ifdef CONFIG_ESP_CONSOLE_UART
-    uint32_t clock_hz = rtc_clk_apb_freq_get();
-#if CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32H2
-    clock_hz = UART_CLK_FREQ_ROM; // From esp32-s3 on, UART clock source is selected to XTAL in ROM
-#endif
-    esp_rom_uart_tx_wait_idle(CONFIG_ESP_CONSOLE_UART_NUM);
-    esp_rom_uart_set_clock_baudrate(CONFIG_ESP_CONSOLE_UART_NUM, clock_hz, CONFIG_ESP_CONSOLE_UART_BAUDRATE);
-#endif
+// #ifdef CONFIG_ESP_CONSOLE_UART
+//     uint32_t clock_hz = rtc_clk_apb_freq_get();
+// #if CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32H2
+//     clock_hz = UART_CLK_FREQ_ROM; // From esp32-s3 on, UART clock source is selected to XTAL in ROM
+// #endif
+//     esp_rom_uart_tx_wait_idle(CONFIG_ESP_CONSOLE_UART_NUM);
+//     esp_rom_uart_set_clock_baudrate(CONFIG_ESP_CONSOLE_UART_NUM, clock_hz, CONFIG_ESP_CONSOLE_UART_BAUDRATE);
+// #endif
 #endif
 
 #if SOC_RTCIO_HOLD_SUPPORTED
@@ -550,7 +550,7 @@ void IRAM_ATTR call_start_cpu0(void)
     gpio_hal_force_unhold_all();
 #endif
 
-    esp_cache_err_int_init();
+    // esp_cache_err_int_init();
 
 #if CONFIG_ESP_SYSTEM_MEMPROT_FEATURE && !CONFIG_ESP_SYSTEM_MEMPROT_TEST
     // Memprot cannot be locked during OS startup as the lock-on prevents any PMS changes until a next reboot
@@ -590,27 +590,27 @@ void IRAM_ATTR call_start_cpu0(void)
 
     // Read the application binary image header. This will also decrypt the header if the image is encrypted.
     __attribute__((unused)) esp_image_header_t fhdr = {0};
-#ifdef CONFIG_APP_BUILD_TYPE_ELF_RAM
-    fhdr.spi_mode = ESP_IMAGE_SPI_MODE_DIO;
-    fhdr.spi_speed = ESP_IMAGE_SPI_SPEED_40M;
-    fhdr.spi_size = ESP_IMAGE_FLASH_SIZE_4MB;
+// #ifdef CONFIG_APP_BUILD_TYPE_ELF_RAM
+//     fhdr.spi_mode = ESP_IMAGE_SPI_MODE_DIO;
+//     fhdr.spi_speed = ESP_IMAGE_SPI_SPEED_40M;
+//     fhdr.spi_size = ESP_IMAGE_FLASH_SIZE_4MB;
 
-    extern void esp_rom_spiflash_attach(uint32_t, bool);
-    esp_rom_spiflash_attach(esp_rom_efuse_get_flash_gpio_info(), false);
-    bootloader_flash_unlock();
-#else
-    // This assumes that DROM is the first segment in the application binary, i.e. that we can read
-    // the binary header through cache by accessing SOC_DROM_LOW address.
-    memcpy(&fhdr, (void *) SOC_DROM_LOW, sizeof(fhdr));
-#endif // CONFIG_APP_BUILD_TYPE_ELF_RAM
+//     extern void esp_rom_spiflash_attach(uint32_t, bool);
+//     esp_rom_spiflash_attach(esp_rom_efuse_get_flash_gpio_info(), false);
+//     // bootloader_flash_unlock();
+// #else
+//     // This assumes that DROM is the first segment in the application binary, i.e. that we can read
+//     // the binary header through cache by accessing SOC_DROM_LOW address.
+//     memcpy(&fhdr, (void *) SOC_DROM_LOW, sizeof(fhdr));
+// #endif // CONFIG_APP_BUILD_TYPE_ELF_RAM
 
 #if CONFIG_IDF_TARGET_ESP32
 #if !CONFIG_SPIRAM_BOOT_INIT
     // If psram is uninitialized, we need to improve some flash configuration.
-    bootloader_flash_clock_config(&fhdr);
-    bootloader_flash_gpio_config(&fhdr);
-    bootloader_flash_dummy_config(&fhdr);
-    bootloader_flash_cs_timing_config();
+    // bootloader_flash_clock_config(&fhdr);
+    // bootloader_flash_gpio_config(&fhdr);
+    // bootloader_flash_dummy_config(&fhdr);
+    // bootloader_flash_cs_timing_config();
 #endif //!CONFIG_SPIRAM_BOOT_INIT
 #endif //CONFIG_IDF_TARGET_ESP32
 
@@ -628,13 +628,13 @@ void IRAM_ATTR call_start_cpu0(void)
 
     volatile bool cpus_inited = false;
 
-    while (!cpus_inited) {
-        cpus_inited = true;
-        for (int i = 0; i < SOC_CPU_CORES_NUM; i++) {
-            cpus_inited &= s_cpu_inited[i];
-        }
-        esp_rom_delay_us(100);
-    }
+    // while (!cpus_inited) {
+    //     cpus_inited = true;
+    //     for (int i = 0; i < SOC_CPU_CORES_NUM; i++) {
+    //         cpus_inited &= s_cpu_inited[i];
+    //     }
+    //     esp_rom_delay_us(100);
+    // }
 #endif
 
 #ifdef ROM_LOG_MODE

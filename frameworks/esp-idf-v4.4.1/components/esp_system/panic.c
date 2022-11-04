@@ -19,17 +19,17 @@
 
 #include "esp_private/system_internal.h"
 #include "esp_private/usb_console.h"
-#include "esp_ota_ops.h"
+// #include "esp_ota_ops.h"
 
 #include "soc/cpu.h"
 #include "soc/rtc.h"
-#include "hal/timer_hal.h"
+// #include "hal/timer_hal.h"
 #include "hal/cpu_hal.h"
 #include "hal/wdt_types.h"
 #include "hal/wdt_hal.h"
 
 #include "esp_private/panic_internal.h"
-#include "port/panic_funcs.h"
+// #include "port/panic_funcs.h"
 #include "esp_rom_sys.h"
 
 #include "sdkconfig.h"
@@ -169,21 +169,21 @@ void panic_print_dec(int d)
 */
 void esp_panic_handler_reconfigure_wdts(void)
 {
-    wdt_hal_context_t wdt0_context = {.inst = WDT_MWDT0, .mwdt_dev = &TIMERG0};
-    wdt_hal_context_t wdt1_context = {.inst = WDT_MWDT1, .mwdt_dev = &TIMERG1};
+    // wdt_hal_context_t wdt0_context = {.inst = WDT_MWDT0, .mwdt_dev = &TIMERG0};
+    // wdt_hal_context_t wdt1_context = {.inst = WDT_MWDT1, .mwdt_dev = &TIMERG1};
 
-    //Todo: Refactor to use Interrupt or Task Watchdog API, and a system level WDT context
-    //Reconfigure TWDT (Timer Group 0)
-    wdt_hal_init(&wdt0_context, WDT_MWDT0, MWDT0_TICK_PRESCALER, false); //Prescaler: wdt counts in ticks of TG0_WDT_TICK_US
-    wdt_hal_write_protect_disable(&wdt0_context);
-    wdt_hal_config_stage(&wdt0_context, 0, 1000 * 1000 / MWDT0_TICKS_PER_US, WDT_STAGE_ACTION_RESET_SYSTEM); //1 second before reset
-    wdt_hal_enable(&wdt0_context);
-    wdt_hal_write_protect_enable(&wdt0_context);
+    // //Todo: Refactor to use Interrupt or Task Watchdog API, and a system level WDT context
+    // //Reconfigure TWDT (Timer Group 0)
+    // wdt_hal_init(&wdt0_context, WDT_MWDT0, MWDT0_TICK_PRESCALER, false); //Prescaler: wdt counts in ticks of TG0_WDT_TICK_US
+    // wdt_hal_write_protect_disable(&wdt0_context);
+    // wdt_hal_config_stage(&wdt0_context, 0, 1000 * 1000 / MWDT0_TICKS_PER_US, WDT_STAGE_ACTION_RESET_SYSTEM); //1 second before reset
+    // wdt_hal_enable(&wdt0_context);
+    // wdt_hal_write_protect_enable(&wdt0_context);
 
-    //Disable IWDT (Timer Group 1)
-    wdt_hal_write_protect_disable(&wdt1_context);
-    wdt_hal_disable(&wdt1_context);
-    wdt_hal_write_protect_enable(&wdt1_context);
+    // //Disable IWDT (Timer Group 1)
+    // wdt_hal_write_protect_disable(&wdt1_context);
+    // wdt_hal_disable(&wdt1_context);
+    // wdt_hal_write_protect_enable(&wdt1_context);
 }
 
 /*
@@ -191,19 +191,19 @@ void esp_panic_handler_reconfigure_wdts(void)
 */
 static inline void disable_all_wdts(void)
 {
-    wdt_hal_context_t wdt0_context = {.inst = WDT_MWDT0, .mwdt_dev = &TIMERG0};
-    wdt_hal_context_t wdt1_context = {.inst = WDT_MWDT1, .mwdt_dev = &TIMERG1};
+    // wdt_hal_context_t wdt0_context = {.inst = WDT_MWDT0, .mwdt_dev = &TIMERG0};
+    // wdt_hal_context_t wdt1_context = {.inst = WDT_MWDT1, .mwdt_dev = &TIMERG1};
 
-    //Todo: Refactor to use Interrupt or Task Watchdog API, and a system level WDT context
-    //Task WDT is the Main Watchdog Timer of Timer Group 0
-    wdt_hal_write_protect_disable(&wdt0_context);
-    wdt_hal_disable(&wdt0_context);
-    wdt_hal_write_protect_enable(&wdt0_context);
+    // //Todo: Refactor to use Interrupt or Task Watchdog API, and a system level WDT context
+    // //Task WDT is the Main Watchdog Timer of Timer Group 0
+    // wdt_hal_write_protect_disable(&wdt0_context);
+    // wdt_hal_disable(&wdt0_context);
+    // wdt_hal_write_protect_enable(&wdt0_context);
 
-    //Interupt WDT is the Main Watchdog Timer of Timer Group 1
-    wdt_hal_write_protect_disable(&wdt1_context);
-    wdt_hal_disable(&wdt1_context);
-    wdt_hal_write_protect_enable(&wdt1_context);
+    // //Interupt WDT is the Main Watchdog Timer of Timer Group 1
+    // wdt_hal_write_protect_disable(&wdt1_context);
+    // wdt_hal_disable(&wdt1_context);
+    // wdt_hal_write_protect_enable(&wdt1_context);
 }
 
 static void print_abort_details(const void *f)
@@ -269,119 +269,119 @@ void esp_panic_handler(panic_info_t *info)
 
     panic_print_str("\r\n");
 
-    // If on-chip-debugger is attached, and system is configured to be aware of this,
-    // then only print up to details. Users should be able to probe for the other information
-    // in debug mode.
-    if (esp_cpu_in_ocd_debug_mode()) {
-        panic_print_str("Setting breakpoint at 0x");
-        panic_print_hex((uint32_t)info->addr);
-        panic_print_str(" and returning...\r\n");
-        disable_all_wdts();
-#if CONFIG_APPTRACE_ENABLE
-#if CONFIG_APPTRACE_SV_ENABLE
-        SEGGER_RTT_ESP_FlushNoLock(CONFIG_APPTRACE_POSTMORTEM_FLUSH_THRESH, APPTRACE_ONPANIC_HOST_FLUSH_TMO);
-#else
-        esp_apptrace_flush_nolock(ESP_APPTRACE_DEST_TRAX, CONFIG_APPTRACE_POSTMORTEM_FLUSH_THRESH,
-                                  APPTRACE_ONPANIC_HOST_FLUSH_TMO);
-#endif
-#endif
+//     // If on-chip-debugger is attached, and system is configured to be aware of this,
+//     // then only print up to details. Users should be able to probe for the other information
+//     // in debug mode.
+//     if (esp_cpu_in_ocd_debug_mode()) {
+//         panic_print_str("Setting breakpoint at 0x");
+//         panic_print_hex((uint32_t)info->addr);
+//         panic_print_str(" and returning...\r\n");
+//         disable_all_wdts();
+// #if CONFIG_APPTRACE_ENABLE
+// #if CONFIG_APPTRACE_SV_ENABLE
+//         SEGGER_RTT_ESP_FlushNoLock(CONFIG_APPTRACE_POSTMORTEM_FLUSH_THRESH, APPTRACE_ONPANIC_HOST_FLUSH_TMO);
+// #else
+//         esp_apptrace_flush_nolock(ESP_APPTRACE_DEST_TRAX, CONFIG_APPTRACE_POSTMORTEM_FLUSH_THRESH,
+//                                   APPTRACE_ONPANIC_HOST_FLUSH_TMO);
+// #endif
+// #endif
 
-        cpu_hal_set_breakpoint(0, info->addr); // use breakpoint 0
-        return;
-    }
+//         cpu_hal_set_breakpoint(0, info->addr); // use breakpoint 0
+//         return;
+//     }
 
-    // start panic WDT to restart system if we hang in this handler
-    if (!wdt_hal_is_enabled(&rtc_wdt_ctx)) {
-        wdt_hal_init(&rtc_wdt_ctx, WDT_RWDT, 0, false);
-        uint32_t stage_timeout_ticks = (uint32_t)(7000ULL * rtc_clk_slow_freq_get_hz() / 1000ULL);
-        wdt_hal_write_protect_disable(&rtc_wdt_ctx);
-        wdt_hal_config_stage(&rtc_wdt_ctx, WDT_STAGE0, stage_timeout_ticks, WDT_STAGE_ACTION_RESET_SYSTEM);
-        // 64KB of core dump data (stacks of about 30 tasks) will produce ~85KB base64 data.
-        // @ 115200 UART speed it will take more than 6 sec to print them out.
-        wdt_hal_enable(&rtc_wdt_ctx);
-        wdt_hal_write_protect_enable(&rtc_wdt_ctx);
+    // // start panic WDT to restart system if we hang in this handler
+    // if (!wdt_hal_is_enabled(&rtc_wdt_ctx)) {
+    //     wdt_hal_init(&rtc_wdt_ctx, WDT_RWDT, 0, false);
+    //     uint32_t stage_timeout_ticks = (uint32_t)(7000ULL * rtc_clk_slow_freq_get_hz() / 1000ULL);
+    //     wdt_hal_write_protect_disable(&rtc_wdt_ctx);
+    //     wdt_hal_config_stage(&rtc_wdt_ctx, WDT_STAGE0, stage_timeout_ticks, WDT_STAGE_ACTION_RESET_SYSTEM);
+    //     // 64KB of core dump data (stacks of about 30 tasks) will produce ~85KB base64 data.
+    //     // @ 115200 UART speed it will take more than 6 sec to print them out.
+    //     wdt_hal_enable(&rtc_wdt_ctx);
+    //     wdt_hal_write_protect_enable(&rtc_wdt_ctx);
 
-    }
+    // }
 
-    esp_panic_handler_reconfigure_wdts(); // Restart WDT again
+    // esp_panic_handler_reconfigure_wdts(); // Restart WDT again
 
     PANIC_INFO_DUMP(info, state);
     panic_print_str("\r\n");
 
-    panic_print_str("\r\nELF file SHA256: ");
-    char sha256_buf[65];
-    esp_ota_get_app_elf_sha256(sha256_buf, sizeof(sha256_buf));
-    panic_print_str(sha256_buf);
-    panic_print_str("\r\n");
+    // panic_print_str("\r\nELF file SHA256: ");
+    // char sha256_buf[65];
+    // esp_ota_get_app_elf_sha256(sha256_buf, sizeof(sha256_buf));
+    // panic_print_str(sha256_buf);
+    // panic_print_str("\r\n");
 
     panic_print_str("\r\n");
 
-#if CONFIG_APPTRACE_ENABLE
-    disable_all_wdts();
-#if CONFIG_APPTRACE_SV_ENABLE
-    SEGGER_RTT_ESP_FlushNoLock(CONFIG_APPTRACE_POSTMORTEM_FLUSH_THRESH, APPTRACE_ONPANIC_HOST_FLUSH_TMO);
-#else
-    esp_apptrace_flush_nolock(ESP_APPTRACE_DEST_TRAX, CONFIG_APPTRACE_POSTMORTEM_FLUSH_THRESH,
-                              APPTRACE_ONPANIC_HOST_FLUSH_TMO);
-#endif
-    esp_panic_handler_reconfigure_wdts(); // restore WDT config
-#endif // CONFIG_APPTRACE_ENABLE
+// #if CONFIG_APPTRACE_ENABLE
+//     disable_all_wdts();
+// #if CONFIG_APPTRACE_SV_ENABLE
+//     SEGGER_RTT_ESP_FlushNoLock(CONFIG_APPTRACE_POSTMORTEM_FLUSH_THRESH, APPTRACE_ONPANIC_HOST_FLUSH_TMO);
+// #else
+//     esp_apptrace_flush_nolock(ESP_APPTRACE_DEST_TRAX, CONFIG_APPTRACE_POSTMORTEM_FLUSH_THRESH,
+//                               APPTRACE_ONPANIC_HOST_FLUSH_TMO);
+// #endif
+//     esp_panic_handler_reconfigure_wdts(); // restore WDT config
+// #endif // CONFIG_APPTRACE_ENABLE
 
-#if CONFIG_ESP_SYSTEM_PANIC_GDBSTUB
-    disable_all_wdts();
-    wdt_hal_write_protect_disable(&rtc_wdt_ctx);
-    wdt_hal_disable(&rtc_wdt_ctx);
-    wdt_hal_write_protect_enable(&rtc_wdt_ctx);
-    panic_print_str("Entering gdb stub now.\r\n");
-    esp_gdbstub_panic_handler((void *)info->frame);
-#else
-#if CONFIG_ESP_COREDUMP_ENABLE
-    static bool s_dumping_core;
-    if (s_dumping_core) {
-        panic_print_str("Re-entered core dump! Exception happened during core dump!\r\n");
-    } else {
-        disable_all_wdts();
-        s_dumping_core = true;
-#if CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH
-        esp_core_dump_to_flash(info);
-#endif
-#if CONFIG_ESP_COREDUMP_ENABLE_TO_UART && !CONFIG_ESP_SYSTEM_PANIC_SILENT_REBOOT
-        esp_core_dump_to_uart(info);
-#endif
-        s_dumping_core = false;
+// #if CONFIG_ESP_SYSTEM_PANIC_GDBSTUB
+//     disable_all_wdts();
+//     wdt_hal_write_protect_disable(&rtc_wdt_ctx);
+//     wdt_hal_disable(&rtc_wdt_ctx);
+//     wdt_hal_write_protect_enable(&rtc_wdt_ctx);
+//     panic_print_str("Entering gdb stub now.\r\n");
+//     esp_gdbstub_panic_handler((void *)info->frame);
+// #else
+// #if CONFIG_ESP_COREDUMP_ENABLE
+//     static bool s_dumping_core;
+//     if (s_dumping_core) {
+//         panic_print_str("Re-entered core dump! Exception happened during core dump!\r\n");
+//     } else {
+//         disable_all_wdts();
+//         s_dumping_core = true;
+// #if CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH
+//         esp_core_dump_to_flash(info);
+// #endif
+// #if CONFIG_ESP_COREDUMP_ENABLE_TO_UART && !CONFIG_ESP_SYSTEM_PANIC_SILENT_REBOOT
+//         esp_core_dump_to_uart(info);
+// #endif
+//         s_dumping_core = false;
 
-        esp_panic_handler_reconfigure_wdts();
-    }
-#endif /* CONFIG_ESP_COREDUMP_ENABLE */
-    wdt_hal_write_protect_disable(&rtc_wdt_ctx);
-    wdt_hal_disable(&rtc_wdt_ctx);
-    wdt_hal_write_protect_enable(&rtc_wdt_ctx);
-#if CONFIG_ESP_SYSTEM_PANIC_PRINT_REBOOT || CONFIG_ESP_SYSTEM_PANIC_SILENT_REBOOT
+//         esp_panic_handler_reconfigure_wdts();
+//     }
+// #endif /* CONFIG_ESP_COREDUMP_ENABLE */
+//     wdt_hal_write_protect_disable(&rtc_wdt_ctx);
+//     wdt_hal_disable(&rtc_wdt_ctx);
+//     wdt_hal_write_protect_enable(&rtc_wdt_ctx);
+// #if CONFIG_ESP_SYSTEM_PANIC_PRINT_REBOOT || CONFIG_ESP_SYSTEM_PANIC_SILENT_REBOOT
 
-    if (esp_reset_reason_get_hint() == ESP_RST_UNKNOWN) {
-        switch (info->exception) {
-        case PANIC_EXCEPTION_IWDT:
-            esp_reset_reason_set_hint(ESP_RST_INT_WDT);
-            break;
-        case PANIC_EXCEPTION_TWDT:
-            esp_reset_reason_set_hint(ESP_RST_TASK_WDT);
-            break;
-        case PANIC_EXCEPTION_ABORT:
-        case PANIC_EXCEPTION_FAULT:
-        default:
-            esp_reset_reason_set_hint(ESP_RST_PANIC);
-            break; // do not touch the previously set reset reason hint
-        }
-    }
+//     if (esp_reset_reason_get_hint() == ESP_RST_UNKNOWN) {
+//         switch (info->exception) {
+//         case PANIC_EXCEPTION_IWDT:
+//             esp_reset_reason_set_hint(ESP_RST_INT_WDT);
+//             break;
+//         case PANIC_EXCEPTION_TWDT:
+//             esp_reset_reason_set_hint(ESP_RST_TASK_WDT);
+//             break;
+//         case PANIC_EXCEPTION_ABORT:
+//         case PANIC_EXCEPTION_FAULT:
+//         default:
+//             esp_reset_reason_set_hint(ESP_RST_PANIC);
+//             break; // do not touch the previously set reset reason hint
+//         }
+//     }
 
-    panic_print_str("Rebooting...\r\n");
-    panic_restart();
-#else
-    disable_all_wdts();
-    panic_print_str("CPU halted.\r\n");
-    while (1);
-#endif /* CONFIG_ESP_SYSTEM_PANIC_PRINT_REBOOT || CONFIG_ESP_SYSTEM_PANIC_SILENT_REBOOT */
-#endif /* CONFIG_ESP_SYSTEM_PANIC_GDBSTUB */
+//     panic_print_str("Rebooting...\r\n");
+//     panic_restart();
+// #else
+//     disable_all_wdts();
+//     panic_print_str("CPU halted.\r\n");
+//     while (1);
+// #endif /* CONFIG_ESP_SYSTEM_PANIC_PRINT_REBOOT || CONFIG_ESP_SYSTEM_PANIC_SILENT_REBOOT */
+// #endif /* CONFIG_ESP_SYSTEM_PANIC_GDBSTUB */
 }
 
 
@@ -398,9 +398,11 @@ void IRAM_ATTR __attribute__((noreturn, no_sanitize_undefined)) panic_abort(cons
                               APPTRACE_ONPANIC_HOST_FLUSH_TMO);
 #endif
 #endif
-
-    *((volatile int *) 0) = 0; // NOLINT(clang-analyzer-core.NullDereference) should be an invalid operation on targets
-    while (1);
+    printf("%s\n", details);
+    fflush(0);
+    abort();
+    // *((volatile int *) 0) = 0; // NOLINT(clang-analyzer-core.NullDereference) should be an invalid operation on targets
+    // while (1);
 }
 
 /* Weak versions of reset reason hint functions.

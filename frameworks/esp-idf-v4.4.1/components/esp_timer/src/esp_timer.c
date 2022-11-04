@@ -241,7 +241,7 @@ static IRAM_ATTR esp_err_t timer_insert(esp_timer_handle_t timer, bool without_u
         }
     }
     if (without_update_alarm == false && timer == LIST_FIRST(&s_timers[dispatch_method])) {
-        esp_timer_impl_set_alarm_id(timer->alarm, dispatch_method);
+        // esp_timer_impl_set_alarm_id(timer->alarm, dispatch_method);
     }
     return ESP_OK;
 }
@@ -260,7 +260,7 @@ static IRAM_ATTR esp_err_t timer_remove(esp_timer_handle_t timer)
         if (first_timer) { // if after removing the timer from the list, this list is not empty.
             next_timestamp = first_timer->alarm;
         }
-        esp_timer_impl_set_alarm_id(next_timestamp, dispatch_method);
+        // esp_timer_impl_set_alarm_id(next_timestamp, dispatch_method);
     }
 #if WITH_PROFILING
     timer_insert_inactive(timer);
@@ -367,11 +367,11 @@ static bool timer_process_alarm(esp_timer_dispatch_t dispatch_method)
     } // while(1)
     if (it) {
         if (dispatch_method == ESP_TIMER_TASK || (dispatch_method != ESP_TIMER_TASK && processed == true)) {
-            esp_timer_impl_set_alarm_id(it->alarm, dispatch_method);
+            // esp_timer_impl_set_alarm_id(it->alarm, dispatch_method);
         }
     } else {
         if (processed) {
-            esp_timer_impl_set_alarm_id(UINT64_MAX, dispatch_method);
+            // esp_timer_impl_set_alarm_id(UINT64_MAX, dispatch_method);
         }
     }
     timer_list_unlock(dispatch_method);

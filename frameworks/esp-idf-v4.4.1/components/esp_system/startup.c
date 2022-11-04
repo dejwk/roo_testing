@@ -12,47 +12,47 @@
 
 #include "esp_system.h"
 #include "esp_log.h"
-#include "esp_ota_ops.h"
+// #include "esp_ota_ops.h"
 
 #include "sdkconfig.h"
 
 #include "soc/soc_caps.h"
-#include "hal/wdt_hal.h"
-#include "hal/uart_types.h"
-#include "hal/uart_ll.h"
+// #include "hal/wdt_hal.h"
+// #include "hal/uart_types.h"
+// #include "hal/uart_ll.h"
 
 #include "esp_system.h"
 #include "esp_log.h"
-#include "esp_heap_caps_init.h"
-#include "esp_spi_flash.h"
-#include "esp_flash_internal.h"
-#include "esp_newlib.h"
-#include "esp_vfs_dev.h"
-#include "esp_timer.h"
-#include "esp_efuse.h"
-#include "esp_flash_encrypt.h"
-#include "esp_secure_boot.h"
+// #include "esp_heap_caps_init.h"
+// #include "esp_spi_flash.h"
+// #include "esp_flash_internal.h"
+// #include "esp_newlib.h"
+// #include "esp_vfs_dev.h"
+// #include "esp_timer.h"
+// #include "esp_efuse.h"
+// #include "esp_flash_encrypt.h"
+// #include "esp_secure_boot.h"
 #include "esp_sleep.h"
 #include "esp_xt_wdt.h"
 
 /***********************************************/
 // Headers for other components init functions
 #include "nvs_flash.h"
-#include "esp_phy_init.h"
-#include "esp_coexist_internal.h"
+// #include "esp_phy_init.h"
+// #include "esp_coexist_internal.h"
 
 #if CONFIG_ESP_COREDUMP_ENABLE
 #include "esp_core_dump.h"
 #endif
 
-#include "esp_app_trace.h"
+// #include "esp_app_trace.h"
 #include "esp_private/dbg_stubs.h"
-#include "esp_pm.h"
-#include "esp_private/pm_impl.h"
-#include "esp_pthread.h"
-#include "esp_vfs_console.h"
+// #include "esp_pm.h"
+// #include "esp_private/pm_impl.h"
+// #include "esp_pthread.h"
+// #include "esp_vfs_console.h"
 
-#include "brownout.h"
+// #include "brownout.h"
 
 #include "esp_rom_sys.h"
 
@@ -164,11 +164,11 @@ static void do_global_ctors(void)
 
 #ifdef CONFIG_COMPILER_CXX_EXCEPTIONS
     struct object { long placeholder[ 10 ]; };
-    void __register_frame_info (const void *begin, struct object *ob);
-    extern char __eh_frame[];
+    // void __register_frame_info (const void *begin, struct object *ob);
+    // extern char __eh_frame[];
 
     static struct object ob;
-    __register_frame_info( __eh_frame, &ob );
+    // __register_frame_info( __eh_frame, &ob );
 #endif // CONFIG_COMPILER_CXX_EXCEPTIONS
 
     void (**p)(void);
@@ -188,16 +188,16 @@ static void do_global_ctors(void)
 
 static void do_system_init_fn(void)
 {
-    extern esp_system_init_fn_t _esp_system_init_fn_array_start;
-    extern esp_system_init_fn_t _esp_system_init_fn_array_end;
+    // extern esp_system_init_fn_t _esp_system_init_fn_array_start;
+    // extern esp_system_init_fn_t _esp_system_init_fn_array_end;
 
-    esp_system_init_fn_t *p;
+    // esp_system_init_fn_t *p;
 
-    for (p = &_esp_system_init_fn_array_end - 1; p >= &_esp_system_init_fn_array_start; --p) {
-        if (p->cores & BIT(cpu_hal_get_core_id())) {
-            (*(p->fn))();
-        }
-    }
+    // for (p = &_esp_system_init_fn_array_end - 1; p >= &_esp_system_init_fn_array_start; --p) {
+    //     if (p->cores & BIT(cpu_hal_get_core_id())) {
+    //         (*(p->fn))();
+    //     }
+    // }
 
 #if !CONFIG_ESP_SYSTEM_SINGLE_CORE_MODE
     s_system_inited[cpu_hal_get_core_id()] = true;
@@ -207,20 +207,20 @@ static void do_system_init_fn(void)
 #if !CONFIG_ESP_SYSTEM_SINGLE_CORE_MODE
 static void  esp_startup_start_app_other_cores_default(void)
 {
-    while (1) {
-        esp_rom_delay_us(UINT32_MAX);
-    }
+    // while (1) {
+    //     esp_rom_delay_us(UINT32_MAX);
+    // }
 }
 
 static void IRAM_ATTR start_cpu_other_cores_default(void)
 {
     do_system_init_fn();
 
-    while (!s_system_full_inited) {
-        esp_rom_delay_us(100);
-    }
+    // while (!s_system_full_inited) {
+    //     esp_rom_delay_us(100);
+    // }
 
-    esp_startup_start_app_other_cores();
+    // esp_startup_start_app_other_cores();
 }
 #endif
 
@@ -234,14 +234,14 @@ static void do_core_init(void)
        With SPI RAM enabled, there's a second reason: half of the SPI RAM will be managed by the
        app CPU, and when that is not up yet, the memory will be inaccessible and heap_caps_init may
        fail initializing it properly. */
-    heap_caps_init();
+    // heap_caps_init();
 
     // When apptrace module is enabled, there will be SEGGER_SYSVIEW calls in the newlib init.
     // SEGGER_SYSVIEW relies on apptrace module
     // apptrace module uses esp_timer_get_time to determine timeout conditions.
     // esp_timer early initialization is required for esp_timer_get_time to work.
     esp_timer_early_init();
-    esp_newlib_init();
+    // esp_newlib_init();
 
     if (g_spiram_ok) {
 #if CONFIG_SPIRAM_BOOT_INIT && (CONFIG_SPIRAM_USE_CAPS_ALLOC || CONFIG_SPIRAM_USE_MALLOC)
@@ -266,79 +266,79 @@ static void do_core_init(void)
     esp_brownout_init();
 #endif
 
-    esp_newlib_time_init();
+//     esp_newlib_time_init();
 
-#if CONFIG_VFS_SUPPORT_IO
-    // VFS console register.
-    esp_err_t vfs_err = esp_vfs_console_register();
-    assert(vfs_err == ESP_OK && "Failed to register vfs console");
-#endif
+// #if CONFIG_VFS_SUPPORT_IO
+//     // VFS console register.
+//     esp_err_t vfs_err = esp_vfs_console_register();
+//     assert(vfs_err == ESP_OK && "Failed to register vfs console");
+// #endif
 
-#if defined(CONFIG_VFS_SUPPORT_IO) && !defined(CONFIG_ESP_CONSOLE_NONE)
-    const static char *default_stdio_dev = "/dev/console/";
-    esp_reent_init(_GLOBAL_REENT);
-    _GLOBAL_REENT->_stdin  = fopen(default_stdio_dev, "r");
-    _GLOBAL_REENT->_stdout = fopen(default_stdio_dev, "w");
-    _GLOBAL_REENT->_stderr = fopen(default_stdio_dev, "w");
-#else // defined(CONFIG_VFS_SUPPORT_IO) && !defined(CONFIG_ESP_CONSOLE_NONE)
-    _REENT_SMALL_CHECK_INIT(_GLOBAL_REENT);
-#endif // defined(CONFIG_VFS_SUPPORT_IO) && !defined(CONFIG_ESP_CONSOLE_NONE)
+// #if defined(CONFIG_VFS_SUPPORT_IO) && !defined(CONFIG_ESP_CONSOLE_NONE)
+//     const static char *default_stdio_dev = "/dev/console/";
+//     esp_reent_init(_GLOBAL_REENT);
+//     _GLOBAL_REENT->_stdin  = fopen(default_stdio_dev, "r");
+//     _GLOBAL_REENT->_stdout = fopen(default_stdio_dev, "w");
+//     _GLOBAL_REENT->_stderr = fopen(default_stdio_dev, "w");
+// #else // defined(CONFIG_VFS_SUPPORT_IO) && !defined(CONFIG_ESP_CONSOLE_NONE)
+//     _REENT_SMALL_CHECK_INIT(_GLOBAL_REENT);
+// #endif // defined(CONFIG_VFS_SUPPORT_IO) && !defined(CONFIG_ESP_CONSOLE_NONE)
 
-    esp_err_t err __attribute__((unused));
+//     esp_err_t err __attribute__((unused));
 
-    err = esp_pthread_init();
-    assert(err == ESP_OK && "Failed to init pthread module!");
+//     err = esp_pthread_init();
+//     assert(err == ESP_OK && "Failed to init pthread module!");
 
-    spi_flash_init();
-    /* init default OS-aware flash access critical section */
-    spi_flash_guard_set(&g_flash_guard_default_ops);
+//     spi_flash_init();
+//     /* init default OS-aware flash access critical section */
+//     spi_flash_guard_set(&g_flash_guard_default_ops);
 
-    esp_flash_app_init();
-    esp_err_t flash_ret = esp_flash_init_default_chip();
-    assert(flash_ret == ESP_OK);
-    (void)flash_ret;
+//     esp_flash_app_init();
+//     esp_err_t flash_ret = esp_flash_init_default_chip();
+//     assert(flash_ret == ESP_OK);
+//     (void)flash_ret;
 
-#ifdef CONFIG_EFUSE_VIRTUAL
-    ESP_LOGW(TAG, "eFuse virtual mode is enabled. If Secure boot or Flash encryption is enabled then it does not provide any security. FOR TESTING ONLY!");
-#ifdef CONFIG_EFUSE_VIRTUAL_KEEP_IN_FLASH
-    const esp_partition_t *efuse_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_EFUSE_EM, NULL);
-    if (efuse_partition) {
-        esp_efuse_init_virtual_mode_in_flash(efuse_partition->address, efuse_partition->size);
-    }
-#endif
-#endif
+// #ifdef CONFIG_EFUSE_VIRTUAL
+//     ESP_LOGW(TAG, "eFuse virtual mode is enabled. If Secure boot or Flash encryption is enabled then it does not provide any security. FOR TESTING ONLY!");
+// #ifdef CONFIG_EFUSE_VIRTUAL_KEEP_IN_FLASH
+//     const esp_partition_t *efuse_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_EFUSE_EM, NULL);
+//     if (efuse_partition) {
+//         esp_efuse_init_virtual_mode_in_flash(efuse_partition->address, efuse_partition->size);
+//     }
+// #endif
+// #endif
 
-#if CONFIG_SECURE_DISABLE_ROM_DL_MODE
-    err = esp_efuse_disable_rom_download_mode();
-    assert(err == ESP_OK && "Failed to disable ROM download mode");
-#endif
+// #if CONFIG_SECURE_DISABLE_ROM_DL_MODE
+//     err = esp_efuse_disable_rom_download_mode();
+//     assert(err == ESP_OK && "Failed to disable ROM download mode");
+// #endif
 
-#if CONFIG_SECURE_ENABLE_SECURE_ROM_DL_MODE
-    err = esp_efuse_enable_rom_secure_download_mode();
-    assert(err == ESP_OK && "Failed to enable Secure Download mode");
-#endif
+// #if CONFIG_SECURE_ENABLE_SECURE_ROM_DL_MODE
+//     err = esp_efuse_enable_rom_secure_download_mode();
+//     assert(err == ESP_OK && "Failed to enable Secure Download mode");
+// #endif
 
-#if CONFIG_ESP32_DISABLE_BASIC_ROM_CONSOLE
-    esp_efuse_disable_basic_rom_console();
-#endif
+// #if CONFIG_ESP32_DISABLE_BASIC_ROM_CONSOLE
+//     esp_efuse_disable_basic_rom_console();
+// #endif
 
-#ifdef CONFIG_SECURE_FLASH_ENC_ENABLED
-    esp_flash_encryption_init_checks();
-#endif
+// #ifdef CONFIG_SECURE_FLASH_ENC_ENABLED
+//     esp_flash_encryption_init_checks();
+// #endif
 
-#if defined(CONFIG_SECURE_BOOT) || defined(CONFIG_SECURE_SIGNED_ON_UPDATE_NO_SECURE_BOOT)
-    // Note: in some configs this may read flash, so placed after flash init
-    esp_secure_boot_init_checks();
-#endif
+// #if defined(CONFIG_SECURE_BOOT) || defined(CONFIG_SECURE_SIGNED_ON_UPDATE_NO_SECURE_BOOT)
+//     // Note: in some configs this may read flash, so placed after flash init
+//     esp_secure_boot_init_checks();
+// #endif
 
-#if CONFIG_ESP_XT_WDT
-    esp_xt_wdt_config_t cfg = {
-        .timeout                = CONFIG_ESP_XT_WDT_TIMEOUT,
-        .auto_backup_clk_enable = CONFIG_ESP_XT_WDT_BACKUP_CLK_ENABLE,
-    };
-    err = esp_xt_wdt_init(&cfg);
-    assert(err == ESP_OK && "Failed to init xtwdt");
-#endif
+// #if CONFIG_ESP_XT_WDT
+//     esp_xt_wdt_config_t cfg = {
+//         .timeout                = CONFIG_ESP_XT_WDT_TIMEOUT,
+//         .auto_backup_clk_enable = CONFIG_ESP_XT_WDT_BACKUP_CLK_ENABLE,
+//     };
+//     err = esp_xt_wdt_init(&cfg);
+//     assert(err == ESP_OK && "Failed to init xtwdt");
+// #endif
 }
 
 static void do_secondary_init(void)
@@ -372,30 +372,30 @@ static void start_cpu0_default(void)
 {
 
     ESP_EARLY_LOGI(TAG, "Pro cpu start user code");
-    int cpu_freq = esp_clk_cpu_freq();
-    ESP_EARLY_LOGI(TAG, "cpu freq: %d", cpu_freq);
+    // int cpu_freq = esp_clk_cpu_freq();
+    // ESP_EARLY_LOGI(TAG, "cpu freq: %d", cpu_freq);
 
-    // Display information about the current running image.
-    if (LOG_LOCAL_LEVEL >= ESP_LOG_INFO) {
-        const esp_app_desc_t *app_desc = esp_ota_get_app_description();
-        ESP_EARLY_LOGI(TAG, "Application information:");
-#ifndef CONFIG_APP_EXCLUDE_PROJECT_NAME_VAR
-        ESP_EARLY_LOGI(TAG, "Project name:     %s", app_desc->project_name);
-#endif
-#ifndef CONFIG_APP_EXCLUDE_PROJECT_VER_VAR
-        ESP_EARLY_LOGI(TAG, "App version:      %s", app_desc->version);
-#endif
-#ifdef CONFIG_BOOTLOADER_APP_SECURE_VERSION
-        ESP_EARLY_LOGI(TAG, "Secure version:   %d", app_desc->secure_version);
-#endif
-#ifdef CONFIG_APP_COMPILE_TIME_DATE
-        ESP_EARLY_LOGI(TAG, "Compile time:     %s %s", app_desc->date, app_desc->time);
-#endif
-        char buf[17];
-        esp_ota_get_app_elf_sha256(buf, sizeof(buf));
-        ESP_EARLY_LOGI(TAG, "ELF file SHA256:  %s...", buf);
-        ESP_EARLY_LOGI(TAG, "ESP-IDF:          %s", app_desc->idf_ver);
-    }
+//     // Display information about the current running image.
+//     if (LOG_LOCAL_LEVEL >= ESP_LOG_INFO) {
+//         const esp_app_desc_t *app_desc = esp_ota_get_app_description();
+//         ESP_EARLY_LOGI(TAG, "Application information:");
+// #ifndef CONFIG_APP_EXCLUDE_PROJECT_NAME_VAR
+//         ESP_EARLY_LOGI(TAG, "Project name:     %s", app_desc->project_name);
+// #endif
+// #ifndef CONFIG_APP_EXCLUDE_PROJECT_VER_VAR
+//         ESP_EARLY_LOGI(TAG, "App version:      %s", app_desc->version);
+// #endif
+// #ifdef CONFIG_BOOTLOADER_APP_SECURE_VERSION
+//         ESP_EARLY_LOGI(TAG, "Secure version:   %d", app_desc->secure_version);
+// #endif
+// #ifdef CONFIG_APP_COMPILE_TIME_DATE
+//         ESP_EARLY_LOGI(TAG, "Compile time:     %s %s", app_desc->date, app_desc->time);
+// #endif
+//         char buf[17];
+//         esp_ota_get_app_elf_sha256(buf, sizeof(buf));
+//         ESP_EARLY_LOGI(TAG, "ELF file SHA256:  %s...", buf);
+//         ESP_EARLY_LOGI(TAG, "ESP-IDF:          %s", app_desc->idf_ver);
+//     }
 
     // Initialize core components and services.
     do_core_init();
@@ -407,25 +407,25 @@ static void start_cpu0_default(void)
     // until all cores finish (when !CONFIG_ESP_SYSTEM_SINGLE_CORE_MODE).
     do_secondary_init();
 
-    // Now that the application is about to start, disable boot watchdog
-#ifndef CONFIG_BOOTLOADER_WDT_DISABLE_IN_USER_CODE
-    wdt_hal_context_t rtc_wdt_ctx = {.inst = WDT_RWDT, .rwdt_dev = &RTCCNTL};
-    wdt_hal_write_protect_disable(&rtc_wdt_ctx);
-    wdt_hal_disable(&rtc_wdt_ctx);
-    wdt_hal_write_protect_enable(&rtc_wdt_ctx);
-#endif
+//     // Now that the application is about to start, disable boot watchdog
+// #ifndef CONFIG_BOOTLOADER_WDT_DISABLE_IN_USER_CODE
+//     wdt_hal_context_t rtc_wdt_ctx = {.inst = WDT_RWDT, .rwdt_dev = &RTCCNTL};
+//     wdt_hal_write_protect_disable(&rtc_wdt_ctx);
+//     wdt_hal_disable(&rtc_wdt_ctx);
+//     wdt_hal_write_protect_enable(&rtc_wdt_ctx);
+// #endif
 
 #if SOC_CPU_CORES_NUM > 1 && !CONFIG_ESP_SYSTEM_SINGLE_CORE_MODE
     s_system_full_inited = true;
 #endif
 
-    esp_startup_start_app();
-    while (1);
+    // esp_startup_start_app();
+    // while (1);
 }
 
 IRAM_ATTR ESP_SYSTEM_INIT_FN(init_components0, BIT(0))
 {
-    esp_timer_init();
+    // esp_timer_init();
 
 #if CONFIG_ESP_SLEEP_GPIO_RESET_WORKAROUND && !CONFIG_PM_SLP_DISABLE_GPIO
     // Configure to isolate (disable the Input/Output/Pullup/Pulldown
@@ -459,14 +459,14 @@ IRAM_ATTR ESP_SYSTEM_INIT_FN(init_components0, BIT(0))
     esp_apb_backup_dma_lock_init();
 #endif
 
-#if CONFIG_SW_COEXIST_ENABLE || CONFIG_EXTERNAL_COEX_ENABLE
-    esp_coex_adapter_register(&g_coex_adapter_funcs);
-    coex_pre_init();
-#endif
+// #if CONFIG_SW_COEXIST_ENABLE || CONFIG_EXTERNAL_COEX_ENABLE
+//     esp_coex_adapter_register(&g_coex_adapter_funcs);
+//     coex_pre_init();
+// #endif
 
-#ifdef CONFIG_COMPILER_CXX_EXCEPTIONS
-    ESP_EARLY_LOGD(TAG, "Setting C++ exception workarounds.");
-    _Unwind_SetNoFunctionContextInstall(1);
-    _Unwind_SetEnableExceptionFdeSorting(0);
-#endif // CONFIG_COMPILER_CXX_EXCEPTIONS
+// #ifdef CONFIG_COMPILER_CXX_EXCEPTIONS
+//     ESP_EARLY_LOGD(TAG, "Setting C++ exception workarounds.");
+//     _Unwind_SetNoFunctionContextInstall(1);
+//     _Unwind_SetEnableExceptionFdeSorting(0);
+// #endif // CONFIG_COMPILER_CXX_EXCEPTIONS
 }

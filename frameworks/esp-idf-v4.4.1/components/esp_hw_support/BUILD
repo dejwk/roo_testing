@@ -48,7 +48,7 @@ cc_library(
 cc_library(
     name = "esp_sleep",
     srcs = [
-#        "sleep_modes.c"
+        "sleep_modes.c"
     ],
     hdrs = [
         "include/esp_sleep.h"
@@ -58,9 +58,14 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/driver:rtc_io",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_ringbuf",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/newlib:locks",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:gpio_hal",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:rtc_io_hal",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:rtc_io",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:touch_sensor_hal",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/log",
     ]
 )
 
@@ -83,7 +88,7 @@ cc_library(
 cc_library(
     name = "esp_chip_info",
     srcs = [
-#        "sleep_modes.c"
+        "port/esp32/chip_info.c"
     ],
     hdrs = [
         "include/esp_chip_info.h"
@@ -93,6 +98,8 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
+        "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common",
     ]
 )
 
@@ -115,7 +122,7 @@ cc_library(
 cc_library(
     name = "esp_random",
     srcs = [
-#        "sleep_modes.c"
+        "hw_random.c"
     ],
     hdrs = [
         "include/esp_random.h"
@@ -125,6 +132,7 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common",
     ]
 )
 
@@ -141,6 +149,38 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
+    ]
+)
+
+cc_library(
+    name = "esp_clk",
+    srcs = [
+        "esp_clk.c",
+        "port/esp32/rtc_clk.c"
+    ],
+    hdrs = [
+        "include/soc_log.h",
+        "include/esp_private/esp_clk.h",
+        "include/soc/esp32/clk.h",
+        "include/soc/esp32/rtc.h",
+        "include/soc/esp32/dport_access.h",
+        "port/esp32/rtc_clk_common.h",
+        "port/esp32/regi2c_ctrl.h",
+        "port/esp32/private_include/regi2c_apll.h",
+        "port/esp32/private_include/regi2c_bbpll.h",
+    ],
+    includes = [
+        "include/soc",
+        "include",
+        "port/esp32/private_include"
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_rom",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:cpu_hal",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:gpio_hal",
     ]
 )
 

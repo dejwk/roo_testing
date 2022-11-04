@@ -11,7 +11,7 @@
 #include "esp32/rom/ets_sys.h" // for ets_update_cpu_frequency
 #include "esp32/rom/rtc.h"
 #include "esp_rom_gpio.h"
-#include "esp_efuse.h"
+// #include "esp_efuse.h"
 #include "soc/rtc.h"
 #include "soc/rtc_periph.h"
 #include "soc/sens_periph.h"

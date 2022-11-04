@@ -210,3 +210,16 @@ cc_library(
     deps = [
     ]
 )
+
+cc_library(
+    name = "soc",
+    hdrs = [
+        "include/hal/soc_ll.h",
+    ],
+    includes = [
+        "include"
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+    ]
+)

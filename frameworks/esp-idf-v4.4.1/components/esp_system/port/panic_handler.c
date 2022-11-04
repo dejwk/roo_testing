@@ -10,7 +10,7 @@
 #include "esp_ipc_isr.h"
 #include "esp_private/system_internal.h"
 
-#include "soc/soc_memory_layout.h"
+// #include "soc/soc_memory_layout.h"
 #include "soc/cpu.h"
 #include "soc/soc_caps.h"
 #include "soc/rtc.h"
@@ -18,7 +18,7 @@
 #include "hal/soc_hal.h"
 #include "hal/cpu_hal.h"
 
-#include "cache_err_int.h"
+// #include "cache_err_int.h"
 
 #include "sdkconfig.h"
 #include "esp_rom_sys.h"
@@ -36,7 +36,17 @@
 #endif
 
 #include "esp_private/panic_internal.h"
-#include "esp_private/panic_reason.h"
+// #include "esp_private/panic_reason.h"
+
+#define PANIC_RSN_NONE 0
+#define PANIC_RSN_DEBUGEXCEPTION 1
+#define PANIC_RSN_DOUBLEEXCEPTION 2
+#define PANIC_RSN_KERNELEXCEPTION 3
+#define PANIC_RSN_COPROCEXCEPTION 4
+#define PANIC_RSN_INTWDT_CPU0 5
+#define PANIC_RSN_INTWDT_CPU1 6
+#define PANIC_RSN_CACHEERR 7
+#define PANIC_RSN_MAX 7
 
 #include "hal/wdt_types.h"
 #include "hal/wdt_hal.h"

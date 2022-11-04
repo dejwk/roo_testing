@@ -20,7 +20,7 @@
 
 #include "hal/cpu_hal.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/portmacro.h"
+// #include "freertos/portmacro.h"
 
 #if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32S2
 #include "soc/dport_reg.h"

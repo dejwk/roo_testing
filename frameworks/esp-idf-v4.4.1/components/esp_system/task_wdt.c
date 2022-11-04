@@ -22,8 +22,8 @@
 #include "esp_freertos_hooks.h"
 #include "soc/timer_periph.h"
 #include "esp_log.h"
-#include "driver/timer.h"
-#include "driver/periph_ctrl.h"
+// #include "driver/timer.h"
+// #include "driver/periph_ctrl.h"
 #include "esp_task_wdt.h"
 #include "esp_private/system_internal.h"
 #include "esp_private/crosscore_int.h"
@@ -135,61 +135,61 @@ void __attribute__((weak)) esp_task_wdt_isr_user_handler(void)
  */
 static void task_wdt_isr(void *arg)
 {
-    portENTER_CRITICAL_ISR(&twdt_spinlock);
-    twdt_task_t *twdttask;
-    const char *cpu;
-    //Reset hardware timer so that 2nd stage timeout is not reached (will trigger system reset)
-    wdt_hal_write_protect_disable(&twdt_context);
-    wdt_hal_handle_intr(&twdt_context);     //Feeds WDT and clears acknowledges interrupt
-    wdt_hal_write_protect_enable(&twdt_context);
+//     portENTER_CRITICAL_ISR(&twdt_spinlock);
+//     twdt_task_t *twdttask;
+//     const char *cpu;
+//     //Reset hardware timer so that 2nd stage timeout is not reached (will trigger system reset)
+//     wdt_hal_write_protect_disable(&twdt_context);
+//     wdt_hal_handle_intr(&twdt_context);     //Feeds WDT and clears acknowledges interrupt
+//     wdt_hal_write_protect_enable(&twdt_context);
 
-    //We are taking a spinlock while doing I/O (ESP_EARLY_LOGE) here. Normally, that is a pretty
-    //bad thing, possibly (temporarily) hanging up the 2nd core and stopping FreeRTOS. In this case,
-    //something bad already happened and reporting this is considered more important
-    //than the badness caused by a spinlock here.
+//     //We are taking a spinlock while doing I/O (ESP_EARLY_LOGE) here. Normally, that is a pretty
+//     //bad thing, possibly (temporarily) hanging up the 2nd core and stopping FreeRTOS. In this case,
+//     //something bad already happened and reporting this is considered more important
+//     //than the badness caused by a spinlock here.
 
-    //Return immediately if no tasks have been added to task list
-    ASSERT_EXIT_CRIT_RETURN((twdt_config->list != NULL), VOID_RETURN);
+//     //Return immediately if no tasks have been added to task list
+//     ASSERT_EXIT_CRIT_RETURN((twdt_config->list != NULL), VOID_RETURN);
 
-    //Watchdog got triggered because at least one task did not reset in time.
-    ESP_EARLY_LOGE(TAG, "Task watchdog got triggered. The following tasks did not reset the watchdog in time:");
-    for (twdttask=twdt_config->list; twdttask!=NULL; twdttask=twdttask->next) {
-        if (!twdttask->has_reset) {
-            cpu=xTaskGetAffinity(twdttask->task_handle)==0?DRAM_STR("CPU 0"):DRAM_STR("CPU 1");
-            if (xTaskGetAffinity(twdttask->task_handle)==tskNO_AFFINITY) {
-                cpu=DRAM_STR("CPU 0/1");
-            }
-            ESP_EARLY_LOGE(TAG, " - %s (%s)", pcTaskGetTaskName(twdttask->task_handle), cpu);
-        }
-    }
-    ESP_EARLY_LOGE(TAG, "%s", DRAM_STR("Tasks currently running:"));
-    for (int x=0; x<portNUM_PROCESSORS; x++) {
-        ESP_EARLY_LOGE(TAG, "CPU %d: %s", x, pcTaskGetTaskName(xTaskGetCurrentTaskHandleForCPU(x)));
-    }
+//     //Watchdog got triggered because at least one task did not reset in time.
+//     ESP_EARLY_LOGE(TAG, "Task watchdog got triggered. The following tasks did not reset the watchdog in time:");
+//     for (twdttask=twdt_config->list; twdttask!=NULL; twdttask=twdttask->next) {
+//         if (!twdttask->has_reset) {
+//             cpu=xTaskGetAffinity(twdttask->task_handle)==0?DRAM_STR("CPU 0"):DRAM_STR("CPU 1");
+//             if (xTaskGetAffinity(twdttask->task_handle)==tskNO_AFFINITY) {
+//                 cpu=DRAM_STR("CPU 0/1");
+//             }
+//             ESP_EARLY_LOGE(TAG, " - %s (%s)", pcTaskGetTaskName(twdttask->task_handle), cpu);
+//         }
+//     }
+//     ESP_EARLY_LOGE(TAG, "%s", DRAM_STR("Tasks currently running:"));
+//     for (int x=0; x<portNUM_PROCESSORS; x++) {
+//         ESP_EARLY_LOGE(TAG, "CPU %d: %s", x, pcTaskGetTaskName(xTaskGetCurrentTaskHandleForCPU(x)));
+//     }
 
-    esp_task_wdt_isr_user_handler();
+//     esp_task_wdt_isr_user_handler();
 
-    if (twdt_config->panic){     //Trigger Panic if configured to do so
-        ESP_EARLY_LOGE(TAG, "Aborting.");
-        portEXIT_CRITICAL_ISR(&twdt_spinlock);
-        esp_reset_reason_set_hint(ESP_RST_TASK_WDT);
-        abort();
-    } else {
+//     if (twdt_config->panic){     //Trigger Panic if configured to do so
+//         ESP_EARLY_LOGE(TAG, "Aborting.");
+//         portEXIT_CRITICAL_ISR(&twdt_spinlock);
+//         esp_reset_reason_set_hint(ESP_RST_TASK_WDT);
+//         abort();
+//     } else {
 
-#if !CONFIG_IDF_TARGET_ESP32C3 && !CONFIG_IDF_TARGET_ESP32H2 // TODO: ESP32-C3 IDF-2986
-        int current_core = xPortGetCoreID();
-        //Print backtrace of current core
-        ESP_EARLY_LOGE(TAG, "Print CPU %d (current core) backtrace", current_core);
-        esp_backtrace_print(100);
-#if !CONFIG_FREERTOS_UNICORE
-        //Print backtrace of other core
-        ESP_EARLY_LOGE(TAG, "Print CPU %d backtrace", !current_core);
-        esp_crosscore_int_send_print_backtrace(!current_core);
-#endif
-#endif
-    }
+// #if !CONFIG_IDF_TARGET_ESP32C3 && !CONFIG_IDF_TARGET_ESP32H2 // TODO: ESP32-C3 IDF-2986
+//         int current_core = xPortGetCoreID();
+//         //Print backtrace of current core
+//         ESP_EARLY_LOGE(TAG, "Print CPU %d (current core) backtrace", current_core);
+//         esp_backtrace_print(100);
+// #if !CONFIG_FREERTOS_UNICORE
+//         //Print backtrace of other core
+//         ESP_EARLY_LOGE(TAG, "Print CPU %d backtrace", !current_core);
+//         esp_crosscore_int_send_print_backtrace(!current_core);
+// #endif
+// #endif
+//     }
 
-    portEXIT_CRITICAL_ISR(&twdt_spinlock);
+//     portEXIT_CRITICAL_ISR(&twdt_spinlock);
 }
 
 /*

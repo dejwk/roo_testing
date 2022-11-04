@@ -42,7 +42,7 @@ static void s_warn(void)
 void bootloader_clock_configure(void)
 {
     s_warn();
-    esp_rom_uart_tx_wait_idle(0);
+    // esp_rom_uart_tx_wait_idle(0);
 
     uint32_t xtal_freq_mhz = 40;
 #ifdef CONFIG_IDF_TARGET_ESP32S2
@@ -52,7 +52,7 @@ void bootloader_clock_configure(void)
 #else
     uint32_t apb_freq_hz = 40000000;
 #endif // CONFIG_IDF_TARGET_ESP32S2
-    ets_update_cpu_frequency(apb_freq_hz / 1000000);
+    // ets_update_cpu_frequency(apb_freq_hz / 1000000);
 #ifdef RTC_APB_FREQ_REG
     REG_WRITE(RTC_APB_FREQ_REG, (apb_freq_hz >> 12) | ((apb_freq_hz >> 12) << 16));
 #endif

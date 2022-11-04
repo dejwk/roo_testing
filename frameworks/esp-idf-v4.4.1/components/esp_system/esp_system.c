@@ -26,25 +26,25 @@
 
 static shutdown_handler_t shutdown_handlers[SHUTDOWN_HANDLERS_NO];
 
-void IRAM_ATTR esp_restart_noos_dig(void)
-{
-    // make sure all the panic handler output is sent from UART FIFO
-    if (CONFIG_ESP_CONSOLE_UART_NUM >= 0) {
-        esp_rom_uart_tx_wait_idle(CONFIG_ESP_CONSOLE_UART_NUM);
-    }
+// void IRAM_ATTR esp_restart_noos_dig(void)
+// {
+//     // make sure all the panic handler output is sent from UART FIFO
+//     if (CONFIG_ESP_CONSOLE_UART_NUM >= 0) {
+//         esp_rom_uart_tx_wait_idle(CONFIG_ESP_CONSOLE_UART_NUM);
+//     }
 
-    // switch to XTAL (otherwise we will keep running from the PLL)
-    rtc_clk_cpu_freq_set_xtal();
+//     // switch to XTAL (otherwise we will keep running from the PLL)
+//     rtc_clk_cpu_freq_set_xtal();
 
-#if CONFIG_IDF_TARGET_ESP32
-    esp_cpu_unstall(PRO_CPU_NUM);
-#endif
-    // reset the digital part
-    SET_PERI_REG_MASK(RTC_CNTL_OPTIONS0_REG, RTC_CNTL_SW_SYS_RST);
-    while (true) {
-        ;
-    }
-}
+// #if CONFIG_IDF_TARGET_ESP32
+//     esp_cpu_unstall(PRO_CPU_NUM);
+// #endif
+//     // reset the digital part
+//     SET_PERI_REG_MASK(RTC_CNTL_OPTIONS0_REG, RTC_CNTL_SW_SYS_RST);
+//     while (true) {
+//         ;
+//     }
+// }
 
 esp_err_t esp_register_shutdown_handler(shutdown_handler_t handler)
 {
@@ -83,39 +83,43 @@ void IRAM_ATTR esp_restart(void)
     vTaskSuspendAll();
 
     bool digital_reset_needed = false;
-#if CONFIG_ESP_SYSTEM_MEMPROT_FEATURE
-#if CONFIG_IDF_TARGET_ESP32S2
-    if (esp_memprot_is_intr_ena_any() || esp_memprot_is_locked_any()) {
-        digital_reset_needed = true;
-    }
-#else
-    bool is_on = false;
-    if (esp_mprot_is_intr_ena_any(&is_on) != ESP_OK || is_on) {
-        digital_reset_needed = true;
-    } else if (esp_mprot_is_conf_locked_any(&is_on) != ESP_OK || is_on) {
-        digital_reset_needed = true;
-    }
-#endif
-#endif
-    if (digital_reset_needed) {
-        esp_restart_noos_dig();
-    }
-    esp_restart_noos();
+// #if CONFIG_ESP_SYSTEM_MEMPROT_FEATURE
+// #if CONFIG_IDF_TARGET_ESP32S2
+//     if (esp_memprot_is_intr_ena_any() || esp_memprot_is_locked_any()) {
+//         digital_reset_needed = true;
+//     }
+// #else
+//     bool is_on = false;
+//     if (esp_mprot_is_intr_ena_any(&is_on) != ESP_OK || is_on) {
+//         digital_reset_needed = true;
+//     } else if (esp_mprot_is_conf_locked_any(&is_on) != ESP_OK || is_on) {
+//         digital_reset_needed = true;
+//     }
+// #endif
+// #endif
+//     if (digital_reset_needed) {
+//         esp_restart_noos_dig();
+//     }
+//     esp_restart_noos();
+    panic_abort("Called esp_restart(). Aborting.");
 }
 
 uint32_t esp_get_free_heap_size( void )
 {
-    return heap_caps_get_free_size( MALLOC_CAP_DEFAULT );
+    // return heap_caps_get_free_size( MALLOC_CAP_DEFAULT );
+    return 50000;
 }
 
 uint32_t esp_get_free_internal_heap_size( void )
 {
-    return heap_caps_get_free_size( MALLOC_CAP_8BIT | MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL );
+    // return heap_caps_get_free_size( MALLOC_CAP_8BIT | MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL );
+    return 30000;
 }
 
 uint32_t esp_get_minimum_free_heap_size( void )
 {
-    return heap_caps_get_minimum_free_size( MALLOC_CAP_DEFAULT );
+    // return heap_caps_get_minimum_free_size( MALLOC_CAP_DEFAULT );
+    return 30000;
 }
 
 const char *esp_get_idf_version(void)

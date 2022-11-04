@@ -16,7 +16,7 @@
 #include <string.h>
 
 #include "esp_err.h"
-#include "esp_spi_flash.h"
+// #include "esp_spi_flash.h"
 
 #include "esp_rom_sys.h"
 
@@ -27,9 +27,9 @@ static void esp_error_check_failed_print(const char *msg, esp_err_t rc, const ch
     esp_rom_printf(" (%s)", esp_err_to_name(rc));
 #endif //CONFIG_ESP_ERR_TO_NAME_LOOKUP
     esp_rom_printf(" at 0x%08x\n", (intptr_t)__builtin_return_address(0) - 3);
-    if (spi_flash_cache_enabled()) { // strings may be in flash cache
-        esp_rom_printf("file: \"%s\" line %d\nfunc: %s\nexpression: %s\n", file, line, function, expression);
-    }
+    // if (spi_flash_cache_enabled()) { // strings may be in flash cache
+    //     esp_rom_printf("file: \"%s\" line %d\nfunc: %s\nexpression: %s\n", file, line, function, expression);
+    // }
 }
 
 void _esp_error_check_failed_without_abort(esp_err_t rc, const char *file, int line, const char *function, const char *expression)

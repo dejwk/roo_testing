@@ -80,7 +80,7 @@ const spi_flash_chip_t esp_flash_chip_mxic = {
     .write = spi_flash_chip_generic_write,
     .program_page = spi_flash_chip_generic_page_program,
     .page_size = 256,
-    .write_encrypted = spi_flash_chip_generic_write_encrypted,
+    // .write_encrypted = spi_flash_chip_generic_write_encrypted,
 
     .wait_idle = spi_flash_chip_generic_wait_idle,
     .set_io_mode = spi_flash_chip_mxic_set_io_mode,

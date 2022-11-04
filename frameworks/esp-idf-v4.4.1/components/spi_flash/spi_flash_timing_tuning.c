@@ -11,7 +11,7 @@
 #include "esp_err.h"
 #include "esp_types.h"
 #include "esp_log.h"
-#include "soc/spi_mem_reg.h"
+// #include "soc/spi_mem_reg.h"
 #include "soc/io_mux_reg.h"
 #include "esp_private/spi_flash_os.h"
 #include "soc/soc.h"
@@ -35,27 +35,29 @@ void spi_timing_set_pin_drive_strength(void)
 {
     //For now, set them all to 3. Need to check after QVL test results are out. TODO: IDF-3663
     //Set default clk
-    SET_PERI_REG_MASK(SPI_MEM_DATE_REG(0), SPI_MEM_SPICLK_PAD_DRV_CTL_EN);
-    REG_SET_FIELD(SPI_MEM_DATE_REG(0), SPI_MEM_SPI_SMEM_SPICLK_FUN_DRV, 3);
-    REG_SET_FIELD(SPI_MEM_DATE_REG(0), SPI_MEM_SPI_FMEM_SPICLK_FUN_DRV, 3);
+    // SET_PERI_REG_MASK(SPI_MEM_DATE_REG(0), SPI_MEM_SPICLK_PAD_DRV_CTL_EN);
+    // REG_SET_FIELD(SPI_MEM_DATE_REG(0), SPI_MEM_SPI_SMEM_SPICLK_FUN_DRV, 3);
+    // REG_SET_FIELD(SPI_MEM_DATE_REG(0), SPI_MEM_SPI_FMEM_SPICLK_FUN_DRV, 3);
     //Set default mspi d0 ~ d7, dqs pin drive strength
-    uint32_t regs[] = {IO_MUX_GPIO27_REG, IO_MUX_GPIO28_REG,
-                       IO_MUX_GPIO31_REG, IO_MUX_GPIO32_REG,
-                       IO_MUX_GPIO33_REG, IO_MUX_GPIO34_REG,
-                       IO_MUX_GPIO35_REG, IO_MUX_GPIO36_REG,
-                       IO_MUX_GPIO37_REG};
-    for (int i = 0; i < ARRAY_SIZE(regs); i++) {
-        PIN_SET_DRV(regs[i], 3);
-    }
+    // uint32_t regs[] = {IO_MUX_GPIO27_REG, IO_MUX_GPIO28_REG,
+    //                    IO_MUX_GPIO31_REG, IO_MUX_GPIO32_REG,
+    //                    IO_MUX_GPIO33_REG, IO_MUX_GPIO34_REG,
+    //                    IO_MUX_GPIO35_REG, IO_MUX_GPIO36_REG,
+    //                    IO_MUX_GPIO37_REG};
+    // for (int i = 0; i < ARRAY_SIZE(regs); i++) {
+    //     PIN_SET_DRV(regs[i], 3);
+    // }
 }
 
-/*------------------------------------------------------------------------------
- * Static functions to get clock configs
- *----------------------------------------------------------------------------*/
-static spi_timing_config_core_clock_t get_mspi_core_clock(void)
-{
-    return spi_timing_config_get_core_clock();
-}
+// /*------------------------------------------------------------------------------
+//  * Static functions to get clock configs
+//  *----------------------------------------------------------------------------*/
+// static spi_timing_config_core_clock_t get_mspi_core_clock(void)
+// {
+//     return spi_timing_config_get_core_clock();
+// }
+
+#define SPI_TIMING_CORE_CLOCK_MHZ 40
 
 static uint32_t get_flash_clock_divider(void)
 {
@@ -397,26 +399,26 @@ static void clear_timing_tuning_regs(bool control_spi1)
 
 void spi_timing_enter_mspi_low_speed_mode(bool control_spi1)
 {
-    /**
-     * Here we are going to slow the SPI1 frequency to 20Mhz, so we need to set SPI1 din_num and din_mode regs.
-     *
-     * Because SPI0 and SPI1 share the din_num and din_mode regs, so if we clear SPI1 din_num and din_mode to
-     * 0, if the SPI0 flash module clock is still in high freq, it may not work correctly.
-     *
-     * Therefore, here we need to slow both the SPI0 and SPI1 and related timing tuning regs to 20Mhz configuration.
-     */
+//     /**
+//      * Here we are going to slow the SPI1 frequency to 20Mhz, so we need to set SPI1 din_num and din_mode regs.
+//      *
+//      * Because SPI0 and SPI1 share the din_num and din_mode regs, so if we clear SPI1 din_num and din_mode to
+//      * 0, if the SPI0 flash module clock is still in high freq, it may not work correctly.
+//      *
+//      * Therefore, here we need to slow both the SPI0 and SPI1 and related timing tuning regs to 20Mhz configuration.
+//      */
 
-    //Switch SPI1 and SPI0 clock as 20MHz, set its SPIMEM core clock as 80M and set clock division as 4
-    spi_timing_config_set_core_clock(0, SPI_TIMING_CONFIG_CORE_CLOCK_80M);  //SPI0 and SPI1 share the register for core clock. So we only set SPI0 here.
-    spi_timing_config_set_flash_clock(0, 4);
-    if (control_spi1) {
-        //After tuning, won't touch SPI1 again
-        spi_timing_config_set_flash_clock(1, 4);
-    }
+//     //Switch SPI1 and SPI0 clock as 20MHz, set its SPIMEM core clock as 80M and set clock division as 4
+//     spi_timing_config_set_core_clock(0, SPI_TIMING_CONFIG_CORE_CLOCK_80M);  //SPI0 and SPI1 share the register for core clock. So we only set SPI0 here.
+//     spi_timing_config_set_flash_clock(0, 4);
+//     if (control_spi1) {
+//         //After tuning, won't touch SPI1 again
+//         spi_timing_config_set_flash_clock(1, 4);
+//     }
 
-#if SPI_TIMING_FLASH_NEEDS_TUNING || SPI_TIMING_PSRAM_NEEDS_TUNING
-    clear_timing_tuning_regs(control_spi1);
-#endif
+// #if SPI_TIMING_FLASH_NEEDS_TUNING || SPI_TIMING_PSRAM_NEEDS_TUNING
+//     clear_timing_tuning_regs(control_spi1);
+// #endif
 }
 
 #if SPI_TIMING_FLASH_NEEDS_TUNING || SPI_TIMING_PSRAM_NEEDS_TUNING
@@ -443,23 +445,23 @@ static void set_timing_tuning_regs_as_required(bool control_spi1)
  */
 void spi_timing_enter_mspi_high_speed_mode(bool control_spi1)
 {
-    spi_timing_config_core_clock_t core_clock = get_mspi_core_clock();
-    uint32_t flash_div = get_flash_clock_divider();
-    uint32_t psram_div = get_psram_clock_divider();
+//     spi_timing_config_core_clock_t core_clock = get_mspi_core_clock();
+//     uint32_t flash_div = get_flash_clock_divider();
+//     uint32_t psram_div = get_psram_clock_divider();
 
-    //Set SPI01 core clock
-    spi_timing_config_set_core_clock(0, core_clock); //SPI0 and SPI1 share the register for core clock. So we only set SPI0 here.
-    //Set FLASH module clock
-    spi_timing_config_set_flash_clock(0, flash_div);
-    if (control_spi1) {
-        spi_timing_config_set_flash_clock(1, flash_div);
-    }
-    //Set PSRAM module clock
-    spi_timing_config_set_psram_clock(0, psram_div);
+//     //Set SPI01 core clock
+//     spi_timing_config_set_core_clock(0, core_clock); //SPI0 and SPI1 share the register for core clock. So we only set SPI0 here.
+//     //Set FLASH module clock
+//     spi_timing_config_set_flash_clock(0, flash_div);
+//     if (control_spi1) {
+//         spi_timing_config_set_flash_clock(1, flash_div);
+//     }
+//     //Set PSRAM module clock
+//     spi_timing_config_set_psram_clock(0, psram_div);
 
-#if SPI_TIMING_FLASH_NEEDS_TUNING || SPI_TIMING_PSRAM_NEEDS_TUNING
-    set_timing_tuning_regs_as_required(true);
-#endif
+// #if SPI_TIMING_FLASH_NEEDS_TUNING || SPI_TIMING_PSRAM_NEEDS_TUNING
+//     set_timing_tuning_regs_as_required(true);
+// #endif
 }
 
 void spi_timing_change_speed_mode_cache_safe(bool switch_down)

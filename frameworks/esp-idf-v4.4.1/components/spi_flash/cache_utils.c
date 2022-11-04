@@ -77,13 +77,14 @@ static volatile int s_flash_op_cpu = -1;
 
 static inline bool esp_task_stack_is_sane_cache_disabled(void)
 {
-    const void *sp = (const void *)esp_cpu_get_sp();
+    return true;
+//     const void *sp = (const void *)esp_cpu_get_sp();
 
-    return esp_ptr_in_dram(sp)
-#if CONFIG_ESP_SYSTEM_ALLOW_RTC_FAST_MEM_AS_HEAP
-        || esp_ptr_in_rtc_dram_fast(sp)
-#endif
-    ;
+//     return esp_ptr_in_dram(sp)
+// #if CONFIG_ESP_SYSTEM_ALLOW_RTC_FAST_MEM_AS_HEAP
+//         || esp_ptr_in_rtc_dram_fast(sp)
+// #endif
+//     ;
 }
 
 void spi_flash_init_lock(void)

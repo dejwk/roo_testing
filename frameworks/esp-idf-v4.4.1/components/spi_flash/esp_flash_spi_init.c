@@ -281,56 +281,56 @@ static DRAM_ATTR esp_flash_t default_chip = {
 extern esp_err_t esp_flash_suspend_cmd_init(esp_flash_t* chip);
 esp_err_t esp_flash_init_default_chip(void)
 {
-    const esp_rom_spiflash_chip_t *legacy_chip = &g_rom_flashchip;
-    memspi_host_config_t cfg = ESP_FLASH_HOST_CONFIG_DEFAULT();
+//     const esp_rom_spiflash_chip_t *legacy_chip = &g_rom_flashchip;
+//     memspi_host_config_t cfg = ESP_FLASH_HOST_CONFIG_DEFAULT();
 
-    #if !CONFIG_IDF_TARGET_ESP32
-    // For esp32s2 spi IOs are configured as from IO MUX by default
-    cfg.iomux = esp_rom_efuse_get_flash_gpio_info() == 0 ?  true : false;
-    #endif
+//     #if !CONFIG_IDF_TARGET_ESP32
+//     // For esp32s2 spi IOs are configured as from IO MUX by default
+//     cfg.iomux = esp_rom_efuse_get_flash_gpio_info() == 0 ?  true : false;
+//     #endif
 
-    #if CONFIG_ESPTOOLPY_OCT_FLASH
-    cfg.octal_mode_en = 1;
-    cfg.default_io_mode = DEFAULT_FLASH_MODE;
-    #endif
+//     #if CONFIG_ESPTOOLPY_OCT_FLASH
+//     cfg.octal_mode_en = 1;
+//     cfg.default_io_mode = DEFAULT_FLASH_MODE;
+//     #endif
 
-    // For chips need time tuning, get value directely from system here.
-    #if SOC_SPI_MEM_SUPPORT_TIME_TUNING
-    if (spi_timing_is_tuned()) {
-        cfg.using_timing_tuning = 1;
-        spi_timing_get_flash_timing_param(&cfg.timing_reg);
-    }
-    #endif // SOC_SPI_MEM_SUPPORT_TIME_TUNING
+//     // For chips need time tuning, get value directely from system here.
+//     #if SOC_SPI_MEM_SUPPORT_TIME_TUNING
+//     if (spi_timing_is_tuned()) {
+//         cfg.using_timing_tuning = 1;
+//         spi_timing_get_flash_timing_param(&cfg.timing_reg);
+//     }
+//     #endif // SOC_SPI_MEM_SUPPORT_TIME_TUNING
 
-    //the host is already initialized, only do init for the data and load it to the host
-    esp_err_t err = memspi_host_init_pointers(&esp_flash_default_host, &cfg);
-    if (err != ESP_OK) {
-        return err;
-    }
+//     //the host is already initialized, only do init for the data and load it to the host
+//     esp_err_t err = memspi_host_init_pointers(&esp_flash_default_host, &cfg);
+//     if (err != ESP_OK) {
+//         return err;
+//     }
 
-    // ROM TODO: account for non-standard default pins in efuse
-    // ROM TODO: to account for chips which are slow to power on, maybe keep probing in a loop here
-    err = esp_flash_init_main(&default_chip);
-    if (err != ESP_OK) {
-        return err;
-    }
-    if (default_chip.size < legacy_chip->chip_size) {
-        ESP_EARLY_LOGE(TAG, "Detected size(%dk) smaller than the size in the binary image header(%dk). Probe failed.", default_chip.size/1024, legacy_chip->chip_size/1024);
-        return ESP_ERR_FLASH_SIZE_NOT_MATCH;
-    }
+//     // ROM TODO: account for non-standard default pins in efuse
+//     // ROM TODO: to account for chips which are slow to power on, maybe keep probing in a loop here
+//     err = esp_flash_init_main(&default_chip);
+//     if (err != ESP_OK) {
+//         return err;
+//     }
+//     if (default_chip.size < legacy_chip->chip_size) {
+//         ESP_EARLY_LOGE(TAG, "Detected size(%dk) smaller than the size in the binary image header(%dk). Probe failed.", default_chip.size/1024, legacy_chip->chip_size/1024);
+//         return ESP_ERR_FLASH_SIZE_NOT_MATCH;
+//     }
 
-    if (default_chip.size > legacy_chip->chip_size) {
-        ESP_EARLY_LOGW(TAG, "Detected size(%dk) larger than the size in the binary image header(%dk). Using the size in the binary image header.", default_chip.size/1024, legacy_chip->chip_size/1024);
-    }
-    default_chip.size = legacy_chip->chip_size;
+//     if (default_chip.size > legacy_chip->chip_size) {
+//         ESP_EARLY_LOGW(TAG, "Detected size(%dk) larger than the size in the binary image header(%dk). Using the size in the binary image header.", default_chip.size/1024, legacy_chip->chip_size/1024);
+//     }
+//     default_chip.size = legacy_chip->chip_size;
 
-    esp_flash_default_chip = &default_chip;
-#ifdef CONFIG_SPI_FLASH_AUTO_SUSPEND
-    err = esp_flash_suspend_cmd_init(&default_chip);
-    if (err != ESP_OK) {
-        return err;
-    }
-#endif
+//     esp_flash_default_chip = &default_chip;
+// #ifdef CONFIG_SPI_FLASH_AUTO_SUSPEND
+//     err = esp_flash_suspend_cmd_init(&default_chip);
+//     if (err != ESP_OK) {
+//         return err;
+//     }
+// #endif
     return ESP_OK;
 }
 

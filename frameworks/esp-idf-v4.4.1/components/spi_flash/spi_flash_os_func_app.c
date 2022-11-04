@@ -158,15 +158,18 @@ static IRAM_ATTR void* get_buffer_malloc(void* arg, size_t reqest_size, size_t* 
         also allocating from the heap.)
     */
     void* ret = NULL;
-    unsigned retries = 5;
-    size_t read_chunk_size = reqest_size;
-    while(ret == NULL && retries--) {
-        read_chunk_size = MIN(read_chunk_size, heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
-        read_chunk_size = (read_chunk_size + 3) & ~3;
-        ret = heap_caps_malloc(read_chunk_size, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-    }
-    ESP_LOGV(TAG, "allocate temp buffer: %p (%d)", ret, read_chunk_size);
-    *out_size = (ret != NULL? read_chunk_size: 0);
+    // unsigned retries = 5;
+    // size_t read_chunk_size = reqest_size;
+    // while(ret == NULL && retries--) {
+    //     read_chunk_size = MIN(read_chunk_size, heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
+    //     read_chunk_size = (read_chunk_size + 3) & ~3;
+    //     ret = heap_caps_malloc(read_chunk_size, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    // }
+    // ESP_LOGV(TAG, "allocate temp buffer: %p (%d)", ret, read_chunk_size);
+    // *out_size = (ret != NULL? read_chunk_size: 0);
+
+    ret = malloc(reqest_size);
+    *out_size = reqest_size;
     return ret;
 }
 
@@ -210,65 +213,65 @@ static const esp_flash_os_functions_t esp_flash_spi23_default_os_functions = {
     .yield = NULL,
 };
 
-static spi_bus_lock_dev_handle_t register_dev(int host_id)
-{
-    spi_bus_lock_handle_t lock = spi_bus_lock_get_by_id(host_id);
-    spi_bus_lock_dev_handle_t dev_handle;
-    spi_bus_lock_dev_config_t config = {.flags = SPI_BUS_LOCK_DEV_FLAG_CS_REQUIRED};
-    esp_err_t err = spi_bus_lock_register_dev(lock, &config, &dev_handle);
-    if (err != ESP_OK) {
-        return NULL;
-    }
-    return dev_handle;
-}
+// static spi_bus_lock_dev_handle_t register_dev(int host_id)
+// {
+//     spi_bus_lock_handle_t lock = spi_bus_lock_get_by_id(host_id);
+//     spi_bus_lock_dev_handle_t dev_handle;
+//     spi_bus_lock_dev_config_t config = {.flags = SPI_BUS_LOCK_DEV_FLAG_CS_REQUIRED};
+//     esp_err_t err = spi_bus_lock_register_dev(lock, &config, &dev_handle);
+//     if (err != ESP_OK) {
+//         return NULL;
+//     }
+//     return dev_handle;
+// }
 
 esp_err_t esp_flash_init_os_functions(esp_flash_t *chip, int host_id, int* out_dev_id)
 {
-    spi_bus_lock_dev_handle_t dev_handle = NULL;
+//     spi_bus_lock_dev_handle_t dev_handle = NULL;
 
-    // Skip initializing the bus lock when the bus is SPI1 and the bus is not shared with SPI Master
-    // driver, leaving dev_handle = NULL
-    bool skip_register_dev = (host_id == SPI1_HOST);
-#if CONFIG_SPI_FLASH_SHARE_SPI1_BUS
-    skip_register_dev = false;
-#endif
-    if (!skip_register_dev) {
-        dev_handle = register_dev(host_id);
-    }
+//     // Skip initializing the bus lock when the bus is SPI1 and the bus is not shared with SPI Master
+//     // driver, leaving dev_handle = NULL
+//     bool skip_register_dev = (host_id == SPI1_HOST);
+// #if CONFIG_SPI_FLASH_SHARE_SPI1_BUS
+//     skip_register_dev = false;
+// #endif
+//     if (!skip_register_dev) {
+//         dev_handle = register_dev(host_id);
+//     }
 
-    if (host_id == SPI1_HOST) {
-        //SPI1
-        chip->os_func = &esp_flash_spi1_default_os_functions;
-        chip->os_func_data = heap_caps_malloc(sizeof(spi1_app_func_arg_t),
-                                         MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-        if (chip->os_func_data == NULL) {
-            return ESP_ERR_NO_MEM;
-        }
-        *(spi1_app_func_arg_t*) chip->os_func_data = (spi1_app_func_arg_t) {
-            .common_arg = {
-                .dev_lock = dev_handle,
-            },
-            .no_protect = true,
-        };
-    } else if (host_id == SPI2_HOST || host_id == SPI3_HOST) {
-        //SPI2, SPI3
-        chip->os_func = &esp_flash_spi23_default_os_functions;
-        chip->os_func_data = heap_caps_malloc(sizeof(app_func_arg_t),
-                                         MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-        if (chip->os_func_data == NULL) {
-            return ESP_ERR_NO_MEM;
-        }
-        *(app_func_arg_t*) chip->os_func_data = (app_func_arg_t) {
-                .dev_lock = dev_handle,
-        };
-    } else {
-        return ESP_ERR_INVALID_ARG;
-    }
+//     if (host_id == SPI1_HOST) {
+//         //SPI1
+//         chip->os_func = &esp_flash_spi1_default_os_functions;
+//         chip->os_func_data = heap_caps_malloc(sizeof(spi1_app_func_arg_t),
+//                                          MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+//         if (chip->os_func_data == NULL) {
+//             return ESP_ERR_NO_MEM;
+//         }
+//         *(spi1_app_func_arg_t*) chip->os_func_data = (spi1_app_func_arg_t) {
+//             .common_arg = {
+//                 .dev_lock = dev_handle,
+//             },
+//             .no_protect = true,
+//         };
+//     } else if (host_id == SPI2_HOST || host_id == SPI3_HOST) {
+//         //SPI2, SPI3
+//         chip->os_func = &esp_flash_spi23_default_os_functions;
+//         chip->os_func_data = heap_caps_malloc(sizeof(app_func_arg_t),
+//                                          MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+//         if (chip->os_func_data == NULL) {
+//             return ESP_ERR_NO_MEM;
+//         }
+//         *(app_func_arg_t*) chip->os_func_data = (app_func_arg_t) {
+//                 .dev_lock = dev_handle,
+//         };
+//     } else {
+//         return ESP_ERR_INVALID_ARG;
+//     }
 
-    // Bus lock not initialized, the device ID should be directly given by application.
-    if (dev_handle) {
-        *out_dev_id = spi_bus_lock_get_dev_id(dev_handle);
-    }
+//     // Bus lock not initialized, the device ID should be directly given by application.
+//     if (dev_handle) {
+//         *out_dev_id = spi_bus_lock_get_dev_id(dev_handle);
+//     }
 
     return ESP_OK;
 }

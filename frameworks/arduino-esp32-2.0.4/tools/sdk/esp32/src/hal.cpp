@@ -26,7 +26,7 @@ int64_t esp_timer_get_time() {
   return FakeEsp32().time().getTimeMicros();
 }
 
-esp_err_t nvs_flash_init(void) { return ESP_OK; }
+// esp_err_t nvs_flash_init(void) { return ESP_OK; }
 
 
 /** @cond */

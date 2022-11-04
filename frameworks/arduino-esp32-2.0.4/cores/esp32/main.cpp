@@ -75,8 +75,10 @@ extern "C" void app_main()
 #endif
 
 void initLogging(int argc, char* argv[]);
+extern "C" void call_start_cpu0();
 
 int main(int argc, char* argv[]) {
+    call_start_cpu0();
     initLogging(argc, argv);
     app_main();
     vTaskStartScheduler();

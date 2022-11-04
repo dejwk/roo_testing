@@ -124,32 +124,37 @@ void EspClass::restart(void)
 
 uint32_t EspClass::getHeapSize(void)
 {
-    multi_heap_info_t info;
-    heap_caps_get_info(&info, MALLOC_CAP_INTERNAL);
-    return info.total_free_bytes + info.total_allocated_bytes;
+    // multi_heap_info_t info;
+    // heap_caps_get_info(&info, MALLOC_CAP_INTERNAL);
+    // return info.total_free_bytes + info.total_allocated_bytes;
+    return 320000;
 }
 
 uint32_t EspClass::getFreeHeap(void)
 {
-    return heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+    // return heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+    return 50000;
 }
 
 uint32_t EspClass::getMinFreeHeap(void)
 {
-    return heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL);
+    // return heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL);
+    return 50000;
 }
 
 uint32_t EspClass::getMaxAllocHeap(void)
 {
-    return heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
+    // return heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
+    return 50000;
 }
 
 uint32_t EspClass::getPsramSize(void)
 {
 	if(psramFound()){
-	    multi_heap_info_t info;
-	    heap_caps_get_info(&info, MALLOC_CAP_SPIRAM);
-	    return info.total_free_bytes + info.total_allocated_bytes;
+	    // multi_heap_info_t info;
+	    // heap_caps_get_info(&info, MALLOC_CAP_SPIRAM);
+	    // return info.total_free_bytes + info.total_allocated_bytes;
+        return 200000;
 	}
 	return 0;
 }
@@ -157,7 +162,8 @@ uint32_t EspClass::getPsramSize(void)
 uint32_t EspClass::getFreePsram(void)
 {
 	if(psramFound()){
-	    return heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+	    // return heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+        return 100000;
 	}
 	return 0;
 }
@@ -165,7 +171,8 @@ uint32_t EspClass::getFreePsram(void)
 uint32_t EspClass::getMinFreePsram(void)
 {
 	if(psramFound()){
-	    return heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM);
+	    // return heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM);
+        return 100000;
 	}
 	return 0;
 }
@@ -173,26 +180,28 @@ uint32_t EspClass::getMinFreePsram(void)
 uint32_t EspClass::getMaxAllocPsram(void)
 {
 	if(psramFound()){
-	    return heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM);
+	    // return heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM);
+        return 100000;
 	}
 	return 0;
 }
 
 static uint32_t sketchSize(sketchSize_t response) {
-    esp_image_metadata_t data;
-    const esp_partition_t *running = esp_ota_get_running_partition();
-    if (!running) return 0;
-    const esp_partition_pos_t running_pos  = {
-        .offset = running->address,
-        .size = running->size,
-    };
-    data.start_addr = running_pos.offset;
-    esp_image_verify(ESP_IMAGE_VERIFY, &running_pos, &data);
-    if (response) {
-        return running_pos.size - data.image_len;
-    } else {
-        return data.image_len;
-    }
+    // esp_image_metadata_t data;
+    // const esp_partition_t *running = esp_ota_get_running_partition();
+    // if (!running) return 0;
+    // const esp_partition_pos_t running_pos  = {
+    //     .offset = running->address,
+    //     .size = running->size,
+    // };
+    // data.start_addr = running_pos.offset;
+    // esp_image_verify(ESP_IMAGE_VERIFY, &running_pos, &data);
+    // if (response) {
+    //     return running_pos.size - data.image_len;
+    // } else {
+    //     return data.image_len;
+    // }
+    return 0;
 }
     
 uint32_t EspClass::getSketchSize () {
@@ -202,40 +211,40 @@ uint32_t EspClass::getSketchSize () {
 String EspClass::getSketchMD5()
 {
     static String result;
-    if (result.length()) {
-        return result;
-    }
-    uint32_t lengthLeft = getSketchSize();
+    // if (result.length()) {
+    //     return result;
+    // }
+    // uint32_t lengthLeft = getSketchSize();
 
-    const esp_partition_t *running = esp_ota_get_running_partition();
-    if (!running) {
-        log_e("Partition could not be found");
+    // const esp_partition_t *running = esp_ota_get_running_partition();
+    // if (!running) {
+    //     log_e("Partition could not be found");
 
-        return String();
-    }
-    const size_t bufSize = SPI_FLASH_SEC_SIZE;
-    std::unique_ptr<uint8_t[]> buf(new uint8_t[bufSize]);
-    uint32_t offset = 0;
-    if(!buf.get()) {
-        log_e("Not enough memory to allocate buffer");
+    //     return String();
+    // }
+    // const size_t bufSize = SPI_FLASH_SEC_SIZE;
+    // std::unique_ptr<uint8_t[]> buf(new uint8_t[bufSize]);
+    // uint32_t offset = 0;
+    // if(!buf.get()) {
+    //     log_e("Not enough memory to allocate buffer");
 
-        return String();
-    }
-    MD5Builder md5;
-    md5.begin();
-    while( lengthLeft > 0) {
-        size_t readBytes = (lengthLeft < bufSize) ? lengthLeft : bufSize;
-        if (!ESP.flashRead(running->address + offset, reinterpret_cast<uint32_t*>(buf.get()), (readBytes + 3) & ~3)) {
-            log_e("Could not read buffer from flash");
+    //     return String();
+    // }
+    // MD5Builder md5;
+    // md5.begin();
+    // while( lengthLeft > 0) {
+    //     size_t readBytes = (lengthLeft < bufSize) ? lengthLeft : bufSize;
+    //     if (!ESP.flashRead(running->address + offset, reinterpret_cast<uint32_t*>(buf.get()), (readBytes + 3) & ~3)) {
+    //         log_e("Could not read buffer from flash");
 
-            return String();
-        }
-        md5.add(buf.get(), readBytes);
-        lengthLeft -= readBytes;
-        offset += readBytes;
-    }
-    md5.calculate();
-    result = md5.toString();
+    //         return String();
+    //     }
+    //     md5.add(buf.get(), readBytes);
+    //     lengthLeft -= readBytes;
+    //     offset += readBytes;
+    // }
+    // md5.calculate();
+    // result = md5.toString();
     return result;
 }
 
@@ -411,6 +420,6 @@ bool EspClass::partitionRead(const esp_partition_t *partition, uint32_t offset, 
 uint64_t EspClass::getEfuseMac(void)
 {
     uint64_t _chipmacid = 0LL;
-    esp_efuse_mac_get_default((uint8_t*) (&_chipmacid));
+    // esp_efuse_mac_get_default((uint8_t*) (&_chipmacid));
     return _chipmacid;
 }

@@ -17,7 +17,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "soc/soc_caps.h"
-#include "soc/systimer_struct.h"
+// #include "soc/systimer_struct.h"
 #include "hal/systimer_types.h"
 
 #ifdef __cplusplus
@@ -25,7 +25,7 @@ extern "C" {
 #endif
 
 typedef struct {
-    systimer_dev_t *dev;
+    // systimer_dev_t *dev;
 } systimer_hal_context_t;
 
 /**

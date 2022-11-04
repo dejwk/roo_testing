@@ -27,17 +27,11 @@ cc_library(
 )
 
 cc_library(
-    name = "spi_hal",
-    srcs = [
-        "spi_hal.c"
-    ],
+    name = "systimer_hal",
+    srcs = ["systimer_hal.c"],
     hdrs = [
-        "include/hal/spi_hal.h",
-        # "include/hal/spi_master_hal.h",
-        "include/hal/spi_slave_hal.h",
-        "include/hal/spi_types.h",
-        # "include/hal/rtc_io_types.h",
-        # "include/hal/gpio_types.h",
+        "include/hal/systimer_hal.h",
+        "include/hal/systimer_types.h",
         ],
     defines = ["CONFIG_IDF_TARGET_ESP32"],
     includes = [
@@ -45,8 +39,78 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:systimer",
+    ]
+)
+
+cc_library(
+    name = "spi_hal",
+    srcs = [
+        "spi_hal.c"
+    ],
+    hdrs = [
+        "include/hal/spi_hal.h",
+        "include/hal/spi_slave_hal.h",
+        "include/hal/spi_types.h",
+    ],
+    defines = ["CONFIG_IDF_TARGET_ESP32"],
+    includes = [
+        "include",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:spi",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/log",
+    ]
+)
+
+cc_library(
+    name = "uart_hal",
+    srcs = [
+        "uart_hal.c",
+        "uart_hal_iram.c",
+    ],
+    hdrs = [
+        "include/hal/uart_hal.h",
+        "include/hal/uart_types.h",
+    ],
+    defines = ["CONFIG_IDF_TARGET_ESP32"],
+    includes = [
+        "include",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:uart",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
+    ]
+)
+
+cc_library(
+    name = "spi_flash_hal",
+    srcs = [
+        "spi_flash_hal.c",
+        "spi_flash_hal_gpspi.c",
+        "spi_flash_hal_iram.c",
+    ],
+    hdrs = [
+        "spi_flash_hal_common.inc",
+        "include/hal/spi_flash_hal.h",
+        "include/hal/spi_flash_encrypt_hal.h",
+        "include/hal/spi_flash_types.h",
+    ],
+    defines = ["CONFIG_IDF_TARGET_ESP32"],
+    includes = [
+        "include",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:spi_flash",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/log",
     ]
 )
@@ -203,5 +267,23 @@ cc_library(
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:interrupt_controller",
+    ]
+)
+
+cc_library(
+    name = "wdt_hal",
+    # srcs = ["wdt_hal.c", "i2c_hal_iram.c"],
+    hdrs = [
+        "include/hal/wdt_hal.h",
+        "include/hal/wdt_types.h",
+        ],
+    defines = ["CONFIG_IDF_TARGET_ESP32"],
+    includes = [
+        "include",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:wdt",
     ]
 )

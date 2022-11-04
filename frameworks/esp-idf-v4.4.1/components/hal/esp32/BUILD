@@ -9,7 +9,10 @@ cc_library(
 
 cc_library(
     name = "rtc_io",
-    hdrs = ["include/hal/rtc_io_ll.h"],
+    hdrs = [
+        "include/hal/rtc_io_ll.h",
+        "include/hal/rtc_cntl_ll.h"
+    ],
     includes = [
         "include"
     ],
@@ -39,6 +42,17 @@ cc_library(
     deps = [
     ]
 )
+
+# cc_library(
+#     name = "systimer",
+#     hdrs = ["include/hal/systimer_ll.h"],
+#     includes = [
+#         "include"
+#     ],
+#     visibility = ["//visibility:public"],
+#     deps = [
+#     ]
+# )
 
 cc_library(
     name = "gpio",
@@ -97,6 +111,27 @@ cc_library(
 )
 
 cc_library(
+    name = "spi_flash",
+    hdrs = [
+        "include/hal/spi_flash_ll.h",
+        "include/hal/spi_flash_encrypted_ll.h",
+    ],
+    includes = [
+        "include"
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
+        ":spi",
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common",
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_rom",
+        # ":gpio",
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
+    ]
+)
+
+cc_library(
     name = "i2c",
     srcs = ["i2c.cpp"],
     hdrs = ["include/hal/i2c_ll.h"],
@@ -146,5 +181,32 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:soc_esp32",
+    ]
+)
+
+cc_library(
+    name = "wdt",
+    hdrs = [
+        "include/hal/mwdt_ll.h",
+        "include/hal/rwdt_ll.h",
+    ],
+    includes = [
+        "include"
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+    ]
+)
+
+cc_library(
+    name = "uart",
+    hdrs = [
+        "include/hal/uart_ll.h",
+    ],
+    includes = [
+        "include"
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
     ]
 )

@@ -21,23 +21,23 @@
 extern "C" {
 #endif
 
-/*
- * @brief The structure of the counter value in systimer
- *
- */
-typedef struct {
-    union {
-        struct {
-            uint64_t lo : SOC_SYSTIMER_BIT_WIDTH_LO; /*!< Low part of counter value */
-            uint64_t hi : SOC_SYSTIMER_BIT_WIDTH_HI; /*!< High part of counter value */
-        };
-        uint64_t val; /*!< counter value */
-    };
-} systimer_counter_value_t;
+// /*
+//  * @brief The structure of the counter value in systimer
+//  *
+//  */
+// typedef struct {
+//     union {
+//         struct {
+//             uint64_t lo : SOC_SYSTIMER_BIT_WIDTH_LO; /*!< Low part of counter value */
+//             uint64_t hi : SOC_SYSTIMER_BIT_WIDTH_HI; /*!< High part of counter value */
+//         };
+//         uint64_t val; /*!< counter value */
+//     };
+// } systimer_counter_value_t;
 
-/** @cond */
-_Static_assert(sizeof(systimer_counter_value_t) == 8, "systimer_counter_value_t should occupy 8 bytes in memory");
-/** @endcond */
+// /** @cond */
+// _Static_assert(sizeof(systimer_counter_value_t) == 8, "systimer_counter_value_t should occupy 8 bytes in memory");
+// /** @endcond */
 
 /**
  * @brief systimer alarm mode

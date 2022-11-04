@@ -15,16 +15,16 @@
 #include <sys/param.h>
 #include "soc/soc_caps.h"
 #include "hal/systimer_hal.h"
-#include "hal/systimer_ll.h"
+// #include "hal/systimer_ll.h"
 #include "hal/systimer_types.h"
-#include "hal/clk_gate_ll.h"
+// #include "hal/clk_gate_ll.h"
 #include "hal/assert.h"
 
 void systimer_hal_init(systimer_hal_context_t *hal)
 {
-    hal->dev = &SYSTIMER;
-    periph_ll_enable_clk_clear_rst(PERIPH_SYSTIMER_MODULE);
-    systimer_ll_enable_clock(hal->dev, true);
+    // hal->dev = &SYSTIMER;
+    // periph_ll_enable_clk_clear_rst(PERIPH_SYSTIMER_MODULE);
+    // systimer_ll_enable_clock(hal->dev, true);
 }
 
 uint64_t systimer_hal_get_counter_value(systimer_hal_context_t *hal, uint32_t counter_id)

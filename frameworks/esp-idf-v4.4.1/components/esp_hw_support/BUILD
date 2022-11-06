@@ -35,6 +35,21 @@ cc_library(
 )
 
 cc_library(
+    name = "mac_addr",
+    srcs = glob(["mac_addr.c"]),
+    hdrs = glob(["include/esp_mac.h"]),
+    includes = [
+        "include"
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_system:include",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/log",
+    ]
+)
+
+cc_library(
     name = "esp_cpu",
     hdrs = glob(["include/esp_cpu.h"]),
     includes = [

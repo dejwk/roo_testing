@@ -15,7 +15,7 @@
 #include <time.h>
 
 #include "esp32-hal.h"
-#include "lwip/apps/sntp.h"
+// #include "lwip/apps/sntp.h"
 //#include "tcpip_adapter.h"
 #include "esp_netif.h"
 
@@ -51,14 +51,14 @@ void configTime(long gmtOffset_sec, int daylightOffset_sec, const char* server1,
 {
     //tcpip_adapter_init();  // Should not hurt anything if already inited
     esp_netif_init();
-    if(sntp_enabled()){
-        sntp_stop();
-    }
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, (char*)server1);
-    sntp_setservername(1, (char*)server2);
-    sntp_setservername(2, (char*)server3);
-    sntp_init();
+    // if(sntp_enabled()){
+    //     sntp_stop();
+    // }
+    // sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    // sntp_setservername(0, (char*)server1);
+    // sntp_setservername(1, (char*)server2);
+    // sntp_setservername(2, (char*)server3);
+    // sntp_init();
     setTimeZone(-gmtOffset_sec, daylightOffset_sec);
 }
 
@@ -70,14 +70,14 @@ void configTzTime(const char* tz, const char* server1, const char* server2, cons
 {
     //tcpip_adapter_init();  // Should not hurt anything if already inited
     esp_netif_init();
-    if(sntp_enabled()){
-        sntp_stop();
-    }
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, (char*)server1);
-    sntp_setservername(1, (char*)server2);
-    sntp_setservername(2, (char*)server3);
-    sntp_init();
+    // if(sntp_enabled()){
+    //     sntp_stop();
+    // }
+    // sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    // sntp_setservername(0, (char*)server1);
+    // sntp_setservername(1, (char*)server2);
+    // sntp_setservername(2, (char*)server3);
+    // sntp_init();
     setenv("TZ", tz, 1);
     tzset();
 }

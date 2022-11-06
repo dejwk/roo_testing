@@ -24,9 +24,9 @@
 
 #include "esp_event_base.h"
 // Legacy event loop not implemented on Linux target
-#if !CONFIG_IDF_TARGET_LINUX
+// #if !CONFIG_IDF_TARGET_LINUX
 #include "esp_event_legacy.h"
-#endif
+// #endif
 
 #ifdef __cplusplus
 extern "C" {

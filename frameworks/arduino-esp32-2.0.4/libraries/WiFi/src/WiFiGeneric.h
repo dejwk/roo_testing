@@ -31,6 +31,13 @@
 #include "esp_smartconfig.h"
 #include "wifi_provisioning/manager.h"
 
+#include "esp_netif_types.h"
+#include "esp_eth.h"
+
+#include "esp_bit_defs.h"
+
+#include "esp_netif.h"
+
 ESP_EVENT_DECLARE_BASE(ARDUINO_EVENTS);
 
 typedef enum {

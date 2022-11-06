@@ -54,6 +54,13 @@ FakeEsp32Board& FakeEsp32() {
   return *esp32;
 }
 
+namespace {
+roo_testing_transducers::wifi::Environment* empty_env() {
+  static roo_testing_transducers::wifi::Environment env;
+  return &env;
+}
+}
+
 FakeEsp32Board::FakeEsp32Board()
     : gpio(40),
       in_matrix(),
@@ -74,7 +81,6 @@ FakeEsp32Board::FakeEsp32Board()
         Esp32I2c(*this, "i2c0", /*I2CEXT0_SDA_*_IDX*/ 30, /*I2CEXT0_SCL_*_IDX8*/ 29),
         Esp32I2c(*this, "i2c1", /*I2CEXT1_SDA_*_IDX*/ 96, /*I2CEXT1_SCL_*_IDX8*/ 95),
       },
-      wifi(),
       nvs(default_nvs_file()),
       spi{Esp32SpiInterface(SPI0, "spi0(internal)", /*SPICLK_OUT_IDX*/ 0,
                             /*SPIQ_OUT_IDX*/ 1, /*SPID_IN_IDX*/ 2, this),
@@ -88,7 +94,8 @@ FakeEsp32Board::FakeEsp32Board()
                             /*VSPIQ_OUT_IDX*/ 64,
                             /*VSPID_IN_IDX*/ 65, this)},
       fs_root_(default_fs_root_path()),
-      time_([this]() { flush(); }) {
+      time_([this]() { flush(); }),
+      wifi_env_(empty_env()) {
   FLAGS_alsologtostderr = true;
   FLAGS_stderrthreshold = google::WARNING;
   attachUartDevice(*(new ConsoleUartDevice()), 1, 3);

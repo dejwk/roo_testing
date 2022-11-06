@@ -31,6 +31,7 @@ cc_library(
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
         "//roo_testing/frameworks/arduino-esp32-2.0.4/libraries/Preferences",
         "//roo_testing/frameworks/arduino-esp32-2.0.4/libraries/SPI",
+        "//roo_testing/frameworks/arduino-esp32-2.0.4/libraries/WiFi",
         "//roo_testing/frameworks/arduino-esp32-2.0.4/libraries/Wire",
     ],
 )

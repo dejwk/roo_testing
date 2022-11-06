@@ -87,7 +87,7 @@ extern "C" {
  * @brief WiFi stack configuration parameters passed to esp_wifi_init call.
  */
 typedef struct {
-    system_event_handler_t event_handler;          /**< WiFi event handler */
+    // system_event_handler_t event_handler;          /**< WiFi event handler */
     wifi_osi_funcs_t*      osi_funcs;              /**< WiFi OS functions */
     wpa_crypto_funcs_t     wpa_crypto_funcs;       /**< WiFi station crypto functions when connect */
     int                    static_rx_buf_num;      /**< WiFi static RX buffer number */
@@ -206,9 +206,9 @@ extern uint64_t g_wifi_feature_caps;
 #define CONFIG_FEATURE_FTM_RESPONDER_BIT (1<<3)
 
 #define WIFI_INIT_CONFIG_DEFAULT() { \
-    .event_handler = &esp_event_send_internal, \
-    .osi_funcs = &g_wifi_osi_funcs, \
-    .wpa_crypto_funcs = g_wifi_default_wpa_crypto_funcs, \
+    /* .event_handler = &esp_event_send_internal, \ */ \
+    /* .osi_funcs = &g_wifi_osi_funcs,*/ \
+    /* .wpa_crypto_funcs = g_wifi_default_wpa_crypto_funcs,*/ \
     .static_rx_buf_num = CONFIG_ESP32_WIFI_STATIC_RX_BUFFER_NUM,\
     .dynamic_rx_buf_num = CONFIG_ESP32_WIFI_DYNAMIC_RX_BUFFER_NUM,\
     .tx_buf_type = CONFIG_ESP32_WIFI_TX_BUFFER_TYPE,\

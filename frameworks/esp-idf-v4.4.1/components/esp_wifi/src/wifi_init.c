@@ -8,17 +8,17 @@
 #include <esp_wifi.h>
 #include "esp_log.h"
 #include "esp_private/wifi.h"
-#include "esp_pm.h"
-#include "esp_sleep.h"
-#include "esp_private/pm_impl.h"
-#include "soc/rtc.h"
-#include "esp_wpa.h"
+// #include "esp_pm.h"
+// #include "esp_sleep.h"
+// #include "esp_private/pm_impl.h"
+// #include "soc/rtc.h"
+// #include "esp_wpa.h"
 #include "esp_netif.h"
-#include "tcpip_adapter_compatible/tcpip_adapter_compat.h"
-#include "driver/adc2_wifi_private.h"
-#include "esp_coexist_internal.h"
-#include "esp_phy_init.h"
-#include "phy.h"
+// #include "tcpip_adapter_compatible/tcpip_adapter_compat.h"
+// #include "driver/adc2_wifi_private.h"
+// #include "esp_coexist_internal.h"
+// #include "esp_phy_init.h"
+// #include "phy.h"
 
 #if (CONFIG_ESP32_WIFI_RX_BA_WIN > CONFIG_ESP32_WIFI_DYNAMIC_RX_BUFFER_NUM)
 #error "WiFi configuration check: WARNING, WIFI_RX_BA_WIN should not be larger than WIFI_DYNAMIC_RX_BUFFER_NUM!"
@@ -30,7 +30,7 @@
 
 ESP_EVENT_DEFINE_BASE(WIFI_EVENT);
 
-extern uint8_t esp_wifi_get_user_init_flag_internal(void);
+// extern uint8_t esp_wifi_get_user_init_flag_internal(void);
 #ifdef CONFIG_PM_ENABLE
 static esp_pm_lock_handle_t s_wifi_modem_sleep_lock;
 #endif
@@ -95,22 +95,22 @@ esp_err_t esp_wifi_deinit(void)
 {
     esp_err_t err = ESP_OK;
 
-    if (esp_wifi_get_user_init_flag_internal()) {
-        ESP_LOGE(TAG, "Wi-Fi not stop");
-        return ESP_ERR_WIFI_NOT_STOPPED;
-    }
+    // if (esp_wifi_get_user_init_flag_internal()) {
+    //     ESP_LOGE(TAG, "Wi-Fi not stop");
+    //     return ESP_ERR_WIFI_NOT_STOPPED;
+    // }
 
-    if (esp_wifi_internal_reg_rxcb(WIFI_IF_STA,  NULL) != ESP_OK ||
-        esp_wifi_internal_reg_rxcb(WIFI_IF_AP,  NULL) != ESP_OK) {
-        ESP_LOGW(TAG, "Failed to unregister Rx callbacks");
-    }
+    // if (esp_wifi_internal_reg_rxcb(WIFI_IF_STA,  NULL) != ESP_OK ||
+    //     esp_wifi_internal_reg_rxcb(WIFI_IF_AP,  NULL) != ESP_OK) {
+    //     ESP_LOGW(TAG, "Failed to unregister Rx callbacks");
+    // }
 
-    esp_supplicant_deinit();
-    err = esp_wifi_deinit_internal();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to deinit Wi-Fi driver (0x%x)", err);
-        return err;
-    }
+    // esp_supplicant_deinit();
+    // err = esp_wifi_deinit_internal();
+    // if (err != ESP_OK) {
+    //     ESP_LOGE(TAG, "Failed to deinit Wi-Fi driver (0x%x)", err);
+    //     return err;
+    // }
 
 #if CONFIG_ESP_NETIF_TCPIP_ADAPTER_COMPATIBLE_LAYER
     tcpip_adapter_clear_default_wifi_handlers();
@@ -132,7 +132,7 @@ esp_err_t esp_wifi_deinit(void)
 #if CONFIG_IDF_TARGET_ESP32C3
     phy_init_flag();
 #endif
-    esp_wifi_power_domain_off();
+    // esp_wifi_power_domain_off();
     return err;
 }
 
@@ -177,7 +177,7 @@ static void esp_wifi_config_info(void)
 
 esp_err_t esp_wifi_init(const wifi_init_config_t *config)
 {
-    esp_wifi_power_domain_on();
+    // esp_wifi_power_domain_on();
 #ifdef CONFIG_PM_ENABLE
     if (s_wifi_modem_sleep_lock == NULL) {
         esp_err_t err = esp_pm_lock_create(ESP_PM_APB_FREQ_MAX, 0, "wifi",
@@ -242,28 +242,28 @@ esp_err_t esp_wifi_init(const wifi_init_config_t *config)
     coex_init();
 #endif
     esp_wifi_set_log_level();
-    esp_err_t result = esp_wifi_init_internal(config);
+    esp_err_t result = ESP_OK;//esp_wifi_init_internal(config);
     if (result == ESP_OK) {
 #if CONFIG_MAC_BB_PD
         esp_mac_bb_pd_mem_init();
         esp_wifi_internal_set_mac_sleep(true);
 #endif
 #if CONFIG_IDF_TARGET_ESP32
-        s_wifi_mac_time_update_cb = esp_wifi_internal_update_mac_time;
+        // s_wifi_mac_time_update_cb = esp_wifi_internal_update_mac_time;
 #endif
 
-        result = esp_supplicant_init();
-        if (result != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to init supplicant (0x%x)", result);
-            esp_err_t deinit_ret = esp_wifi_deinit();
-            if (deinit_ret != ESP_OK) {
-                ESP_LOGE(TAG, "Failed to deinit Wi-Fi (0x%x)", deinit_ret);
-            }
+        // result = esp_supplicant_init();
+        // if (result != ESP_OK) {
+        //     ESP_LOGE(TAG, "Failed to init supplicant (0x%x)", result);
+        //     esp_err_t deinit_ret = esp_wifi_deinit();
+        //     if (deinit_ret != ESP_OK) {
+        //         ESP_LOGE(TAG, "Failed to deinit Wi-Fi (0x%x)", deinit_ret);
+        //     }
 
-            return result;
-        }
+        //     return result;
+        // }
     }
-    adc2_cal_include(); //This enables the ADC2 calibration constructor at start up.
+    // adc2_cal_include(); //This enables the ADC2 calibration constructor at start up.
 
     esp_wifi_config_info();
     return result;

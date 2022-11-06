@@ -46,27 +46,27 @@ static bool s_tcpip_adapter_compat = false;
 #ifdef CONFIG_ESP_WIFI_SOFTAP_SUPPORT
 static void wifi_create_and_start_ap(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data)
 {
-    if (s_esp_netifs[TCPIP_ADAPTER_IF_AP] == NULL) {
-        esp_netif_config_t cfg = ESP_NETIF_DEFAULT_WIFI_AP();
-        esp_netif_t *ap_netif = esp_netif_new(&cfg);
+    // if (s_esp_netifs[TCPIP_ADAPTER_IF_AP] == NULL) {
+    //     esp_netif_config_t cfg = ESP_NETIF_DEFAULT_WIFI_AP();
+    //     esp_netif_t *ap_netif = esp_netif_new(&cfg);
 
-        esp_netif_attach_wifi_ap(ap_netif);
-        esp_wifi_set_default_wifi_ap_handlers();
-        s_esp_netifs[TCPIP_ADAPTER_IF_AP] = ap_netif;
-    }
+    //     esp_netif_attach_wifi_ap(ap_netif);
+    //     esp_wifi_set_default_wifi_ap_handlers();
+    //     s_esp_netifs[TCPIP_ADAPTER_IF_AP] = ap_netif;
+    // }
 }
 #endif
 
 static void wifi_create_and_start_sta(void *esp_netif, esp_event_base_t base, int32_t event_id, void *data)
 {
-    if (s_esp_netifs[TCPIP_ADAPTER_IF_STA] == NULL) {
-        esp_netif_config_t cfg = ESP_NETIF_DEFAULT_WIFI_STA();
-        esp_netif_t *sta_netif = esp_netif_new(&cfg);
+    // if (s_esp_netifs[TCPIP_ADAPTER_IF_STA] == NULL) {
+    //     esp_netif_config_t cfg = ESP_NETIF_DEFAULT_WIFI_STA();
+    //     esp_netif_t *sta_netif = esp_netif_new(&cfg);
 
-        esp_netif_attach_wifi_station(sta_netif);
-        esp_wifi_set_default_wifi_sta_handlers();
-        s_esp_netifs[TCPIP_ADAPTER_IF_STA] = sta_netif;
-    }
+    //     esp_netif_attach_wifi_station(sta_netif);
+    //     esp_wifi_set_default_wifi_sta_handlers();
+    //     s_esp_netifs[TCPIP_ADAPTER_IF_STA] = sta_netif;
+    // }
 }
 
 static inline esp_netif_t * netif_from_if(tcpip_adapter_if_t interface)
@@ -96,10 +96,10 @@ static inline esp_netif_t * netif_from_if(tcpip_adapter_if_t interface)
 void tcpip_adapter_init(void)
 {
     s_tcpip_adapter_compat = true;
-    esp_err_t err;
-    if (ESP_OK != (err = esp_netif_init())) {
-        ESP_LOGE(TAG, "ESP-NETIF initialization failed with %d in tcpip_adapter compatibility mode", err);
-    }
+    // esp_err_t err;
+    // if (ESP_OK != (err = esp_netif_init())) {
+    //     ESP_LOGE(TAG, "ESP-NETIF initialization failed with %d in tcpip_adapter compatibility mode", err);
+    // }
 }
 
 #if CONFIG_ETH_ENABLED
@@ -111,45 +111,45 @@ esp_err_t tcpip_adapter_clear_default_eth_handlers(void)
 
 esp_err_t tcpip_adapter_set_default_eth_handlers(void)
 {
-    if (s_tcpip_adapter_compat) {
-        esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();
-        esp_netif_t *eth_netif = esp_netif_new(&cfg);
+    // if (s_tcpip_adapter_compat) {
+    //     esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();
+    //     esp_netif_t *eth_netif = esp_netif_new(&cfg);
 
-        s_esp_netifs[TCPIP_ADAPTER_IF_ETH] = eth_netif;
-    }
+    //     s_esp_netifs[TCPIP_ADAPTER_IF_ETH] = eth_netif;
+    // }
     return ESP_OK;
 
 }
 
 esp_err_t tcpip_adapter_compat_start_eth(void *eth_driver)
 {
-    if (s_tcpip_adapter_compat) {
-        esp_netif_t *esp_netif = netif_from_if(TCPIP_ADAPTER_IF_ETH);
-        if (esp_netif) {
-            esp_netif_attach(esp_netif, esp_eth_new_netif_glue(eth_driver));
-        }
-    }
+    // if (s_tcpip_adapter_compat) {
+    //     esp_netif_t *esp_netif = netif_from_if(TCPIP_ADAPTER_IF_ETH);
+    //     if (esp_netif) {
+    //         esp_netif_attach(esp_netif, esp_eth_new_netif_glue(eth_driver));
+    //     }
+    // }
     return ESP_OK;
 }
 
 #endif
 
-esp_err_t tcpip_adapter_eth_input(void *buffer, uint16_t len, void *eb)
-{
-    return esp_netif_receive(netif_from_if(TCPIP_ADAPTER_IF_ETH), buffer, len, eb);
-}
+// esp_err_t tcpip_adapter_eth_input(void *buffer, uint16_t len, void *eb)
+// {
+//     return esp_netif_receive(netif_from_if(TCPIP_ADAPTER_IF_ETH), buffer, len, eb);
+// }
 
-esp_err_t tcpip_adapter_sta_input(void *buffer, uint16_t len, void *eb)
-{
-    return esp_netif_receive(netif_from_if(TCPIP_ADAPTER_IF_STA), buffer, len, eb);
-}
+// esp_err_t tcpip_adapter_sta_input(void *buffer, uint16_t len, void *eb)
+// {
+//     return esp_netif_receive(netif_from_if(TCPIP_ADAPTER_IF_STA), buffer, len, eb);
+// }
 
-#ifdef CONFIG_ESP_WIFI_SOFTAP_SUPPORT
-esp_err_t tcpip_adapter_ap_input(void *buffer, uint16_t len, void *eb)
-{
-    return esp_netif_receive(netif_from_if(TCPIP_ADAPTER_IF_AP), buffer, len, eb);
-}
-#endif
+// #ifdef CONFIG_ESP_WIFI_SOFTAP_SUPPORT
+// esp_err_t tcpip_adapter_ap_input(void *buffer, uint16_t len, void *eb)
+// {
+//     return esp_netif_receive(netif_from_if(TCPIP_ADAPTER_IF_AP), buffer, len, eb);
+// }
+// #endif
 
 esp_err_t tcpip_adapter_set_default_wifi_handlers(void)
 {
@@ -166,7 +166,7 @@ esp_err_t tcpip_adapter_set_default_wifi_handlers(void)
             return err;
         }
 #endif
-        _esp_wifi_set_default_wifi_handlers();
+        // _esp_wifi_set_default_wifi_handlers();
     }
     return ESP_OK;
 #else
@@ -179,122 +179,134 @@ esp_err_t tcpip_adapter_clear_default_wifi_handlers(void)
 {
     if (s_tcpip_adapter_compat) {
         // Clear default handlers only if tcpip-adapter mode used
-        return _esp_wifi_clear_default_wifi_handlers();
+        // return _esp_wifi_clear_default_wifi_handlers();
     }
     // No action if tcpip-adapter compatibility enabled, but interfaces created/configured with esp-netif
     return ESP_OK;
 }
 
-tcpip_adapter_if_t tcpip_adapter_if_from_esp_netif(esp_netif_t *esp_netif)
-{
-    for (int i=0; i<TCPIP_ADAPTER_IF_MAX; ++i) {
-        if (esp_netif == s_esp_netifs[i])
-            return i;
-    }
-    return TCPIP_ADAPTER_IF_MAX;
-}
+// tcpip_adapter_if_t tcpip_adapter_if_from_esp_netif(esp_netif_t *esp_netif)
+// {
+//     for (int i=0; i<TCPIP_ADAPTER_IF_MAX; ++i) {
+//         if (esp_netif == s_esp_netifs[i])
+//             return i;
+//     }
+//     return TCPIP_ADAPTER_IF_MAX;
+// }
 
-esp_err_t tcpip_adapter_get_ip_info(tcpip_adapter_if_t tcpip_if, tcpip_adapter_ip_info_t *ip_info)
-{
-    return esp_netif_get_ip_info(netif_from_if(tcpip_if), (esp_netif_ip_info_t *)ip_info);
-}
+// esp_err_t tcpip_adapter_get_ip_info(tcpip_adapter_if_t tcpip_if, tcpip_adapter_ip_info_t *ip_info)
+// {
+//     return esp_netif_get_ip_info(netif_from_if(tcpip_if), (esp_netif_ip_info_t *)ip_info);
+// }
 
-#if CONFIG_LWIP_IPV6
-esp_err_t tcpip_adapter_get_ip6_linklocal(tcpip_adapter_if_t tcpip_if, ip6_addr_t *if_ip6)
-{
-    return esp_netif_get_ip6_linklocal(netif_from_if(tcpip_if), (esp_ip6_addr_t*)if_ip6);
-}
+// #if CONFIG_LWIP_IPV6
+// esp_err_t tcpip_adapter_get_ip6_linklocal(tcpip_adapter_if_t tcpip_if, ip6_addr_t *if_ip6)
+// {
+//     return esp_netif_get_ip6_linklocal(netif_from_if(tcpip_if), (esp_ip6_addr_t*)if_ip6);
+// }
 
-esp_err_t tcpip_adapter_get_ip6_global(tcpip_adapter_if_t tcpip_if, ip6_addr_t *if_ip6)
-{
-    return esp_netif_get_ip6_global(netif_from_if(tcpip_if), (esp_ip6_addr_t*)if_ip6);
-}
-#endif
+// esp_err_t tcpip_adapter_get_ip6_global(tcpip_adapter_if_t tcpip_if, ip6_addr_t *if_ip6)
+// {
+//     return esp_netif_get_ip6_global(netif_from_if(tcpip_if), (esp_ip6_addr_t*)if_ip6);
+// }
+// #endif
 
-esp_err_t tcpip_adapter_dhcpc_get_status(tcpip_adapter_if_t tcpip_if, tcpip_adapter_dhcp_status_t *status)
-{
-    return esp_netif_dhcpc_get_status(netif_from_if(tcpip_if), status);
-}
+// esp_err_t tcpip_adapter_dhcpc_get_status(tcpip_adapter_if_t tcpip_if, tcpip_adapter_dhcp_status_t *status)
+// {
+//     return esp_netif_dhcpc_get_status(netif_from_if(tcpip_if), status);
+// }
 
 bool tcpip_adapter_is_netif_up(tcpip_adapter_if_t tcpip_if)
 {
-    return esp_netif_is_netif_up(netif_from_if(tcpip_if));
+    // return esp_netif_is_netif_up(netif_from_if(tcpip_if));
+    return true;
 }
 
-esp_err_t tcpip_adapter_get_netif(tcpip_adapter_if_t tcpip_if, void ** netif)
-{
-    esp_netif_t *esp_netif = netif_from_if(tcpip_if);
-    if (esp_netif) {
-        void* net_stack_netif = esp_netif_get_netif_impl(esp_netif);
-        *netif = net_stack_netif;
-        return ESP_OK;
-    }
-    return ESP_ERR_INVALID_ARG;
-}
-#if CONFIG_LWIP_IPV6
-esp_err_t tcpip_adapter_create_ip6_linklocal(tcpip_adapter_if_t tcpip_if)
-{
-    return esp_netif_create_ip6_linklocal(netif_from_if(tcpip_if));
-}
-#endif
+// esp_err_t tcpip_adapter_get_netif(tcpip_adapter_if_t tcpip_if, void ** netif)
+// {
+//     esp_netif_t *esp_netif = netif_from_if(tcpip_if);
+//     if (esp_netif) {
+//         void* net_stack_netif = esp_netif_get_netif_impl(esp_netif);
+//         *netif = net_stack_netif;
+//         return ESP_OK;
+//     }
+//     return ESP_ERR_INVALID_ARG;
+// }
+// #if CONFIG_LWIP_IPV6
+// esp_err_t tcpip_adapter_create_ip6_linklocal(tcpip_adapter_if_t tcpip_if)
+// {
+//     return esp_netif_create_ip6_linklocal(netif_from_if(tcpip_if));
+// }
+// #endif
 esp_err_t tcpip_adapter_dhcps_stop(tcpip_adapter_if_t tcpip_if)
 {
-    return esp_netif_dhcps_stop(netif_from_if(tcpip_if));
+    // return esp_netif_dhcps_stop(netif_from_if(tcpip_if));
+    return ESP_OK;
 }
 
 esp_err_t tcpip_adapter_dhcpc_stop(tcpip_adapter_if_t tcpip_if)
 {
-    return esp_netif_dhcpc_stop(netif_from_if(tcpip_if));
+    // return esp_netif_dhcpc_stop(netif_from_if(tcpip_if));
+    return ESP_OK;
 }
 
 esp_err_t tcpip_adapter_dhcps_start(tcpip_adapter_if_t tcpip_if)
 {
-    return esp_netif_dhcps_start(netif_from_if(tcpip_if));
+    // return esp_netif_dhcps_start(netif_from_if(tcpip_if));
+    return ESP_OK;
 }
 
 esp_err_t tcpip_adapter_dhcpc_start(tcpip_adapter_if_t tcpip_if)
 {
-    return esp_netif_dhcpc_start(netif_from_if(tcpip_if));
+    // return esp_netif_dhcpc_start(netif_from_if(tcpip_if));
+    return ESP_OK;
 }
 esp_err_t tcpip_adapter_dhcps_get_status(tcpip_adapter_if_t tcpip_if, tcpip_adapter_dhcp_status_t *status)
 {
-    return esp_netif_dhcps_get_status(netif_from_if(tcpip_if), status);
+    // return esp_netif_dhcps_get_status(netif_from_if(tcpip_if), status);
+    return ESP_OK;
 }
 
 esp_err_t tcpip_adapter_dhcps_option(tcpip_adapter_dhcp_option_mode_t opt_op, tcpip_adapter_dhcp_option_id_t opt_id, void *opt_val, uint32_t opt_len)
 {
     // Note: legacy mode supports dhcps only for default wifi AP
-    return esp_netif_dhcps_option(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), opt_op, opt_id, opt_val, opt_len);
+    // return esp_netif_dhcps_option(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), opt_op, opt_id, opt_val, opt_len);
+    return ESP_OK;
 }
 
 esp_err_t tcpip_adapter_dhcpc_option(tcpip_adapter_dhcp_option_mode_t opt_op, tcpip_adapter_dhcp_option_id_t opt_id, void *opt_val, uint32_t opt_len)
 {
-    return esp_netif_dhcpc_option(netif_from_if(TCPIP_ADAPTER_IF_STA), opt_op, opt_id, opt_val, opt_len);
+    // return esp_netif_dhcpc_option(netif_from_if(TCPIP_ADAPTER_IF_STA), opt_op, opt_id, opt_val, opt_len);
+    return ESP_OK;
 }
 
 esp_err_t tcpip_adapter_set_ip_info(tcpip_adapter_if_t tcpip_if, const tcpip_adapter_ip_info_t *ip_info)
 {
-    return esp_netif_set_ip_info(netif_from_if(tcpip_if), (esp_netif_ip_info_t *)ip_info);
+    // return esp_netif_set_ip_info(netif_from_if(tcpip_if), (esp_netif_ip_info_t *)ip_info);
+    return ESP_OK;
 }
 
 esp_err_t tcpip_adapter_get_dns_info(tcpip_adapter_if_t tcpip_if, tcpip_adapter_dns_type_t type, tcpip_adapter_dns_info_t *dns)
 {
-    return esp_netif_get_dns_info(netif_from_if(tcpip_if), type, dns);
+    // return esp_netif_get_dns_info(netif_from_if(tcpip_if), type, dns);
+    return ESP_OK;
 }
 
 esp_err_t tcpip_adapter_set_dns_info(tcpip_adapter_if_t tcpip_if, tcpip_adapter_dns_type_t type, tcpip_adapter_dns_info_t *dns)
 {
-    return esp_netif_set_dns_info(netif_from_if(tcpip_if), type, dns);
+    // return esp_netif_set_dns_info(netif_from_if(tcpip_if), type, dns);
+    return ESP_OK;
 }
 
-int tcpip_adapter_get_netif_index(tcpip_adapter_if_t tcpip_if)
-{
-    return esp_netif_get_netif_impl_index(netif_from_if(tcpip_if));
-}
+// int tcpip_adapter_get_netif_index(tcpip_adapter_if_t tcpip_if)
+// {
+//     return esp_netif_get_netif_impl_index(netif_from_if(tcpip_if));
+// }
 
 esp_err_t tcpip_adapter_get_sta_list(const wifi_sta_list_t *wifi_sta_list, tcpip_adapter_sta_list_t *tcpip_sta_list)
 {
-    return esp_netif_get_sta_list(wifi_sta_list, tcpip_sta_list);
+    // return esp_netif_get_sta_list(wifi_sta_list, tcpip_sta_list);
+    return ESP_OK;
 }
 
 static esp_err_t tcpip_adapter_compat_start_netif(esp_netif_t *netif, uint8_t *mac, tcpip_adapter_ip_info_t *ip_info)
@@ -302,81 +314,93 @@ static esp_err_t tcpip_adapter_compat_start_netif(esp_netif_t *netif, uint8_t *m
     if (netif == NULL || mac == NULL || ip_info == NULL) {
         return ESP_ERR_TCPIP_ADAPTER_INVALID_PARAMS;
     }
-    esp_netif_set_mac(netif, mac);
-    esp_netif_set_ip_info(netif, (esp_netif_ip_info_t *)ip_info);
-    esp_netif_action_start(netif, NULL, 0, NULL);
+    // esp_netif_set_mac(netif, mac);
+    // esp_netif_set_ip_info(netif, (esp_netif_ip_info_t *)ip_info);
+    // esp_netif_action_start(netif, NULL, 0, NULL);
     return ESP_OK;
 }
 
 esp_err_t tcpip_adapter_eth_start(uint8_t *mac, tcpip_adapter_ip_info_t *ip_info, void *args)
 {
-    return tcpip_adapter_compat_start_netif(netif_from_if(TCPIP_ADAPTER_IF_ETH),
-                                            mac, ip_info);
+    // return tcpip_adapter_compat_start_netif(netif_from_if(TCPIP_ADAPTER_IF_ETH),
+    //                                         mac, ip_info);
+    return ESP_OK;
 }
 
 esp_err_t tcpip_adapter_sta_start(uint8_t *mac, tcpip_adapter_ip_info_t *ip_info)
 {
-    return tcpip_adapter_compat_start_netif(netif_from_if(TCPIP_ADAPTER_IF_STA),
-                                            mac, ip_info);
+    // return tcpip_adapter_compat_start_netif(netif_from_if(TCPIP_ADAPTER_IF_STA),
+    //                                         mac, ip_info);
+    return ESP_OK;
 }
 
 #ifdef CONFIG_ESP_WIFI_SOFTAP_SUPPORT
 esp_err_t tcpip_adapter_ap_start(uint8_t *mac, tcpip_adapter_ip_info_t *ip_info)
 {
-    return tcpip_adapter_compat_start_netif(netif_from_if(TCPIP_ADAPTER_IF_AP),
-                                            mac, ip_info);
+    // return tcpip_adapter_compat_start_netif(netif_from_if(TCPIP_ADAPTER_IF_AP),
+    //                                         mac, ip_info);
+    return ESP_OK;
 }
 #endif
 
 esp_err_t tcpip_adapter_stop(tcpip_adapter_if_t tcpip_if)
 {
-    esp_netif_t *netif = netif_from_if(tcpip_if);
-    if (netif == NULL) {
-        return ESP_ERR_TCPIP_ADAPTER_INVALID_PARAMS;
-    }
-    esp_netif_action_stop(netif_from_if(tcpip_if), NULL, 0, NULL);
+    // esp_netif_t *netif = netif_from_if(tcpip_if);
+    // if (netif == NULL) {
+    //     return ESP_ERR_TCPIP_ADAPTER_INVALID_PARAMS;
+    // }
+    // esp_netif_action_stop(netif_from_if(tcpip_if), NULL, 0, NULL);
     return ESP_OK;
 }
 
 esp_err_t tcpip_adapter_up(tcpip_adapter_if_t tcpip_if)
 {
-    return esp_netif_up(netif_from_if(tcpip_if));
+    // return esp_netif_up(netif_from_if(tcpip_if));
+    return ESP_OK;
 }
 
 esp_err_t tcpip_adapter_down(tcpip_adapter_if_t tcpip_if)
 {
-    return esp_netif_down(netif_from_if(tcpip_if));
+    // return esp_netif_down(netif_from_if(tcpip_if));
+    return ESP_OK;
 }
 
 esp_err_t tcpip_adapter_get_old_ip_info(tcpip_adapter_if_t tcpip_if, tcpip_adapter_ip_info_t *ip_info)
 {
-    return esp_netif_get_old_ip_info(netif_from_if(tcpip_if), (esp_netif_ip_info_t *)ip_info);
+    // return esp_netif_get_old_ip_info(netif_from_if(tcpip_if), (esp_netif_ip_info_t *)ip_info);
+    return ESP_OK;
 }
 
 esp_err_t tcpip_adapter_set_old_ip_info(tcpip_adapter_if_t tcpip_if, const tcpip_adapter_ip_info_t *ip_info)
 {
-    return esp_netif_set_old_ip_info(netif_from_if(tcpip_if), (esp_netif_ip_info_t *)ip_info);
+    // return esp_netif_set_old_ip_info(netif_from_if(tcpip_if), (esp_netif_ip_info_t *)ip_info);
+    return ESP_OK;
 }
 
-esp_interface_t tcpip_adapter_get_esp_if(void *dev)
-{
-    esp_netif_t *netif = esp_netif_get_handle_from_netif_impl(dev);
-    for (int i=0; i< TCPIP_ADAPTER_IF_MAX; ++i) {
-        if (s_esp_netifs[i] == netif) {
-            return i;
-        }
-    }
-    return ESP_IF_MAX;
-}
+// esp_interface_t tcpip_adapter_get_esp_if(void *dev)
+// {
+//     esp_netif_t *netif = esp_netif_get_handle_from_netif_impl(dev);
+//     for (int i=0; i< TCPIP_ADAPTER_IF_MAX; ++i) {
+//         if (s_esp_netifs[i] == netif) {
+//             return i;
+//         }
+//     }
+//     return ESP_IF_MAX;
+// }
 
 esp_err_t tcpip_adapter_set_hostname(tcpip_adapter_if_t tcpip_if, const char *hostname)
 {
-    return esp_netif_set_hostname(netif_from_if(tcpip_if), hostname);
+    // return esp_netif_set_hostname(netif_from_if(tcpip_if), hostname);
 }
 
 esp_err_t tcpip_adapter_get_hostname(tcpip_adapter_if_t tcpip_if, const char **hostname)
 {
-    return esp_netif_get_hostname(netif_from_if(tcpip_if), hostname);
+    // return esp_netif_get_hostname(netif_from_if(tcpip_if), hostname);
+    static char name[256];
+    if (gethostname(&name, 256)) {
+      return ESP_OK;
+    }
+    return ESP_ERR_TCPIP_ADAPTER_IF_NOT_READY;
 }
 
 #else

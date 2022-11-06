@@ -67,6 +67,22 @@ cc_library(
 )
 
 cc_library(
+    name = "eth_hal",
+    srcs = [
+    ],
+    hdrs = [
+        "include/hal/eth_types.h",
+    ],
+    defines = ["CONFIG_IDF_TARGET_ESP32"],
+    includes = [
+        "include",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+    ]
+)
+
+cc_library(
     name = "uart_hal",
     srcs = [
         "uart_hal.c",

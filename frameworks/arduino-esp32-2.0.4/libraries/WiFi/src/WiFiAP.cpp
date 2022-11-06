@@ -38,6 +38,9 @@ extern "C" {
 #include <esp_event.h>
 #include <lwip/ip_addr.h>
 #include "dhcpserver/dhcpserver_options.h"
+
+#include "esp_netif.h"
+
 }
 
 

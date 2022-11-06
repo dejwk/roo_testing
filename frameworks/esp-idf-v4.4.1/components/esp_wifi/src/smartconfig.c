@@ -31,7 +31,7 @@ static void handler_got_ssid_passwd(void *arg, esp_event_base_t base, int32_t ev
     uint8_t ssid[33] = { 0 };
     uint8_t password[65] = { 0 };
     uint8_t cellphone_ip[4];
-    esp_err_t err = ESP_OK;
+    // esp_err_t err = ESP_OK;
 
     memcpy(ssid, evt->ssid, sizeof(evt->ssid));
     memcpy(password, evt->password, sizeof(evt->password));
@@ -41,10 +41,10 @@ static void handler_got_ssid_passwd(void *arg, esp_event_base_t base, int32_t ev
     ESP_LOGD(TAG, "PASSWORD:%s", password);
     ESP_LOGD(TAG, "Phone ip: %d.%d.%d.%d\n", cellphone_ip[0], cellphone_ip[1], cellphone_ip[2], cellphone_ip[3]);
 
-    err = sc_send_ack_start(evt->type, evt->token, evt->cellphone_ip);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Send smartconfig ACK error: %d", err);
-    }
+    // err = sc_send_ack_start(evt->type, evt->token, evt->cellphone_ip);
+    // if (err != ESP_OK) {
+    //     ESP_LOGE(TAG, "Send smartconfig ACK error: %d", err);
+    // }
 }
 
 esp_err_t esp_smartconfig_start(const smartconfig_start_config_t *config)
@@ -57,10 +57,10 @@ esp_err_t esp_smartconfig_start(const smartconfig_start_config_t *config)
         return err;
     }
 
-    err = esp_smartconfig_internal_start(config);
-    if (err != ESP_OK) {
-        esp_event_handler_unregister(SC_EVENT, SC_EVENT_GOT_SSID_PSWD, handler_got_ssid_passwd);
-    }
+    // err = esp_smartconfig_internal_start(config);
+    // if (err != ESP_OK) {
+    //     esp_event_handler_unregister(SC_EVENT, SC_EVENT_GOT_SSID_PSWD, handler_got_ssid_passwd);
+    // }
     return err;
 }
 
@@ -68,10 +68,10 @@ esp_err_t esp_smartconfig_stop(void)
 {
     esp_err_t err = ESP_OK;
 
-    err = esp_smartconfig_internal_stop();
-    if (err == ESP_OK) {
-        sc_send_ack_stop();
-        esp_event_handler_unregister(SC_EVENT, SC_EVENT_GOT_SSID_PSWD, handler_got_ssid_passwd);
-    }
+    // err = esp_smartconfig_internal_stop();
+    // if (err == ESP_OK) {
+    //     sc_send_ack_stop();
+    //     esp_event_handler_unregister(SC_EVENT, SC_EVENT_GOT_SSID_PSWD, handler_got_ssid_passwd);
+    // }
     return err;
 }

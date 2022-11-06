@@ -9,7 +9,6 @@
 #include "fake_esp32_reg.h"
 #include "fake_esp32_time.h"
 #include "fake_esp32_uart.h"
-#include "fake_esp32_wifi.h"
 
 #include "fake_esp32_spi_struct.h"
 
@@ -79,8 +78,6 @@ class FakeEsp32Board {
   Esp32InMatrix in_matrix;
   Esp32OutMatrix out_matrix;
 
-  Esp32WifiAdapter wifi;
-
   Nvs nvs;
 
   EmulatedTime& time() { return time_; }
@@ -119,6 +116,14 @@ class FakeEsp32Board {
   Esp32Adc& adc(int idx) { return adc_[idx]; }
   Esp32I2c& i2c(int idx) { return i2c_[idx]; }
 
+  void setWifiEnvironment(roo_testing_transducers::wifi::Environment& env) {
+    wifi_env_ = &env;
+  }
+
+  const roo_testing_transducers::wifi::Environment& getWifiEnvironment() const {
+    return *wifi_env_;
+  }
+
  private:
   friend FakeEsp32Board* CreateEsp32Board();
   friend void spiFakeTransferOnDevice(int8_t spi_num);
@@ -138,6 +143,7 @@ class FakeEsp32Board {
 
   std::string fs_root_;
   EmulatedTime time_;
+  roo_testing_transducers::wifi::Environment* wifi_env_;
 };
 
 FakeEsp32Board& FakeEsp32();

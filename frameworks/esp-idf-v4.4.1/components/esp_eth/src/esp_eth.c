@@ -63,96 +63,96 @@ typedef struct {
 // For more details, please refer to WiKi. https://en.wikipedia.org/wiki/Mediator_pattern
 //////////////////////////////////////////////////////////////////////////////////////////////
 
-static esp_err_t eth_phy_reg_read(esp_eth_mediator_t *eth, uint32_t phy_addr, uint32_t phy_reg, uint32_t *reg_value)
-{
-    esp_eth_driver_t *eth_driver = __containerof(eth, esp_eth_driver_t, mediator);
-    // invoking user customized PHY IO function if necessary
-    if (eth_driver->customized_read_phy_reg) {
-        return eth_driver->customized_read_phy_reg(eth_driver, phy_addr, phy_reg, reg_value);
-    }
-    // by default, PHY device is managed by MAC's SMI interface
-    esp_eth_mac_t *mac = eth_driver->mac;
-    return mac->read_phy_reg(mac, phy_addr, phy_reg, reg_value);
-}
+// static esp_err_t eth_phy_reg_read(esp_eth_mediator_t *eth, uint32_t phy_addr, uint32_t phy_reg, uint32_t *reg_value)
+// {
+//     esp_eth_driver_t *eth_driver = __containerof(eth, esp_eth_driver_t, mediator);
+//     // invoking user customized PHY IO function if necessary
+//     if (eth_driver->customized_read_phy_reg) {
+//         return eth_driver->customized_read_phy_reg(eth_driver, phy_addr, phy_reg, reg_value);
+//     }
+//     // by default, PHY device is managed by MAC's SMI interface
+//     esp_eth_mac_t *mac = eth_driver->mac;
+//     return mac->read_phy_reg(mac, phy_addr, phy_reg, reg_value);
+// }
 
-static esp_err_t eth_phy_reg_write(esp_eth_mediator_t *eth, uint32_t phy_addr, uint32_t phy_reg, uint32_t reg_value)
-{
-    esp_eth_driver_t *eth_driver = __containerof(eth, esp_eth_driver_t, mediator);
-    // invoking user customized PHY IO function if necessary
-    if (eth_driver->customized_write_phy_reg) {
-        return eth_driver->customized_write_phy_reg(eth_driver, phy_addr, phy_reg, reg_value);
-    }
-    // by default, PHY device is managed by MAC's SMI interface
-    esp_eth_mac_t *mac = eth_driver->mac;
-    return mac->write_phy_reg(mac, phy_addr, phy_reg, reg_value);
-}
+// static esp_err_t eth_phy_reg_write(esp_eth_mediator_t *eth, uint32_t phy_addr, uint32_t phy_reg, uint32_t reg_value)
+// {
+//     esp_eth_driver_t *eth_driver = __containerof(eth, esp_eth_driver_t, mediator);
+//     // invoking user customized PHY IO function if necessary
+//     if (eth_driver->customized_write_phy_reg) {
+//         return eth_driver->customized_write_phy_reg(eth_driver, phy_addr, phy_reg, reg_value);
+//     }
+//     // by default, PHY device is managed by MAC's SMI interface
+//     esp_eth_mac_t *mac = eth_driver->mac;
+//     return mac->write_phy_reg(mac, phy_addr, phy_reg, reg_value);
+// }
 
-static esp_err_t eth_stack_input(esp_eth_mediator_t *eth, uint8_t *buffer, uint32_t length)
-{
-    esp_eth_driver_t *eth_driver = __containerof(eth, esp_eth_driver_t, mediator);
-    if (eth_driver->stack_input) {
-        return eth_driver->stack_input((esp_eth_handle_t)eth_driver, buffer, length, eth_driver->priv);
-    }
-    // No stack input path has been installed, just drop the incoming packets
-    free(buffer);
-    return ESP_OK;
-}
+// static esp_err_t eth_stack_input(esp_eth_mediator_t *eth, uint8_t *buffer, uint32_t length)
+// {
+//     esp_eth_driver_t *eth_driver = __containerof(eth, esp_eth_driver_t, mediator);
+//     if (eth_driver->stack_input) {
+//         return eth_driver->stack_input((esp_eth_handle_t)eth_driver, buffer, length, eth_driver->priv);
+//     }
+//     // No stack input path has been installed, just drop the incoming packets
+//     free(buffer);
+//     return ESP_OK;
+// }
 
-static esp_err_t eth_on_state_changed(esp_eth_mediator_t *eth, esp_eth_state_t state, void *args)
-{
-    esp_err_t ret = ESP_OK;
-    esp_eth_driver_t *eth_driver = __containerof(eth, esp_eth_driver_t, mediator);
-    esp_eth_mac_t *mac = eth_driver->mac;
-    switch (state) {
-    case ETH_STATE_LLINIT: {
-        if (eth_driver->on_lowlevel_init_done) {
-            ESP_GOTO_ON_ERROR(eth_driver->on_lowlevel_init_done(eth_driver), err, TAG, "extra lowlevel init failed");
-        }
-        break;
-    }
-    case ETH_STATE_DEINIT: {
-        if (eth_driver->on_lowlevel_deinit_done) {
-            ESP_GOTO_ON_ERROR(eth_driver->on_lowlevel_deinit_done(eth_driver), err, TAG, "extra lowlevel deinit failed");
-        }
-        break;
-    }
-    case ETH_STATE_LINK: {
-        eth_link_t link = (eth_link_t)args;
-        ESP_GOTO_ON_ERROR(mac->set_link(mac, link), err, TAG, "ethernet mac set link failed");
-        eth_driver->link = link;
-        if (link == ETH_LINK_UP) {
-            ESP_GOTO_ON_ERROR(esp_event_post(ETH_EVENT, ETHERNET_EVENT_CONNECTED, &eth_driver, sizeof(esp_eth_driver_t *), 0), err,
-                              TAG, "send ETHERNET_EVENT_CONNECTED event failed");
-        } else if (link == ETH_LINK_DOWN) {
-            ESP_GOTO_ON_ERROR(esp_event_post(ETH_EVENT, ETHERNET_EVENT_DISCONNECTED, &eth_driver, sizeof(esp_eth_driver_t *), 0), err,
-                              TAG, "send ETHERNET_EVENT_DISCONNECTED event failed");
-        }
-        break;
-    }
-    case ETH_STATE_SPEED: {
-        eth_speed_t speed = (eth_speed_t)args;
-        ESP_GOTO_ON_ERROR(mac->set_speed(mac, speed), err, TAG, "ethernet mac set speed failed");
-        eth_driver->speed = speed;
-        break;
-    }
-    case ETH_STATE_DUPLEX: {
-        eth_duplex_t duplex = (eth_duplex_t)args;
-        ESP_GOTO_ON_ERROR(mac->set_duplex(mac, duplex), err, TAG, "ethernet mac set duplex failed");
-        eth_driver->duplex = duplex;
-        break;
-    }
-    case ETH_STATE_PAUSE: {
-        uint32_t peer_pause_ability = (uint32_t)args;
-        ESP_GOTO_ON_ERROR(mac->set_peer_pause_ability(mac, peer_pause_ability), err, TAG, "ethernet mac set peer pause ability failed");
-        break;
-    }
-    default:
-        ESP_GOTO_ON_FALSE(false, ESP_ERR_INVALID_ARG, err, TAG, "unknown ethernet state: %d", state);
-        break;
-    }
-err:
-    return ret;
-}
+// static esp_err_t eth_on_state_changed(esp_eth_mediator_t *eth, esp_eth_state_t state, void *args)
+// {
+//     esp_err_t ret = ESP_OK;
+//     esp_eth_driver_t *eth_driver = __containerof(eth, esp_eth_driver_t, mediator);
+//     esp_eth_mac_t *mac = eth_driver->mac;
+//     switch (state) {
+//     case ETH_STATE_LLINIT: {
+//         if (eth_driver->on_lowlevel_init_done) {
+//             ESP_GOTO_ON_ERROR(eth_driver->on_lowlevel_init_done(eth_driver), err, TAG, "extra lowlevel init failed");
+//         }
+//         break;
+//     }
+//     case ETH_STATE_DEINIT: {
+//         if (eth_driver->on_lowlevel_deinit_done) {
+//             ESP_GOTO_ON_ERROR(eth_driver->on_lowlevel_deinit_done(eth_driver), err, TAG, "extra lowlevel deinit failed");
+//         }
+//         break;
+//     }
+//     case ETH_STATE_LINK: {
+//         eth_link_t link = (eth_link_t)args;
+//         ESP_GOTO_ON_ERROR(mac->set_link(mac, link), err, TAG, "ethernet mac set link failed");
+//         eth_driver->link = link;
+//         if (link == ETH_LINK_UP) {
+//             ESP_GOTO_ON_ERROR(esp_event_post(ETH_EVENT, ETHERNET_EVENT_CONNECTED, &eth_driver, sizeof(esp_eth_driver_t *), 0), err,
+//                               TAG, "send ETHERNET_EVENT_CONNECTED event failed");
+//         } else if (link == ETH_LINK_DOWN) {
+//             ESP_GOTO_ON_ERROR(esp_event_post(ETH_EVENT, ETHERNET_EVENT_DISCONNECTED, &eth_driver, sizeof(esp_eth_driver_t *), 0), err,
+//                               TAG, "send ETHERNET_EVENT_DISCONNECTED event failed");
+//         }
+//         break;
+//     }
+//     case ETH_STATE_SPEED: {
+//         eth_speed_t speed = (eth_speed_t)args;
+//         ESP_GOTO_ON_ERROR(mac->set_speed(mac, speed), err, TAG, "ethernet mac set speed failed");
+//         eth_driver->speed = speed;
+//         break;
+//     }
+//     case ETH_STATE_DUPLEX: {
+//         eth_duplex_t duplex = (eth_duplex_t)args;
+//         ESP_GOTO_ON_ERROR(mac->set_duplex(mac, duplex), err, TAG, "ethernet mac set duplex failed");
+//         eth_driver->duplex = duplex;
+//         break;
+//     }
+//     case ETH_STATE_PAUSE: {
+//         uint32_t peer_pause_ability = (uint32_t)args;
+//         ESP_GOTO_ON_ERROR(mac->set_peer_pause_ability(mac, peer_pause_ability), err, TAG, "ethernet mac set peer pause ability failed");
+//         break;
+//     }
+//     default:
+//         ESP_GOTO_ON_FALSE(false, ESP_ERR_INVALID_ARG, err, TAG, "unknown ethernet state: %d", state);
+//         break;
+//     }
+// err:
+//     return ret;
+// }
 
 static void eth_check_link_timer_cb(void *args)
 {
@@ -200,10 +200,10 @@ esp_err_t esp_eth_driver_install(const esp_eth_config_t *config, esp_eth_handle_
     eth_driver->check_link_period_ms = config->check_link_period_ms;
     eth_driver->customized_read_phy_reg = config->read_phy_reg;
     eth_driver->customized_write_phy_reg = config->write_phy_reg;
-    eth_driver->mediator.phy_reg_read = eth_phy_reg_read;
-    eth_driver->mediator.phy_reg_write = eth_phy_reg_write;
-    eth_driver->mediator.stack_input = eth_stack_input;
-    eth_driver->mediator.on_state_changed = eth_on_state_changed;
+    // eth_driver->mediator.phy_reg_read = eth_phy_reg_read;
+    // eth_driver->mediator.phy_reg_write = eth_phy_reg_write;
+    // eth_driver->mediator.stack_input = eth_stack_input;
+    // eth_driver->mediator.on_state_changed = eth_on_state_changed;
     // set mediator for both mac and phy object, so that mac and phy are connected to each other via mediator
     mac->set_mediator(mac, &eth_driver->mediator);
     phy->set_mediator(phy, &eth_driver->mediator);

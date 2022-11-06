@@ -23,6 +23,11 @@
 #include "esp_event_internal.h"
 #include "esp_event_private.h"
 
+#define	SLIST_FOREACH_SAFE(var, head, field, tvar)			\
+	for ((var) = SLIST_FIRST((head));				\
+	    (var) && ((tvar) = SLIST_NEXT((var), field), 1);		\
+	    (var) = (tvar))
+
 #ifdef CONFIG_ESP_EVENT_LOOP_PROFILING
 #include "esp_timer.h"
 #endif

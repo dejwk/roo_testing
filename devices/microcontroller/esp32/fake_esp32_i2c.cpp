@@ -1,6 +1,7 @@
 #include "fake_esp32_i2c.h"
 
 #include "fake_esp32.h"
+#include "fake_esp32_err.h"
 #include "glog/logging.h"
 
 FakeI2cDevice* Esp32I2c::resolveOut(uint16_t address) {

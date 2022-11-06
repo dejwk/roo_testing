@@ -168,22 +168,22 @@ bool esp_netif_is_netif_listed(esp_netif_t *esp_netif)
     return false;
 }
 
-esp_netif_t *esp_netif_get_handle_from_ifkey(const char *if_key)
-{
-    struct slist_netifs_s *item;
-    esp_err_t ret;
-    if ((ret = esp_netif_list_lock()) != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to lock esp-netif list with %d", ret);
-        return NULL;
-    }
+// esp_netif_t *esp_netif_get_handle_from_ifkey(const char *if_key)
+// {
+//     struct slist_netifs_s *item;
+//     esp_err_t ret;
+//     if ((ret = esp_netif_list_lock()) != ESP_OK) {
+//         ESP_LOGE(TAG, "Failed to lock esp-netif list with %d", ret);
+//         return NULL;
+//     }
 
-    SLIST_FOREACH(item, &s_head, next) {
-        esp_netif_t *esp_netif = item->netif;
-        if (strcmp(if_key, esp_netif_get_ifkey(esp_netif)) == 0) {
-            esp_netif_list_unlock();
-            return esp_netif;
-        }
-    }
-    esp_netif_list_unlock();
-    return NULL;
-}
+//     SLIST_FOREACH(item, &s_head, next) {
+//         esp_netif_t *esp_netif = item->netif;
+//         if (strcmp(if_key, esp_netif_get_ifkey(esp_netif)) == 0) {
+//             esp_netif_list_unlock();
+//             return esp_netif;
+//         }
+//     }
+//     esp_netif_list_unlock();
+//     return NULL;
+// }

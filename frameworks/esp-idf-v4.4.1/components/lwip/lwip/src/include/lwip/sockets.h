@@ -117,12 +117,12 @@ typedef u32_t socklen_t;
 #error "IOV_MAX larger than supported by LwIP"
 #endif /* IOV_MAX */
 
-#if !defined(iovec)
-struct iovec {
-  void  *iov_base;
-  size_t iov_len;
-};
-#endif
+// #if !defined(iovec)
+// struct iovec {
+//   void  *iov_base;
+//   size_t iov_len;
+// };
+// #endif
 
 struct msghdr {
   void         *msg_name;
@@ -180,9 +180,9 @@ will need to increase long long */
 
 /* Set socket options argument */
 #define IFNAMSIZ NETIF_NAMESIZE
-struct ifreq {
-  char ifr_name[IFNAMSIZ]; /* Interface name */
-};
+// struct ifreq {
+//   char ifr_name[IFNAMSIZ]; /* Interface name */
+// };
 
 /* Socket protocol types (TCP/UDP/RAW) */
 #define SOCK_STREAM     1

@@ -191,20 +191,20 @@ wl_status_t WiFiSTAClass::begin(const char* wpa2_ssid, wpa2_auth_method_t method
         log_e("password too long!");
     }
 
-    if(ca_pem) {
-        esp_wifi_sta_wpa2_ent_set_ca_cert((uint8_t *)ca_pem, strlen(ca_pem));
-    }
+    // if(ca_pem) {
+    //     esp_wifi_sta_wpa2_ent_set_ca_cert((uint8_t *)ca_pem, strlen(ca_pem));
+    // }
 
-    if(client_crt) {
-        esp_wifi_sta_wpa2_ent_set_cert_key((uint8_t *)client_crt, strlen(client_crt), (uint8_t *)client_key, strlen(client_key), NULL, 0);
-    }
+    // if(client_crt) {
+    //     esp_wifi_sta_wpa2_ent_set_cert_key((uint8_t *)client_crt, strlen(client_crt), (uint8_t *)client_key, strlen(client_key), NULL, 0);
+    // }
 
-    esp_wifi_sta_wpa2_ent_set_identity((uint8_t *)wpa2_identity, strlen(wpa2_identity));
-    if(method == WPA2_AUTH_PEAP || method == WPA2_AUTH_TTLS) {
-        esp_wifi_sta_wpa2_ent_set_username((uint8_t *)wpa2_username, strlen(wpa2_username));
-        esp_wifi_sta_wpa2_ent_set_password((uint8_t *)wpa2_password, strlen(wpa2_password));
-    }
-    esp_wifi_sta_wpa2_ent_enable(); //set config settings to enable function
+    // esp_wifi_sta_wpa2_ent_set_identity((uint8_t *)wpa2_identity, strlen(wpa2_identity));
+    // if(method == WPA2_AUTH_PEAP || method == WPA2_AUTH_TTLS) {
+    //     esp_wifi_sta_wpa2_ent_set_username((uint8_t *)wpa2_username, strlen(wpa2_username));
+    //     esp_wifi_sta_wpa2_ent_set_password((uint8_t *)wpa2_password, strlen(wpa2_password));
+    // }
+    // esp_wifi_sta_wpa2_ent_enable(); //set config settings to enable function
     WiFi.begin(wpa2_ssid); //connect to wifi
 
     return status();
@@ -778,16 +778,16 @@ bool WiFiSTAClass::beginSmartConfig(smartconfig_type_t type, char* crypt_key) {
         conf.esp_touch_v2_key = crypt_key;
     }
 
-    err = esp_smartconfig_set_type(type);
-    if (err != ESP_OK) {
-    	log_e("SmartConfig Set Type Failed!");
-        return false;
-    }
-    err = esp_smartconfig_start(&conf);
-    if (err != ESP_OK) {
-    	log_e("SmartConfig Start Failed!");
-        return false;
-    }
+    // err = esp_smartconfig_set_type(type);
+    // if (err != ESP_OK) {
+    // 	log_e("SmartConfig Set Type Failed!");
+    //     return false;
+    // }
+    // err = esp_smartconfig_start(&conf);
+    // if (err != ESP_OK) {
+    // 	log_e("SmartConfig Start Failed!");
+    //     return false;
+    // }
     _smartConfigStarted = true;
     _smartConfigDone = false;
     return true;

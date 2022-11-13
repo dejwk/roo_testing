@@ -4,6 +4,7 @@ cc_library(
     srcs = [
         "ets_sys.cpp", 
         "gpio.cpp",
+        "reent.cpp",
         "itoa.c",
         "linux/esp_rom_sys.c",
         "linux/esp_rom_crc.c",
@@ -18,5 +19,6 @@ cc_library(
     deps = [
          "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
          "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
+         "//roo_testing/frameworks/esp-idf-v4.4.1/components/newlib:reent",
     ]
 )

@@ -12,6 +12,45 @@ cc_library(
 )
 
 cc_library(
+    name = "reent",
+    hdrs = [
+        "platform_include/sys/reent.h",
+    ],
+    includes = [
+        "platform_include"
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+    ]
+)
+
+cc_library(
+    name = "dirent",
+    hdrs = [
+        "platform_include/sys/dirent.h",
+    ],
+    includes = [
+        "platform_include"
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+    ]
+)
+
+cc_library(
+    name = "errno",
+    hdrs = [
+        "platform_include/errno.h",
+    ],
+    includes = [
+        "platform_include"
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+    ]
+)
+
+cc_library(
     name = "locks",
     srcs = ["locks.c"],
     hdrs = [

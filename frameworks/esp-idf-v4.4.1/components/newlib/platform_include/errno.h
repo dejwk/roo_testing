@@ -17,6 +17,8 @@
 
 #include_next "errno.h"
 
+#define __errno_r(ptr) ((ptr)->_errno)
+
 //
 // Possibly define some missing errors
 //

@@ -20,6 +20,8 @@
 #include "esp_rom_sys.h"
 #include "soc/clk_ctrl_os.h"
 
+#include "esp_heap_caps.h"
+
 static const char* LEDC_TAG = "ledc";
 
 #define LEDC_CHECK(a, str, ret_val) ESP_RETURN_ON_FALSE(a, ret_val, LEDC_TAG, "%s", str)
@@ -87,13 +89,14 @@ static IRAM_ATTR void ledc_ls_channel_update(ledc_mode_t speed_mode, ledc_channe
 //We know that CLK8M is about 8M, but don't know the actual value. So we need to do a calibration.
 static bool ledc_slow_clk_calibrate(void)
 {
-    if (periph_rtc_dig_clk8m_enable()) {
-        s_ledc_slow_clk_8M = periph_rtc_dig_clk8m_get_freq();
-        ESP_LOGD(LEDC_TAG, "Calibrate CLK8M_CLK : %d Hz", s_ledc_slow_clk_8M);
-        return true;
-    }
-    ESP_LOGE(LEDC_TAG, "Calibrate CLK8M_CLK failed");
-    return false;
+    // if (periph_rtc_dig_clk8m_enable()) {
+    //     s_ledc_slow_clk_8M = periph_rtc_dig_clk8m_get_freq();
+    //     ESP_LOGD(LEDC_TAG, "Calibrate CLK8M_CLK : %d Hz", s_ledc_slow_clk_8M);
+    //     return true;
+    // }
+    // ESP_LOGE(LEDC_TAG, "Calibrate CLK8M_CLK failed");
+    // return false;
+    return true;
 }
 
 static uint32_t ledc_get_src_clk_freq(ledc_clk_cfg_t clk_cfg)

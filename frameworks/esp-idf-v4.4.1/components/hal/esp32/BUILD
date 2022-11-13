@@ -111,6 +111,23 @@ cc_library(
 )
 
 cc_library(
+    name = "ledc",
+    hdrs = [
+        "include/hal/ledc_ll.h",
+    ],
+    includes = [
+        "include"
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common",
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_rom",
+        # ":gpio",
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
+    ]
+)
+
+cc_library(
     name = "spi_flash",
     hdrs = [
         "include/hal/spi_flash_ll.h",

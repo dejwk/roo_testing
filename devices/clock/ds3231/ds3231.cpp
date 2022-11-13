@@ -50,6 +50,7 @@ FakeI2cDevice::Result FakeDs3231::write(const uint8_t *buf, uint16_t size,
     register_write((register_address_ + i) % 0x12, buf[i + 1]);
   }
   flush();
+  return FakeI2cDevice::I2C_ERROR_OK;
 }
 
 void FakeDs3231::tick() {

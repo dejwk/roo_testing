@@ -66,7 +66,7 @@ FileImplPtr VFSImpl::open(const char* fpath, const char* mode, const bool create
     ////file not found but mode permits file creation and folder creation
     if((mode && mode[0] != 'r') && create){
 
-        char *token;
+        const char *token;
         char *folder = (char *)malloc(strlen(fpath));
 
         int start_index = 0;
@@ -293,7 +293,7 @@ VFSFileImpl::VFSFileImpl(VFSImpl* fs, const char* fpath, const char* mode)
                 log_e("opendir(%s) failed", temp);
             }
         } else {
-            log_e("Unknown type 0x%08X for file %s", ((_stat.st_mode)&_IFMT), temp);
+            log_e("Unknown type 0x%08X for file %s", _stat.st_mode, temp);
         }
     } else {
         //file not found

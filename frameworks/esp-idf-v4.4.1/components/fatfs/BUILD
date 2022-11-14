@@ -1,6 +1,12 @@
 cc_library(
     name = "fatfs",
-    srcs = glob(["src/*.c"]),
+    srcs =
+        glob(["src/*.c"]) +
+        [
+            "vfs/vfs_fat.c",
+            "diskio/diskio.c",
+            "port/freertos/ffsystem.c",
+        ],
     hdrs =
         glob(["src/*.h"]) +
         glob(["vfs/*.h"]) +

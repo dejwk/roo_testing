@@ -18,5 +18,6 @@ esp_err_t i2cRead(uint8_t i2c_num, uint16_t address, uint8_t* buff, size_t size,
   } else {
     *readCount = 0;
   }
+  return ret;
 }
 }

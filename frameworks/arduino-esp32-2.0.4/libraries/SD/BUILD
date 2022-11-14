@@ -1,6 +1,8 @@
 cc_library(
     name = "SD",
-    srcs = glob(["src/**/*.cpp"]),
+    srcs =
+        glob(["src/**/*.cpp"]) +
+        glob(["src/**/*.c"]),
     hdrs = glob(["src/**/*.h"]),
     includes = ["src"],
     visibility = ["//visibility:public"],

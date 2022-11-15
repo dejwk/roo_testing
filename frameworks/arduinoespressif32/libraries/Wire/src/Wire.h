@@ -26,9 +26,13 @@
 #define TwoWire_h
 
 #include <esp32-hal.h>
+// #include "esp32-hal-i2c.h"
 //#include "freertos/FreeRTOS.h"
 //#include "freertos/queue.h"
 #include "Stream.h"
+
+struct i2c_struct_t;
+typedef struct i2c_struct_t i2c_t;
 
 #define STICKBREAKER V0.2.2
 #define I2C_BUFFER_LENGTH 128
@@ -61,7 +65,7 @@ protected:
         void onRequestService(void);
         void onReceiveService(uint8_t*, int);
     */
-    i2c_err_t last_error; // @stickBreaker from esp32-hal-i2c.h
+    esp_err_t last_error; // @stickBreaker from esp32-hal-i2c.h
     uint16_t _timeOutMillis;
 
 public:
@@ -79,8 +83,8 @@ public:
     char * getErrorText(uint8_t err);
 
     //@stickBreaker for big blocks and ISR model
-    i2c_err_t writeTransmission(uint16_t address, uint8_t* buff, uint16_t size, bool sendStop=true);
-    i2c_err_t readTransmission(uint16_t address, uint8_t* buff, uint16_t size, bool sendStop=true, uint32_t *readCount=NULL);
+    esp_err_t writeTransmission(uint16_t address, uint8_t* buff, uint16_t size, bool sendStop=true);
+    esp_err_t readTransmission(uint16_t address, uint8_t* buff, uint16_t size, bool sendStop=true, uint32_t *readCount=NULL);
 
     void beginTransmission(uint16_t address);
     void beginTransmission(uint8_t address);

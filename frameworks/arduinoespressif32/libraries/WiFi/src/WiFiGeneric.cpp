@@ -25,7 +25,7 @@
 #include "WiFi.h"
 #include "WiFiGeneric.h"
 
-#include "roo_testins/transducers/wifi/wifi.h"
+#include "roo_testing/transducers/wifi/wifi.h"
 
 extern "C" {
 #include <stdint.h>
@@ -336,10 +336,10 @@ void WiFiGenericClass::removeEvent(wifi_event_id_t id)
 
 namespace {
 
-// inline wifi_auth_mode_t toAuthMode(
-//     const roo_testing_transducers::wifi::AuthMode auth_mode) {
-//   return (wifi_auth_mode_t)auth_mode;
-// }
+inline wifi_auth_mode_t toAuthMode(
+    const roo_testing_transducers::wifi::AuthMode auth_mode) {
+  return (wifi_auth_mode_t)auth_mode;
+}
 
 inline void toBSSID(
     const roo_testing_transducers::wifi::MacAddress& mac_address,
@@ -352,9 +352,9 @@ inline void toBSSID(
   bssid[5] = mac_address.get(5);
 }
 
-// inline std::string fromCharArray(const char* cstr) {
-//   return std::string(cstr, strlen(cstr));
-// }
+inline std::string fromCharArray(const char* cstr) {
+  return std::string(cstr, strlen(cstr));
+}
 
 inline void toCharArray(const std::string& in, uint8_t* out, int maxlen) {
   size_t len = in.size() + 1;
@@ -401,7 +401,7 @@ void notifyScanDone(int num_networks) {
 
 void notifyNoAp(const std::string& ssid,
                 const roo_testing_transducers::wifi::MacAddress* mac_address) {
-    const roo_testing_transducers::wifi::AccessPoint& ap = conn.access_point();
+    // const roo_testing_transducers::wifi::AccessPoint& ap = conn.access_point();
     system_event_t event;
     event.event_id = SYSTEM_EVENT_STA_DISCONNECTED;
     event.event_info.disconnected.reason = WIFI_REASON_NO_AP_FOUND;
@@ -439,7 +439,7 @@ void notifyConnected(const roo_testing_transducers::wifi::Connection& conn) {
 void notifyGotIP(const roo_testing_transducers::wifi::Connection& conn) {
     system_event_t event;
     event.event_id = SYSTEM_EVENT_STA_GOT_IP;
-    event.event_info.got_ip.if_index = 0;
+    // event.event_info.got_ip.if_index = 0;
     WiFiGenericClass::_eventCallback(nullptr, &event);
 }
 
@@ -450,7 +450,7 @@ void notifyDisconnected(const roo_testing_transducers::wifi::Connection& conn) {
     toCharArray(ap.ssid(), event.event_info.disconnected.ssid, 33);
     event.event_info.disconnected.ssid_len = ap.ssid().size();
     toBSSID(ap.macAddress(), event.event_info.disconnected.bssid);
-    event.event_info.disconnected.reason = reason;
+    // event.event_info.disconnected.reason = reason;
     WiFiGenericClass::_eventCallback(nullptr, &event);
 }
 

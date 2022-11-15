@@ -132,13 +132,13 @@ size_t TwoWire::getClock()
 
 /* stickBreaker Nov 2017 ISR, and bigblock 64k-1
  */
-i2c_err_t TwoWire::writeTransmission(uint16_t address, uint8_t *buff, uint16_t size, bool sendStop)
+esp_err_t TwoWire::writeTransmission(uint16_t address, uint8_t *buff, uint16_t size, bool sendStop)
 {
     last_error = i2cWrite(i2c, address, buff, size, sendStop, _timeOutMillis);
     return last_error;
 }
 
-i2c_err_t TwoWire::readTransmission(uint16_t address, uint8_t *buff, uint16_t size, bool sendStop, uint32_t *readCount)
+esp_err_t TwoWire::readTransmission(uint16_t address, uint8_t *buff, uint16_t size, bool sendStop, uint32_t *readCount)
 {
     last_error = i2cRead(i2c, address, buff, size, sendStop, _timeOutMillis, readCount);
     return last_error;

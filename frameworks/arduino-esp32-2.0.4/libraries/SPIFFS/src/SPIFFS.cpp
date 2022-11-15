@@ -67,10 +67,10 @@ bool SPIFFSFS::begin(bool formatOnFail, const char * basePath, uint8_t maxOpenFi
         partitionLabel_ = strdup(partitionLabel);
     }
 
-    if(esp_spiffs_mounted(partitionLabel_)){
-        log_w("SPIFFS Already Mounted!");
-        return true;
-    }
+    // if(esp_spiffs_mounted(partitionLabel_)){
+    //     log_w("SPIFFS Already Mounted!");
+    //     return true;
+    // }
 
     esp_vfs_spiffs_conf_t conf = {
       .base_path = basePath,
@@ -79,60 +79,60 @@ bool SPIFFSFS::begin(bool formatOnFail, const char * basePath, uint8_t maxOpenFi
       .format_if_mount_failed = false
     };
 
-    esp_err_t err = esp_vfs_spiffs_register(&conf);
-    if(err == ESP_FAIL && formatOnFail){
-        if(format()){
-            err = esp_vfs_spiffs_register(&conf);
-        }
-    }
-    if(err != ESP_OK){
-        log_e("Mounting SPIFFS failed! Error: %d", err);
-        return false;
-    }
+    // esp_err_t err = esp_vfs_spiffs_register(&conf);
+    // if(err == ESP_FAIL && formatOnFail){
+    //     if(format()){
+    //         err = esp_vfs_spiffs_register(&conf);
+    //     }
+    // }
+    // if(err != ESP_OK){
+    //     log_e("Mounting SPIFFS failed! Error: %d", err);
+    //     return false;
+    // }
     _impl->mountpoint(basePath);
     return true;
 }
 
 void SPIFFSFS::end()
 {
-    if(esp_spiffs_mounted(partitionLabel_)){
-        esp_err_t err = esp_vfs_spiffs_unregister(partitionLabel_);
-        if(err){
-            log_e("Unmounting SPIFFS failed! Error: %d", err);
-            return;
-        }
+    // if(esp_spiffs_mounted(partitionLabel_)){
+    //     esp_err_t err = esp_vfs_spiffs_unregister(partitionLabel_);
+    //     if(err){
+    //         log_e("Unmounting SPIFFS failed! Error: %d", err);
+    //         return;
+    //     }
         _impl->mountpoint(NULL);
-    }
+    // }
 }
 
 bool SPIFFSFS::format()
 {
-    disableCore0WDT();
-    esp_err_t err = esp_spiffs_format(partitionLabel_);
-    enableCore0WDT();
-    if(err){
-        log_e("Formatting SPIFFS failed! Error: %d", err);
-        return false;
-    }
+    // disableCore0WDT();
+    // esp_err_t err = esp_spiffs_format(partitionLabel_);
+    // enableCore0WDT();
+    // if(err){
+    //     log_e("Formatting SPIFFS failed! Error: %d", err);
+    //     return false;
+    // }
     return true;
 }
 
 size_t SPIFFSFS::totalBytes()
 {
-    size_t total,used;
-    if(esp_spiffs_info(partitionLabel_, &total, &used)){
+    // size_t total,used;
+    // if(esp_spiffs_info(partitionLabel_, &total, &used)){
         return 0;
-    }
-    return total;
+    // }
+    // return total;
 }
 
 size_t SPIFFSFS::usedBytes()
 {
-    size_t total,used;
-    if(esp_spiffs_info(partitionLabel_, &total, &used)){
+    // size_t total,used;
+    // if(esp_spiffs_info(partitionLabel_, &total, &used)){
         return 0;
-    }
-    return used;
+    // }
+    // return used;
 }
 
 SPIFFSFS SPIFFS;

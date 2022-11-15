@@ -102,7 +102,7 @@ void SPIFFSFS::end()
     //         return;
     //     }
         _impl->mountpoint(NULL);
-    }
+    // }
 }
 
 bool SPIFFSFS::format()

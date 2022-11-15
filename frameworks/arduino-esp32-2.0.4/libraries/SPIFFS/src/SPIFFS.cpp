@@ -107,9 +107,9 @@ void SPIFFSFS::end()
 
 bool SPIFFSFS::format()
 {
-    disableCore0WDT();
+    // disableCore0WDT();
     esp_err_t err = esp_spiffs_format(partitionLabel_);
-    enableCore0WDT();
+    // enableCore0WDT();
     if(err){
         log_e("Formatting SPIFFS failed! Error: %d", err);
         return false;

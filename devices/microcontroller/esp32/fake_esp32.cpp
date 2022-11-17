@@ -172,3 +172,7 @@ namespace roo_testing_transducers {
 Clock* getDefaultSystemClock() { return &FakeEsp32().time(); }
 
 }  // namespace roo_testing_transducers
+
+const char* GetVfsRoot() {
+  return FakeEsp32().fs_root().c_str();
+}

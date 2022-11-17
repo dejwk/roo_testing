@@ -147,3 +147,5 @@ class FakeEsp32Board {
 };
 
 FakeEsp32Board& FakeEsp32();
+
+const char* GetVfsRoot();

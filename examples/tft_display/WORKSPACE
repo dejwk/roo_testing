@@ -24,9 +24,9 @@ cc_library(
     srcs = [
         "libX11.so",
         "libXext.so.6",
-        "libdl.so",
+#        "libdl.so",
         "libm.so",
-        "libpthread.so",
+#        "libpthread.so",
     ],
     linkstatic = 1,
     alwayslink = 1,

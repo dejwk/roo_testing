@@ -165,6 +165,7 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
+        ":gpio",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_pm/include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:spi_hal",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:intr_alloc",

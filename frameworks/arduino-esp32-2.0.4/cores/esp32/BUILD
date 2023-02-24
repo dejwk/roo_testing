@@ -2,7 +2,7 @@ cc_library(
     name = "esp32",
     srcs = 
         glob(["**/*.c"]) +
-        glob(["**/*.cpp"], exclude = ["main.cpp"]) + 
+        glob(["**/*.cpp"], exclude = ["main.cpp", "gtest_main.cpp"]) +
         glob(["tools/sdk/src/*.c"]) +
         glob(["**/*.h"]),
     hdrs = glob(["**/*.h"]),
@@ -20,15 +20,9 @@ cc_library(
 )
 
 cc_library(
-    name = "main",
-    srcs = ["main.cpp"],
-    defines = ["CORE_DEBUG_LEVEL=5"],
-    visibility = ["//visibility:public"],
-    alwayslink = 1,
+    name = "arduino",
     deps = [
         ":esp32",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
         "//roo_testing/frameworks/arduino-esp32-2.0.4/libraries/FS",
         "//roo_testing/frameworks/arduino-esp32-2.0.4/libraries/Preferences",
         "//roo_testing/frameworks/arduino-esp32-2.0.4/libraries/SD",
@@ -36,5 +30,30 @@ cc_library(
         "//roo_testing/frameworks/arduino-esp32-2.0.4/libraries/SPIFFS",
         "//roo_testing/frameworks/arduino-esp32-2.0.4/libraries/WiFi",
         "//roo_testing/frameworks/arduino-esp32-2.0.4/libraries/Wire",
+    ]
+)
+
+cc_library(
+    name = "main",
+    srcs = ["main.cpp"],
+    defines = ["CORE_DEBUG_LEVEL=5"],
+    visibility = ["//visibility:public"],
+    alwayslink = 1,
+    deps = [
+        ":esp32",
+        ":arduino",
     ],
+)
+
+cc_library(
+    name = "gtest_main",
+    srcs = ["gtest_main.cpp"],
+    defines = ["CORE_DEBUG_LEVEL=5"],
+    visibility = ["//visibility:public"],
+    alwayslink = 1,
+    deps = [
+        ":esp32",
+        ":arduino",
+        "@gtest//:gtest",
+    ]
 )

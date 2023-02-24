@@ -75,7 +75,7 @@ uint64_t SDFS::cardSize()
     // size_t sectors = sdcard_num_sectors(_pdrv);
     // size_t sectorSize = sdcard_sector_size(_pdrv);
     // return (uint64_t)sectors * sectorSize;
-    return 4 * 1024 * 1024 * 1024;
+    return 4L * 1024 * 1024 * 1024;
 }
 
 size_t SDFS::numSectors()
@@ -108,7 +108,7 @@ uint64_t SDFS::totalBytes()
 //         *512;
 // #endif
 // 	return size;
-    return 4 * 1000 * 1000 * 1000;
+    return 4L * 1000 * 1000 * 1000;
 }
 
 uint64_t SDFS::usedBytes()

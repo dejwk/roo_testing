@@ -33,7 +33,7 @@ FileImplPtr VFSImpl::open(const char* fpath, const char* mode, const bool create
 
     const char* fs_root = FakeEsp32().fs_root().c_str();
     char * temp = (char *)malloc(
-        strlen(fs_root)+strlen(fpath)+strlen(_mountpoint)+3);
+        strlen(fs_root)+strlen(fpath)+strlen(_mountpoint)+2);
     // char * temp = (char *)malloc(strlen(fpath)+strlen(_mountpoint)+2);
     if(!temp) {
         log_e("malloc failed");
@@ -41,7 +41,7 @@ FileImplPtr VFSImpl::open(const char* fpath, const char* mode, const bool create
     }
 
     // sprintf(temp,"%s%s", _mountpoint, fpath);
-    sprintf(temp,"%s/%s%s", fs_root, _mountpoint, fpath);
+    sprintf(temp,"%s%s%s", fs_root, _mountpoint, fpath);
 
     struct stat st;
     //file found

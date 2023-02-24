@@ -22,7 +22,7 @@ void FakeIli9486Spi::transfer(const FakeSpiInterface& spi, uint8_t* buf,
   }
   bool command = dc_.isLow();
   if (has_half_word_) {
-    CHECK_GE(8, bit_count) << "The bit count is not divisible by 8: "
+    CHECK_LE(8, bit_count) << "The bit count is not divisible by 8: "
                            << bit_count;
     uint16_t val = (half_word_ << 8) + *buf++;
     has_half_word_ = false;

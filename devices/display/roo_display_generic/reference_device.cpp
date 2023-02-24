@@ -39,7 +39,7 @@ Color ReferenceDevice::effective_color(roo_display::PaintMode mode,
       break;
     }
     case PAINT_MODE_BLEND: {
-      return alphaBlend(bgcolor_, color);
+      return AlphaBlend(bgcolor_, color);
     }
     default: {
       return color;

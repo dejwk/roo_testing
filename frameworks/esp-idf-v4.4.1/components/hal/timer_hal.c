@@ -17,19 +17,19 @@
 
 void timer_hal_init(timer_hal_context_t *hal, timer_group_t group_num, timer_idx_t timer_num)
 {
-    hal->dev = TIMER_LL_GET_HW(group_num);
-    hal->idx = timer_num;
+    // hal->dev = TIMER_LL_GET_HW(group_num);
+    // hal->idx = timer_num;
 }
 
 void timer_hal_get_status_reg_mask_bit(timer_hal_context_t *hal, uint32_t *status_reg, uint32_t *mask_bit)
 {
-    *status_reg = timer_ll_get_intr_status_reg(hal->dev);
-    *mask_bit = timer_ll_get_intr_mask_bit(hal->dev, hal->idx);
+    // *status_reg = timer_ll_get_intr_status_reg(hal->dev);
+    // *mask_bit = timer_ll_get_intr_mask_bit(hal->dev, hal->idx);
 }
 
 void timer_hal_reset_periph(timer_hal_context_t *hal)
 {
-    timer_ll_intr_disable(hal->dev, hal->idx);
-    timer_ll_set_counter_enable(hal->dev, hal->idx, TIMER_PAUSE);
-    timer_ll_set_counter_value(hal->dev, hal->idx, 0ULL);
+    // timer_ll_intr_disable(hal->dev, hal->idx);
+    // timer_ll_set_counter_enable(hal->dev, hal->idx, TIMER_PAUSE);
+    // timer_ll_set_counter_value(hal->dev, hal->idx, 0ULL);
 }

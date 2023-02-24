@@ -94,7 +94,9 @@ void rtc_clk_cpu_freq_get_config(rtc_cpu_freq_config_t* out_config) {
 
 void rtc_clk_apb_freq_update(uint32_t apb_freq) {}
 
-// uint32_t rtc_clk_apb_freq_get(void);
+uint32_t rtc_clk_apb_freq_get(void) {
+  return 80000000;
+}
 
 // uint32_t rtc_clk_cal(rtc_cal_sel_t cal_clk, uint32_t slow_clk_cycles);
 

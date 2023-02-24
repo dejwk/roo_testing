@@ -27,6 +27,7 @@ cc_library(
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/driver:i2s",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/driver:rtc_io",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/driver:spi",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/driver:timer",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/driver:uart",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/driver:include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/driver:ledc",

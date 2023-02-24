@@ -91,6 +91,30 @@ cc_library(
 )
 
 cc_library(
+    name = "timer_hal",
+    srcs = [
+        "timer_hal.c",
+    ],
+    hdrs = [
+        "include/hal/timer_hal.h",
+        "include/hal/timer_types.h",
+    ],
+    defines = ["CONFIG_IDF_TARGET_ESP32"],
+    includes = [
+        "include",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:timer",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:spi",
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/log",
+    ]
+)
+
+cc_library(
     name = "eth_hal",
     srcs = [
     ],

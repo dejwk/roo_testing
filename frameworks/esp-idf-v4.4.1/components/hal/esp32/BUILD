@@ -119,12 +119,19 @@ cc_library(
         "include"
     ],
     visibility = ["//visibility:public"],
-    deps = [
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_rom",
-        # ":gpio",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
-    ]
+    deps = []
+)
+
+cc_library(
+    name = "timer",
+    hdrs = [
+        "include/hal/timer_ll.h",
+    ],
+    includes = [
+        "include"
+    ],
+    visibility = ["//visibility:public"],
+    deps = []
 )
 
 cc_library(

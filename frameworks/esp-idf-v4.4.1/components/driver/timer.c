@@ -267,38 +267,38 @@ esp_err_t timer_isr_register(timer_group_t group_num, timer_idx_t timer_num,
 
 esp_err_t timer_init(timer_group_t group_num, timer_idx_t timer_num, const timer_config_t *config)
 {
-    ESP_RETURN_ON_FALSE(group_num < TIMER_GROUP_MAX, ESP_ERR_INVALID_ARG, TIMER_TAG,  TIMER_GROUP_NUM_ERROR);
-    ESP_RETURN_ON_FALSE(timer_num < TIMER_MAX, ESP_ERR_INVALID_ARG, TIMER_TAG,  TIMER_NUM_ERROR);
-    ESP_RETURN_ON_FALSE(config != NULL, ESP_ERR_INVALID_ARG, TIMER_TAG,  TIMER_PARAM_ADDR_ERROR);
-    ESP_RETURN_ON_FALSE(config->divider > 1 && config->divider < 65537, ESP_ERR_INVALID_ARG, TIMER_TAG,  DIVIDER_RANGE_ERROR);
+//     ESP_RETURN_ON_FALSE(group_num < TIMER_GROUP_MAX, ESP_ERR_INVALID_ARG, TIMER_TAG,  TIMER_GROUP_NUM_ERROR);
+//     ESP_RETURN_ON_FALSE(timer_num < TIMER_MAX, ESP_ERR_INVALID_ARG, TIMER_TAG,  TIMER_NUM_ERROR);
+//     ESP_RETURN_ON_FALSE(config != NULL, ESP_ERR_INVALID_ARG, TIMER_TAG,  TIMER_PARAM_ADDR_ERROR);
+//     ESP_RETURN_ON_FALSE(config->divider > 1 && config->divider < 65537, ESP_ERR_INVALID_ARG, TIMER_TAG,  DIVIDER_RANGE_ERROR);
 
-    periph_module_enable(timer_group_periph_signals.groups[group_num].module);
+//     periph_module_enable(timer_group_periph_signals.groups[group_num].module);
 
-    if (p_timer_obj[group_num][timer_num] == NULL) {
-        p_timer_obj[group_num][timer_num] = (timer_obj_t *) heap_caps_calloc(1, sizeof(timer_obj_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-        if (p_timer_obj[group_num][timer_num] == NULL) {
-            ESP_LOGE(TIMER_TAG, "TIMER driver malloc error");
-            return ESP_FAIL;
-        }
-    }
+//     if (p_timer_obj[group_num][timer_num] == NULL) {
+//         p_timer_obj[group_num][timer_num] = (timer_obj_t *) heap_caps_calloc(1, sizeof(timer_obj_t), /*MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT*/0);
+//         if (p_timer_obj[group_num][timer_num] == NULL) {
+//             ESP_LOGE(TIMER_TAG, "TIMER driver malloc error");
+//             return ESP_FAIL;
+//         }
+//     }
 
-    TIMER_ENTER_CRITICAL(&timer_spinlock[group_num]);
-    timer_hal_init(&(p_timer_obj[group_num][timer_num]->hal), group_num, timer_num);
-    timer_hal_reset_periph(&(p_timer_obj[group_num][timer_num]->hal));
-    timer_hal_clear_intr_status(&(p_timer_obj[group_num][timer_num]->hal));
-    timer_hal_set_auto_reload(&(p_timer_obj[group_num][timer_num]->hal), config->auto_reload);
-    timer_hal_set_divider(&(p_timer_obj[group_num][timer_num]->hal), config->divider);
-    timer_hal_set_counter_increase(&(p_timer_obj[group_num][timer_num]->hal), config->counter_dir);
-    timer_hal_set_alarm_enable(&(p_timer_obj[group_num][timer_num]->hal), config->alarm_en);
-    timer_hal_set_level_int_enable(&(p_timer_obj[group_num][timer_num]->hal), config->intr_type == TIMER_INTR_LEVEL);
-    if (config->intr_type != TIMER_INTR_LEVEL) {
-        ESP_LOGW(TIMER_TAG, "only support Level Interrupt, switch to Level Interrupt instead");
-    }
-    timer_hal_set_counter_enable(&(p_timer_obj[group_num][timer_num]->hal), config->counter_en);
-#if SOC_TIMER_GROUP_SUPPORT_XTAL
-    timer_hal_set_use_xtal(&(p_timer_obj[group_num][timer_num]->hal), config->clk_src);
-#endif
-    TIMER_EXIT_CRITICAL(&timer_spinlock[group_num]);
+//     TIMER_ENTER_CRITICAL(&timer_spinlock[group_num]);
+//     timer_hal_init(&(p_timer_obj[group_num][timer_num]->hal), group_num, timer_num);
+//     timer_hal_reset_periph(&(p_timer_obj[group_num][timer_num]->hal));
+//     timer_hal_clear_intr_status(&(p_timer_obj[group_num][timer_num]->hal));
+//     timer_hal_set_auto_reload(&(p_timer_obj[group_num][timer_num]->hal), config->auto_reload);
+//     timer_hal_set_divider(&(p_timer_obj[group_num][timer_num]->hal), config->divider);
+//     timer_hal_set_counter_increase(&(p_timer_obj[group_num][timer_num]->hal), config->counter_dir);
+//     timer_hal_set_alarm_enable(&(p_timer_obj[group_num][timer_num]->hal), config->alarm_en);
+//     timer_hal_set_level_int_enable(&(p_timer_obj[group_num][timer_num]->hal), config->intr_type == TIMER_INTR_LEVEL);
+//     if (config->intr_type != TIMER_INTR_LEVEL) {
+//         ESP_LOGW(TIMER_TAG, "only support Level Interrupt, switch to Level Interrupt instead");
+//     }
+//     timer_hal_set_counter_enable(&(p_timer_obj[group_num][timer_num]->hal), config->counter_en);
+// #if SOC_TIMER_GROUP_SUPPORT_XTAL
+//     timer_hal_set_use_xtal(&(p_timer_obj[group_num][timer_num]->hal), config->clk_src);
+// #endif
+//     TIMER_EXIT_CRITICAL(&timer_spinlock[group_num]);
 
     return ESP_OK;
 }

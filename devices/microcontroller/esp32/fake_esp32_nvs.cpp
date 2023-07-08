@@ -311,7 +311,9 @@ esp_err_t Nvs::get_blob(nvs_handle_t handle, const char* key, char* value,
   esp_err_t err = get(handle, key, roo_testing::esp32::nvs::BLOB, val);
   if (err != ESP_OK) return err;
   size_t actual = std::max(*length, val.blob_value().size());
-  memcpy(value, val.blob_value().c_str(), actual);
+  if (value != nullptr) {
+    memcpy(value, val.blob_value().c_str(), actual);
+  }
   *length = actual;
   return ESP_OK;
 }

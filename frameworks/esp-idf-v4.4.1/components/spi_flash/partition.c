@@ -32,7 +32,7 @@
 #include "FreeRTOS.h"
 #include "freertos/semphr.h"
 
-static size_t strlcpy(char* dst, const char* src, size_t len) {
+static size_t local_strlcpy(char* dst, const char* src, size_t len) {
   size_t l = strlen(src);
   size_t i = 0;
   while (i < len - 1 && *src != '\0') {
@@ -355,7 +355,7 @@ esp_err_t esp_partition_register_external(esp_flash_t* flash_chip, size_t offset
     item->info.subtype = subtype;
     item->info.encrypted = false;
     item->user_registered = true;
-    strlcpy(item->info.label, label, sizeof(item->info.label));
+    local_strlcpy(item->info.label, label, sizeof(item->info.label));
 
     _lock_acquire(&s_partition_list_lock);
     partition_list_item_t *it, *last = NULL;

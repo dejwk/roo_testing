@@ -127,6 +127,10 @@ void FakeEsp32Board::attachSpiDevice(SimpleFakeSpiDevice& dev, int8_t clk,
   };
 }
 
+void FakeEsp32Board::attachOneWireBus(FakeOneWireInterface& dev, int8_t pin) {
+  onewire_buses_[pin] = &dev;
+}
+
 void FakeEsp32Board::flush() {
   for (auto& dev : spi_devices_to_pins_) {
     dev.first->flush();

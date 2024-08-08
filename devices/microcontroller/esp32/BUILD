@@ -48,6 +48,7 @@ cc_library(
         "//roo_testing/buses/gpio",
         "//roo_testing/buses/uart",
         "//roo_testing/buses/spi",
+        "//roo_testing/buses/onewire",
         "//roo_testing/transducers/time",
         "//roo_testing/transducers/wifi",
         "@com_github_google_glog//:glog",

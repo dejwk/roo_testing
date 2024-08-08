@@ -5,15 +5,14 @@
 #include "fake_esp32_adc.h"
 #include "fake_esp32_i2c.h"
 #include "fake_esp32_nvs.h"
-#include "fake_esp32_spi.h"
 #include "fake_esp32_reg.h"
+#include "fake_esp32_spi.h"
+#include "fake_esp32_spi_struct.h"
 #include "fake_esp32_time.h"
 #include "fake_esp32_uart.h"
-
-#include "fake_esp32_spi_struct.h"
-
 #include "roo_testing/buses/gpio/fake_gpio.h"
 #include "roo_testing/buses/i2c/fake_i2c.h"
+#include "roo_testing/buses/onewire/fake_onewire.h"
 #include "roo_testing/buses/spi/fake_spi.h"
 #include "roo_testing/buses/uart/fake_uart.h"
 #include "roo_testing/transducers/wifi/wifi.h"
@@ -90,6 +89,8 @@ class FakeEsp32Board {
   void attachSpiDevice(SimpleFakeSpiDevice& dev, int8_t clk, int8_t miso,
                        int8_t mosi);
 
+  void attachOneWireBus(FakeOneWireInterface& dev, int8_t pin);
+
   const std::map<FakeUartDevice*, UartPins>& uart_devices() const {
     return uart_devices_to_pins_;
   }
@@ -102,15 +103,17 @@ class FakeEsp32Board {
     return spi_devices_to_pins_;
   }
 
+  const std::map<int8_t, FakeOneWireInterface*>& onewire_buses() const {
+    return onewire_buses_;
+  }
+
   void flush();
 
   const std::string& fs_root() const { return fs_root_; }
 
   void set_fs_root(std::string fs_root) { fs_root_ = std::move(fs_root); }
 
-  Esp32UartInterface uart(int idx) {
-    return uart_[idx];
-  }
+  Esp32UartInterface uart(int idx) { return uart_[idx]; }
 
   EspReg& reg() { return reg_; }
   Esp32Adc& adc(int idx) { return adc_[idx]; }
@@ -140,6 +143,8 @@ class FakeEsp32Board {
   std::map<FakeUartDevice*, UartPins> uart_devices_to_pins_;
   std::map<FakeI2cDevice*, I2cPins> i2c_devices_to_pins_;
   std::map<SimpleFakeSpiDevice*, SpiPins> spi_devices_to_pins_;
+
+  std::map<int8_t, FakeOneWireInterface*> onewire_buses_;
 
   std::string fs_root_;
   EmulatedTime time_;

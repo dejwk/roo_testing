@@ -26,6 +26,10 @@ int64_t esp_timer_get_time() {
   return FakeEsp32().time().getTimeMicros();
 }
 
+void emulatedDelayMicroseconds(uint64_t micros) {
+  FakeEsp32().time().delayMicros(micros);
+}
+
 // esp_err_t nvs_flash_init(void) { return ESP_OK; }
 
 

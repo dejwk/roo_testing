@@ -176,6 +176,7 @@ unsigned long ARDUINO_ISR_ATTR millis()
 void delay(uint32_t ms)
 {
     vTaskDelay(ms / portTICK_PERIOD_MS);
+    emulatedDelayMicroseconds(1000LL * ms);
 }
 
 void ARDUINO_ISR_ATTR delayMicroseconds(uint32_t us)
@@ -192,6 +193,7 @@ void ARDUINO_ISR_ATTR delayMicroseconds(uint32_t us)
             NOP();
         }
     }
+    emulatedDelayMicroseconds(us);
 }
 
 void initVariant() __attribute__((weak));

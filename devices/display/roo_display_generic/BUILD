@@ -6,6 +6,7 @@ cc_library(
     ],
     deps = [
         "//lib/roo_display",
+        "//lib/roo_time",
         "//roo_testing/transducers/ui/viewport",
     ],
     visibility = ["//visibility:public"],

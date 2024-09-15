@@ -1,12 +1,11 @@
 #include <pthread.h>
+#include <signal.h>
 #include <stdlib.h>
 
 #include <chrono>
 #include <mutex>
 #include <queue>
 #include <thread>
-
-#include <signal.h>
 
 // #define FLTK_DEVICE_NOISE_BITS 6
 // #define FLTK_MAX_PIXELS_PER_MS 100
@@ -192,7 +191,11 @@ static Fl_Thread device_thread;
 class OffscreenBox : public Fl_Box {
  public:
   OffscreenBox(int w, int h, EventQueue *queue)
-      : Fl_Box(0, 0, w, h), w_(w), h_(h), queue_(queue) {}
+      : Fl_Box(0, 0, w, h),
+        w_(w),
+        h_(h),
+        queue_(queue),
+        needs_full_redraw_(false) {}
 
   ~OffscreenBox() {}
 
@@ -224,6 +227,10 @@ class OffscreenBox : public Fl_Box {
         queue_->set_mouse_status(Fl::event_x(), Fl::event_y(), false);
         return 1;
       }
+      case FL_SHOW: {
+        needs_full_redraw_ = true;
+        return Fl_Box::handle(event);
+      }
       default: {
         return Fl_Box::handle(event);
       }
@@ -232,6 +239,10 @@ class OffscreenBox : public Fl_Box {
 
  private:
   void draw() {
+    // if (needs_full_redraw_) {
+    //   fl_rectf(0, 0, w_, h_, 0xF04040FF);
+    //   needs_full_redraw_ = false;
+    // }
     int i = 0;
     // long time = millis();
     Message::Content::FillRectMessage msg;
@@ -251,6 +262,39 @@ class OffscreenBox : public Fl_Box {
 
   int w_, h_;
   EventQueue *queue_;
+  bool needs_full_redraw_;
+  friend class Window;
+};
+
+class Window : public Fl_Window {
+ public:
+  Window(int width, int height, EventQueue *queue)
+      : Fl_Window(width, height, "roo_display emulator") {
+    begin();
+    box_.reset(new OffscreenBox(width, height, queue));
+    end();
+  }
+
+  void refresh() { box_->damage(FL_DAMAGE_ALL); }
+
+ private:
+  int handle(int event) override {
+    switch (event) {
+      // case FL_FOCUS:
+      // case FL_SHOW:
+      case FL_SHOW: {
+        box_->needs_full_redraw_ = true;
+        // bool result = Fl_Window::handle(event);
+        return 0;
+
+      }
+      default: {
+        return Fl_Window::handle(event);
+      }
+    }
+  }
+
+  std::unique_ptr<OffscreenBox> box_;
 };
 
 /*****************************************************************************/
@@ -286,15 +330,17 @@ class Device {
   Device(EventQueue *queue) : initialized_(false), queue_(queue) {}
 
   void show(int width, int height) {
-    window_.reset(new Fl_Window(width, height, "roo_display emulator"));
-    window_->begin();
-    box_.reset(new OffscreenBox(width, height, queue_));
-    window_->end();
+    window_.reset(new Window(width, height, queue_));
+    // window_->begin();
+    // box_.reset(new OffscreenBox(width, height, queue_));
+    // window_->end();
     window_->show();
     window_->make_current();
+    window_->hide();
+    window_->show();
   }
 
-  void refresh() {
+  void refresh(bool has_visible_windows) {
     if (queue_->empty()) return;
     // Serial.println("Queue size");
     // Serial.println(queue_->size());
@@ -303,14 +349,14 @@ class Device {
       if (!queue_->popInitMessage(&msg)) return;
       show(msg.width, msg.height);
       initialized_ = true;
+    } else {
+      window_->refresh();
     }
-    box_->damage(FL_DAMAGE_ALL);
   }
 
  private:
   bool initialized_;
-  std::unique_ptr<Fl_Window> window_;
-  std::unique_ptr<OffscreenBox> box_;
+  std::unique_ptr<Window> window_;
   EventQueue *queue_;
 };
 
@@ -335,10 +381,11 @@ class DeviceManager {
 
   void run() {
     Fl::lock();
-    while (Fl::wait() > 0 || getDevice()) {
+    int visible_windows;
+    while ((visible_windows = Fl::wait()) > 0 || getDevice()) {
       if (exiting()) break;
       Device *device = getDevice();
-      device->refresh();
+      device->refresh(visible_windows > 0);
     }
     MutexLock lock(&device_mutex_);
     exited_ = true;
@@ -384,9 +431,9 @@ class DeviceManager {
 
 extern "C" void *device_func(void *p) {
   sigset_t set;
-  sigfillset( &set );
+  sigfillset(&set);
 
-  pthread_sigmask( SIG_SETMASK, &set, NULL );
+  pthread_sigmask(SIG_SETMASK, &set, NULL);
 
   DeviceManager *manager = (DeviceManager *)p;
   manager->run();

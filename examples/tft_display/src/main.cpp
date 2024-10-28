@@ -200,7 +200,7 @@ class ScreenPrinter {
   }
   void println(const std::string& s) {
     DrawingContext dc(display);
-    dc.setTransform(Transform()
+    dc.setTransformation(Transformation()
                         .translate(0, font.metrics().glyphYMax())
                         .scale(scale_, scale_)
                         .translate(x_, y_));

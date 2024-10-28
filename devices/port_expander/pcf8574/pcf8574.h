@@ -12,4 +12,7 @@ class FakeI2cPcf8574 : public FakeI2cDevice {
               uint16_t timeOutMillis) override;
 
   FakeGpioInterface gpio;
+
+ private:
+  bool initialized_;
 };

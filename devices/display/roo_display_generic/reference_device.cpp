@@ -1,11 +1,15 @@
-#include "roo_testing/devices/roo_display/reference_device.h"
+#include "roo_testing/devices/display/roo_display_generic/reference_device.h"
 
-#include "roo_display/core/color.h"
+#include "roo_display/color/blending.h"
+#include "roo_display/color/color.h"
+#include "roo_time.h"
+
+#include "glog/logging.h"
 
 using namespace roo_display;
 
-void ReferenceDevice::fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                               Color color) {
+void ReferenceDisplayDevice::fillRect(int16_t x0, int16_t y0, int16_t x1,
+                                      int16_t y1, Color color) {
   if (orientation().isXYswapped()) {
     std::swap(x0, y0);
     std::swap(x1, y1);
@@ -23,34 +27,25 @@ void ReferenceDevice::fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
   viewport_.fillRect(x0, y0, x1, y1, color.asArgb());
 }
 
-ReferenceDevice::ReferenceDevice(int w, int h, Viewport &viewport)
+ReferenceDisplayDevice::ReferenceDisplayDevice(
+    int w, int h, roo_testing_transducers::Viewport &viewport)
     : DisplayDevice(w, h), viewport_(viewport), bgcolor_(0xFF7F7F7F) {
   // viewport_.init(w, h);
 }
 
-void ReferenceDevice::begin() {}
-void ReferenceDevice::end() { viewport_.flush(); }
+void ReferenceDisplayDevice::begin() {}
+void ReferenceDisplayDevice::end() { viewport_.flush(); }
 
-Color ReferenceDevice::effective_color(roo_display::PaintMode mode,
-                                       Color color) {
-  switch (mode) {
-    case PAINT_MODE_REPLACE: {
-      return color;
-      break;
-    }
-    case PAINT_MODE_BLEND: {
-      return AlphaBlend(bgcolor_, color);
-    }
-    default: {
-      return color;
-    }
-  }
+Color ReferenceDisplayDevice::effective_color(roo_display::BlendingMode mode,
+                                              Color color, Color bgcolor) {
+  return color;  // roo_display::ApplyBlending(mode, bgcolor, color);
 }
 
-void ReferenceDevice::write(roo_display::Color *colors, uint32_t pixel_count) {
+void ReferenceDisplayDevice::write(roo_display::Color *colors,
+                                   uint32_t pixel_count) {
   for (uint32_t i = 0; i < pixel_count; ++i) {
     fillRect(cursor_x_, cursor_y_, cursor_x_, cursor_y_,
-             effective_color(paint_mode_, colors[i]));
+             effective_color(blending_mode_, colors[i], bgcolor_));
     advance();
   }
 }
@@ -63,39 +58,44 @@ void ReferenceDevice::write(roo_display::Color *colors, uint32_t pixel_count) {
 //   }
 // }
 
-void ReferenceDevice::writeRects(PaintMode mode, Color *color, int16_t *x0,
-                                 int16_t *y0, int16_t *x1, int16_t *y1,
-                                 uint16_t count) {
+void ReferenceDisplayDevice::writeRects(BlendingMode mode, Color *color,
+                                        int16_t *x0, int16_t *y0, int16_t *x1,
+                                        int16_t *y1, uint16_t count) {
   while (count-- > 0) {
-    fillRect(*x0++, *y0++, *x1++, *y1++, effective_color(mode, *color++));
+    fillRect(*x0++, *y0++, *x1++, *y1++,
+             effective_color(mode, *color++, bgcolor_));
   }
 }
 
-void ReferenceDevice::fillRects(PaintMode mode, Color color, int16_t *x0,
-                                int16_t *y0, int16_t *x1, int16_t *y1,
-                                uint16_t count) {
+void ReferenceDisplayDevice::fillRects(BlendingMode mode, Color color,
+                                       int16_t *x0, int16_t *y0, int16_t *x1,
+                                       int16_t *y1, uint16_t count) {
   while (count-- > 0) {
-    fillRect(*x0++, *y0++, *x1++, *y1++, effective_color(mode, color));
+    fillRect(*x0++, *y0++, *x1++, *y1++,
+             effective_color(mode, color, bgcolor_));
   }
 }
 
-void ReferenceDevice::writePixels(PaintMode mode, roo_display::Color *colors,
-                                  int16_t *xs, int16_t *ys,
-                                  uint16_t pixel_count) {
+void ReferenceDisplayDevice::writePixels(BlendingMode mode,
+                                         roo_display::Color *colors,
+                                         int16_t *xs, int16_t *ys,
+                                         uint16_t pixel_count) {
   for (int i = 0; i < pixel_count; ++i) {
-    fillRect(xs[i], ys[i], xs[i], ys[i], effective_color(mode, colors[i]));
+    fillRect(xs[i], ys[i], xs[i], ys[i],
+             effective_color(mode, colors[i], bgcolor_));
   }
 }
 
-void ReferenceDevice::fillPixels(PaintMode mode, roo_display::Color color,
-                                 int16_t *xs, int16_t *ys,
-                                 uint16_t pixel_count) {
+void ReferenceDisplayDevice::fillPixels(BlendingMode mode,
+                                        roo_display::Color color, int16_t *xs,
+                                        int16_t *ys, uint16_t pixel_count) {
   for (int i = 0; i < pixel_count; ++i) {
-    fillRect(xs[i], ys[i], xs[i], ys[i], effective_color(mode, color));
+    fillRect(xs[i], ys[i], xs[i], ys[i],
+             effective_color(mode, color, bgcolor_));
   }
 }
 
-void ReferenceDevice::advance() {
+void ReferenceDisplayDevice::advance() {
   ++cursor_x_;
   if (cursor_x_ > addr_x1_) {
     cursor_x_ = addr_x0_;
@@ -103,15 +103,32 @@ void ReferenceDevice::advance() {
   }
 }
 
-bool ReferenceDevice::getTouch(int16_t *x, int16_t *y, int16_t *z) {
+void ReferenceDisplayDevice::init() {
+  viewport_.init(raw_width(), raw_height());
+  viewport_.fillRect(0, 0, raw_width(), raw_height(), 0xFFF08080);
+}
+
+ReferenceTouchDevice::ReferenceTouchDevice(
+    roo_testing_transducers::Viewport &viewport)
+    : TouchDevice(), viewport_(viewport) {}
+
+roo_display::TouchResult ReferenceTouchDevice::getTouch(
+    roo_display::TouchPoint *points, int max_points) {
+  int16_t w = viewport_.width();
+  int16_t h = viewport_.height();
+  if (w < 0 || h < 0) {
+    // Viewport not yet initialized / visible.
+    return roo_display::TouchResult();
+  }
   int16_t x_display, y_display;
   bool result = viewport_.isMouseClicked(&x_display, &y_display);
   if (result) {
-    *x = (int32_t)4096 * x_display / effective_width();
-    *y = (int32_t)4096 * y_display / effective_height();
-    *z = 100;
+    roo_display::TouchPoint &tp = points[0];
+    tp.id = 1;
+    tp.x = (int32_t)4096 * x_display / w;
+    tp.y = (int32_t)4096 * y_display / h;
+    tp.z = 100;
+    return TouchResult(roo_time::Uptime::Now().inMillis(), 1);
   }
-  return result;
+  return TouchResult();
 }
-
-void ReferenceDevice::init() { viewport_.init(raw_width(), raw_height()); }

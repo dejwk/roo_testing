@@ -48,7 +48,8 @@ cc_library(
 cc_library(
     name = "spi_hal",
     srcs = [
-        "spi_hal.c"
+        "spi_hal.c",
+        "spi_hal_iram.c"
     ],
     hdrs = [
         "include/hal/spi_hal.h",

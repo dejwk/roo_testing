@@ -9,8 +9,8 @@
 #include "esp_err.h"
 #include "freertos/FreeRTOS.h"
 //for spi_bus_initialization funcions. to be back-compatible
-#include "driver/spi_common.h"
-
+// #include "driver/spi_common.h"
+#include "hal/spi_types.h"
 /** SPI master clock is divided by 80MHz apb clock. Below defines are example frequencies, and are accurate. Be free to specify a random frequency, it will be rounded to closest frequency (to macros below if above 8MHz).
   * 8MHz
   */

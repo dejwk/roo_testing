@@ -117,7 +117,7 @@ We have two bits to control the interrupt:
 #include "esp_log.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
-// #include "soc/soc_memory_layout.h"
+#include "soc/soc_memory_types.h"
 #include "driver/gpio.h"
 #include "hal/spi_hal.h"
 #include "esp_heap_caps.h"
@@ -214,15 +214,15 @@ static esp_err_t spi_master_init_driver(spi_host_device_t host_id)
         .bus_attr = bus_attr,
     };
 
-    if (host_id != SPI1_HOST) {
-        // interrupts are not allowed on SPI1 bus
-        err = esp_intr_alloc(spicommon_irqsource_for_host(host_id),
-                            bus_attr->bus_cfg.intr_flags | ESP_INTR_FLAG_INTRDISABLED,
-                            spi_intr, host, &host->intr);
-        if (err != ESP_OK) {
-            goto cleanup;
-        }
-    }
+    // if (host_id != SPI1_HOST) {
+    //     // interrupts are not allowed on SPI1 bus
+    //     err = esp_intr_alloc(spicommon_irqsource_for_host(host_id),
+    //                         bus_attr->bus_cfg.intr_flags | ESP_INTR_FLAG_INTRDISABLED,
+    //                         spi_intr, host, &host->intr);
+    //     if (err != ESP_OK) {
+    //         goto cleanup;
+    //     }
+    // }
 
     //assign the SPI, RX DMA and TX DMA peripheral registers beginning address
     spi_hal_config_t hal_config = {

@@ -47,7 +47,7 @@ extern "C" {
 /**
  * Maximum length of path prefix (not including zero terminator)
  */
-#define ESP_VFS_PATH_MAX 15
+#define ESP_VFS_PATH_MAX 255
 
 /**
  * Default value of flags member in esp_vfs_t structure.

@@ -11,7 +11,7 @@
 #include "esp_err.h"
 #ifndef SPI_MOCK
 #include "soc/lldesc.h"
-#include "soc/spi_periph.h"
+// #include "soc/spi_periph.h"
 #endif
 #include "hal/spi_types.h"
 #include "sdkconfig.h"

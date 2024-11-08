@@ -14,6 +14,8 @@
 #include "sdspi_private.h"
 #include "sdspi_crc.h"
 
+#include "freertos/semphr.h"
+
 static const char* TAG = "sdspi_transaction";
 
 static _lock_t s_lock;

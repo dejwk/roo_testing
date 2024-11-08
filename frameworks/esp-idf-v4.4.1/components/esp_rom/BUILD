@@ -17,8 +17,25 @@ cc_library(
     defines = ["CONFIG_IDF_TARGET_ESP32"],
     visibility = ["//visibility:public"],
     deps = [
-         "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
-         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
-         "//roo_testing/frameworks/esp-idf-v4.4.1/components/newlib:reent",
+        "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/newlib:reent",
+    ]
+)
+
+cc_library(
+    name = "include",
+    # srcs = glob(["**/*.cpp"]) + glob(["src/**/*.c"]),
+    hdrs = glob(["**/*.h"]),
+    includes = [
+        "include",
+        "include/esp32"
+    ],
+    defines = ["CONFIG_IDF_TARGET_ESP32"],
+    visibility = ["//visibility:public"],
+    deps = [
+        # "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/newlib:reent",
     ]
 )

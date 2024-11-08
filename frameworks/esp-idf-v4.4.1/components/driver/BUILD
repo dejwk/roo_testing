@@ -177,6 +177,49 @@ cc_library(
 )
 
 cc_library(
+    name = "sdspi",
+    srcs = [
+        "sdspi_transaction.c",
+        "sdspi_crc.c",
+        "sdspi_host.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = [
+        "include",
+        "include/driver",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":gpio",
+        ":spi",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/log",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/heap",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_timer",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_rom",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:intr_alloc",
+    ]
+)
+
+cc_library(
+    name = "sdmmc",
+    srcs = [
+        "sdmmc_host.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = [
+        "include",
+        "include/driver",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/log",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:intr_alloc",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:gpio_hal",
+    ]
+)
+
+cc_library(
     name = "periph_ctrl",
     srcs = ["periph_ctrl.c"],
     hdrs = glob(["**/*.h"]),

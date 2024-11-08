@@ -70,14 +70,14 @@ static esp_err_t sdmmc_host_pullup_en_internal(int slot, int width);
 
 void sdmmc_host_reset(void)
 {
-    // Set reset bits
-    SDMMC.ctrl.controller_reset = 1;
-    SDMMC.ctrl.dma_reset = 1;
-    SDMMC.ctrl.fifo_reset = 1;
-    // Wait for the reset bits to be cleared by hardware
-    while (SDMMC.ctrl.controller_reset || SDMMC.ctrl.fifo_reset || SDMMC.ctrl.dma_reset) {
-        ;
-    }
+    // // Set reset bits
+    // SDMMC.ctrl.controller_reset = 1;
+    // SDMMC.ctrl.dma_reset = 1;
+    // SDMMC.ctrl.fifo_reset = 1;
+    // // Wait for the reset bits to be cleared by hardware
+    // while (SDMMC.ctrl.controller_reset || SDMMC.ctrl.fifo_reset || SDMMC.ctrl.dma_reset) {
+    //     ;
+    // }
 }
 
 /* We have two clock divider stages:
@@ -107,152 +107,152 @@ void sdmmc_host_reset(void)
 
 static void sdmmc_host_set_clk_div(int div)
 {
-    // Set frequency to 160MHz / div
-    // div = p + 1
-    // duty cycle = (h + 1)/(p + 1) (should be = 1/2)
-    assert (div > 1 && div <= 16);
-    int p = div - 1;
-    int h = div / 2 - 1;
+//     // Set frequency to 160MHz / div
+//     // div = p + 1
+//     // duty cycle = (h + 1)/(p + 1) (should be = 1/2)
+//     assert (div > 1 && div <= 16);
+//     int p = div - 1;
+//     int h = div / 2 - 1;
 
-    SDMMC.clock.div_factor_p = p;
-    SDMMC.clock.div_factor_h = h;
-    SDMMC.clock.div_factor_m = p;
+//     SDMMC.clock.div_factor_p = p;
+//     SDMMC.clock.div_factor_h = h;
+//     SDMMC.clock.div_factor_m = p;
 
-    // Make sure 160 MHz source clock is used
-#if SOC_SDMMC_SUPPORT_XTAL_CLOCK
-    SDMMC.clock.clk_sel = 1;
-#endif
-#if SOC_SDMMC_USE_GPIO_MATRIX
-    // 90 degree phase on input and output clocks
-    const int inout_clock_phase = 1;
-#else
-    // 180 degree phase on input and output clocks
-    const int inout_clock_phase = 4;
-#endif
-    // Set phases for in/out clocks
-    SDMMC.clock.phase_dout = inout_clock_phase;
-    SDMMC.clock.phase_din = inout_clock_phase;
-    SDMMC.clock.phase_core = 0;
-    // Wait for the clock to propagate
-    esp_rom_delay_us(10);
+//     // Make sure 160 MHz source clock is used
+// #if SOC_SDMMC_SUPPORT_XTAL_CLOCK
+//     SDMMC.clock.clk_sel = 1;
+// #endif
+// #if SOC_SDMMC_USE_GPIO_MATRIX
+//     // 90 degree phase on input and output clocks
+//     const int inout_clock_phase = 1;
+// #else
+//     // 180 degree phase on input and output clocks
+//     const int inout_clock_phase = 4;
+// #endif
+//     // Set phases for in/out clocks
+//     SDMMC.clock.phase_dout = inout_clock_phase;
+//     SDMMC.clock.phase_din = inout_clock_phase;
+//     SDMMC.clock.phase_core = 0;
+//     // Wait for the clock to propagate
+//     esp_rom_delay_us(10);
 }
 
 static void sdmmc_host_input_clk_disable(void)
 {
-    SDMMC.clock.val = 0;
+    // SDMMC.clock.val = 0;
 }
 
 static void sdmmc_host_clock_update_command(int slot)
 {
-    // Clock update command (not a real command; just updates CIU registers)
-    sdmmc_hw_cmd_t cmd_val = {
-        .card_num = slot,
-        .update_clk_reg = 1,
-        .wait_complete = 1
-    };
-    bool repeat = true;
-    while(repeat) {
-        sdmmc_host_start_command(slot, cmd_val, 0);
-        while (true) {
-            // Sending clock update command to the CIU can generate HLE error.
-            // According to the manual, this is okay and we must retry the command.
-            if (SDMMC.rintsts.hle) {
-                SDMMC.rintsts.hle = 1;
-                repeat = true;
-                break;
-            }
-            // When the command is accepted by CIU, start_command bit will be
-            // cleared in SDMMC.cmd register.
-            if (SDMMC.cmd.start_command == 0) {
-                repeat = false;
-                break;
-            }
-        }
-    }
+    // // Clock update command (not a real command; just updates CIU registers)
+    // sdmmc_hw_cmd_t cmd_val = {
+    //     .card_num = slot,
+    //     .update_clk_reg = 1,
+    //     .wait_complete = 1
+    // };
+    // bool repeat = true;
+    // while(repeat) {
+    //     sdmmc_host_start_command(slot, cmd_val, 0);
+    //     while (true) {
+    //         // Sending clock update command to the CIU can generate HLE error.
+    //         // According to the manual, this is okay and we must retry the command.
+    //         if (SDMMC.rintsts.hle) {
+    //             SDMMC.rintsts.hle = 1;
+    //             repeat = true;
+    //             break;
+    //         }
+    //         // When the command is accepted by CIU, start_command bit will be
+    //         // cleared in SDMMC.cmd register.
+    //         if (SDMMC.cmd.start_command == 0) {
+    //             repeat = false;
+    //             break;
+    //         }
+    //     }
+    // }
 }
 
 esp_err_t sdmmc_host_set_card_clk(int slot, uint32_t freq_khz)
 {
-    if (!(slot == 0 || slot == 1)) {
-        return ESP_ERR_INVALID_ARG;
-    }
-    const int clk40m = 40000;
+    // if (!(slot == 0 || slot == 1)) {
+    //     return ESP_ERR_INVALID_ARG;
+    // }
+    // const int clk40m = 40000;
 
-    // Disable clock first
-    SDMMC.clkena.cclk_enable &= ~BIT(slot);
-    sdmmc_host_clock_update_command(slot);
+    // // Disable clock first
+    // SDMMC.clkena.cclk_enable &= ~BIT(slot);
+    // sdmmc_host_clock_update_command(slot);
 
-    int host_div = 0;   /* clock divider of the host (SDMMC.clock) */
-    int card_div = 0;   /* 1/2 of card clock divider (SDMMC.clkdiv) */
+    // int host_div = 0;   /* clock divider of the host (SDMMC.clock) */
+    // int card_div = 0;   /* 1/2 of card clock divider (SDMMC.clkdiv) */
 
-    // Calculate new dividers
-    if (freq_khz >= SDMMC_FREQ_HIGHSPEED) {
-        host_div = 4;       // 160 MHz / 4 = 40 MHz
-        card_div = 0;
-    } else if (freq_khz == SDMMC_FREQ_DEFAULT) {
-        host_div = 8;       // 160 MHz / 8 = 20 MHz
-        card_div = 0;
-    } else if (freq_khz == SDMMC_FREQ_PROBING) {
-        host_div = 10;      // 160 MHz / 10 / (20 * 2) = 400 kHz
-        card_div = 20;
-    } else {
-        host_div = 2;
-        card_div = (clk40m + freq_khz * 2 - 1) / (freq_khz * 2); // round up
-    }
+    // // Calculate new dividers
+    // if (freq_khz >= SDMMC_FREQ_HIGHSPEED) {
+    //     host_div = 4;       // 160 MHz / 4 = 40 MHz
+    //     card_div = 0;
+    // } else if (freq_khz == SDMMC_FREQ_DEFAULT) {
+    //     host_div = 8;       // 160 MHz / 8 = 20 MHz
+    //     card_div = 0;
+    // } else if (freq_khz == SDMMC_FREQ_PROBING) {
+    //     host_div = 10;      // 160 MHz / 10 / (20 * 2) = 400 kHz
+    //     card_div = 20;
+    // } else {
+    //     host_div = 2;
+    //     card_div = (clk40m + freq_khz * 2 - 1) / (freq_khz * 2); // round up
+    // }
 
-    ESP_LOGD(TAG, "slot=%d host_div=%d card_div=%d freq=%dkHz",
-            slot, host_div, card_div,
-            2 * APB_CLK_FREQ / host_div / ((card_div == 0) ? 1 : card_div * 2) / 1000);
+    // ESP_LOGD(TAG, "slot=%d host_div=%d card_div=%d freq=%dkHz",
+    //         slot, host_div, card_div,
+    //         2 * APB_CLK_FREQ / host_div / ((card_div == 0) ? 1 : card_div * 2) / 1000);
 
-    // Program CLKDIV and CLKSRC, send them to the CIU
-    switch(slot) {
-        case 0:
-            SDMMC.clksrc.card0 = 0;
-            SDMMC.clkdiv.div0 = card_div;
-            break;
-        case 1:
-            SDMMC.clksrc.card1 = 1;
-            SDMMC.clkdiv.div1 = card_div;
-            break;
-    }
-    sdmmc_host_set_clk_div(host_div);
-    sdmmc_host_clock_update_command(slot);
+    // // Program CLKDIV and CLKSRC, send them to the CIU
+    // switch(slot) {
+    //     case 0:
+    //         SDMMC.clksrc.card0 = 0;
+    //         SDMMC.clkdiv.div0 = card_div;
+    //         break;
+    //     case 1:
+    //         SDMMC.clksrc.card1 = 1;
+    //         SDMMC.clkdiv.div1 = card_div;
+    //         break;
+    // }
+    // sdmmc_host_set_clk_div(host_div);
+    // sdmmc_host_clock_update_command(slot);
 
-    // Re-enable clocks
-    SDMMC.clkena.cclk_enable |= BIT(slot);
-    SDMMC.clkena.cclk_low_power |= BIT(slot);
-    sdmmc_host_clock_update_command(slot);
+    // // Re-enable clocks
+    // SDMMC.clkena.cclk_enable |= BIT(slot);
+    // SDMMC.clkena.cclk_low_power |= BIT(slot);
+    // sdmmc_host_clock_update_command(slot);
 
-    // set data timeout
-    const uint32_t data_timeout_ms = 100;
-    uint32_t data_timeout_cycles = data_timeout_ms * freq_khz;
-    const uint32_t data_timeout_cycles_max = 0xffffff;
-    if (data_timeout_cycles > data_timeout_cycles_max) {
-        data_timeout_cycles = data_timeout_cycles_max;
-    }
-    SDMMC.tmout.data = data_timeout_cycles;
-    // always set response timeout to highest value, it's small enough anyway
-    SDMMC.tmout.response = 255;
-    return ESP_OK;
+    // // set data timeout
+    // const uint32_t data_timeout_ms = 100;
+    // uint32_t data_timeout_cycles = data_timeout_ms * freq_khz;
+    // const uint32_t data_timeout_cycles_max = 0xffffff;
+    // if (data_timeout_cycles > data_timeout_cycles_max) {
+    //     data_timeout_cycles = data_timeout_cycles_max;
+    // }
+    // SDMMC.tmout.data = data_timeout_cycles;
+    // // always set response timeout to highest value, it's small enough anyway
+    // SDMMC.tmout.response = 255;
+    // return ESP_OK;
 }
 
 esp_err_t sdmmc_host_start_command(int slot, sdmmc_hw_cmd_t cmd, uint32_t arg) {
     if (!(slot == 0 || slot == 1)) {
         return ESP_ERR_INVALID_ARG;
     }
-    if ((SDMMC.cdetect.cards & BIT(slot)) != 0) {
-        return ESP_ERR_NOT_FOUND;
-    }
-    if (cmd.data_expected && cmd.rw && (SDMMC.wrtprt.cards & BIT(slot)) != 0) {
-        return ESP_ERR_INVALID_STATE;
-    }
-    while (SDMMC.cmd.start_command == 1) {
-        ;
-    }
-    SDMMC.cmdarg = arg;
-    cmd.card_num = slot;
-    cmd.start_command = 1;
-    SDMMC.cmd = cmd;
+    // if ((SDMMC.cdetect.cards & BIT(slot)) != 0) {
+    //     return ESP_ERR_NOT_FOUND;
+    // }
+    // if (cmd.data_expected && cmd.rw && (SDMMC.wrtprt.cards & BIT(slot)) != 0) {
+    //     return ESP_ERR_INVALID_STATE;
+    // }
+    // while (SDMMC.cmd.start_command == 1) {
+    //     ;
+    // }
+    // SDMMC.cmdarg = arg;
+    // cmd.card_num = slot;
+    // cmd.start_command = 1;
+    // SDMMC.cmd = cmd;
     return ESP_OK;
 }
 
@@ -268,63 +268,63 @@ esp_err_t sdmmc_host_init(void)
     // Enable clock to peripheral. Use smallest divider first.
     sdmmc_host_set_clk_div(2);
 
-    // Reset
-    sdmmc_host_reset();
-    ESP_LOGD(TAG, "peripheral version %x, hardware config %08x", SDMMC.verid, SDMMC.hcon);
+    // // Reset
+    // sdmmc_host_reset();
+    // ESP_LOGD(TAG, "peripheral version %x, hardware config %08x", SDMMC.verid, SDMMC.hcon);
 
-    // Clear interrupt status and set interrupt mask to known state
-    SDMMC.rintsts.val = 0xffffffff;
-    SDMMC.intmask.val = 0;
-    SDMMC.ctrl.int_enable = 0;
+    // // Clear interrupt status and set interrupt mask to known state
+    // SDMMC.rintsts.val = 0xffffffff;
+    // SDMMC.intmask.val = 0;
+    // SDMMC.ctrl.int_enable = 0;
 
-    // Allocate event queue
-    s_event_queue = xQueueCreate(SDMMC_EVENT_QUEUE_LENGTH, sizeof(sdmmc_event_t));
-    if (!s_event_queue) {
-        return ESP_ERR_NO_MEM;
-    }
-    s_io_intr_event = xSemaphoreCreateBinary();
-    if (!s_io_intr_event) {
-        vQueueDelete(s_event_queue);
-        s_event_queue = NULL;
-        return ESP_ERR_NO_MEM;
-    }
-    // Attach interrupt handler
-    esp_err_t ret = esp_intr_alloc(ETS_SDIO_HOST_INTR_SOURCE, 0, &sdmmc_isr, s_event_queue, &s_intr_handle);
-    if (ret != ESP_OK) {
-        vQueueDelete(s_event_queue);
-        s_event_queue = NULL;
-        vSemaphoreDelete(s_io_intr_event);
-        s_io_intr_event = NULL;
-        return ret;
-    }
-    // Enable interrupts
-    SDMMC.intmask.val =
-            SDMMC_INTMASK_CD |
-            SDMMC_INTMASK_CMD_DONE |
-            SDMMC_INTMASK_DATA_OVER |
-            SDMMC_INTMASK_RCRC | SDMMC_INTMASK_DCRC |
-            SDMMC_INTMASK_RTO | SDMMC_INTMASK_DTO | SDMMC_INTMASK_HTO |
-            SDMMC_INTMASK_SBE | SDMMC_INTMASK_EBE |
-            SDMMC_INTMASK_RESP_ERR | SDMMC_INTMASK_HLE; //sdio is enabled only when use.
-    SDMMC.ctrl.int_enable = 1;
+    // // Allocate event queue
+    // s_event_queue = xQueueCreate(SDMMC_EVENT_QUEUE_LENGTH, sizeof(sdmmc_event_t));
+    // if (!s_event_queue) {
+    //     return ESP_ERR_NO_MEM;
+    // }
+    // s_io_intr_event = xSemaphoreCreateBinary();
+    // if (!s_io_intr_event) {
+    //     vQueueDelete(s_event_queue);
+    //     s_event_queue = NULL;
+    //     return ESP_ERR_NO_MEM;
+    // }
+    // // Attach interrupt handler
+    // esp_err_t ret = esp_intr_alloc(ETS_SDIO_HOST_INTR_SOURCE, 0, &sdmmc_isr, s_event_queue, &s_intr_handle);
+    // if (ret != ESP_OK) {
+    //     vQueueDelete(s_event_queue);
+    //     s_event_queue = NULL;
+    //     vSemaphoreDelete(s_io_intr_event);
+    //     s_io_intr_event = NULL;
+    //     return ret;
+    // }
+    // // Enable interrupts
+    // SDMMC.intmask.val =
+    //         SDMMC_INTMASK_CD |
+    //         SDMMC_INTMASK_CMD_DONE |
+    //         SDMMC_INTMASK_DATA_OVER |
+    //         SDMMC_INTMASK_RCRC | SDMMC_INTMASK_DCRC |
+    //         SDMMC_INTMASK_RTO | SDMMC_INTMASK_DTO | SDMMC_INTMASK_HTO |
+    //         SDMMC_INTMASK_SBE | SDMMC_INTMASK_EBE |
+    //         SDMMC_INTMASK_RESP_ERR | SDMMC_INTMASK_HLE; //sdio is enabled only when use.
+    // SDMMC.ctrl.int_enable = 1;
 
-    // Disable generation of Busy Clear Interrupt
-    SDMMC.cardthrctl.busy_clr_int_en = 0;
+    // // Disable generation of Busy Clear Interrupt
+    // SDMMC.cardthrctl.busy_clr_int_en = 0;
 
-    // Enable DMA
-    sdmmc_host_dma_init();
+    // // Enable DMA
+    // sdmmc_host_dma_init();
 
-    // Initialize transaction handler
-    ret = sdmmc_host_transaction_handler_init();
-    if (ret != ESP_OK) {
-        vQueueDelete(s_event_queue);
-        s_event_queue = NULL;
-        vSemaphoreDelete(s_io_intr_event);
-        s_io_intr_event = NULL;
-        esp_intr_free(s_intr_handle);
-        s_intr_handle = NULL;
-        return ret;
-    }
+    // // Initialize transaction handler
+    // ret = sdmmc_host_transaction_handler_init();
+    // if (ret != ESP_OK) {
+    //     vQueueDelete(s_event_queue);
+    //     s_event_queue = NULL;
+    //     vSemaphoreDelete(s_io_intr_event);
+    //     s_io_intr_event = NULL;
+    //     esp_intr_free(s_intr_handle);
+    //     s_intr_handle = NULL;
+    //     return ret;
+    // }
 
     return ESP_OK;
 }
@@ -445,43 +445,43 @@ esp_err_t sdmmc_host_init_slot(int slot, const sdmmc_slot_config_t* slot_config)
     // set this and card_detect to high to enable sdio interrupt
     esp_rom_gpio_connect_in_signal(GPIO_MATRIX_CONST_ONE_INPUT, slot_info->card_int, false);
 
-    // Set up Card Detect input
-    int matrix_in_cd;
-    if (gpio_cd != SDMMC_SLOT_NO_CD) {
-        ESP_LOGD(TAG, "using GPIO%d as CD pin", gpio_cd);
-        esp_rom_gpio_pad_select_gpio(gpio_cd);
-        gpio_set_direction(gpio_cd, GPIO_MODE_INPUT);
-        matrix_in_cd = gpio_cd;
-    } else {
-        // if not set, default to CD low (card present)
-        matrix_in_cd = GPIO_MATRIX_CONST_ZERO_INPUT;
-    }
-    esp_rom_gpio_connect_in_signal(matrix_in_cd, slot_info->card_detect, false);
+    // // Set up Card Detect input
+    // int matrix_in_cd;
+    // if (gpio_cd != SDMMC_SLOT_NO_CD) {
+    //     ESP_LOGD(TAG, "using GPIO%d as CD pin", gpio_cd);
+    //     esp_rom_gpio_pad_select_gpio(gpio_cd);
+    //     gpio_set_direction(gpio_cd, GPIO_MODE_INPUT);
+    //     matrix_in_cd = gpio_cd;
+    // } else {
+    //     // if not set, default to CD low (card present)
+    //     matrix_in_cd = GPIO_MATRIX_CONST_ZERO_INPUT;
+    // }
+    // esp_rom_gpio_connect_in_signal(matrix_in_cd, slot_info->card_detect, false);
 
-    // Set up Write Protect input
-    int matrix_in_wp;
-    if (gpio_wp != SDMMC_SLOT_NO_WP) {
-        ESP_LOGD(TAG, "using GPIO%d as WP pin", gpio_wp);
-        esp_rom_gpio_pad_select_gpio(gpio_wp);
-        gpio_set_direction(gpio_wp, GPIO_MODE_INPUT);
-        matrix_in_wp = gpio_wp;
-    } else {
-        // if not set, default to WP high (not write protected)
-        matrix_in_wp = GPIO_MATRIX_CONST_ONE_INPUT;
-    }
-    // WP signal is normally active low, but hardware expects
-    // an active-high signal, so invert it in GPIO matrix
-    esp_rom_gpio_connect_in_signal(matrix_in_wp, slot_info->write_protect, true);
+    // // Set up Write Protect input
+    // int matrix_in_wp;
+    // if (gpio_wp != SDMMC_SLOT_NO_WP) {
+    //     ESP_LOGD(TAG, "using GPIO%d as WP pin", gpio_wp);
+    //     esp_rom_gpio_pad_select_gpio(gpio_wp);
+    //     gpio_set_direction(gpio_wp, GPIO_MODE_INPUT);
+    //     matrix_in_wp = gpio_wp;
+    // } else {
+    //     // if not set, default to WP high (not write protected)
+    //     matrix_in_wp = GPIO_MATRIX_CONST_ONE_INPUT;
+    // }
+    // // WP signal is normally active low, but hardware expects
+    // // an active-high signal, so invert it in GPIO matrix
+    // esp_rom_gpio_connect_in_signal(matrix_in_wp, slot_info->write_protect, true);
 
-    // By default, set probing frequency (400kHz) and 1-bit bus
-    esp_err_t ret = sdmmc_host_set_card_clk(slot, 400);
-    if (ret != ESP_OK) {
-        return ret;
-    }
-    ret = sdmmc_host_set_bus_width(slot, 1);
-    if (ret != ESP_OK) {
-        return ret;
-    }
+    // // By default, set probing frequency (400kHz) and 1-bit bus
+    // esp_err_t ret = sdmmc_host_set_card_clk(slot, 400);
+    // if (ret != ESP_OK) {
+    //     return ret;
+    // }
+    // ret = sdmmc_host_set_bus_width(slot, 1);
+    // if (ret != ESP_OK) {
+    //     return ret;
+    // }
     return ESP_OK;
 }
 
@@ -497,8 +497,8 @@ esp_err_t sdmmc_host_deinit(void)
     vQueueDelete(s_io_intr_event);
     s_io_intr_event = NULL;
     sdmmc_host_input_clk_disable();
-    sdmmc_host_transaction_handler_deinit();
-    periph_module_disable(PERIPH_SDMMC_MODULE);
+    // sdmmc_host_transaction_handler_deinit();
+    // periph_module_disable(PERIPH_SDMMC_MODULE);
     return ESP_OK;
 }
 
@@ -525,23 +525,23 @@ esp_err_t sdmmc_host_set_bus_width(int slot, size_t width)
     if (sdmmc_slot_info[slot].width < width) {
         return ESP_ERR_INVALID_ARG;
     }
-    const uint16_t mask = BIT(slot);
-    if (width == 1) {
-        SDMMC.ctype.card_width_8 &= ~mask;
-        SDMMC.ctype.card_width &= ~mask;
-    } else if (width == 4) {
-        SDMMC.ctype.card_width_8 &= ~mask;
-        SDMMC.ctype.card_width |= mask;
-        // D3 was set to GPIO high to force slave into SD mode, until 4-bit mode is set
-        configure_pin(d3, slot, GPIO_MODE_INPUT_OUTPUT);
-    } else if (width == 8) {
-        SDMMC.ctype.card_width_8 |= mask;
-        // D3 was set to GPIO high to force slave into SD mode, until 4-bit mode is set
-        configure_pin(d3, slot, GPIO_MODE_INPUT_OUTPUT);
-    } else {
-        return ESP_ERR_INVALID_ARG;
-    }
-    ESP_LOGD(TAG, "slot=%d width=%d", slot, width);
+    // const uint16_t mask = BIT(slot);
+    // if (width == 1) {
+    //     SDMMC.ctype.card_width_8 &= ~mask;
+    //     SDMMC.ctype.card_width &= ~mask;
+    // } else if (width == 4) {
+    //     SDMMC.ctype.card_width_8 &= ~mask;
+    //     SDMMC.ctype.card_width |= mask;
+    //     // D3 was set to GPIO high to force slave into SD mode, until 4-bit mode is set
+    //     configure_pin(d3, slot, GPIO_MODE_INPUT_OUTPUT);
+    // } else if (width == 8) {
+    //     SDMMC.ctype.card_width_8 |= mask;
+    //     // D3 was set to GPIO high to force slave into SD mode, until 4-bit mode is set
+    //     configure_pin(d3, slot, GPIO_MODE_INPUT_OUTPUT);
+    // } else {
+    //     return ESP_ERR_INVALID_ARG;
+    // }
+    // ESP_LOGD(TAG, "slot=%d width=%d", slot, width);
     return ESP_OK;
 }
 
@@ -562,59 +562,60 @@ esp_err_t sdmmc_host_set_bus_ddr_mode(int slot, bool ddr_enabled)
         return ESP_ERR_NOT_SUPPORTED;
     }
     uint32_t mask = BIT(slot);
-    if (ddr_enabled) {
-        SDMMC.uhs.ddr |= mask;
-        SDMMC.emmc_ddr_reg |= mask;
-    } else {
-        SDMMC.uhs.ddr &= ~mask;
-        SDMMC.emmc_ddr_reg &= ~mask;
-    }
-    ESP_LOGD(TAG, "slot=%d ddr=%d", slot, ddr_enabled ? 1 : 0);
+    // if (ddr_enabled) {
+    //     SDMMC.uhs.ddr |= mask;
+    //     SDMMC.emmc_ddr_reg |= mask;
+    // } else {
+    //     SDMMC.uhs.ddr &= ~mask;
+    //     SDMMC.emmc_ddr_reg &= ~mask;
+    // }
+    // ESP_LOGD(TAG, "slot=%d ddr=%d", slot, ddr_enabled ? 1 : 0);
     return ESP_OK;
 }
 
 static void sdmmc_host_dma_init(void)
 {
-    SDMMC.ctrl.dma_enable = 1;
-    SDMMC.bmod.val = 0;
-    SDMMC.bmod.sw_reset = 1;
-    SDMMC.idinten.ni = 1;
-    SDMMC.idinten.ri = 1;
-    SDMMC.idinten.ti = 1;
+    // SDMMC.ctrl.dma_enable = 1;
+    // SDMMC.bmod.val = 0;
+    // SDMMC.bmod.sw_reset = 1;
+    // SDMMC.idinten.ni = 1;
+    // SDMMC.idinten.ri = 1;
+    // SDMMC.idinten.ti = 1;
 }
 
 
 void sdmmc_host_dma_stop(void)
 {
-    SDMMC.ctrl.use_internal_dma = 0;
-    SDMMC.ctrl.dma_reset = 1;
-    SDMMC.bmod.fb = 0;
-    SDMMC.bmod.enable = 0;
+    // SDMMC.ctrl.use_internal_dma = 0;
+    // SDMMC.ctrl.dma_reset = 1;
+    // SDMMC.bmod.fb = 0;
+    // SDMMC.bmod.enable = 0;
 }
 
 void sdmmc_host_dma_prepare(sdmmc_desc_t* desc, size_t block_size, size_t data_size)
 {
-    // Set size of data and DMA descriptor pointer
-    SDMMC.bytcnt = data_size;
-    SDMMC.blksiz = block_size;
-    SDMMC.dbaddr = desc;
+    // // Set size of data and DMA descriptor pointer
+    // SDMMC.bytcnt = data_size;
+    // SDMMC.blksiz = block_size;
+    // SDMMC.dbaddr = desc;
 
-    // Enable everything needed to use DMA
-    SDMMC.ctrl.dma_enable = 1;
-    SDMMC.ctrl.use_internal_dma = 1;
-    SDMMC.bmod.enable = 1;
-    SDMMC.bmod.fb = 1;
-    sdmmc_host_dma_resume();
+    // // Enable everything needed to use DMA
+    // SDMMC.ctrl.dma_enable = 1;
+    // SDMMC.ctrl.use_internal_dma = 1;
+    // SDMMC.bmod.enable = 1;
+    // SDMMC.bmod.fb = 1;
+    // sdmmc_host_dma_resume();
 }
 
 void sdmmc_host_dma_resume(void)
 {
-    SDMMC.pldmnd = 1;
+    // SDMMC.pldmnd = 1;
 }
 
 bool sdmmc_host_card_busy(void)
 {
-    return SDMMC.status.data_busy == 1;
+    // return SDMMC.status.data_busy == 1;
+    return false;
 }
 
 esp_err_t sdmmc_host_io_int_enable(int slot)
@@ -625,30 +626,30 @@ esp_err_t sdmmc_host_io_int_enable(int slot)
 
 esp_err_t sdmmc_host_io_int_wait(int slot, TickType_t timeout_ticks)
 {
-    /* SDIO interrupts are negedge sensitive ones: the status bit is only set
-     * when first interrupt triggered.
-     *
-     * If D1 GPIO is low when entering this function, we know that interrupt
-     * (in SDIO sense) has occurred and we don't need to use SDMMC peripheral
-     * interrupt.
-     */
+    // /* SDIO interrupts are negedge sensitive ones: the status bit is only set
+    //  * when first interrupt triggered.
+    //  *
+    //  * If D1 GPIO is low when entering this function, we know that interrupt
+    //  * (in SDIO sense) has occurred and we don't need to use SDMMC peripheral
+    //  * interrupt.
+    //  */
 
-    SDMMC.intmask.sdio &= ~BIT(slot);   /* Disable SDIO interrupt */
-    SDMMC.rintsts.sdio = BIT(slot);
-    if (gpio_get_level(GPIO_NUM(slot, d1)) == 0) {
-        return ESP_OK;
-    }
-    /* Otherwise, need to wait for an interrupt. Since D1 was high,
-     * SDMMC peripheral interrupt is guaranteed to trigger on negedge.
-     */
-    xSemaphoreTake(s_io_intr_event, 0);
-    SDMMC.intmask.sdio |= BIT(slot);    /* Re-enable SDIO interrupt */
+    // SDMMC.intmask.sdio &= ~BIT(slot);   /* Disable SDIO interrupt */
+    // SDMMC.rintsts.sdio = BIT(slot);
+    // if (gpio_get_level(GPIO_NUM(slot, d1)) == 0) {
+    //     return ESP_OK;
+    // }
+    // /* Otherwise, need to wait for an interrupt. Since D1 was high,
+    //  * SDMMC peripheral interrupt is guaranteed to trigger on negedge.
+    //  */
+    // xSemaphoreTake(s_io_intr_event, 0);
+    // SDMMC.intmask.sdio |= BIT(slot);    /* Re-enable SDIO interrupt */
 
-    if (xSemaphoreTake(s_io_intr_event, timeout_ticks) == pdTRUE) {
+    // if (xSemaphoreTake(s_io_intr_event, timeout_ticks) == pdTRUE) {
         return ESP_OK;
-    } else {
-        return ESP_ERR_TIMEOUT;
-    }
+    // } else {
+    //     return ESP_ERR_TIMEOUT;
+    // }
 }
 
 /**
@@ -668,32 +669,32 @@ esp_err_t sdmmc_host_io_int_wait(int slot, TickType_t timeout_ticks)
  * interesting events which can get lost due to this.
  */
 static void sdmmc_isr(void* arg) {
-    QueueHandle_t queue = (QueueHandle_t) arg;
-    sdmmc_event_t event;
-    int higher_priority_task_awoken = pdFALSE;
+    // QueueHandle_t queue = (QueueHandle_t) arg;
+    // sdmmc_event_t event;
+    // int higher_priority_task_awoken = pdFALSE;
 
-    uint32_t pending = SDMMC.mintsts.val & 0xFFFF;
-    SDMMC.rintsts.val = pending;
-    event.sdmmc_status = pending;
+    // uint32_t pending = SDMMC.mintsts.val & 0xFFFF;
+    // SDMMC.rintsts.val = pending;
+    // event.sdmmc_status = pending;
 
-    uint32_t dma_pending = SDMMC.idsts.val;
-    SDMMC.idsts.val = dma_pending;
-    event.dma_status = dma_pending & 0x1f;
+    // uint32_t dma_pending = SDMMC.idsts.val;
+    // SDMMC.idsts.val = dma_pending;
+    // event.dma_status = dma_pending & 0x1f;
 
-    if (pending != 0 || dma_pending != 0) {
-        xQueueSendFromISR(queue, &event, &higher_priority_task_awoken);
-    }
+    // if (pending != 0 || dma_pending != 0) {
+    //     xQueueSendFromISR(queue, &event, &higher_priority_task_awoken);
+    // }
 
-    uint32_t sdio_pending = SDMMC.mintsts.sdio;
-    if (sdio_pending) {
-        // disable the interrupt (no need to clear here, this is done in sdmmc_host_io_wait_int)
-        SDMMC.intmask.sdio &= ~sdio_pending;
-        xSemaphoreGiveFromISR(s_io_intr_event, &higher_priority_task_awoken);
-    }
+    // uint32_t sdio_pending = SDMMC.mintsts.sdio;
+    // if (sdio_pending) {
+    //     // disable the interrupt (no need to clear here, this is done in sdmmc_host_io_wait_int)
+    //     SDMMC.intmask.sdio &= ~sdio_pending;
+    //     xSemaphoreGiveFromISR(s_io_intr_event, &higher_priority_task_awoken);
+    // }
 
-    if (higher_priority_task_awoken == pdTRUE) {
-        portYIELD_FROM_ISR();
-    }
+    // if (higher_priority_task_awoken == pdTRUE) {
+    //     portYIELD_FROM_ISR();
+    // }
 }
 
 static esp_err_t sdmmc_host_pullup_en_internal(int slot, int width)

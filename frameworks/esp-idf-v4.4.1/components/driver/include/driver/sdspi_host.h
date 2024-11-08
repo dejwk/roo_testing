@@ -12,6 +12,7 @@
 #include "sdmmc_types.h"
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
+#include "hal/spi_types.h"
 
 #ifdef __cplusplus
 extern "C" {

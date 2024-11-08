@@ -19,7 +19,7 @@
 #include "esp_vfs_fat.h"
 #include "vfs_fat_internal.h"
 #include "driver/sdspi_host.h"
-#include "sdmmc_cmd.h"
+// #include "sdmmc_cmd.h"
 #include "diskio_impl.h"
 #include "diskio_sdmmc.h"
 #include "soc/soc_caps.h"
@@ -105,29 +105,29 @@ static esp_err_t mount_to_vfs_fat(const esp_vfs_fat_mount_config_t *mount_config
         goto fail;
     }
 
-    // Try to mount partition
-    FRESULT res = f_mount(fs, drv, 1);
-    if (res != FR_OK) {
-        err = ESP_FAIL;
-        ESP_LOGW(TAG, "failed to mount card (%d)", res);
-        if (!((res == FR_NO_FILESYSTEM || res == FR_INT_ERR)
-              && mount_config->format_if_mount_failed)) {
-            goto fail;
-        }
+    // // Try to mount partition
+    // FRESULT res = f_mount(fs, drv, 1);
+    // if (res != FR_OK) {
+    //     err = ESP_FAIL;
+    //     ESP_LOGW(TAG, "failed to mount card (%d)", res);
+    //     if (!((res == FR_NO_FILESYSTEM || res == FR_INT_ERR)
+    //           && mount_config->format_if_mount_failed)) {
+    //         goto fail;
+    //     }
 
-        err = partition_card(mount_config, drv, card, pdrv);
-        if (err != ESP_OK) {
-            goto fail;
-        }
+    //     err = partition_card(mount_config, drv, card, pdrv);
+    //     if (err != ESP_OK) {
+    //         goto fail;
+    //     }
 
-        ESP_LOGW(TAG, "mounting again");
-        res = f_mount(fs, drv, 0);
-        if (res != FR_OK) {
-            err = ESP_FAIL;
-            ESP_LOGD(TAG, "f_mount failed after formatting (%d)", res);
-            goto fail;
-        }
-    }
+    //     ESP_LOGW(TAG, "mounting again");
+    //     res = f_mount(fs, drv, 0);
+    //     if (res != FR_OK) {
+    //         err = ESP_FAIL;
+    //         ESP_LOGD(TAG, "f_mount failed after formatting (%d)", res);
+    //         goto fail;
+    //     }
+    // }
     return ESP_OK;
 
 fail:
@@ -197,68 +197,68 @@ esp_err_t esp_vfs_fat_sdmmc_mount(const char* base_path,
                                   const esp_vfs_fat_mount_config_t* mount_config,
                                   sdmmc_card_t** out_card)
 {
-    esp_err_t err;
-    int card_handle = -1;   //uninitialized
-    sdmmc_card_t* card = NULL;
-    BYTE pdrv = FF_DRV_NOT_USED;
-    char* dup_path = NULL;
-    bool host_inited = false;
+    // esp_err_t err;
+    // int card_handle = -1;   //uninitialized
+    // sdmmc_card_t* card = NULL;
+    // BYTE pdrv = FF_DRV_NOT_USED;
+    // char* dup_path = NULL;
+    // bool host_inited = false;
 
-    err = mount_prepare_mem(base_path, &pdrv, &dup_path, &card);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "mount_prepare failed");
-        return err;
-    }
+    // err = mount_prepare_mem(base_path, &pdrv, &dup_path, &card);
+    // if (err != ESP_OK) {
+    //     ESP_LOGE(TAG, "mount_prepare failed");
+    //     return err;
+    // }
 
-    if (host_config->flags == SDMMC_HOST_FLAG_SPI) {
-        //Deprecated API
-        //the init() function is usually empty, doesn't require any deinit to revert it
-        err = (*host_config->init)();
-        CHECK_EXECUTE_RESULT(err, "host init failed");
-        err = init_sdspi_host_deprecated(host_config->slot, slot_config, &card_handle);
-        CHECK_EXECUTE_RESULT(err, "slot init failed");
-        //Set `host_inited` to true to indicate that host_config->deinit() needs
-        //to be called to revert `init_sdspi_host_deprecated`; set `card_handle`
-        //to -1 to indicate that no other deinit is required.
-        host_inited = true;
-        card_handle = -1;
-    } else {
-        err = (*host_config->init)();
-        CHECK_EXECUTE_RESULT(err, "host init failed");
-        //deinit() needs to be called to revert the init
-        host_inited = true;
-        //If this failed (indicated by card_handle != -1), slot deinit needs to called()
-        //leave card_handle as is to indicate that (though slot deinit not implemented yet.
-        err = init_sdmmc_host(host_config->slot, slot_config, &card_handle);
-        CHECK_EXECUTE_RESULT(err, "slot init failed");
-    }
+    // if (host_config->flags == SDMMC_HOST_FLAG_SPI) {
+    //     //Deprecated API
+    //     //the init() function is usually empty, doesn't require any deinit to revert it
+    //     err = (*host_config->init)();
+    //     CHECK_EXECUTE_RESULT(err, "host init failed");
+    //     err = init_sdspi_host_deprecated(host_config->slot, slot_config, &card_handle);
+    //     CHECK_EXECUTE_RESULT(err, "slot init failed");
+    //     //Set `host_inited` to true to indicate that host_config->deinit() needs
+    //     //to be called to revert `init_sdspi_host_deprecated`; set `card_handle`
+    //     //to -1 to indicate that no other deinit is required.
+    //     host_inited = true;
+    //     card_handle = -1;
+    // } else {
+    //     err = (*host_config->init)();
+    //     CHECK_EXECUTE_RESULT(err, "host init failed");
+    //     //deinit() needs to be called to revert the init
+    //     host_inited = true;
+    //     //If this failed (indicated by card_handle != -1), slot deinit needs to called()
+    //     //leave card_handle as is to indicate that (though slot deinit not implemented yet.
+    //     err = init_sdmmc_host(host_config->slot, slot_config, &card_handle);
+    //     CHECK_EXECUTE_RESULT(err, "slot init failed");
+    // }
 
-    // probe and initialize card
-    err = sdmmc_card_init(host_config, card);
-    CHECK_EXECUTE_RESULT(err, "sdmmc_card_init failed");
+    // // probe and initialize card
+    // err = sdmmc_card_init(host_config, card);
+    // CHECK_EXECUTE_RESULT(err, "sdmmc_card_init failed");
 
-    err = mount_to_vfs_fat(mount_config, card, pdrv, dup_path);
-    CHECK_EXECUTE_RESULT(err, "mount_to_vfs failed");
+    // err = mount_to_vfs_fat(mount_config, card, pdrv, dup_path);
+    // CHECK_EXECUTE_RESULT(err, "mount_to_vfs failed");
 
-    if (out_card != NULL) {
-        *out_card = card;
-    }
-    if (s_card == NULL) {
-        //store the ctx locally to be back-compatible
-        s_card = card;
-        s_pdrv = pdrv;
-        s_base_path = dup_path;
-    } else {
-        free(dup_path);
-    }
+    // if (out_card != NULL) {
+    //     *out_card = card;
+    // }
+    // if (s_card == NULL) {
+    //     //store the ctx locally to be back-compatible
+    //     s_card = card;
+    //     s_pdrv = pdrv;
+    //     s_base_path = dup_path;
+    // } else {
+    //     free(dup_path);
+    // }
     return ESP_OK;
-cleanup:
-    if (host_inited) {
-        call_host_deinit(host_config);
-    }
-    free(card);
-    free(dup_path);
-    return err;
+// cleanup:
+//     if (host_inited) {
+//         call_host_deinit(host_config);
+//     }
+//     free(card);
+//     free(dup_path);
+//     return err;
 }
 #endif
 
@@ -304,20 +304,20 @@ esp_err_t esp_vfs_fat_sdspi_mount(const char* base_path,
     //to be called to revert `init_sdspi_host`
     host_inited = true;
 
-    /*
-     * The `slot` argument inside host_config should be replaced by the SD SPI handled returned
-     * above. But the input pointer is const, so create a new variable.
-     */
-    sdmmc_host_t new_config;
-    if (card_handle != host_config->slot) {
-        new_config = *host_config_input;
-        host_config = &new_config;
-        new_config.slot = card_handle;
-    }
+    // /*
+    //  * The `slot` argument inside host_config should be replaced by the SD SPI handled returned
+    //  * above. But the input pointer is const, so create a new variable.
+    //  */
+    // sdmmc_host_t new_config;
+    // if (card_handle != host_config->slot) {
+    //     new_config = *host_config_input;
+    //     host_config = &new_config;
+    //     new_config.slot = card_handle;
+    // }
 
-    // probe and initialize card
-    err = sdmmc_card_init(host_config, card);
-    CHECK_EXECUTE_RESULT(err, "sdmmc_card_init failed");
+    // // probe and initialize card
+    // err = sdmmc_card_init(host_config, card);
+    // CHECK_EXECUTE_RESULT(err, "sdmmc_card_init failed");
 
     err = mount_to_vfs_fat(mount_config, card, pdrv, dup_path);
     CHECK_EXECUTE_RESULT(err, "mount_to_vfs failed");
@@ -355,11 +355,11 @@ static void local_card_remove(void)
 
 static void call_host_deinit(const sdmmc_host_t *host_config)
 {
-    if (host_config->flags & SDMMC_HOST_FLAG_DEINIT_ARG) {
-        host_config->deinit_p(host_config->slot);
-    } else {
-        host_config->deinit();
-    }
+    // if (host_config->flags & SDMMC_HOST_FLAG_DEINIT_ARG) {
+    //     host_config->deinit_p(host_config->slot);
+    // } else {
+    //     host_config->deinit();
+    // }
 }
 
 static esp_err_t unmount_card_core(const char *base_path, sdmmc_card_t *card)

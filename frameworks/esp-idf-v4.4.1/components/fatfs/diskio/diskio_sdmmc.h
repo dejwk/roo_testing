@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "sdmmc_cmd.h"
+// #include "sdmmc_cmd.h"
 #include "driver/sdmmc_defs.h"
 
 #ifdef __cplusplus

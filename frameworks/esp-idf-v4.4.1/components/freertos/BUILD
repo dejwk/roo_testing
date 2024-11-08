@@ -1,6 +1,6 @@
 cc_library(
     name = "freertos",
-    srcs = glob(["*.c"]) + glob(["portable/ThirdParty/GCC/Posix/**/*.c"]) + ["port.cpp"],
+    srcs = glob(["*.c"], exclude = ["FreeRTOS-openocd.c"]) + glob(["portable/ThirdParty/GCC/Posix/**/*.c"]) + ["port.cpp"],
     hdrs = glob(["freertos/*.h"]) + glob(["portable/ThirdParty/GCC/Posix/**/*.h"]),
     includes = [
         ".",

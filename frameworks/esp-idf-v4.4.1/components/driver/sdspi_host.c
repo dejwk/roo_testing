@@ -21,6 +21,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "soc/soc_memory_layout.h"
+#include "driver/spi_common.h"
 
 
 /// Max number of transactions in flight (used in start_command_write_blocks)

@@ -7,7 +7,7 @@
 #include "diskio_impl.h"
 #include "ffconf.h"
 #include "ff.h"
-#include "sdmmc_cmd.h"
+#include "sdmmc_types.h"
 #include "esp_log.h"
 #include "esp_compiler.h"
 
@@ -18,13 +18,13 @@ static const char* TAG = "diskio_sdmmc";
 //Check if SD/MMC card is present
 static DSTATUS ff_sdmmc_card_available(BYTE pdrv)
 {
-    sdmmc_card_t* card = s_cards[pdrv];
-    assert(card);
-    esp_err_t err = sdmmc_get_status(card);
-    if (unlikely(err != ESP_OK)) {
-        ESP_LOGE(TAG, "Check status failed (0x%x)", err);
-        return STA_NOINIT;
-    }
+    // sdmmc_card_t* card = s_cards[pdrv];
+    // assert(card);
+    // esp_err_t err = sdmmc_get_status(card);
+    // if (unlikely(err != ESP_OK)) {
+    //     ESP_LOGE(TAG, "Check status failed (0x%x)", err);
+    //     return STA_NOINIT;
+    // }
     return 0;
 }
 
@@ -45,25 +45,25 @@ DSTATUS ff_sdmmc_status (BYTE pdrv)
 
 DRESULT ff_sdmmc_read (BYTE pdrv, BYTE* buff, DWORD sector, UINT count)
 {
-    sdmmc_card_t* card = s_cards[pdrv];
-    assert(card);
-    esp_err_t err = sdmmc_read_sectors(card, buff, sector, count);
-    if (unlikely(err != ESP_OK)) {
-        ESP_LOGE(TAG, "sdmmc_read_blocks failed (%d)", err);
-        return RES_ERROR;
-    }
+    // sdmmc_card_t* card = s_cards[pdrv];
+    // assert(card);
+    // esp_err_t err = sdmmc_read_sectors(card, buff, sector, count);
+    // if (unlikely(err != ESP_OK)) {
+    //     ESP_LOGE(TAG, "sdmmc_read_blocks failed (%d)", err);
+    //     return RES_ERROR;
+    // }
     return RES_OK;
 }
 
 DRESULT ff_sdmmc_write (BYTE pdrv, const BYTE* buff, DWORD sector, UINT count)
 {
-    sdmmc_card_t* card = s_cards[pdrv];
-    assert(card);
-    esp_err_t err = sdmmc_write_sectors(card, buff, sector, count);
-    if (unlikely(err != ESP_OK)) {
-        ESP_LOGE(TAG, "sdmmc_write_blocks failed (%d)", err);
-        return RES_ERROR;
-    }
+    // sdmmc_card_t* card = s_cards[pdrv];
+    // assert(card);
+    // esp_err_t err = sdmmc_write_sectors(card, buff, sector, count);
+    // if (unlikely(err != ESP_OK)) {
+    //     ESP_LOGE(TAG, "sdmmc_write_blocks failed (%d)", err);
+    //     return RES_ERROR;
+    // }
     return RES_OK;
 }
 

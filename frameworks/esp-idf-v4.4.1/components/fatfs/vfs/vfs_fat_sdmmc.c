@@ -304,20 +304,20 @@ esp_err_t esp_vfs_fat_sdspi_mount(const char* base_path,
     //to be called to revert `init_sdspi_host`
     host_inited = true;
 
-    // /*
-    //  * The `slot` argument inside host_config should be replaced by the SD SPI handled returned
-    //  * above. But the input pointer is const, so create a new variable.
-    //  */
-    // sdmmc_host_t new_config;
-    // if (card_handle != host_config->slot) {
-    //     new_config = *host_config_input;
-    //     host_config = &new_config;
-    //     new_config.slot = card_handle;
-    // }
+    /*
+     * The `slot` argument inside host_config should be replaced by the SD SPI handled returned
+     * above. But the input pointer is const, so create a new variable.
+     */
+    sdmmc_host_t new_config;
+    if (card_handle != host_config->slot) {
+        new_config = *host_config_input;
+        host_config = &new_config;
+        new_config.slot = card_handle;
+    }
 
-    // // probe and initialize card
-    // err = sdmmc_card_init(host_config, card);
-    // CHECK_EXECUTE_RESULT(err, "sdmmc_card_init failed");
+    // probe and initialize card
+    err = sdmmc_card_init(host_config, card);
+    CHECK_EXECUTE_RESULT(err, "sdmmc_card_init failed");
 
     err = mount_to_vfs_fat(mount_config, card, pdrv, dup_path);
     CHECK_EXECUTE_RESULT(err, "mount_to_vfs failed");
@@ -360,6 +360,8 @@ static void call_host_deinit(const sdmmc_host_t *host_config)
     // } else {
     //     host_config->deinit();
     // }
+    sdspi_host_remove_device(host_config->slot);
+
 }
 
 static esp_err_t unmount_card_core(const char *base_path, sdmmc_card_t *card)
@@ -397,4 +399,17 @@ esp_err_t esp_vfs_fat_sdcard_unmount(const char *base_path, sdmmc_card_t *card)
         local_card_remove();
     }
     return err;
+}
+
+
+esp_err_t sdmmc_card_init(const sdmmc_host_t* config, sdmmc_card_t* card)
+{
+    esp_err_t ret = ESP_FAIL;
+    memset(card, 0, sizeof(*card));
+    memcpy(&card->host, config, sizeof(*config));
+
+    const bool always = true;
+    const bool io_supported = true;
+
+    return ESP_OK;
 }

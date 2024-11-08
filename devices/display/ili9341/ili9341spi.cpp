@@ -2,16 +2,6 @@
 
 #include <glog/logging.h>
 
-namespace {
-
-uint16_t read16(uint8_t*& buf) {
-  uint16_t result = (buf[0] << 8) + buf[1];
-  buf += 2;
-  return result;
-}
-
-}  // namespace
-
 void FakeIli9341Spi::transfer(const FakeSpiInterface& spi, uint8_t* buf,
                               uint16_t bit_count) {
   rst_.warnIfUndef();

@@ -26,6 +26,7 @@ cc_library(
         "//roo_testing/frameworks/arduino-esp32-2.0.4/libraries/FS",
         "//roo_testing/frameworks/arduino-esp32-2.0.4/libraries/Preferences",
         "//roo_testing/frameworks/arduino-esp32-2.0.4/libraries/SD",
+        "//roo_testing/frameworks/arduino-esp32-2.0.4/libraries/SD_MMC",
         "//roo_testing/frameworks/arduino-esp32-2.0.4/libraries/SPI",
         "//roo_testing/frameworks/arduino-esp32-2.0.4/libraries/SPIFFS",
         "//roo_testing/frameworks/arduino-esp32-2.0.4/libraries/WiFi",

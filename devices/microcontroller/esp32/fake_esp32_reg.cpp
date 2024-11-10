@@ -40,8 +40,8 @@ uint32_t& EspReg::reg(uint32_t addr) {
 }
 
 void EspReg::write(uint32_t addr, uint32_t mask, uint32_t val) {
-  RAW_LOG(INFO, "Reg wr: %s & %s <- %s", hex32(addr).c_str(),
-          hex32(mask).c_str(), hex32(val).c_str());
+  // RAW_LOG(INFO, "Reg wr: %s & %s <- %s", hex32(addr).c_str(),
+  //         hex32(mask).c_str(), hex32(val).c_str());
   addr = remap(addr);
   switch (addr) {
     case remap(0x6001301C): {

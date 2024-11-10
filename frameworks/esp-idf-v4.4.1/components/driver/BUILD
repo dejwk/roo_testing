@@ -205,17 +205,19 @@ cc_library(
     name = "sdmmc",
     srcs = [
         "sdmmc_host.c",
+        "sdmmc_transaction.c",
     ],
     hdrs = glob(["**/*.h"]),
     includes = [
-        "include",
-        "include/driver",
+        "include"
     ],
     visibility = ["//visibility:public"],
     deps = [
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/log",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:intr_alloc",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/log",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:gpio_hal",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_pm/include",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_rom",
     ]
 )
 

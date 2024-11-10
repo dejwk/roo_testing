@@ -21,7 +21,7 @@
 #include "esp_vfs_fat.h"
 #include "driver/sdmmc_host.h"
 #include "driver/sdmmc_defs.h"
-#include "sdmmc_cmd.h"
+// #include "sdmmc_cmd.h"
 #include "soc/sdmmc_pins.h"
 #include "ff.h"
 

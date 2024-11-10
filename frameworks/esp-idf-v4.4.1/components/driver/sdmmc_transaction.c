@@ -13,7 +13,7 @@
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "soc/sdmmc_periph.h"
-#include "soc/soc_memory_layout.h"
+// #include "soc/soc_memory_layout.h"
 #include "driver/sdmmc_types.h"
 #include "driver/sdmmc_defs.h"
 #include "driver/sdmmc_host.h"
@@ -124,12 +124,12 @@ esp_err_t sdmmc_host_do_transaction(int slot, sdmmc_command_t* cmdinfo)
             ret = ESP_ERR_INVALID_SIZE;
             goto out;
         }
-        if ((intptr_t) cmdinfo->data % 4 != 0 ||
-                !esp_ptr_dma_capable(cmdinfo->data)) {
-            ESP_LOGD(TAG, "%s: buffer %p can not be used for DMA", __func__, cmdinfo->data);
-            ret = ESP_ERR_INVALID_ARG;
-            goto out;
-        }
+        // if ((intptr_t) cmdinfo->data % 4 != 0 ||
+        //         !esp_ptr_dma_capable(cmdinfo->data)) {
+        //     ESP_LOGD(TAG, "%s: buffer %p can not be used for DMA", __func__, cmdinfo->data);
+        //     ret = ESP_ERR_INVALID_ARG;
+        //     goto out;
+        // }
         // this clears "owned by IDMAC" bits
         memset(s_dma_desc, 0, sizeof(s_dma_desc));
         // initialize first descriptor
@@ -321,57 +321,57 @@ static sdmmc_hw_cmd_t make_hw_cmd(sdmmc_command_t* cmd)
 
 static void process_command_response(uint32_t status, sdmmc_command_t* cmd)
 {
-    if (cmd->flags & SCF_RSP_PRESENT) {
-        if (cmd->flags & SCF_RSP_136) {
-            /* Destination is 4-byte aligned, can memcopy from peripheral registers */
-            memcpy(cmd->response, (uint32_t*) SDMMC.resp, 4 * sizeof(uint32_t));
-        } else {
-            cmd->response[0] = SDMMC.resp[0];
-            cmd->response[1] = 0;
-            cmd->response[2] = 0;
-            cmd->response[3] = 0;
-        }
-    }
-    esp_err_t err = ESP_OK;
-    if (status & SDMMC_INTMASK_RTO) {
-        // response timeout is only possible when response is expected
-        assert(cmd->flags & SCF_RSP_PRESENT);
-        err = ESP_ERR_TIMEOUT;
-    } else if ((cmd->flags & SCF_RSP_CRC) && (status & SDMMC_INTMASK_RCRC)) {
-        err = ESP_ERR_INVALID_CRC;
-    } else if (status & SDMMC_INTMASK_RESP_ERR) {
-        err = ESP_ERR_INVALID_RESPONSE;
-    }
-    if (err != ESP_OK) {
-        cmd->error = err;
-        if (cmd->data) {
-            sdmmc_host_dma_stop();
-        }
-        ESP_LOGD(TAG, "%s: error 0x%x  (status=%08x)", __func__, err, status);
-    }
+    // if (cmd->flags & SCF_RSP_PRESENT) {
+    //     if (cmd->flags & SCF_RSP_136) {
+    //         /* Destination is 4-byte aligned, can memcopy from peripheral registers */
+    //         memcpy(cmd->response, (uint32_t*) SDMMC.resp, 4 * sizeof(uint32_t));
+    //     } else {
+    //         cmd->response[0] = SDMMC.resp[0];
+    //         cmd->response[1] = 0;
+    //         cmd->response[2] = 0;
+    //         cmd->response[3] = 0;
+    //     }
+    // }
+    // esp_err_t err = ESP_OK;
+    // if (status & SDMMC_INTMASK_RTO) {
+    //     // response timeout is only possible when response is expected
+    //     assert(cmd->flags & SCF_RSP_PRESENT);
+    //     err = ESP_ERR_TIMEOUT;
+    // } else if ((cmd->flags & SCF_RSP_CRC) && (status & SDMMC_INTMASK_RCRC)) {
+    //     err = ESP_ERR_INVALID_CRC;
+    // } else if (status & SDMMC_INTMASK_RESP_ERR) {
+    //     err = ESP_ERR_INVALID_RESPONSE;
+    // }
+    // if (err != ESP_OK) {
+    //     cmd->error = err;
+    //     if (cmd->data) {
+    //         sdmmc_host_dma_stop();
+    //     }
+    //     ESP_LOGD(TAG, "%s: error 0x%x  (status=%08x)", __func__, err, status);
+    // }
 }
 
 static void process_data_status(uint32_t status, sdmmc_command_t* cmd)
 {
-    if (status & SDMMC_DATA_ERR_MASK) {
-        if (status & SDMMC_INTMASK_DTO) {
-            cmd->error = ESP_ERR_TIMEOUT;
-        } else if (status & SDMMC_INTMASK_DCRC) {
-            cmd->error = ESP_ERR_INVALID_CRC;
-        } else if ((status & SDMMC_INTMASK_EBE) &&
-                (cmd->flags & SCF_CMD_READ) == 0) {
-            cmd->error = ESP_ERR_TIMEOUT;
-        } else {
-            cmd->error = ESP_FAIL;
-        }
-        SDMMC.ctrl.fifo_reset = 1;
-    }
-    if (cmd->error != 0) {
-        if (cmd->data) {
-            sdmmc_host_dma_stop();
-        }
-        ESP_LOGD(TAG, "%s: error 0x%x (status=%08x)", __func__, cmd->error, status);
-    }
+    // if (status & SDMMC_DATA_ERR_MASK) {
+    //     if (status & SDMMC_INTMASK_DTO) {
+    //         cmd->error = ESP_ERR_TIMEOUT;
+    //     } else if (status & SDMMC_INTMASK_DCRC) {
+    //         cmd->error = ESP_ERR_INVALID_CRC;
+    //     } else if ((status & SDMMC_INTMASK_EBE) &&
+    //             (cmd->flags & SCF_CMD_READ) == 0) {
+    //         cmd->error = ESP_ERR_TIMEOUT;
+    //     } else {
+    //         cmd->error = ESP_FAIL;
+    //     }
+    //     SDMMC.ctrl.fifo_reset = 1;
+    // }
+    // if (cmd->error != 0) {
+    //     if (cmd->data) {
+    //         sdmmc_host_dma_stop();
+    //     }
+    //     ESP_LOGD(TAG, "%s: error 0x%x (status=%08x)", __func__, cmd->error, status);
+    // }
 
 }
 

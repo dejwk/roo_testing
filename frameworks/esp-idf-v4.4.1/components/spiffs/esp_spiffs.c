@@ -220,17 +220,17 @@ static esp_err_t esp_spiffs_init(const esp_vfs_spiffs_conf_t* conf)
 
     esp_partition_subtype_t subtype = conf->partition_label ?
             ESP_PARTITION_SUBTYPE_ANY : ESP_PARTITION_SUBTYPE_DATA_SPIFFS;
-    const esp_partition_t* partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA,
-                                      subtype, conf->partition_label);
-    if (!partition) {
-        ESP_LOGE(TAG, "spiffs partition could not be found");
-        return ESP_ERR_NOT_FOUND;
-    }
+    // const esp_partition_t* partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA,
+    //                                   subtype, conf->partition_label);
+    // if (!partition) {
+    //     ESP_LOGE(TAG, "spiffs partition could not be found");
+    //     return ESP_ERR_NOT_FOUND;
+    // }
 
-    if (partition->encrypted) {
-        ESP_LOGE(TAG, "spiffs can not run on encrypted partition");
-        return ESP_ERR_INVALID_STATE;
-    }
+    // if (partition->encrypted) {
+    //     ESP_LOGE(TAG, "spiffs can not run on encrypted partition");
+    //     return ESP_ERR_INVALID_STATE;
+    // }
 
     esp_spiffs_t * efs = malloc(sizeof(esp_spiffs_t));
     if (efs == NULL) {
@@ -246,7 +246,7 @@ static esp_err_t esp_spiffs_init(const esp_vfs_spiffs_conf_t* conf)
     efs->cfg.log_page_size     = 4096; // log_page_size;
     efs->cfg.phys_addr         = 0;
     efs->cfg.phys_erase_block  = 4096; //g_rom_flashchip.sector_size;
-    efs->cfg.phys_size         = partition->size;
+    // efs->cfg.phys_size         = partition->size;
 
     efs->by_label = conf->partition_label != NULL;
 
@@ -296,7 +296,7 @@ static esp_err_t esp_spiffs_init(const esp_vfs_spiffs_conf_t* conf)
     memset(efs->fs, 0, sizeof(spiffs));
 
     efs->fs->user_data = (void *)efs;
-    efs->partition = partition;
+    // efs->partition = partition;
 
     s32_t res = SPIFFS_mount(efs->fs, &efs->cfg, efs->work, efs->fds, efs->fds_sz,
                             efs->cache, efs->cache_sz, spiffs_api_check);

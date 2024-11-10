@@ -21,21 +21,21 @@
 extern "C" {
 #endif
 
-/**
- * Register SD/MMC diskio driver
- *
- * @param pdrv  drive number
- * @param card  pointer to sdmmc_card_t structure describing a card; card should be initialized before calling f_mount.
- */
-void ff_diskio_register_sdmmc(unsigned char pdrv, sdmmc_card_t* card);
+// /**
+//  * Register SD/MMC diskio driver
+//  *
+//  * @param pdrv  drive number
+//  * @param card  pointer to sdmmc_card_t structure describing a card; card should be initialized before calling f_mount.
+//  */
+// void ff_diskio_register_sdmmc(unsigned char pdrv, sdmmc_card_t* card);
 
-/**
- * @brief Get the driver number corresponding to a card
- *
- * @param card The card to get its driver
- * @return Driver number to the card
- */
-BYTE ff_diskio_get_pdrv_card(const sdmmc_card_t* card);
+// /**
+//  * @brief Get the driver number corresponding to a card
+//  *
+//  * @param card The card to get its driver
+//  * @return Driver number to the card
+//  */
+// BYTE ff_diskio_get_pdrv_card(const sdmmc_card_t* card);
 
 #ifdef __cplusplus
 }

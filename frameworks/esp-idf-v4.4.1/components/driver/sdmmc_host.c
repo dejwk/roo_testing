@@ -173,10 +173,10 @@ static void sdmmc_host_clock_update_command(int slot)
 
 esp_err_t sdmmc_host_set_card_clk(int slot, uint32_t freq_khz)
 {
-    // if (!(slot == 0 || slot == 1)) {
-    //     return ESP_ERR_INVALID_ARG;
-    // }
-    // const int clk40m = 40000;
+    if (!(slot == 0 || slot == 1)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    const int clk40m = 40000;
 
     // // Disable clock first
     // SDMMC.clkena.cclk_enable &= ~BIT(slot);
@@ -233,7 +233,7 @@ esp_err_t sdmmc_host_set_card_clk(int slot, uint32_t freq_khz)
     // SDMMC.tmout.data = data_timeout_cycles;
     // // always set response timeout to highest value, it's small enough anyway
     // SDMMC.tmout.response = 255;
-    // return ESP_OK;
+    return ESP_OK;
 }
 
 esp_err_t sdmmc_host_start_command(int slot, sdmmc_hw_cmd_t cmd, uint32_t arg) {
@@ -268,9 +268,9 @@ esp_err_t sdmmc_host_init(void)
     // Enable clock to peripheral. Use smallest divider first.
     sdmmc_host_set_clk_div(2);
 
-    // // Reset
-    // sdmmc_host_reset();
-    // ESP_LOGD(TAG, "peripheral version %x, hardware config %08x", SDMMC.verid, SDMMC.hcon);
+    // Reset
+    sdmmc_host_reset();
+    ESP_LOGD(TAG, "peripheral version %x, hardware config %08x", SDMMC.verid, SDMMC.hcon);
 
     // // Clear interrupt status and set interrupt mask to known state
     // SDMMC.rintsts.val = 0xffffffff;
@@ -445,43 +445,43 @@ esp_err_t sdmmc_host_init_slot(int slot, const sdmmc_slot_config_t* slot_config)
     // set this and card_detect to high to enable sdio interrupt
     esp_rom_gpio_connect_in_signal(GPIO_MATRIX_CONST_ONE_INPUT, slot_info->card_int, false);
 
-    // // Set up Card Detect input
-    // int matrix_in_cd;
-    // if (gpio_cd != SDMMC_SLOT_NO_CD) {
-    //     ESP_LOGD(TAG, "using GPIO%d as CD pin", gpio_cd);
-    //     esp_rom_gpio_pad_select_gpio(gpio_cd);
-    //     gpio_set_direction(gpio_cd, GPIO_MODE_INPUT);
-    //     matrix_in_cd = gpio_cd;
-    // } else {
-    //     // if not set, default to CD low (card present)
-    //     matrix_in_cd = GPIO_MATRIX_CONST_ZERO_INPUT;
-    // }
-    // esp_rom_gpio_connect_in_signal(matrix_in_cd, slot_info->card_detect, false);
+    // Set up Card Detect input
+    int matrix_in_cd;
+    if (gpio_cd != SDMMC_SLOT_NO_CD) {
+        ESP_LOGD(TAG, "using GPIO%d as CD pin", gpio_cd);
+        esp_rom_gpio_pad_select_gpio(gpio_cd);
+        gpio_set_direction(gpio_cd, GPIO_MODE_INPUT);
+        matrix_in_cd = gpio_cd;
+    } else {
+        // if not set, default to CD low (card present)
+        matrix_in_cd = GPIO_MATRIX_CONST_ZERO_INPUT;
+    }
+    esp_rom_gpio_connect_in_signal(matrix_in_cd, slot_info->card_detect, false);
 
-    // // Set up Write Protect input
-    // int matrix_in_wp;
-    // if (gpio_wp != SDMMC_SLOT_NO_WP) {
-    //     ESP_LOGD(TAG, "using GPIO%d as WP pin", gpio_wp);
-    //     esp_rom_gpio_pad_select_gpio(gpio_wp);
-    //     gpio_set_direction(gpio_wp, GPIO_MODE_INPUT);
-    //     matrix_in_wp = gpio_wp;
-    // } else {
-    //     // if not set, default to WP high (not write protected)
-    //     matrix_in_wp = GPIO_MATRIX_CONST_ONE_INPUT;
-    // }
-    // // WP signal is normally active low, but hardware expects
-    // // an active-high signal, so invert it in GPIO matrix
-    // esp_rom_gpio_connect_in_signal(matrix_in_wp, slot_info->write_protect, true);
+    // Set up Write Protect input
+    int matrix_in_wp;
+    if (gpio_wp != SDMMC_SLOT_NO_WP) {
+        ESP_LOGD(TAG, "using GPIO%d as WP pin", gpio_wp);
+        esp_rom_gpio_pad_select_gpio(gpio_wp);
+        gpio_set_direction(gpio_wp, GPIO_MODE_INPUT);
+        matrix_in_wp = gpio_wp;
+    } else {
+        // if not set, default to WP high (not write protected)
+        matrix_in_wp = GPIO_MATRIX_CONST_ONE_INPUT;
+    }
+    // WP signal is normally active low, but hardware expects
+    // an active-high signal, so invert it in GPIO matrix
+    esp_rom_gpio_connect_in_signal(matrix_in_wp, slot_info->write_protect, true);
 
-    // // By default, set probing frequency (400kHz) and 1-bit bus
-    // esp_err_t ret = sdmmc_host_set_card_clk(slot, 400);
-    // if (ret != ESP_OK) {
-    //     return ret;
-    // }
-    // ret = sdmmc_host_set_bus_width(slot, 1);
-    // if (ret != ESP_OK) {
-    //     return ret;
-    // }
+    // By default, set probing frequency (400kHz) and 1-bit bus
+    esp_err_t ret = sdmmc_host_set_card_clk(slot, 400);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+    ret = sdmmc_host_set_bus_width(slot, 1);
+    if (ret != ESP_OK) {
+        return ret;
+    }
     return ESP_OK;
 }
 
@@ -569,7 +569,7 @@ esp_err_t sdmmc_host_set_bus_ddr_mode(int slot, bool ddr_enabled)
     //     SDMMC.uhs.ddr &= ~mask;
     //     SDMMC.emmc_ddr_reg &= ~mask;
     // }
-    // ESP_LOGD(TAG, "slot=%d ddr=%d", slot, ddr_enabled ? 1 : 0);
+    ESP_LOGD(TAG, "slot=%d ddr=%d", slot, ddr_enabled ? 1 : 0);
     return ESP_OK;
 }
 
@@ -626,13 +626,13 @@ esp_err_t sdmmc_host_io_int_enable(int slot)
 
 esp_err_t sdmmc_host_io_int_wait(int slot, TickType_t timeout_ticks)
 {
-    // /* SDIO interrupts are negedge sensitive ones: the status bit is only set
-    //  * when first interrupt triggered.
-    //  *
-    //  * If D1 GPIO is low when entering this function, we know that interrupt
-    //  * (in SDIO sense) has occurred and we don't need to use SDMMC peripheral
-    //  * interrupt.
-    //  */
+    /* SDIO interrupts are negedge sensitive ones: the status bit is only set
+     * when first interrupt triggered.
+     *
+     * If D1 GPIO is low when entering this function, we know that interrupt
+     * (in SDIO sense) has occurred and we don't need to use SDMMC peripheral
+     * interrupt.
+     */
 
     // SDMMC.intmask.sdio &= ~BIT(slot);   /* Disable SDIO interrupt */
     // SDMMC.rintsts.sdio = BIT(slot);

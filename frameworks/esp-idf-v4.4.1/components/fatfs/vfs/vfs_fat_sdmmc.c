@@ -90,20 +90,20 @@ cleanup:
 static esp_err_t mount_to_vfs_fat(const esp_vfs_fat_mount_config_t *mount_config, sdmmc_card_t *card, uint8_t pdrv,
                                   const char *base_path)
 {
-    FATFS* fs = NULL;
-    esp_err_t err;
-    ff_diskio_register_sdmmc(pdrv, card);
-    ESP_LOGD(TAG, "using pdrv=%i", pdrv);
-    char drv[3] = {(char)('0' + pdrv), ':', 0};
+    // FATFS* fs = NULL;
+    // esp_err_t err;
+    // ff_diskio_register_sdmmc(pdrv, card);
+    // ESP_LOGD(TAG, "using pdrv=%i", pdrv);
+    // char drv[3] = {(char)('0' + pdrv), ':', 0};
 
-    // connect FATFS to VFS
-    err = esp_vfs_fat_register(base_path, drv, mount_config->max_files, &fs);
-    if (err == ESP_ERR_INVALID_STATE) {
-        // it's okay, already registered with VFS
-    } else if (err != ESP_OK) {
-        ESP_LOGD(TAG, "esp_vfs_fat_register failed 0x(%x)", err);
-        goto fail;
-    }
+    // // connect FATFS to VFS
+    // err = esp_vfs_fat_register(base_path, drv, mount_config->max_files, &fs);
+    // if (err == ESP_ERR_INVALID_STATE) {
+    //     // it's okay, already registered with VFS
+    // } else if (err != ESP_OK) {
+    //     ESP_LOGD(TAG, "esp_vfs_fat_register failed 0x(%x)", err);
+    //     goto fail;
+    // }
 
     // // Try to mount partition
     // FRESULT res = f_mount(fs, drv, 1);
@@ -130,13 +130,13 @@ static esp_err_t mount_to_vfs_fat(const esp_vfs_fat_mount_config_t *mount_config
     // }
     return ESP_OK;
 
-fail:
-    if (fs) {
-        f_mount(NULL, drv, 0);
-    }
-    esp_vfs_fat_unregister_path(base_path);
-    ff_diskio_unregister(pdrv);
-    return err;
+// fail:
+//     if (fs) {
+//         f_mount(NULL, drv, 0);
+//     }
+//     esp_vfs_fat_unregister_path(base_path);
+//     ff_diskio_unregister(pdrv);
+//     return err;
 }
 
 static esp_err_t partition_card(const esp_vfs_fat_mount_config_t *mount_config,
@@ -187,8 +187,9 @@ static esp_err_t init_sdmmc_host(int slot, const void *slot_config, int *out_slo
 
 static esp_err_t init_sdspi_host_deprecated(int slot, const void *slot_config, int *out_slot)
 {
-    *out_slot = slot;
-    return sdspi_host_init_slot(slot, (const sdspi_slot_config_t*) slot_config);
+    // *out_slot = slot;
+    // return sdspi_host_init_slot(slot, (const sdspi_slot_config_t*) slot_config);
+    return ESP_OK;
 }
 
 esp_err_t esp_vfs_fat_sdmmc_mount(const char* base_path,
@@ -264,14 +265,15 @@ esp_err_t esp_vfs_fat_sdmmc_mount(const char* base_path,
 
 static esp_err_t init_sdspi_host(int slot, const void *slot_config, int *out_slot)
 {
-    esp_err_t err = sdspi_host_init_device((const sdspi_device_config_t*)slot_config, out_slot);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG,
-"Failed to attach sdspi device onto an SPI bus (rc=0x%x), please initialize the \
-bus first and check the device parameters."
-            , err);
-    }
-    return err;
+//     esp_err_t err = sdspi_host_init_device((const sdspi_device_config_t*)slot_config, out_slot);
+//     if (err != ESP_OK) {
+//         ESP_LOGE(TAG,
+// "Failed to attach sdspi device onto an SPI bus (rc=0x%x), please initialize the \
+// bus first and check the device parameters."
+//             , err);
+//     }
+//     return err;
+  return ESP_OK;
 }
 
 esp_err_t esp_vfs_fat_sdspi_mount(const char* base_path,
@@ -316,11 +318,11 @@ esp_err_t esp_vfs_fat_sdspi_mount(const char* base_path,
     }
 
     // probe and initialize card
-    err = sdmmc_card_init(host_config, card);
-    CHECK_EXECUTE_RESULT(err, "sdmmc_card_init failed");
+    // err = sdmmc_card_init(host_config, card);
+    // CHECK_EXECUTE_RESULT(err, "sdmmc_card_init failed");
 
-    err = mount_to_vfs_fat(mount_config, card, pdrv, dup_path);
-    CHECK_EXECUTE_RESULT(err, "mount_to_vfs failed");
+    // err = mount_to_vfs_fat(mount_config, card, pdrv, dup_path);
+    // CHECK_EXECUTE_RESULT(err, "mount_to_vfs failed");
 
     if (out_card != NULL) {
         *out_card = card;
@@ -366,22 +368,23 @@ static void call_host_deinit(const sdmmc_host_t *host_config)
 
 static esp_err_t unmount_card_core(const char *base_path, sdmmc_card_t *card)
 {
-    BYTE pdrv = ff_diskio_get_pdrv_card(card);
-    if (pdrv == 0xff) {
-        return ESP_ERR_INVALID_ARG;
-    }
+    // BYTE pdrv = ff_diskio_get_pdrv_card(card);
+    // if (pdrv == 0xff) {
+    //     return ESP_ERR_INVALID_ARG;
+    // }
 
-    // unmount
-    char drv[3] = {(char)('0' + pdrv), ':', 0};
-    f_mount(0, drv, 0);
-    // release SD driver
-    ff_diskio_unregister(pdrv);
+    // // unmount
+    // char drv[3] = {(char)('0' + pdrv), ':', 0};
+    // f_mount(0, drv, 0);
+    // // release SD driver
+    // ff_diskio_unregister(pdrv);
 
-    call_host_deinit(&card->host);
-    free(card);
+    // call_host_deinit(&card->host);
+    // free(card);
 
-    esp_err_t err = esp_vfs_fat_unregister_path(base_path);
-    return err;
+    // esp_err_t err = esp_vfs_fat_unregister_path(base_path);
+    // return err;
+  return ESP_OK;
 }
 
 esp_err_t esp_vfs_fat_sdmmc_unmount(void)

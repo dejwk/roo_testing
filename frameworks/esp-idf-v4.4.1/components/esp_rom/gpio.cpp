@@ -22,4 +22,6 @@ void esp_rom_gpio_connect_out_signal(uint32_t gpio_num, uint32_t signal_idx,
   gpio_matrix_out(gpio_num, signal_idx, out_inv, oen_inv);
 }
 
+void esp_rom_gpio_pad_select_gpio(uint32_t iopad_num) {}
+
 }

@@ -67,10 +67,10 @@ esp_err_t spi_flash_hal_device_config(spi_flash_host_inst_t *host)
 #endif //SOC_SPI_MEM_SUPPORT_AUTO_SUSPEND
 #if SOC_SPI_MEM_SUPPORT_TIME_TUNING
     // Always keep the extra dummy on SPI1 is 0, add extra dummy to user dummy
-    spimem_flash_ll_set_extra_dummy((spi_mem_dev_t*)dev, 0);
+    // spimem_flash_ll_set_extra_dummy((spi_mem_dev_t*)dev, 0);
 #endif
 #else
-    gpspi_flash_ll_set_hold_pol(dev, 1);
+    // gpspi_flash_ll_set_hold_pol(dev, 1);
 #endif //GPSPI_BUILD
 
     return ESP_OK;

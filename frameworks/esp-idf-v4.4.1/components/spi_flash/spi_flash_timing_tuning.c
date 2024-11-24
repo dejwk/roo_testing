@@ -466,17 +466,17 @@ void spi_timing_enter_mspi_high_speed_mode(bool control_spi1)
 
 void spi_timing_change_speed_mode_cache_safe(bool switch_down)
 {
-    Cache_Freeze_ICache_Enable(1);
-    Cache_Freeze_DCache_Enable(1);
-    if (switch_down) {
-        //enter MSPI low speed mode, extra delays should be removed
-        spi_timing_enter_mspi_low_speed_mode(false);
-    } else {
-        //enter MSPI high speed mode, extra delays should be considered
-        spi_timing_enter_mspi_high_speed_mode(false);
-    }
-    Cache_Freeze_DCache_Disable();
-    Cache_Freeze_ICache_Disable();
+    // Cache_Freeze_ICache_Enable(1);
+    // Cache_Freeze_DCache_Enable(1);
+    // if (switch_down) {
+    //     //enter MSPI low speed mode, extra delays should be removed
+    //     spi_timing_enter_mspi_low_speed_mode(false);
+    // } else {
+    //     //enter MSPI high speed mode, extra delays should be considered
+    //     spi_timing_enter_mspi_high_speed_mode(false);
+    // }
+    // Cache_Freeze_DCache_Disable();
+    // Cache_Freeze_ICache_Disable();
 }
 
 /*------------------------------------------------------------------------------

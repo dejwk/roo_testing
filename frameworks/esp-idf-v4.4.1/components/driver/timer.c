@@ -16,6 +16,8 @@
 #include "soc/timer_periph.h"
 #include "soc/rtc.h"
 
+#include "esp_heap_caps.h"
+
 static const char *TIMER_TAG = "timer_group";
 
 #define TIMER_GROUP_NUM_ERROR   "TIMER GROUP NUM ERROR"

@@ -459,7 +459,6 @@ void wifi_prov_mgr_endpoint_unregister(const char *ep_name)
     //     protocomm_remove_endpoint(prov_ctx->pc, ep_name);
     // }
     // RELEASE_LOCK(prov_ctx_lock);
-    return ESP_OK;
 }
 
 static void prov_stop_task(void *arg)

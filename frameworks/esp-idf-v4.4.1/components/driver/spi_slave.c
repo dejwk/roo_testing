@@ -17,6 +17,7 @@
 #include "soc/lldesc.h"
 #include "soc/soc_caps.h"
 #include "soc/spi_periph.h"
+#include "soc/soc_memory_types.h"
 // #include "soc/soc_memory_layout.h"
 #include "hal/spi_ll.h"
 #include "hal/spi_slave_hal.h"

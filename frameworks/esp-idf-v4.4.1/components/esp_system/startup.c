@@ -28,7 +28,7 @@
 // #include "esp_flash_internal.h"
 // #include "esp_newlib.h"
 // #include "esp_vfs_dev.h"
-// #include "esp_timer.h"
+#include "esp_timer.h"
 // #include "esp_efuse.h"
 // #include "esp_flash_encrypt.h"
 // #include "esp_secure_boot.h"

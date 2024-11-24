@@ -173,6 +173,8 @@ unsigned long ARDUINO_ISR_ATTR millis()
     return (unsigned long) (esp_timer_get_time() / 1000ULL);
 }
 
+void emulatedDelayMicroseconds(uint64_t micros);
+
 void delay(uint32_t ms)
 {
     vTaskDelay(ms / portTICK_PERIOD_MS);

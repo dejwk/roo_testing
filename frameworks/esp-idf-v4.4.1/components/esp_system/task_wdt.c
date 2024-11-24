@@ -213,29 +213,29 @@ esp_err_t esp_task_wdt_init(uint32_t timeout, bool panic)
         //Register Interrupt and ISR
         ESP_ERROR_CHECK(esp_intr_alloc(ETS_TG0_WDT_LEVEL_INTR_SOURCE, 0, task_wdt_isr, NULL, &twdt_config->intr_handle));
 
-        //Configure hardware timer
-        periph_module_enable(PERIPH_TIMG0_MODULE);
-        wdt_hal_init(&twdt_context, TWDT_INSTANCE, TWDT_PRESCALER, true);
-        wdt_hal_write_protect_disable(&twdt_context);
-        //Configure 1st stage timeout and behavior
-        wdt_hal_config_stage(&twdt_context, WDT_STAGE0, twdt_config->timeout * (1000000 / TWDT_TICKS_PER_US), WDT_STAGE_ACTION_INT);
-        //Configure 2nd stage timeout and behavior
-        wdt_hal_config_stage(&twdt_context, WDT_STAGE1, twdt_config->timeout * (2 * 1000000 / TWDT_TICKS_PER_US), WDT_STAGE_ACTION_RESET_SYSTEM);
-        //Enable the WDT
-        wdt_hal_enable(&twdt_context);
-        wdt_hal_write_protect_enable(&twdt_context);
+        // //Configure hardware timer
+        // periph_module_enable(PERIPH_TIMG0_MODULE);
+        // wdt_hal_init(&twdt_context, TWDT_INSTANCE, TWDT_PRESCALER, true);
+        // wdt_hal_write_protect_disable(&twdt_context);
+        // //Configure 1st stage timeout and behavior
+        // wdt_hal_config_stage(&twdt_context, WDT_STAGE0, twdt_config->timeout * (1000000 / TWDT_TICKS_PER_US), WDT_STAGE_ACTION_INT);
+        // //Configure 2nd stage timeout and behavior
+        // wdt_hal_config_stage(&twdt_context, WDT_STAGE1, twdt_config->timeout * (2 * 1000000 / TWDT_TICKS_PER_US), WDT_STAGE_ACTION_RESET_SYSTEM);
+        // //Enable the WDT
+        // wdt_hal_enable(&twdt_context);
+        // wdt_hal_write_protect_enable(&twdt_context);
     } else {      //twdt_config previously initialized
-        //Reconfigure task wdt
-        twdt_config->panic = panic;
-        twdt_config->timeout = timeout;
+        // //Reconfigure task wdt
+        // twdt_config->panic = panic;
+        // twdt_config->timeout = timeout;
 
-        //Reconfigure hardware timer
-        wdt_hal_write_protect_disable(&twdt_context);
-        wdt_hal_disable(&twdt_context);
-        wdt_hal_config_stage(&twdt_context, WDT_STAGE0, twdt_config->timeout * (1000 * 1000 / TWDT_TICKS_PER_US), WDT_STAGE_ACTION_INT);
-        wdt_hal_config_stage(&twdt_context, WDT_STAGE1, twdt_config->timeout * (2 * 1000 * 1000 / TWDT_TICKS_PER_US), WDT_STAGE_ACTION_RESET_SYSTEM);
-        wdt_hal_enable(&twdt_context);
-        wdt_hal_write_protect_enable(&twdt_context);
+        // //Reconfigure hardware timer
+        // wdt_hal_write_protect_disable(&twdt_context);
+        // wdt_hal_disable(&twdt_context);
+        // wdt_hal_config_stage(&twdt_context, WDT_STAGE0, twdt_config->timeout * (1000 * 1000 / TWDT_TICKS_PER_US), WDT_STAGE_ACTION_INT);
+        // wdt_hal_config_stage(&twdt_context, WDT_STAGE1, twdt_config->timeout * (2 * 1000 * 1000 / TWDT_TICKS_PER_US), WDT_STAGE_ACTION_RESET_SYSTEM);
+        // wdt_hal_enable(&twdt_context);
+        // wdt_hal_write_protect_enable(&twdt_context);
     }
     portEXIT_CRITICAL(&twdt_spinlock);
     return ESP_OK;
@@ -291,13 +291,13 @@ esp_err_t esp_task_wdt_add(TaskHandle_t handle)
         task->next = target_task;
     }
 
-    //If idle task, register the idle hook callback to appropriate core
-    for(int i = 0; i < portNUM_PROCESSORS; i++){
-        if(handle == xTaskGetIdleTaskHandleForCPU(i)){
-            ESP_ERROR_CHECK(esp_register_freertos_idle_hook_for_cpu(idle_hook_cb, i));
-            break;
-        }
-    }
+    // //If idle task, register the idle hook callback to appropriate core
+    // for(int i = 0; i < portNUM_PROCESSORS; i++){
+    //     if(handle == xTaskGetIdleTaskHandleForCPU(i)){
+    //         ESP_ERROR_CHECK(esp_register_freertos_idle_hook_for_cpu(idle_hook_cb, i));
+    //         break;
+    //     }
+    // }
 
     if(all_reset){     //Reset hardware timer if all other tasks in list have reset in
         reset_hw_timer();
@@ -358,13 +358,13 @@ esp_err_t esp_task_wdt_delete(TaskHandle_t handle)
         free(target_task);
     }
 
-    //If idle task, deregister idle hook callback form appropriate core
-    for(int i = 0; i < portNUM_PROCESSORS; i++){
-        if(handle == xTaskGetIdleTaskHandleForCPU(i)){
-            esp_deregister_freertos_idle_hook_for_cpu(idle_hook_cb, i);
-            break;
-        }
-    }
+    // //If idle task, deregister idle hook callback form appropriate core
+    // for(int i = 0; i < portNUM_PROCESSORS; i++){
+    //     if(handle == xTaskGetIdleTaskHandleForCPU(i)){
+    //         esp_deregister_freertos_idle_hook_for_cpu(idle_hook_cb, i);
+    //         break;
+    //     }
+    // }
 
     if(all_reset){     //Reset hardware timer if all remaining tasks have reset
         reset_hw_timer();

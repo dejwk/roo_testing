@@ -31,6 +31,7 @@ cc_library(
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/freertos",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:spi_flash_hal",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/log",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/newlib:locks",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
     ],
 )

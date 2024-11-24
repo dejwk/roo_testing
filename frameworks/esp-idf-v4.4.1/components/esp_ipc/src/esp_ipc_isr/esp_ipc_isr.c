@@ -28,6 +28,8 @@
 // #include "xtensa/core-macros.h"
 #include "sdkconfig.h"
 
+#include "rom/ets_sys.h"
+
 static portMUX_TYPE s_ipc_isr_mux = portMUX_INITIALIZER_UNLOCKED;
 uint32_t volatile esp_ipc_isr_start_fl;        // the flag shows that it is about to run esp_ipc_func()
 uint32_t volatile esp_ipc_isr_end_fl = 1;      // the flag shows that esp_ipc_func() is done

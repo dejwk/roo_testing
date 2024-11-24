@@ -19,6 +19,7 @@
 
 #include "esp_attr.h"
 #include "esp32/dport_access.h"
+#include "soc/soc.h"
 
 #include "sdkconfig.h"
 

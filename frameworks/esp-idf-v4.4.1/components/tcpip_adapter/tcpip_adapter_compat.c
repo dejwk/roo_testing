@@ -397,7 +397,7 @@ esp_err_t tcpip_adapter_get_hostname(tcpip_adapter_if_t tcpip_if, const char **h
 {
     // return esp_netif_get_hostname(netif_from_if(tcpip_if), hostname);
     static char name[256];
-    if (gethostname(&name, 256)) {
+    if (gethostname(name, 256)) {
       return ESP_OK;
     }
     return ESP_ERR_TCPIP_ADAPTER_IF_NOT_READY;

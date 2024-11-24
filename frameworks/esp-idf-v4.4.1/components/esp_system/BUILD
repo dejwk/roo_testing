@@ -18,6 +18,9 @@ cc_library(
     srcs = glob(["*.c"]) + glob(["port/*.c"]),
     includes = [
         "include",
+        "port/include",
+        "port/public_compat",
+        "soc/esp32",
     ],
     visibility = ["//visibility:public"],
     defines = [
@@ -26,6 +29,7 @@ cc_library(
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_timer",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:esp_chip_info",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:esp_mac",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:esp_random",

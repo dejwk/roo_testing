@@ -22,10 +22,11 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/freertos",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/vfs",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/driver:sdmmc",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/driver:sdspi",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/freertos",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/newlib:locks",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/wear_levelling",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/vfs",
     ],
 )

@@ -48,20 +48,20 @@
 #define WL_CURRENT_VERSION  2
 #endif //WL_CURRENT_VERSION
 
-typedef int _lock_t;
+// typedef int _lock_t;
 
-extern "C" {
-void _lock_init(_lock_t *plock);
-void _lock_init_recursive(_lock_t *plock);
-void _lock_close(_lock_t *plock);
-void _lock_close_recursive(_lock_t *plock);
-void _lock_acquire(_lock_t *plock);
-void _lock_acquire_recursive(_lock_t *plock);
-int _lock_try_acquire(_lock_t *plock);
-int _lock_try_acquire_recursive(_lock_t *plock);
-void _lock_release(_lock_t *plock);
-void _lock_release_recursive(_lock_t *plock);
-}
+// extern "C" {
+// void _lock_init(_lock_t *plock);
+// void _lock_init_recursive(_lock_t *plock);
+// void _lock_close(_lock_t *plock);
+// void _lock_close_recursive(_lock_t *plock);
+// void _lock_acquire(_lock_t *plock);
+// void _lock_acquire_recursive(_lock_t *plock);
+// int _lock_try_acquire(_lock_t *plock);
+// int _lock_try_acquire_recursive(_lock_t *plock);
+// void _lock_release(_lock_t *plock);
+// void _lock_release_recursive(_lock_t *plock);
+// }
 
 typedef struct {
     WL_Flash *instance;

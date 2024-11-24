@@ -48,6 +48,8 @@ esp_netif_t *esp_netif_get_handle_from_ifkey(const char *if_key)
 #undef inet_ntop
 #endif
 
+const char *inet_ntop(int af, const void *restrict src, char *restrict dst, socklen_t size);
+
 esp_err_t esp_netif_get_ip_info(esp_netif_t *esp_netif, esp_netif_ip_info_t *ip_info)
 {
     if (esp_netif == NULL) {

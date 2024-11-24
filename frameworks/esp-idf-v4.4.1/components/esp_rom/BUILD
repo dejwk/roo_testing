@@ -35,7 +35,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         # "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32:include",
         # "//roo_testing/frameworks/esp-idf-v4.4.1/components/newlib:reent",
     ]
 )

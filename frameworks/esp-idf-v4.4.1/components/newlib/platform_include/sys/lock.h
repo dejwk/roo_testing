@@ -1,8 +1,11 @@
 #pragma once
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+
 // #include_next <sys/lock.h>
 
-#ifdef _RETARGETABLE_LOCKING
+// #ifdef _RETARGETABLE_LOCKING
 
 /* Actual platfrom-specific definition of struct __lock.
  * The size here should be sufficient for a FreeRTOS mutex.
@@ -25,7 +28,7 @@ struct __lock {
  * built with _RETARGETABLE_LOCKING enabled, instead.
  */
 
-typedef _LOCK_T _lock_t;
+// typedef _LOCK_T _lock_t;
 
 void _lock_init(_lock_t *plock);
 void _lock_init_recursive(_lock_t *plock);
@@ -38,4 +41,4 @@ int _lock_try_acquire_recursive(_lock_t *plock);
 void _lock_release(_lock_t *plock);
 void _lock_release_recursive(_lock_t *plock);
 
-#endif // _RETARGETABLE_LOCKING
+// #endif // _RETARGETABLE_LOCKING

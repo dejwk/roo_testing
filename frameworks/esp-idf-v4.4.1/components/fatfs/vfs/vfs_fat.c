@@ -660,7 +660,7 @@ static int vfs_fat_link(void* ctx, const char* n1, const char* n2)
     size_t size_left = f_size(pf1);
     while (size_left > 0) {
         size_t will_copy = (size_left < copy_buf_size) ? size_left : copy_buf_size;
-        size_t read;
+        UINT read;
         res = f_read(pf1, buf, will_copy, &read);
         if (res != FR_OK) {
             goto fail3;
@@ -668,7 +668,7 @@ static int vfs_fat_link(void* ctx, const char* n1, const char* n2)
             res = FR_DISK_ERR;
             goto fail3;
         }
-        size_t written;
+        UINT written;
         res = f_write(pf2, buf, will_copy, &written);
         if (res != FR_OK) {
             goto fail3;

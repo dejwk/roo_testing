@@ -15,8 +15,8 @@
 #include "esp_system.h"
 
 // #include "esp_efuse.h"
-// #include "cache_err_int.h"
-// #include "esp_clk_internal.h"
+#include "cache_err_int.h"
+#include "esp_clk_internal.h"
 
 // #include "esp_rom_efuse.h"
 #include "esp_rom_uart.h"

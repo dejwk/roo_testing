@@ -131,6 +131,7 @@ cc_library(
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:rtc_io_hal",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/log",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:intr_alloc",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/newlib:locks",
     ]
 )
 

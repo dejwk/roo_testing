@@ -115,19 +115,19 @@ void feedLoopWDT(){
 }
 #endif
 
-// void enableCore0WDT(){
-//     TaskHandle_t idle_0 = xTaskGetIdleTaskHandleForCPU(0);
-//     if(idle_0 == NULL || esp_task_wdt_add(idle_0) != ESP_OK){
-//         log_e("Failed to add Core 0 IDLE task to WDT");
-//     }
-// }
+void enableCore0WDT(){
+    // TaskHandle_t idle_0 = xTaskGetIdleTaskHandleForCPU(0);
+    // if(idle_0 == NULL || esp_task_wdt_add(idle_0) != ESP_OK){
+    //     log_e("Failed to add Core 0 IDLE task to WDT");
+    // }
+}
 
-// void disableCore0WDT(){
-//     TaskHandle_t idle_0 = xTaskGetIdleTaskHandleForCPU(0);
-//     if(idle_0 == NULL || esp_task_wdt_delete(idle_0) != ESP_OK){
-//         log_e("Failed to remove Core 0 IDLE task from WDT");
-//     }
-// }
+void disableCore0WDT(){
+    // TaskHandle_t idle_0 = xTaskGetIdleTaskHandleForCPU(0);
+    // if(idle_0 == NULL || esp_task_wdt_delete(idle_0) != ESP_OK){
+    //     log_e("Failed to remove Core 0 IDLE task from WDT");
+    // }
+}
 
 // #ifndef CONFIG_FREERTOS_UNICORE
 // void enableCore1WDT(){

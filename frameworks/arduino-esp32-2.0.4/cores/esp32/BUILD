@@ -21,6 +21,7 @@ cc_library(
 
 cc_library(
     name = "arduino",
+    visibility = ["//visibility:public"],
     deps = [
         ":esp32",
         "//roo_testing/frameworks/arduino-esp32-2.0.4/libraries/FS",

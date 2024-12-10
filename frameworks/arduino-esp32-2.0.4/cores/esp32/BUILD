@@ -3,7 +3,6 @@ cc_library(
     srcs = 
         glob(["**/*.c"]) +
         glob(["**/*.cpp"], exclude = ["main.cpp", "gtest_main.cpp"]) +
-        glob(["tools/sdk/src/*.c"]) +
         glob(["**/*.h"]),
     hdrs = glob(["**/*.h"]),
     defines = ["CORE_DEBUG_LEVEL=5"],
@@ -56,6 +55,6 @@ cc_library(
     deps = [
         ":esp32",
         ":arduino",
-        "@gtest//:gtest",
+        "@googletest//:gtest",
     ]
 )

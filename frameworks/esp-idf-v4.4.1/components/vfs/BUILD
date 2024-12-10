@@ -3,7 +3,7 @@ cc_library(
     srcs = [
         "vfs.c",
     ],
-    hdrs = glob(["*.h"]) + glob(["include/**/*.h"]) + glob(["private_include/**/*.h"]),
+    hdrs = glob(["include/**/*.h"]) + glob(["private_include/**/*.h"]),
     includes = [
         ".",
         "include",

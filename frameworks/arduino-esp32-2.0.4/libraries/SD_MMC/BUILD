@@ -1,8 +1,6 @@
 cc_library(
     name = "SD_MMC",
-    srcs =
-        glob(["src/**/*.cpp"]) +
-        glob(["src/**/*.c"]),
+    srcs = glob(["src/**/*.cpp"]),
     hdrs = glob(["src/**/*.h"]),
     includes = ["src"],
     visibility = ["//visibility:public"],

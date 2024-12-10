@@ -9,7 +9,7 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        "@com_github_google_glog//:glog",
+        "@glog//:glog",
         "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:cpu_hal",
         # "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:esp_cpu",

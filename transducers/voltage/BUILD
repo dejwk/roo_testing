@@ -5,6 +5,6 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/transducers",
-        "@com_github_google_glog//:glog",
+        "@glog//:glog",
     ],
 )

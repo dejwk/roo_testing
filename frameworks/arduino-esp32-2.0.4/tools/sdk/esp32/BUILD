@@ -15,7 +15,7 @@ cc_library(
     deps = [
         "//roo_testing/frameworks/arduino-esp32-2.0.4/variants:esp32",
         "//roo_testing/devices/microcontroller/esp32",
-        "@com_github_google_glog//:glog",
+        "@glog//:glog",
         "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/app_update:include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/bootloader_support:include",

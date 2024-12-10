@@ -2,16 +2,21 @@
 
 #include <inttypes.h>
 
+#include <string>
+
 // #include "esp_err.h"
 // #include "nvs.h"
-#include "roo_testing/devices/microcontroller/esp32/storage.pb.h"
 
 typedef int32_t esp_err_t;
 typedef uint32_t nvs_handle_t;
 
+class NvsImpl;
+
 class Nvs {
  public:
   Nvs(const std::string& path);
+
+  ~Nvs();
 
   esp_err_t init(const char* partition_name);
 
@@ -55,23 +60,7 @@ class Nvs {
   void close(nvs_handle_t handle);
 
  private:
-  struct Handle {
-    std::string partition_name;
-    std::string ns_name;
-    bool readonly;
-  };
-
   void save();
 
-  esp_err_t set(nvs_handle_t handle, const char* key,
-                roo_testing::esp32::nvs::EntryValue val);
-
-  esp_err_t get(nvs_handle_t handle, const char* key,
-                roo_testing::esp32::nvs::Type expected_type,
-                roo_testing::esp32::nvs::EntryValue& val);
-
-  roo_testing::esp32::nvs::Nvs storage_;
-  std::string path_;
-  std::map<int, Handle> open_partitions_;
-  int next_id_;
+  NvsImpl* impl_;
 };

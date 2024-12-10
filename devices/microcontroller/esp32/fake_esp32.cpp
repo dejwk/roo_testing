@@ -65,6 +65,8 @@ FakeEsp32Board::FakeEsp32Board()
     : gpio(40),
       in_matrix(),
       out_matrix(),
+      nvs(default_nvs_file()),
+      reg_(*this),
       uart_{Esp32UartInterface("uart0", /* U0TXD_OUT_IDX*/ 14,
                                /* U0RXD_IN_IDX*/ 14, this),
             Esp32UartInterface("uart1", /* U0TXD_OUT_IDX*/ 17,
@@ -72,7 +74,6 @@ FakeEsp32Board::FakeEsp32Board()
             Esp32UartInterface("uart2", /* U0TXD_OUT_IDX*/ 198,
                                /* U0RXD_IN_IDX*/ 198, this)},
       // i2c{FakeI2cInterface("i2c0"), FakeI2cInterface("i2c1")},
-      reg_(*this),
       adc_{
         Esp32Adc(*this, {36, 37, 38, 39, 32, 33, 34, 35, -1, -1}),
         Esp32Adc(*this, {4, 0, 2, 15, 13, 12, 14, 27, 25, 26})
@@ -81,7 +82,6 @@ FakeEsp32Board::FakeEsp32Board()
         Esp32I2c(*this, "i2c0", /*I2CEXT0_SDA_*_IDX*/ 30, /*I2CEXT0_SCL_*_IDX8*/ 29),
         Esp32I2c(*this, "i2c1", /*I2CEXT1_SDA_*_IDX*/ 96, /*I2CEXT1_SCL_*_IDX8*/ 95),
       },
-      nvs(default_nvs_file()),
       spi{Esp32SpiInterface(SPI0, "spi0(internal)", /*SPICLK_OUT_IDX*/ 0,
                             /*SPIQ_OUT_IDX*/ 1, /*SPID_IN_IDX*/ 2, this),
           Esp32SpiInterface(SPI1, "spi1(FSPI)", /*SPICLK_OUT_IDX*/ 0,

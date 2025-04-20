@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package roo.comms;
+
+enum RealmId {
+  kUnspecifiedRealm = 0;
+  kHomeAutomation = 1;
+  // Values up to 1023 are reserved for future use.
+  // You can use values 1024+ for custom realms.
+}
+
+message DeviceDescriptor {
+  int64 realm_id = 1;
+  bytes payload = 2;
+}
+
+message HomeAutomationDeviceDescriptor {
+  message EnvironmentalSensor {
+    bool has_aht20 = 1;
+    bool has_bmp280 = 2;
+  }
+  message Relay { int32 port_count = 1; }
+
+  oneof kind {
+    EnvironmentalSensor environmental_sensor = 1;
+    Relay relay = 2;
+  }
+}
+
+message ControlMessage {
+  message HubDiscoveryRequest { DeviceDescriptor device_descriptor = 1; }
+
+  message HubDiscoveryResponse { uint32 hub_channel = 1; }
+
+  message HubPairingRequest { DeviceDescriptor device_descriptor = 1; }
+
+  message HubPairingResponse {
+    enum Status {
+      kOk = 0;
+      kRejected = 1;
+    }
+
+    Status status = 1;
+  }
+
+  oneof contents {
+    HubDiscoveryRequest hub_discovery_request = 1;
+    HubDiscoveryResponse hub_discovery_response = 2;
+
+    HubPairingRequest hub_pairing_request = 3;
+    HubPairingResponse hub_pairing_response = 4;
+  }
+}
+
+message DataMessage {
+  message EnvironmentalSensorReadings {
+    message AHT20 {
+      optional float temperature_celsius = 1;
+      optional float humidity_percent = 2;
+    }
+    message BMP280 {
+      optional float temperature_celsius = 1;
+      optional float pressure_pa = 2;
+    }
+
+    optional float generic_temperature_celcius = 1;
+    AHT20 aht20 = 2;
+    BMP280 bmp280 = 3;
+  }
+
+  message RelayRequest {
+    // Bits that are '1' indicate relays that are to be modified to the values
+    // carried by corresponding `write` bits. In particular, setting mask to
+    // zero does not write anything (regardless of the value of `write`), and
+    // can be used to request state read.
+    fixed32 mask = 1;
+
+    fixed32 write = 2;
+  }
+
+  message RelayResponse {
+    // Each bit represents the state of one relay.
+    fixed32 state = 1;
+  }
+
+  oneof contents {
+    EnvironmentalSensorReadings environmental_sensor_readings = 5;
+
+    RelayRequest relay_request = 6;
+    RelayResponse relay_response = 7;
+  }
+}

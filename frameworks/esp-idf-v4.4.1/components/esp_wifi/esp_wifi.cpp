@@ -530,4 +530,8 @@ void asyncGotIp(TimerHandle_t xTimer) { adapter().finalizeGotIP(); }
 
 }  // namespace
 
+esp_err_t esp_wifi_set_channel(uint8_t primary, wifi_second_chan_t second) {
+  return ESP_OK;
+}
+
 }  // extern "C"

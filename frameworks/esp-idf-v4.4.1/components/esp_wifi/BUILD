@@ -2,6 +2,7 @@ cc_library(
     name = "esp_wifi",
     srcs = [
         "esp_wifi.cpp",
+        "esp_now.cpp",
         "esp_netif_linux.c",
         "src/smartconfig.c",
         "src/wifi_init.c",

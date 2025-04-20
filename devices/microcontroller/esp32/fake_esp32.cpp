@@ -127,6 +127,10 @@ void FakeEsp32Board::attachSpiDevice(SimpleFakeSpiDevice& dev, int8_t clk,
   };
 }
 
+void FakeEsp32Board::attachEspNowDevice(FakeEspNowDevice& dev) {
+  esp_now().attachDevice(dev);
+}
+
 void FakeEsp32Board::attachOneWireBus(FakeOneWireInterface& dev, int8_t pin) {
   onewire_buses_[pin] = &dev;
 }

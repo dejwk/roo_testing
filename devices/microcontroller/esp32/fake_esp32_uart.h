@@ -10,7 +10,10 @@ class Esp32UartInterface : public FakeUartInterface {
                      uint8_t tx_signal, uint8_t rx_signal,
                      FakeEsp32Board* esp32);
 
-  void write(const uint8_t* buf, size_t size);
+  size_t write(const uint8_t* buf, size_t size);
+  size_t read(uint8_t* buf, size_t size);
+  size_t availableForRead();
+  size_t availableForWrite();
 
  private:
   uint8_t tx_signal_;

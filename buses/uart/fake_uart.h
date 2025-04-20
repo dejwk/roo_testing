@@ -7,16 +7,13 @@
 
 class FakeUartDevice {
  public:
-  enum Result {
-    UART_ERROR_OK = 0,
-    UART_ERROR_DEV,
-  };
-
   FakeUartDevice() {}
   virtual ~FakeUartDevice() {}
 
-  virtual Result write(const uint8_t* buf, uint16_t size) = 0;
-  virtual Result read(uint8_t* buf, uint16_t size) = 0;
+  virtual size_t write(const uint8_t* buf, uint16_t size) = 0;
+  virtual size_t read(uint8_t* buf, uint16_t size) = 0;
+  virtual size_t availableForRead() = 0;
+  virtual size_t availableForWrite() { return 1; }
 };
 
 class FakeUartInterface {
@@ -52,6 +49,7 @@ class FakeUartInterface {
 
 class ConsoleUartDevice : public FakeUartDevice {
  public:
-  Result write(const uint8_t* buf, uint16_t size) override;
-  Result read(uint8_t* buf, uint16_t size) override;
+  size_t write(const uint8_t* buf, uint16_t size) override;
+  size_t read(uint8_t* buf, uint16_t size) override;
+  size_t availableForRead() override;
 };

@@ -150,7 +150,7 @@ int uart_write_bytes_with_break(uart_port_t uart_num, const void* src,
 
 int uart_read_bytes(uart_port_t uart_num, void* buf, uint32_t length,
                     TickType_t ticks_to_wait) {
-  return FakeEsp32().uart(uart_num).read(reinterpret_cast<const uint8_t*>(buf),
+  return FakeEsp32().uart(uart_num).read(reinterpret_cast<uint8_t*>(buf),
                                          length);
 }
 

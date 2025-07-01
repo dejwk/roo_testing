@@ -2,6 +2,8 @@
 
 #include <cstring>
 
+#include "roo_testing/sys/mutex.h"
+
 namespace {
 void GetMac(uint64_t mac, uint8_t* dest) {
   dest[5] = mac >> 0;
@@ -28,7 +30,7 @@ bool FakeEspNowInterface::send(const uint8_t* addr, const void* data,
     }
     OnSentCb cb;
     {
-      std::lock_guard<std::mutex> guard(mutex_);
+      roo_testing::lock_guard<roo_testing::mutex> guard(mutex_);
       cb = on_sent_cb_;
     }
     if (cb != nullptr) {
@@ -43,7 +45,7 @@ bool FakeEspNowInterface::send(const uint8_t* addr, const void* data,
     itr->second->send(data, len);
     OnSentCb cb;
     {
-      std::lock_guard<std::mutex> guard(mutex_);
+      roo_testing::lock_guard<roo_testing::mutex> guard(mutex_);
       cb = on_sent_cb_;
     }
     if (cb != nullptr) {
@@ -77,7 +79,7 @@ void FakeEspNowInterface::attachDevice(FakeEspNowDevice& device) {
 void FakeEspNowInterface::incoming(uint64_t peer, const void* data,
                                    size_t len) {
   if (len == 0) return;
-  std::scoped_lock<std::mutex> guard(mutex_);
+  roo_testing::lock_guard<roo_testing::mutex> guard(mutex_);
   std::unique_ptr<uint8_t[]> payload(new uint8_t[len]);
   memcpy(payload.get(), data, len);
   inbox_.push(
@@ -86,12 +88,12 @@ void FakeEspNowInterface::incoming(uint64_t peer, const void* data,
 }
 
 void FakeEspNowInterface::setSendCb(OnSentCb send_cb) {
-  std::lock_guard<std::mutex> guard(mutex_);
+  roo_testing::lock_guard<roo_testing::mutex> guard(mutex_);
   on_sent_cb_ = std::move(send_cb);
 }
 
 void FakeEspNowInterface::setRecvCb(OnRecvCb recv_cb) {
-  std::lock_guard<std::mutex> guard(mutex_);
+  roo_testing::lock_guard<roo_testing::mutex> guard(mutex_);
   on_recv_cb_ = std::move(recv_cb);
 }
 
@@ -100,7 +102,7 @@ void FakeEspNowInterface::processInbox() {
   OnRecvCb cb;
   while (true) {
     {
-      std::unique_lock<std::mutex> guard(mutex_);
+      roo_testing::unique_lock<roo_testing::mutex> guard(mutex_);
       while (inbox_.empty()) {
         nonempty_.wait(guard);
       }
@@ -125,12 +127,12 @@ void process_inbox_fn(FakeEspNowInterface* interface) {
 }
 
 void FakeEspNowInterface::start() {
-  inbox_processor_ = std::thread(process_inbox_fn, this);
+  inbox_processor_ = roo_testing::thread(process_inbox_fn, this);
 }
 
 FakeEspNowInterface::~FakeEspNowInterface() {
   {
-    std::lock_guard<std::mutex> guard(mutex_);
+    roo_testing::lock_guard<roo_testing::mutex> guard(mutex_);
     inbox_.push(Packet{.peer_mac = 0, .size = -1, .payload = nullptr});
     nonempty_.notify_all();
   }

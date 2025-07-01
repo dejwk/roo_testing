@@ -3,14 +3,18 @@ cc_library(
     srcs = ["clock.cpp"],
     hdrs = ["clock.h"],
     visibility = ["//visibility:public"],
-    deps = ["//roo_testing/transducers"],
+    deps = [
+        "//roo_testing/transducers",
+        ],
 )
 
 cc_library(
     name = "default_system_clock",
+    hdrs = ["default_system_clock.h"],
     srcs = ["default_system_clock.cpp"],
     visibility = ["//visibility:public"],
-    deps = [":time"],
+    deps = [":time",
+            "//roo_testing/sys"],
 )
 
 cc_library(

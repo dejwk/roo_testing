@@ -195,6 +195,7 @@ cc_library(
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:cpu",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common",
     ]
 )
 

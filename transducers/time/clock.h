@@ -14,17 +14,6 @@ class Clock : public Transducer {
   virtual void delayMicros(uint64_t delay) = 0;
 };
 
-class SystemClock : public Clock {
- public:
-  int64_t getTimeMicros() const override;
-  void delayMicros(uint64_t delay) override;
-
-  const std::string& name() const override {
-    static std::string name = "System Clock";
-    return name;
-  }
-};
-
 class FakeClock : public Clock {
  public:
   FakeClock() : time_(0) {}

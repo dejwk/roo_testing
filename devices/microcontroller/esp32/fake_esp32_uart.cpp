@@ -7,7 +7,6 @@
 #include <cstring>
 #include <random>
 #include <set>
-#include <thread>
 
 #include "fake_esp32.h"
 #include "glog/logging.h"

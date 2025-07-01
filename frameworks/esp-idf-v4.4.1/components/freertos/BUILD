@@ -11,7 +11,7 @@ cc_library(
     deps = [
         "@glog//:glog",
         "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:cpu_hal",
+        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:cpu_hal",
         # "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:esp_cpu",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:soc_cpu",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:soc_spinlock",

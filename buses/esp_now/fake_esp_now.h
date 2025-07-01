@@ -6,9 +6,11 @@
 #include <initializer_list>
 #include <map>
 #include <memory>
-#include <mutex>
 #include <queue>
-#include <thread>
+
+#include "roo_testing/sys/mutex.h"
+#include "roo_testing/sys/thread.h"
+#include "roo_testing/sys/condition_variable.h"
 
 class FakeEspNowDevice {
  public:
@@ -78,10 +80,10 @@ class FakeEspNowInterface {
 
   std::map<uint64_t, FakeEspNowDevice*> devices_;
   std::queue<Packet> inbox_;
-  std::mutex mutex_;
-  std::condition_variable nonempty_;
+  roo_testing::mutex mutex_;
+  roo_testing::condition_variable nonempty_;
   OnSentCb on_sent_cb_;
   OnRecvCb on_recv_cb_;
 
-  std::thread inbox_processor_;
+  roo_testing::thread inbox_processor_;
 };

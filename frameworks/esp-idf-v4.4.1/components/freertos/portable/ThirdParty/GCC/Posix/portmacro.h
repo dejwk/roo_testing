@@ -39,7 +39,7 @@ extern "C" {
 
 #include "soc/spinlock.h"
 
-#include "hal/cpu_hal.h"
+// #include "hal/cpu_hal.h"
 
 /*-----------------------------------------------------------
  * Port specific definitions.
@@ -160,7 +160,7 @@ extern unsigned long ulPortGetRunTime( void );
 
 static inline BaseType_t xPortGetCoreID(void)
 {
-    return (uint32_t) cpu_hal_get_core_id();
+    return 1;
 }
 
 #ifdef __cplusplus

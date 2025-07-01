@@ -2,11 +2,11 @@
 
 #include <cmath>
 #include <functional>
-#include <mutex>
 #include <string>
-#include <thread>
 #include <unordered_map>
 #include <vector>
+#include <inttypes.h>
+#include <memory>
 
 #include "roo_testing/transducers/transducer.h"
 

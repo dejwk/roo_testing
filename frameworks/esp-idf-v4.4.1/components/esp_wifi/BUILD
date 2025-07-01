@@ -22,6 +22,7 @@ cc_library(
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/log",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/tcpip_adapter",
         "//roo_testing/devices/microcontroller/esp32",
+        "//roo_testing/sys",
     ],
 )
 

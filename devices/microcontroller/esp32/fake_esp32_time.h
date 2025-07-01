@@ -3,7 +3,6 @@
 #include <chrono>
 #include <functional>
 #include <map>
-#include <thread>
 
 #include "roo_testing/transducers/time/clock.h"
 

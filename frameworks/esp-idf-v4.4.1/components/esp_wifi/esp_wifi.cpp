@@ -3,14 +3,13 @@
 #include <netdb.h>
 #include <signal.h>
 
-#include <condition_variable>
-#include <mutex>
 #include <vector>
 
 #include "esp_private/wifi.h"  // for wifi_log_level_t
 #include "freertos/timers.h"
 #include "lwip/dns.h"
 #include "roo_testing/devices/microcontroller/esp32/fake_esp32.h"
+#include "roo_testing/sys/mutex.h"
 
 using namespace roo_testing_transducers;
 
@@ -101,29 +100,29 @@ class Esp32WifiAdapter {
   }
 
   esp_err_t getApCount(uint16_t *number) {
-    // std::unique_lock<std::mutex> lock(mutex_);
+    roo_testing::lock_guard<roo_testing::mutex> lock(mutex_);
     *number = known_networks_.size();
     return ESP_OK;
   }
 
   esp_err_t getApRecords(std::vector<wifi_ap_record_t> &records) {
-    // std::unique_lock<std::mutex> lock(mutex_);
+    roo_testing::lock_guard<roo_testing::mutex> lock(mutex_);
     records = known_networks_;
     return ESP_OK;
   }
 
   void setStaConfig(const wifi_sta_config_t &config) {
-    // std::unique_lock<std::mutex> lock(mutex_);
+    roo_testing::lock_guard<roo_testing::mutex> lock(mutex_);
     sta_config_ = config;
   }
 
   wifi_sta_config_t getStaConfig() {
-    // std::unique_lock<std::mutex> lock(mutex_);
+    roo_testing::lock_guard<roo_testing::mutex> lock(mutex_);
     return sta_config_;
   }
 
   esp_err_t connect() {
-    // std::unique_lock<std::mutex> lock(mutex_);
+    roo_testing::lock_guard<roo_testing::mutex> lock(mutex_);
     if (state_ == CONNECTED || state_ == CONNECTING) return ESP_OK;
     if (state_ == DISCONNECTING) {
       state_ = CONNECTED;
@@ -162,7 +161,7 @@ class Esp32WifiAdapter {
 
   esp_err_t disconnect() {
     {
-      // std::unique_lock<std::mutex> lock(mutex_);
+      roo_testing::lock_guard<roo_testing::mutex> lock(mutex_);
       if (state_ == DISCONNECTED || state_ == DISCONNECTING) return ESP_OK;
       if (state_ == CONNECTING) {
         state_ = DISCONNECTED;
@@ -178,7 +177,7 @@ class Esp32WifiAdapter {
   }
 
   esp_err_t getApInfo(wifi_ap_record_t &result) {
-    // std::unique_lock<std::mutex> lock(mutex_);
+    roo_testing::lock_guard<roo_testing::mutex> lock(mutex_);
     if (state_ != CONNECTED) {
       return ESP_ERR_WIFI_NOT_CONNECT;
     }
@@ -217,7 +216,7 @@ class Esp32WifiAdapter {
       found.push_back(toApRecord(ap));
     }
     {
-      // std::unique_lock<std::mutex> lock(mutex_);
+      roo_testing::lock_guard<roo_testing::mutex> lock(mutex_);
       known_networks_ = std::move(found);
       scan_completed_ = true;
       scan_result_ = ESP_OK;
@@ -315,7 +314,7 @@ class Esp32WifiAdapter {
   bool scan_completed_;
   esp_err_t scan_result_;
 
-  // std::mutex mutex_;
+  roo_testing::mutex mutex_;
   State state_;
   wifi_log_level_t log_level_;
   uint8_t wifi_protocol_;

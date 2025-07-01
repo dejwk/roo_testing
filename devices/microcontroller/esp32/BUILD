@@ -10,6 +10,7 @@ cc_proto_library(
   deps = [":nvs_proto"],
 )
 
+
 cc_library(
     name = "esp32",
     srcs = glob(["*.cpp"]),
@@ -44,7 +45,7 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        "//roo_testing/buses/esp_now",
+        "//roo_testing/buses/esp_now:include",
         "//roo_testing/buses/i2c",
         "//roo_testing/buses/gpio",
         "//roo_testing/buses/uart",

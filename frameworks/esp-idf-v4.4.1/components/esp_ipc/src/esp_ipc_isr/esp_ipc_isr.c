@@ -11,7 +11,7 @@
 #include "esp_err.h"
 #include "esp_attr.h"
 #include "soc/cpu.h"
-#include "soc/soc.h"
+// #include "soc/soc.h"
 #include "soc/dport_access.h"
 #ifdef CONFIG_IDF_TARGET_ESP32
 #include "soc/dport_reg.h"

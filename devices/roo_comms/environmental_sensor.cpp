@@ -22,7 +22,7 @@ roo::comms::HomeAutomationDeviceDescriptor BuildHomeAutomationDescriptor() {
 void FakeRooEnvironmentalSensor::update() {
   while (true) {
     {
-      std::scoped_lock<std::mutex> lock(mutex_);
+      roo_testing::lock_guard<roo_testing::mutex> lock(mutex_);
       if (done_) break;
       if (!paired_) {
         LOG(INFO) << "Sending broadcast discovery message";
@@ -55,14 +55,14 @@ FakeRooEnvironmentalSensor::FakeRooEnvironmentalSensor(
       done_(false) {}
 
 void FakeRooEnvironmentalSensor::start() {
-  updater_ = std::thread(update_fn, this);
+  updater_ = roo_testing::thread(update_fn, this);
 }
 
 void FakeRooEnvironmentalSensor::send(const void* data, size_t len) {}
 
 FakeRooEnvironmentalSensor::~FakeRooEnvironmentalSensor() {
   {
-    std::scoped_lock<std::mutex> lock(mutex_);
+    roo_testing::lock_guard<roo_testing::mutex> lock(mutex_);
     done_ = true;
   }
   updater_.join();

@@ -7,7 +7,8 @@
 #include <cstring>
 #include <random>
 #include <set>
-#include <thread>
+
+#include "roo_testing/sys/thread.h"
 
 #include "glog/logging.h"
 
@@ -16,7 +17,7 @@ void EmulatedTime::sync() const {
   if (rt > emu_uptime_ && rt - emu_uptime_ > kMaxTimeLag) {
     emu_uptime_ = rt;
   } else if (rt < emu_uptime_ && emu_uptime_ - rt > kMaxTimeAhead) {
-    std::this_thread::sleep_for(emu_uptime_ - rt - kMaxTimeAhead);
+    roo_testing::this_thread::sleep_for(emu_uptime_ - rt - kMaxTimeAhead);
     // Adjust the emulated time in case we overslept.
     rt = rt_clock_.now() - rt_start_time_;
     if (rt > emu_uptime_) {

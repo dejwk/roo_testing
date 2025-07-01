@@ -11,7 +11,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "hal/cpu_hal.h"
+// #include "hal/cpu_hal.h"
+#include "esp_err.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,7 +29,7 @@ typedef uint32_t esp_cpu_ccount_t;
  */
 static inline void *esp_cpu_get_sp(void)
 {
-    return cpu_hal_get_sp();
+    return 0;//cpu_hal_get_sp();
 }
 
 /**
@@ -60,12 +61,12 @@ bool esp_cpu_in_ocd_debug_mode(void);
 
 static inline esp_cpu_ccount_t esp_cpu_get_ccount(void)
 {
-    return cpu_hal_get_cycle_count();
+    return 0;//cpu_hal_get_cycle_count();
 }
 
 static inline void esp_cpu_set_ccount(esp_cpu_ccount_t val)
 {
-    cpu_hal_set_cycle_count(val);
+    // cpu_hal_set_cycle_count(val);
 }
 
 /**

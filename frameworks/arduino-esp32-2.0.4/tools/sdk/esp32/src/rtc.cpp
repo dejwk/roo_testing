@@ -62,6 +62,7 @@ uint32_t rtc_clk_slow_freq_get_hz() {
         case RTC_SLOW_FREQ_32K_XTAL: return 32768;
         case RTC_SLOW_FREQ_8MD256: return -33000;
     }
+    return -150000;
 }
 
 // void rtc_clk_fast_freq_set(rtc_fast_freq_t fast_freq);

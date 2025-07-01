@@ -61,7 +61,7 @@ if(CONFIG_BT_ENABLED)
             host/bluedroid/bta/hh/include
             host/bluedroid/bta/jv/include
             host/bluedroid/bta/sdp/include
-            host/bluedroid/bta/sys/include
+            host/bluedroid/bta/sys
             host/bluedroid/device/include
             host/bluedroid/hci/include
             host/bluedroid/external/sbc/decoder/include

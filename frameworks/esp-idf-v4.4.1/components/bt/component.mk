@@ -51,7 +51,7 @@ COMPONENT_PRIV_INCLUDEDIRS +=   host/bluedroid/bta/include                   \
                                 host/bluedroid/bta/hh/include                \
                                 host/bluedroid/bta/jv/include                \
                                 host/bluedroid/bta/sdp/include               \
-                                host/bluedroid/bta/sys/include               \
+                                host/bluedroid/bta/sys               \
                                 host/bluedroid/device/include                \
                                 host/bluedroid/gki/include                   \
                                 host/bluedroid/hci/include                   \

@@ -1,0 +1,10 @@
+module(name = "roo_testing", version = "1.0.0")
+
+bazel_dep(name = "googletest", version = "1.15.2")
+bazel_dep(name = "rules_proto", version = "7.0.2")
+
+bazel_dep(name = "glog", version = "0.7.1")
+
+local_path_override(module_name = "roo_display", path = "../lib/roo_display")
+bazel_dep(name = "roo_display", version = "2.1.0")
+

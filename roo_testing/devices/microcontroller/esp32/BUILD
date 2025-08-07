@@ -46,7 +46,6 @@ cc_library(
     linkstatic = 1,
     deps = [
         ":core",
-        "//roo_testing/buses/esp_now",
     ],
 )
 
@@ -58,7 +57,7 @@ cc_library(
     visibility = ["//visibility:public"],
     linkstatic = 1,
     deps = [
-        "//roo_testing/buses/esp_now:include",
+        "//roo_testing/buses/esp_now",
         "//roo_testing/buses/i2c",
         "//roo_testing/buses/gpio",
         "//roo_testing/buses/uart",

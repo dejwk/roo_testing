@@ -1,10 +1,10 @@
 #include "roo_testing/sys/thread.h"
 
-#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "glog/logging.h"
+#include "roo_testing/system/timer.h"
 
 namespace roo_testing {
 
@@ -119,17 +119,17 @@ void yield() noexcept { vPortYield(); }
 
 namespace internal {
 void sleep_ns(std::chrono::nanoseconds ns) {
-  // uint64_t start = (uint64_t)esp_timer_get_time();
+  uint64_t start = SystemTimer().getTimeMicros();
 
-  // uint64_t us = (ns.count() + 999) / 1000;
-  // const TickType_t delay = (us + 999999) * configTICK_RATE_HZ / 1000000;
-  // if (delay > 0) {
-  //   vTaskDelay(delay);
-  // }
-  // uint64_t now = esp_timer_get_time();
-  // if (now - start < us) {
-  //   delayMicroseconds(us - (now - start));
-  // }
+  uint64_t us = (ns.count() + 999) / 1000;
+  const TickType_t delay = (us + 999999) * configTICK_RATE_HZ / 1000000;
+  if (delay > 0) {
+    vTaskDelay(delay);
+  }
+  uint64_t now = SystemTimer().getTimeMicros();
+  if (now - start < us) {
+    SystemTimer().delayMicros(us - (now - start));
+  }
 }
 }  // namespace internal
 

@@ -58,7 +58,9 @@ bool FakeEspNowInterface::send(const uint8_t* addr, const void* data,
 }
 
 FakeEspNowInterface::FakeEspNowInterface()
-    : devices_(), inbox_(), on_sent_cb_(nullptr) {}
+    : devices_(), inbox_(), on_sent_cb_(nullptr) {
+      start();
+    }
 
 // FakeEspNowInterface::FakeEspNowInterface(
 //     std::vector<std::pair<uint64_t, std::unique_ptr<FakeEspNowDevice>>>

@@ -14,7 +14,7 @@ cc_library(
     defines = ["CORE_DEBUG_LEVEL=5", "CONFIG_IDF_TARGET_LINUX"],
     deps = [
         "//roo_testing/frameworks/arduino-esp32-2.0.4/variants:esp32",
-        "//roo_testing/devices/microcontroller/esp32",
+        "//roo_testing/system:timer",
         "@glog//:glog",
         "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/app_update:include",

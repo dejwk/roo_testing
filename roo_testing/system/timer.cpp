@@ -1,6 +1,14 @@
-#include "fake_esp32_time.h"
+#include "timer.h"
 
 #include <thread>
+
+static constexpr auto kMaxTimeAhead = std::chrono::nanoseconds(100000);
+static constexpr auto kMaxTimeLag = std::chrono::nanoseconds(50);
+
+EmulatedTime& SystemTimer() {
+  static EmulatedTime timer;
+  return timer;
+}
 
 void EmulatedTime::sync() const {
   auto rt = rt_clock_.now() - rt_start_time_;

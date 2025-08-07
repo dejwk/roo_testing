@@ -1,8 +1,7 @@
 #include "fake_esp32_spi.h"
 
 #include "fake_esp32.h"
-
-#include "fake_esp32_time.h"
+#include "roo_testing/system/timer.h"
 
 #include <limits.h>
 #include <unistd.h>
@@ -633,8 +632,8 @@ void spiFakeTransferOnDevice(int8_t spi_num) {
   auto& spi = FakeEsp32().spi[spi_num];
   uint64_t cycles = spi.transfer();
   auto lag = std::chrono::nanoseconds(1000000000LL * cycles / spi.clkHz());
-  FakeEsp32().time().lag(lag);
-  FakeEsp32().time().sync();
+  SystemTimer().lag(lag);
+  SystemTimer().sync();
 }
 
 uint32_t Esp32SpiUsr::operator=(uint32_t val) const volatile {

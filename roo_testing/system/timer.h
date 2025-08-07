@@ -3,18 +3,12 @@
 #include <chrono>
 #include <functional>
 
-#include "roo_testing/transducers/time/clock.h"
-
-static constexpr auto kMaxTimeAhead = std::chrono::nanoseconds(100000);
-static constexpr auto kMaxTimeLag = std::chrono::nanoseconds(50);
-
-class EmulatedTime : public roo_testing_transducers::Clock {
+class EmulatedTime {
  public:
-  EmulatedTime(std::function<void()> flush)
+  EmulatedTime()
       : rt_clock_(),
         rt_start_time_(rt_clock_.now()),
-        emu_uptime_(0),
-        flush_fn_(flush) {}
+        emu_uptime_(0) {}
 
  public:
   // Keep the emulated time within [-kMaxTimeAheadNanos, +kMaxTimeLagNanos] of
@@ -36,5 +30,6 @@ class EmulatedTime : public roo_testing_transducers::Clock {
   std::chrono::high_resolution_clock rt_clock_;
   std::chrono::high_resolution_clock::time_point rt_start_time_;
   mutable std::chrono::high_resolution_clock::duration emu_uptime_;
-  std::function<void()> flush_fn_;
 };
+
+EmulatedTime& SystemTimer();

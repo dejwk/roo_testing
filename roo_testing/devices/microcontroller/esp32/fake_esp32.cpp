@@ -93,7 +93,7 @@ FakeEsp32Board::FakeEsp32Board()
                             /*VSPIQ_OUT_IDX*/ 64,
                             /*VSPID_IN_IDX*/ 65, this)},
       fs_root_(default_fs_root_path()),
-      time_([this]() { flush(); }),
+      // time_([this]() { flush(); }),
       wifi_env_(empty_env()) {
   FLAGS_alsologtostderr = true;
   FLAGS_stderrthreshold = google::WARNING;
@@ -176,7 +176,7 @@ long map(long x, long in_min, long in_max, long out_min, long out_max) {
 
 namespace roo_testing_transducers {
 
-Clock* getDefaultSystemClock() { return &FakeEsp32().time(); }
+// Clock* getDefaultSystemClock() { return &FakeEsp32().time(); }
 
 }  // namespace roo_testing_transducers
 

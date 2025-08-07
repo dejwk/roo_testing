@@ -66,6 +66,7 @@ cc_library(
         "//roo_testing/buses/onewire",
         "//roo_testing/transducers/time",
         "//roo_testing/transducers/wifi",
+        "//roo_testing/system:timer",
         "@glog//:glog",
         ":nvs_cc_proto"
     ],

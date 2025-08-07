@@ -16,7 +16,7 @@ cc_library(
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/newlib:locks",
-        "//roo_testing/devices/microcontroller/esp32:core",
+        "//roo_testing/system:timer",
     ]
 )
 

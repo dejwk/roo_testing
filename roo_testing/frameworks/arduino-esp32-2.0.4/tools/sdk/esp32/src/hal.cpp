@@ -6,7 +6,7 @@
 
 #include <glog/logging.h>
 
-#include "roo_testing/devices/microcontroller/esp32/fake_esp32.h"
+#include "roo_testing/system/timer.h"
 
 extern "C" {
 
@@ -23,11 +23,11 @@ esp_err_t esp_task_wdt_delete(TaskHandle_t handle) { return ESP_OK; }
 esp_err_t esp_task_wdt_status(TaskHandle_t handle) { return ESP_OK; }
 
 int64_t esp_timer_get_time() {
-  return FakeEsp32().time().getTimeMicros();
+  return SystemTimer().getTimeMicros();
 }
 
 void emulatedDelayMicroseconds(uint64_t micros) {
-  FakeEsp32().time().delayMicros(micros);
+  SystemTimer().delayMicros(micros);
 }
 
 // esp_err_t nvs_flash_init(void) { return ESP_OK; }

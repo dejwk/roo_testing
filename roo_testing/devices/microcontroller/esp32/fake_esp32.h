@@ -8,7 +8,6 @@
 #include "fake_esp32_reg.h"
 #include "fake_esp32_spi.h"
 #include "fake_esp32_spi_struct.h"
-#include "fake_esp32_time.h"
 #include "fake_esp32_uart.h"
 #include "roo_testing/buses/esp_now/fake_esp_now.h"
 #include "roo_testing/buses/gpio/fake_gpio.h"
@@ -80,9 +79,6 @@ class FakeEsp32Board {
 
   Nvs nvs;
 
-  EmulatedTime& time() { return time_; }
-  const EmulatedTime& time() const { return time_; }
-
   void attachUartDevice(FakeUartDevice& dev, int8_t tx, int8_t rx);
 
   void attachI2cDevice(FakeI2cDevice& dev, int8_t sda, int8_t scl);
@@ -153,7 +149,6 @@ class FakeEsp32Board {
   FakeEspNowInterface esp_now_;
 
   std::string fs_root_;
-  EmulatedTime time_;
   roo_testing_transducers::wifi::Environment* wifi_env_;
 };
 

@@ -632,8 +632,8 @@ void spiFakeTransferOnDevice(int8_t spi_num) {
   auto& spi = FakeEsp32().spi[spi_num];
   uint64_t cycles = spi.transfer();
   auto lag = std::chrono::nanoseconds(1000000000LL * cycles / spi.clkHz());
-  SystemTimer().lag(lag);
-  SystemTimer().sync();
+  system_time_lag_ns(lag.count());
+  system_time_sync();
 }
 
 uint32_t Esp32SpiUsr::operator=(uint32_t val) const volatile {

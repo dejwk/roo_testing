@@ -4,6 +4,8 @@
 
 #include "roo_testing/transducers/time/clock.h"
 
+namespace roo_testing_transducers {
+
 class SystemClock : public Clock {
  public:
   int64_t getTimeMicros() const override;
@@ -14,3 +16,5 @@ class SystemClock : public Clock {
     return name;
   }
 };
+
+}  // namespace roo_testing_transducers

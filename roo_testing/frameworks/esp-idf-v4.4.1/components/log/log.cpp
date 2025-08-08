@@ -7,11 +7,11 @@
 extern "C" {
 
 uint32_t esp_log_timestamp(void) {
-    return SystemTimer().getTimeMicros() / 1000;
+    return system_time_get_micros() / 1000;
 }
 
 uint32_t esp_log_early_timestamp(void) {
-    return SystemTimer().getTimeMicros() / 1000;
+    return system_time_get_micros() / 1000;
 }
 
 }

@@ -23,11 +23,11 @@ esp_err_t esp_task_wdt_delete(TaskHandle_t handle) { return ESP_OK; }
 esp_err_t esp_task_wdt_status(TaskHandle_t handle) { return ESP_OK; }
 
 int64_t esp_timer_get_time() {
-  return SystemTimer().getTimeMicros();
+  return system_time_get_micros();
 }
 
 void emulatedDelayMicroseconds(uint64_t micros) {
-  SystemTimer().delayMicros(micros);
+  system_time_delay_micros(micros);
 }
 
 // esp_err_t nvs_flash_init(void) { return ESP_OK; }

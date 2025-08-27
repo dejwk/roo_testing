@@ -29,6 +29,12 @@ class thread {
     bool joinable() const { return joinable_; }
     const char* name() const { return name_; }
 
+    void set_stack_size(uint16_t stack_size) { stack_size_ = stack_size; }
+
+    void set_priority(uint16_t priority) { priority_ = priority; }
+
+    void set_name(const char* name) { name_ = name; }
+
    private:
     friend class thread;
 
@@ -45,7 +51,8 @@ class thread {
   thread(thread&& other) noexcept { swap(other); }
 
   template <typename Callable, typename... Args,
-            typename = internal::RequireNotSame<Callable, thread>>
+            typename = internal::RequireNotSame<Callable, thread>,
+            typename = internal::RequireNotSame<Callable, attributes>>
   explicit thread(Callable&& callable, Args&&... args) {
     static_assert(std::is_invocable<typename std::decay<Callable>::type,
                                     typename std::decay<Args>::type...>::value,

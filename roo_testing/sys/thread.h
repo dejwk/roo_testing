@@ -19,6 +19,25 @@ class thread {
 
     void* id_;
   };
+
+  class attributes {
+   public:
+    attributes();
+
+    uint16_t stack_size() const { return stack_size_; }
+    uint16_t priority() const { return priority_; }
+    bool joinable() const { return joinable_; }
+    const char* name() const { return name_; }
+
+   private:
+    friend class thread;
+
+    uint16_t stack_size_;
+    uint16_t priority_;
+    bool joinable_;
+    const char* name_;
+  };
+
   thread() noexcept = default;
 
   thread(const thread&) = delete;
@@ -32,8 +51,22 @@ class thread {
                                     typename std::decay<Args>::type...>::value,
                   "std::thread argument must be invocable");
 
-    start(internal::MakeDynamicCallableWithArgs(
-        std::forward<Callable>(callable), std::forward<Args>(args)...));
+    start(attributes(),
+          internal::MakeDynamicCallableWithArgs(
+              std::forward<Callable>(callable), std::forward<Args>(args)...));
+  }
+
+  template <typename Callable, typename... Args,
+            typename = internal::RequireNotSame<Callable, thread>>
+  explicit thread(const attributes& attrs, Callable&& callable,
+                  Args&&... args) {
+    static_assert(std::is_invocable<typename std::decay<Callable>::type,
+                                    typename std::decay<Args>::type...>::value,
+                  "std::thread argument must be invocable");
+
+    start(attrs,
+          internal::MakeDynamicCallableWithArgs(
+              std::forward<Callable>(callable), std::forward<Args>(args)...));
   }
 
   ~thread();
@@ -53,7 +86,8 @@ class thread {
   thread::id get_id() const noexcept { return id_; }
 
  private:
-  void start(std::unique_ptr<internal::VirtualCallable>);
+  void start(const attributes& attributes,
+             std::unique_ptr<internal::VirtualCallable>);
 
   id id_;
 };

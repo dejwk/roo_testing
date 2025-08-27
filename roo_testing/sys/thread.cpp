@@ -8,21 +8,16 @@
 
 namespace roo_testing {
 
+thread::attributes::attributes()
+    : stack_size_(configMINIMAL_STACK_SIZE * sizeof(portSTACK_TYPE)),
+      priority_(1),
+      joinable_(true),
+      name_("roo_testing") {}
+
 namespace {
 
-struct ThreadAttr {
-  uint16_t stack_size;
-  uint16_t priority;
-  bool joinable;
-
-  ThreadAttr()
-      : stack_size(configMINIMAL_STACK_SIZE * sizeof(portSTACK_TYPE)),
-        priority(1),
-        joinable(true) {}
-};
-
 struct thread_state {
-  ThreadAttr attr;
+  thread::attributes attr;
 
   std::unique_ptr<internal::VirtualCallable> start = nullptr;
   TaskHandle_t task;
@@ -49,7 +44,7 @@ static void run_thread(void* arg) {
   thread_state* p = (thread_state*)arg;
   p->start->call();
   vTaskSuspendAll();
-  if (p->attr.joinable) {
+  if (p->attr.joinable()) {
     xSemaphoreGive((SemaphoreHandle_t)&p->join_barrier);
     xTaskResumeAll();
     vTaskSuspend(nullptr);
@@ -60,19 +55,20 @@ static void run_thread(void* arg) {
   }
 }
 
-void thread::start(std::unique_ptr<internal::VirtualCallable> start) {
+void thread::start(const attributes& attributes,
+                   std::unique_ptr<internal::VirtualCallable> start) {
   thread_state* state = new thread_state;
   CHECK_NOTNULL(state);
-  state->attr = ThreadAttr();
+  state->attr = attributes;
   state->start = std::move(start);
-  if (state->attr.joinable) {
+  if (state->attr.joinable()) {
     xSemaphoreCreateMutexStatic(&state->join_mutex);
     xSemaphoreCreateBinaryStatic(&state->join_barrier);
   }
   vTaskSuspendAll();
-  if (xTaskCreate(run_thread, "roo_thread",
-                  (uint16_t)(state->attr.stack_size / sizeof(portSTACK_TYPE)),
-                  (void*)state, state->attr.priority, &state->task) != pdPASS) {
+  if (xTaskCreate(run_thread, state->attr.name(),
+                  (uint16_t)(state->attr.stack_size() / sizeof(portSTACK_TYPE)),
+                  (void*)state, state->attr.priority(), &state->task) != pdPASS) {
     delete state;
     LOG(FATAL) << "Failed to create a new thread";
   }
@@ -86,7 +82,7 @@ void thread::start(std::unique_ptr<internal::VirtualCallable> start) {
 void thread::join() {
   thread_state* state = (thread_state*)id_.id_;
   CHECK(state != nullptr) << "Attempting to join a null thread";
-  CHECK(state->attr.joinable) << "Attempting to join a non-joinable thread";
+  CHECK(state->attr.joinable()) << "Attempting to join a non-joinable thread";
   if (xSemaphoreTake((SemaphoreHandle_t)&state->join_mutex, 0) != pdPASS) {
     LOG(FATAL) << "Another thread has already joined the requested thread";
   }

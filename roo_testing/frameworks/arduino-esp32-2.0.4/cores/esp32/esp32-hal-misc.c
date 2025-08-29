@@ -177,8 +177,7 @@ void emulatedDelayMicroseconds(uint64_t micros);
 
 void delay(uint32_t ms)
 {
-    vTaskDelay(ms / portTICK_PERIOD_MS);
-    emulatedDelayMicroseconds(1000LL * ms);
+    vTaskDelay((ms + portTICK_PERIOD_MS - 1) / portTICK_PERIOD_MS);
 }
 
 void ARDUINO_ISR_ATTR delayMicroseconds(uint32_t us)

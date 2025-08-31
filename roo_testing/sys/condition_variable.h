@@ -70,19 +70,10 @@ class condition_variable {
   }
 
  private:
-  template <typename Duration>
   cv_status wait_until_impl(
       unique_lock<mutex>& lock,
-      const std::chrono::time_point<sysclock, Duration>& when) {
-    auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-        when - sysclock::now());
-    timed_wait(lock, ns.count());
-
-    return (sysclock::now() < when ? cv_status::no_timeout
-                                   : cv_status::timeout);
-  }
-
-  void timed_wait(unique_lock<mutex>& lock, uint64_t ns) noexcept;
+      const std::chrono::time_point<sysclock, std::chrono::nanoseconds>&
+          when) noexcept;
 
   TaskHandle_t tasks_waiting_[kMaxWaitingThreads];
 };

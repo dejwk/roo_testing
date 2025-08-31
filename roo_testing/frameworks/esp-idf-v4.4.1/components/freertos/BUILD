@@ -15,5 +15,6 @@ cc_library(
         # "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:esp_cpu",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:soc_cpu",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:soc_spinlock",
+        "//roo_testing/system:timer"
     ],
 )

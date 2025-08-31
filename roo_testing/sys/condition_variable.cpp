@@ -1,4 +1,5 @@
 #include "roo_testing/sys/condition_variable.h"
+
 #include "glog/logging.h"
 
 namespace roo_testing {
@@ -55,8 +56,8 @@ void condition_variable::wait(unique_lock<mutex>& lock) noexcept {
   CHECK(queued) << "Maximum number of queued threads reached";
 
   // Wait on the condition variable.
-  // bool signaled = 
-  xTaskNotifyWait(0, 0, nullptr, portMAX_DELAY);// == pdPASS;
+  // bool signaled =
+  xTaskNotifyWait(0, 0, nullptr, portMAX_DELAY);  // == pdPASS;
   lock.lock();
   taskENTER_CRITICAL();
   for (int i = 0; i < kMaxWaitingThreads; ++i) {
@@ -68,10 +69,16 @@ void condition_variable::wait(unique_lock<mutex>& lock) noexcept {
   taskEXIT_CRITICAL();
 }
 
-void condition_variable::timed_wait(unique_lock<mutex>& lock, uint64_t ns) noexcept {
+cv_status condition_variable::wait_until_impl(
+    unique_lock<mutex>& lock,
+    const std::chrono::time_point<sysclock, std::chrono::nanoseconds>&
+        when) noexcept {
+  cv_status status = cv_status::timeout;
   TaskHandle_t me = xTaskGetCurrentTaskHandle();
-  uint64_t us = (ns + 999) / 1000;
-  TickType_t delay = ((us * configTICK_RATE_HZ) + 999999) / 1000000;
+  auto now = sysclock::now();
+  uint64_t ns = (when - now).count();
+  uint64_t ms = (ns + 999999) / 1000000;
+  TickType_t delay = (ms + portTICK_PERIOD_MS - 1) / portTICK_PERIOD_MS;
   bool queued = false;
   taskENTER_CRITICAL();
   for (int i = 0; i < kMaxWaitingThreads; ++i) {
@@ -84,10 +91,19 @@ void condition_variable::timed_wait(unique_lock<mutex>& lock, uint64_t ns) noexc
   lock.unlock();
   taskEXIT_CRITICAL();
   CHECK(queued) << "Maximum number of queued threads reached";
-
   // Wait on the condition variable.
-  // bool signaled = 
-  xTaskNotifyWait(0, 0, nullptr, delay);// == pdPASS;
+  while (true) {
+    bool signaled = (xTaskNotifyWait(0, 0, nullptr, delay) == pdPASS);
+    if (signaled) {
+      status = cv_status::no_timeout;
+      break;
+    }
+    now = sysclock::now();
+    if (now >= when) break;
+    ns = (when - now).count();
+    ms = (ns + 999999) / 1000000;
+    delay = (ms + portTICK_PERIOD_MS - 1) / portTICK_PERIOD_MS;
+  }
   lock.lock();
   taskENTER_CRITICAL();
   for (int i = 0; i < kMaxWaitingThreads; ++i) {
@@ -97,6 +113,7 @@ void condition_variable::timed_wait(unique_lock<mutex>& lock, uint64_t ns) noexc
     }
   }
   taskEXIT_CRITICAL();
+  return status;
 }
 
 }  // namespace roo_testing

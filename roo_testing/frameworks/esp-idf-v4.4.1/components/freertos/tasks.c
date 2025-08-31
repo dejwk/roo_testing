@@ -30,6 +30,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "roo_testing/system/timer.h"
+
 /* Defining MPU_WRAPPERS_INCLUDED_FROM_API_FILE prevents task.h from redefining
  * all the API functions to use the MPU wrappers.  That should only be done when
  * task.h is included from an application file. */
@@ -1345,6 +1347,7 @@ static void prvAddNewTaskToReadyList( TCB_t * pxNewTCB )
 
     void vTaskDelay( const TickType_t xTicksToDelay )
     {
+        system_time_sync();
         BaseType_t xAlreadyYielded = pdFALSE;
 
         /* A delay time of zero just forces a reschedule. */
@@ -1381,6 +1384,7 @@ static void prvAddNewTaskToReadyList( TCB_t * pxNewTCB )
         {
             mtCOVERAGE_TEST_MARKER();
         }
+        system_time_sync();
     }
 
 #endif /* INCLUDE_vTaskDelay */

@@ -5,6 +5,7 @@ cc_library(
         "esp_now.cpp",
         "esp_netif_linux.c",
         "src/smartconfig.c",
+        "src/wifi_netif.c",
         "src/wifi_init.c",
         "src/wifi_default.c",
     ],

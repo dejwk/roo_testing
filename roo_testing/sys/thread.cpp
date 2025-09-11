@@ -68,7 +68,8 @@ void thread::start(const attributes& attributes,
   vTaskSuspendAll();
   if (xTaskCreate(run_thread, state->attr.name(),
                   (uint16_t)(state->attr.stack_size() / sizeof(portSTACK_TYPE)),
-                  (void*)state, state->attr.priority(), &state->task) != pdPASS) {
+                  (void*)state, state->attr.priority(),
+                  &state->task) != pdPASS) {
     delete state;
     LOG(FATAL) << "Failed to create a new thread";
   }
@@ -115,18 +116,21 @@ void yield() noexcept { vPortYield(); }
 
 namespace internal {
 void sleep_ns(std::chrono::nanoseconds ns) {
-  uint64_t start = system_time_get_micros();
-
-  uint64_t us = (ns.count() + 999) / 1000;
-  const TickType_t delay = (us + 999999) * configTICK_RATE_HZ / 1000000;
-  if (delay > 0) {
-    vTaskDelay(delay);
-  }
   uint64_t now = system_time_get_micros();
-  if (now - start < us) {
-    system_time_delay_micros(us - (now - start));
+  uint64_t delay_micros = (ns.count() + 999) / 1000;
+  uint64_t deadline = now + delay_micros;
+  uint64_t delay_ms = (delay_micros + 999) / 1000;
+  while (delay_ms > 0) {
+    const TickType_t delay =
+        (delay_ms + portTICK_PERIOD_MS - 1) / portTICK_PERIOD_MS;
+    vTaskDelay(delay);
+    now = system_time_get_micros();
+    if (now >= deadline) return;
+    delay_micros = deadline - now;
+    delay_ms = (delay_micros + 999) / 1000;
   }
 }
+
 }  // namespace internal
 
 }  // namespace this_thread

@@ -56,9 +56,8 @@ void EmulatedTime::sync() const {
   if (rt > emu_uptime_ && rt - emu_uptime_ > kMaxTimeLag) {
     emu_uptime_ = rt;
   } else if (rt < emu_uptime_ && emu_uptime_ - rt > kMaxTimeAhead) {
-    // Note: using standard sleep, not FreeRTOS sleep, to pause all FreeRTOS
-    // threads. Otherwise, FreeRTOS scheduler would try to schedule another
-    // FreeRTOS thread to run.
+    // Note: using standard sleep, not FreeRTOS vTaskDelay or something like
+    // that, to avoid a circular dependency. Seems to work fine under Linux.
     std::this_thread::sleep_for(emu_uptime_ - rt - kMaxTimeAhead);
     // Adjust the emulated time in case we overslept.
     rt = rt_clock_.now() - rt_start_time_;
@@ -96,5 +95,4 @@ void system_time_delay_micros(uint64_t us) { SystemTimer().delayMicros(us); }
 void system_time_set_auto_sync(bool auto_sync) {
   SystemTimer().set_auto_sync(auto_sync);
 }
-
 }

@@ -1,6 +1,6 @@
 #/bin/sh
 cd `dirname $0`
-FLTK_DIR=fltk-1.3.5
+FLTK_DIR=fltk-1.3.5/src
 if [ ! -d ${FLTK_DIR} ]
 then
   wget https://www.fltk.org/pub/fltk/1.3.5/fltk-1.3.5-source.tar.bz2

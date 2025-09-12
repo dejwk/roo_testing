@@ -45,10 +45,9 @@ struct Emulator {
 using namespace roo_display;
 
 Ili9486spi<5, 2, 4> device;
-TouchXpt2046Uncalibrated<15> touch_raw;
-TouchXpt2046<15> touch(TouchCalibration(322, 196, 3899, 3691));
+TouchXpt2046<15> touch;
 
-Display display(device, touch);
+Display display(device, touch, TouchCalibration(322, 196, 3899, 3691));
 
 int16_t x, y;
 bool was_touched;

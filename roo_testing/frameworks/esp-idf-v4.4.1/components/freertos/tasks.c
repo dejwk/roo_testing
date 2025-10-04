@@ -818,6 +818,8 @@ static void prvAddNewTaskToReadyList( TCB_t * pxNewTCB ) PRIVILEGED_FUNCTION;
 #endif /* configSUPPORT_DYNAMIC_ALLOCATION */
 /*-----------------------------------------------------------*/
 
+int	pthread_setname_np(pthread_t, const char *) __nonnull((2));
+
 static void prvInitialiseNewTask( TaskFunction_t pxTaskCode,
                                   const char * const pcName, /*lint !e971 Unqualified char types are allowed for strings and single characters only. */
                                   const uint32_t ulStackDepth,
@@ -1067,6 +1069,11 @@ static void prvInitialiseNewTask( TaskFunction_t pxTaskCode,
     {
         mtCOVERAGE_TEST_MARKER();
     }
+
+    // Set name for pthreads, so that it shows up in debuggers and system monitoring.
+    StackType_t *top = *(StackType_t **)pxNewTCB;
+    pthread_t* pt = (pthread_t*)(top + 1);
+    pthread_setname_np(*pt, pcName ? pcName : "freertos");
 }
 /*-----------------------------------------------------------*/
 

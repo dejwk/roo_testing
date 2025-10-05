@@ -129,7 +129,9 @@ void process_inbox_fn(FakeEspNowInterface* interface) {
 }
 
 void FakeEspNowInterface::start() {
-  inbox_processor_ = roo_testing::thread(process_inbox_fn, this);
+  roo_testing::thread::attributes attrs;
+  attrs.set_name("roo_t/espnow");
+  inbox_processor_ = roo_testing::thread(attrs, process_inbox_fn, this);
 }
 
 FakeEspNowInterface::~FakeEspNowInterface() {

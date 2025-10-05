@@ -137,7 +137,7 @@ cc_library(
 cc_library(
     name = "esp_random",
     srcs = [
-        "hw_random.c"
+        "hw_random.cpp"
     ],
     hdrs = [
         "include/esp_random.h"

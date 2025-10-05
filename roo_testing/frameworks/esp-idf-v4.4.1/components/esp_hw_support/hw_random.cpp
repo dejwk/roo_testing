@@ -14,8 +14,12 @@
 // #include "hal/cpu_hal.h"
 // #include "soc/wdev_reg.h"
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
 #include <time.h>
 #include <stdlib.h>
+#include <random>
 
 // #if CONFIG_IDF_TARGET_ESP32
 // #include "esp32/clk.h"
@@ -36,9 +40,14 @@
 // #define APB_CYCLE_WAIT_NUM (16)
 // #endif
 
+extern "C" {
+
 uint32_t IRAM_ATTR esp_random(void)
 {
-    return rand();
+    static __thread std::random_device rd;
+    static __thread std::mt19937 gen(rd());
+    static __thread std::uniform_int_distribution<uint32_t> distrib(0, 0xFFFFFFFFL);
+    return distrib(gen);
     // /* The PRNG which implements WDEV_RANDOM register gets 2 bits
     //  * of extra entropy from a hardware randomness source every APB clock cycle
     //  * (provided WiFi or BT are enabled). To make sure entropy is not drained
@@ -83,4 +92,6 @@ void esp_fill_random(void *buf, size_t len)
         buf_bytes += to_copy;
         len -= to_copy;
     }
+}
+
 }

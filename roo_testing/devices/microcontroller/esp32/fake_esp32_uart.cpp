@@ -11,17 +11,10 @@
 #include "fake_esp32.h"
 #include "glog/logging.h"
 
-// volatile SpiDevType SPI0;                                      /* SPI0 IS FOR
-// INTERNAL USE*/ volatile SpiDevType SPI1; volatile SpiDevType SPI2; volatile
-// SpiDevType SPI3;
-
-Esp32UartInterface::Esp32UartInterface(const std::string& name,
+Esp32UartInterface::Esp32UartInterface(int idx, const std::string& name,
                                        uint8_t tx_signal, uint8_t rx_signal,
                                        FakeEsp32Board* esp32)
-    : FakeUartInterface(name),
-      tx_signal_(tx_signal),
-      rx_signal_(rx_signal),
-      esp32_(esp32) {}
+    : idx_(idx), tx_signal_(tx_signal), rx_signal_(rx_signal), esp32_(esp32) {}
 
 size_t Esp32UartInterface::write(const uint8_t* buf, size_t size) {
   // Find the device to communicate with.
@@ -61,4 +54,12 @@ size_t Esp32UartInterface::availableForRead() {
     return dev->availableForRead();
   }
   return 0;
+}
+
+extern "C" {
+void uart_notify_data_available(uint8_t uart_num);
+}
+
+void Esp32UartInterface::notifyDataAvailable() {
+  uart_notify_data_available(idx_);
 }

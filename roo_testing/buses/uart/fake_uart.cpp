@@ -2,20 +2,6 @@
 
 #include <iostream>
 
-FakeUartInterface::~FakeUartInterface() {
-  if (device_.owned) {
-    delete device_.ptr;
-  }
-}
-
-void FakeUartInterface::attachInternal(FakeUartDevice* device, bool owned) {
-  device_ = Attachment(device, owned);
-}
-
-FakeUartDevice* FakeUartInterface::getDevice() const {
-  return device_.ptr;
-}
-
 size_t ConsoleUartDevice::write(const uint8_t* buf, uint16_t size) {
   std::cout.write((const char*)buf, size);
   return size;

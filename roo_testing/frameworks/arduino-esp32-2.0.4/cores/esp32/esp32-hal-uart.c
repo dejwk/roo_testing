@@ -94,6 +94,24 @@ void uartGetEventQueue(uart_t* uart, QueueHandle_t *q)
     return;
 }
 
+
+void uart_notify_data_available(uint8_t uart_num) {
+  uart_t* uart = &_uart_bus_array[uart_num];
+  UART_MUTEX_LOCK();
+  if (!uart_is_driver_installed(uart_num)) {
+    UART_MUTEX_UNLOCK();
+    return;
+  }
+  QueueHandle_t q = uart->uart_event_queue;
+  if (q == 0) return;
+  uart_event_t event;
+  event.type = UART_DATA;
+  event.size = 1;
+  event.timeout_flag = true;
+  xQueueSend(q, (void*)&event, portMAX_DELAY);
+  UART_MUTEX_UNLOCK();
+}
+
 bool uartIsDriverInstalled(uart_t* uart) 
 {
     if(uart == NULL) {

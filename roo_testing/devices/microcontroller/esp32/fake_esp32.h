@@ -94,6 +94,8 @@ class FakeEsp32Board {
     return uart_devices_to_pins_;
   }
 
+  void notifyUartDataAvailable(const FakeUartDevice* device);
+
   const std::map<FakeI2cDevice*, I2cPins>& i2c_devices() const {
     return i2c_devices_to_pins_;
   }

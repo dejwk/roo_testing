@@ -390,9 +390,9 @@ void HardwareSerial::end(bool fullyTerminate)
         }
     }
     delay(10);
+    _destroyEventTask();
     uartEnd(_uart);
     _uart = 0;
-    _destroyEventTask();
 }
 
 void HardwareSerial::setDebugOutput(bool en)

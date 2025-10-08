@@ -58,7 +58,7 @@ roo_testing_transducers::wifi::Environment* empty_env() {
   static roo_testing_transducers::wifi::Environment env;
   return &env;
 }
-}
+}  // namespace
 
 FakeEsp32Board::FakeEsp32Board()
     : gpio(40),
@@ -66,20 +66,20 @@ FakeEsp32Board::FakeEsp32Board()
       out_matrix(),
       nvs(default_nvs_file()),
       reg_(*this),
-      uart_{Esp32UartInterface("uart0", /* U0TXD_OUT_IDX*/ 14,
+      uart_{Esp32UartInterface(0, "uart0", /* U0TXD_OUT_IDX*/ 14,
                                /* U0RXD_IN_IDX*/ 14, this),
-            Esp32UartInterface("uart1", /* U0TXD_OUT_IDX*/ 17,
+            Esp32UartInterface(1, "uart1", /* U0TXD_OUT_IDX*/ 17,
                                /* U0RXD_IN_IDX*/ 17, this),
-            Esp32UartInterface("uart2", /* U0TXD_OUT_IDX*/ 198,
+            Esp32UartInterface(2, "uart2", /* U0TXD_OUT_IDX*/ 198,
                                /* U0RXD_IN_IDX*/ 198, this)},
       // i2c{FakeI2cInterface("i2c0"), FakeI2cInterface("i2c1")},
-      adc_{
-        Esp32Adc(*this, {36, 37, 38, 39, 32, 33, 34, 35, -1, -1}),
-        Esp32Adc(*this, {4, 0, 2, 15, 13, 12, 14, 27, 25, 26})
-      },
+      adc_{Esp32Adc(*this, {36, 37, 38, 39, 32, 33, 34, 35, -1, -1}),
+           Esp32Adc(*this, {4, 0, 2, 15, 13, 12, 14, 27, 25, 26})},
       i2c_{
-        Esp32I2c(*this, "i2c0", /*I2CEXT0_SDA_*_IDX*/ 30, /*I2CEXT0_SCL_*_IDX8*/ 29),
-        Esp32I2c(*this, "i2c1", /*I2CEXT1_SDA_*_IDX*/ 96, /*I2CEXT1_SCL_*_IDX8*/ 95),
+          Esp32I2c(*this, "i2c0", /*I2CEXT0_SDA_*_IDX*/ 30,
+                   /*I2CEXT0_SCL_*_IDX8*/ 29),
+          Esp32I2c(*this, "i2c1", /*I2CEXT1_SDA_*_IDX*/ 96,
+                   /*I2CEXT1_SCL_*_IDX8*/ 95),
       },
       spi{Esp32SpiInterface(SPI0, "spi0(internal)", /*SPICLK_OUT_IDX*/ 0,
                             /*SPIQ_OUT_IDX*/ 1, /*SPID_IN_IDX*/ 2, this),
@@ -107,10 +107,35 @@ void FakeEsp32Board::attachUartDevice(FakeUartDevice& dev, int8_t tx,
       .tx = tx,
       .rx = rx,
   };
+  dev.setDataAvailableFn([this](const FakeUartDevice* source) {
+    notifyUartDataAvailable(source);
+  });
+}
+
+void FakeEsp32Board::notifyUartDataAvailable(const FakeUartDevice* source) {
+  const auto& itr =
+      uart_devices_to_pins_.find(const_cast<FakeUartDevice*>(source));
+  if (itr == uart_devices_to_pins_.end()) {
+    return;
+  }
+  int tx_pin = itr->second.tx;
+  uint16_t signal = out_matrix.signal_for_pin(tx_pin);
+  int idx = -1;
+  if (signal == uart_[0].tx_signal()) {
+    idx = 0;
+  } else if (signal == uart_[1].tx_signal()) {
+    idx = 1;
+  } else if (signal == uart_[2].tx_signal()) {
+    idx = 2;
+  }
+  if (idx < 0) {
+    return;
+  }
+  uart_[idx].notifyDataAvailable();
 }
 
 void FakeEsp32Board::attachI2cDevice(FakeI2cDevice& dev, int8_t sda,
-                                      int8_t scl) {
+                                     int8_t scl) {
   i2c_devices_to_pins_[&dev] = I2cPins{
       .sda = sda,
       .scl = scl,
@@ -180,6 +205,4 @@ namespace roo_testing_transducers {
 
 }  // namespace roo_testing_transducers
 
-const char* GetVfsRoot() {
-  return FakeEsp32().fs_root().c_str();
-}
+const char* GetVfsRoot() { return FakeEsp32().fs_root().c_str(); }

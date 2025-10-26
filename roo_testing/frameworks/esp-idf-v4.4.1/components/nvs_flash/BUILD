@@ -19,3 +19,12 @@ cc_library(
         "//roo_testing/devices/microcontroller/esp32",
     ],
 )
+
+cc_library(
+    name = "include",
+    hdrs = glob(["include/**/*.h"]) + glob(["include/**/*.hpp"]) + glob(["src/**/*.hpp"]) + glob(["src/**/*.h"]),
+    includes = [
+        "include",
+    ],
+    visibility = ["//visibility:public"],
+)

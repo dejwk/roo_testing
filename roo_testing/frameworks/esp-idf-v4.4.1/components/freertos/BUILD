@@ -18,3 +18,14 @@ cc_library(
         "//roo_testing/system:timer"
     ],
 )
+
+cc_library(
+    name = "include",
+    hdrs = glob(["freertos/*.h"]) + glob(["portable/ThirdParty/GCC/Posix/**/*.h"]),
+    includes = [
+        ".",
+        "freertos",
+        "portable/ThirdParty/GCC/Posix",
+    ],
+    visibility = ["//visibility:public"],
+)

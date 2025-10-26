@@ -40,6 +40,7 @@ cc_library(
     defines = ["CORE_DEBUG_LEVEL=5"],
     visibility = ["//visibility:public"],
     alwayslink = 1,
+    linkstatic = 1,
     deps = [
         ":esp32",
         ":arduino",
@@ -52,6 +53,7 @@ cc_library(
     defines = ["CORE_DEBUG_LEVEL=5"],
     visibility = ["//visibility:public"],
     alwayslink = 1,
+    linkstatic = 1,
     deps = [
         ":esp32",
         ":arduino",

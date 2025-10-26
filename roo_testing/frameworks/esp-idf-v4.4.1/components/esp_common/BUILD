@@ -10,3 +10,12 @@ cc_library(
         "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
     ],
 )
+
+cc_library(
+    name = "include",
+    hdrs = glob(["**/*.h"]),
+    includes = [
+        "include"
+    ],
+    visibility = ["//visibility:public"],
+)

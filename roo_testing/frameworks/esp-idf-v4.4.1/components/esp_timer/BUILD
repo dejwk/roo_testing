@@ -20,3 +20,14 @@ cc_library(
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/newlib:esp_newlib",
     ],
 )
+
+cc_library(
+    name = "include",
+    hdrs = glob(["include/**/*.h"]) + glob(["private_include/**/*.h"]),
+    includes = [
+        "include",
+        "private_include",
+    ],
+    visibility = ["//visibility:public"],
+)
+

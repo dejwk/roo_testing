@@ -2,8 +2,8 @@ cc_binary(
     name = "main",
     srcs = glob([
         "src/**/*.cpp",
-        "lib/**/*.cpp",
-        "lib/**/*.h",
+        # "lib/**/*.cpp",
+        # "lib/**/*.h",
     ]),
     defines = [
         "ROO_TESTING",

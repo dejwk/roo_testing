@@ -6,6 +6,7 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include:assert",
     ]
 )
 
@@ -18,7 +19,7 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include:assert",
     ]
 )
 

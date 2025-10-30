@@ -5,3 +5,10 @@ cc_library(
     defines = ["CORE_DEBUG_LEVEL=5"],
     visibility = ["//visibility:public"]
 )
+
+cc_library(
+    name = "include",
+    hdrs = glob(["*.h"]),
+    defines = ["CORE_DEBUG_LEVEL=5"],
+    visibility = ["//visibility:public"]
+)

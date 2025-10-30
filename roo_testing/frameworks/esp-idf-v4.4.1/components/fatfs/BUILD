@@ -37,3 +37,20 @@ cc_library(
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/wear_levelling",
     ],
 )
+
+cc_library(
+    name = "include",
+    hdrs =
+        glob(["src/*.h"]) + glob([
+            "vfs/*.h",
+        ]) + glob([
+            "diskio/*.h",
+        ]),
+    includes = [
+        ".",
+        "diskio",
+        "src",
+        "vfs",
+    ],
+    visibility = ["//visibility:public"],
+)

@@ -1,22 +1,13 @@
 cc_library(
     name = "esp-idf-v4.4.1",
     visibility = ["//visibility:public"],
-    deps = select({
-        ":fastbuild": [":prebuilt"],
-        "//conditions:default": [":compile"],
-    })
-)
-
-config_setting(
-    name = "fastbuild",
-    values = {
-        "cpu": "x86",
-        "compilation_mode": "fastbuild",
-    },
+    deps = [
+        ":core"
+    ]
 )
 
 cc_library(
-    name = "compile",
+    name = "core",
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/app_update:include",
@@ -52,6 +43,7 @@ cc_library(
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_system",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_timer",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_wifi",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/fatfs",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/freertos",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:include",
@@ -64,11 +56,13 @@ cc_library(
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/nvs_flash",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/spiffs",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/spi_flash:include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/xtensa:include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/xtensa/esp32:include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/tcpip_adapter",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/wifi_provisioning",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/wear_levelling",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/wpa_supplicant:include",
         "//roo_testing/system:timer",
     ],
@@ -79,52 +73,4 @@ cc_library(
     hdrs = ["sdkconfig.h"],
     includes = ["."],
     visibility = ["//visibility:public"],
-)
-
-cc_library(
-    name = "prebuilt",
-    srcs = glob(["dist/**/*.a"]),
-    deps = [
-        "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/app_update:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/bootloader_support:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/bt/include/esp32:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/pthread:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/driver:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/driver/esp32:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_adc_cal:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_event:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_eth:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:soc_esp32",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_ipc:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_ringbuf:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp32:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_netif:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_rom:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_system:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_timer:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_wifi:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/freertos:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/heap:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/log:public",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/lwip:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/lwip/lwip/src:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/lwip/port/esp32:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/nvs_flash:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/spi_flash:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/xtensa:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/xtensa/esp32:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/tcpip_adapter:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/wifi_provisioning:include",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/wpa_supplicant:include",
-#        "//roo_testing/system:timer",
-    ],
-    linkstatic = 1,
 )

@@ -40,7 +40,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
+#        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
         # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:systimer",
     ],
 )
@@ -109,7 +109,7 @@ cc_library(
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:timer",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include:misc",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
         # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:spi",
         # "//roo_testing/frameworks/esp-idf-v4.4.1/components/log",
@@ -151,7 +151,7 @@ cc_library(
         "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:uart",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include:misc",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
     ],
 )
@@ -214,7 +214,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:touch_sensor",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include:misc",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
     ],
 )
@@ -233,7 +233,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:gpio",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
+#        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
     ],
 )
@@ -259,11 +259,11 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":i2s_hal",
-        "//roo_testing/devices/microcontroller/esp32",
+        "//roo_testing/microcontrollers/esp32",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/driver/esp32:include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_rom",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:adc",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
+#        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/newlib:assert",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
     ],
@@ -286,7 +286,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:i2c",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
+#        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
     ],
 )
@@ -305,7 +305,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:i2s",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include:misc",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
     ],
 )

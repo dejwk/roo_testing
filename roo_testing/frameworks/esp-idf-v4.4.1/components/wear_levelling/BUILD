@@ -17,3 +17,17 @@ cc_library(
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/spi_flash",
     ],
 )
+
+cc_library(
+    name = "include",
+    hdrs =
+        glob(["*.h"]) +
+        glob(["include/**/*.h"]) +
+        glob(["private_include/**/*.h"]),
+    includes = [
+        ".",
+        "include",
+        "private_include",
+    ],
+    visibility = ["//visibility:public"],
+)

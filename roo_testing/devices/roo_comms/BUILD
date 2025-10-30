@@ -1,5 +1,3 @@
-load("@rules_proto//proto:defs.bzl", "proto_library")
-
 proto_library(
   name = "roo_comms_proto",
   srcs = ["roo_comms.proto"],
@@ -17,7 +15,7 @@ cc_library(
     deps = [
         "//roo_testing/buses/esp_now",
         # "//roo_testing/transducers/voltage",
-       "@com_github_google_glog//:glog",
+       "@glog//:glog",
     ],
     visibility = ["//visibility:public"],
 )
@@ -28,6 +26,7 @@ cc_library(
     hdrs = ["environmental_sensor.h"],
     deps = [
         "//roo_testing/buses/esp_now",
+        "//roo_testing/sys",
         "//roo_testing/transducers/temperature",
         "@glog//:glog",
         ":roo_comms_cc_proto"

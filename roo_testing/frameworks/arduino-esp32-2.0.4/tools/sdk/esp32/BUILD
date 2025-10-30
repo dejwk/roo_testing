@@ -17,6 +17,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/arduino-esp32-2.0.4/variants:esp32",
+        "//roo_testing/microcontrollers/esp32",
         "@glog",
         "//roo_testing/frameworks/esp-idf-v4.4.1"
     ],

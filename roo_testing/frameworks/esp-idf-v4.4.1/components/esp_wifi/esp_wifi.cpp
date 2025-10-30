@@ -8,7 +8,7 @@
 #include "esp_private/wifi.h"  // for wifi_log_level_t
 #include "freertos/timers.h"
 #include "lwip/dns.h"
-#include "roo_testing/devices/microcontroller/esp32/fake_esp32.h"
+#include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 #include "roo_testing/sys/mutex.h"
 
 using namespace roo_testing_transducers;

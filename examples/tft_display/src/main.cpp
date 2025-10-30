@@ -19,7 +19,7 @@
 
 #ifdef ROO_TESTING
 
-#include "roo_testing/devices/microcontroller/esp32/fake_esp32.h"
+#include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 
 #include "roo_testing/devices/display/ili9486/ili9486spi.h"
 #include "roo_testing/transducers/ui/viewport/flex_viewport.h"

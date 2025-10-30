@@ -16,7 +16,7 @@ cc_library(
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/freertos",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/newlib:locks",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/spi_flash",
-        "//roo_testing/devices/microcontroller/esp32",
+        "//roo_testing/microcontrollers/esp32",
     ],
 )
 

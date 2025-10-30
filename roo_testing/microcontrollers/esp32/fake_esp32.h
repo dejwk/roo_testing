@@ -3,6 +3,7 @@
 #include <map>
 
 #include "fake_esp32_adc.h"
+#include "fake_esp32_espnow.h"
 #include "fake_esp32_i2c.h"
 #include "fake_esp32_nvs.h"
 #include "fake_esp32_reg.h"
@@ -108,7 +109,7 @@ class FakeEsp32Board {
     return onewire_buses_;
   }
 
-  FakeEspNowInterface& esp_now() { return esp_now_; }
+  EspNowInterface& esp_now() { return esp_now_; }
 
   void flush();
 
@@ -142,13 +143,13 @@ class FakeEsp32Board {
   Esp32Adc adc_[2];
   Esp32I2c i2c_[2];
   Esp32SpiInterface spi[4];
+  EspNowInterface esp_now_;
 
   std::map<FakeUartDevice*, UartPins> uart_devices_to_pins_;
   std::map<FakeI2cDevice*, I2cPins> i2c_devices_to_pins_;
   std::map<SimpleFakeSpiDevice*, SpiPins> spi_devices_to_pins_;
 
   std::map<int8_t, FakeOneWireInterface*> onewire_buses_;
-  FakeEspNowInterface esp_now_;
 
   std::string fs_root_;
   roo_testing_transducers::wifi::Environment* wifi_env_;

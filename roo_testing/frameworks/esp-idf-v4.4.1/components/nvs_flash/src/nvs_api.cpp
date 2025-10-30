@@ -24,7 +24,7 @@
 #include "esp_err.h"
 #include <esp_rom_crc.h>
 
-#include "roo_testing/devices/microcontroller/esp32/fake_esp32.h"
+#include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 
 // Uncomment this line to force output from this module
 // #define LOG_LOCAL_LEVEL ESP_LOG_DEBUG

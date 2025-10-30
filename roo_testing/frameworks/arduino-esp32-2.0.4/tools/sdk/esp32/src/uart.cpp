@@ -4,7 +4,7 @@
 #include <glog/logging.h>
 
 #include "esp_err.h"
-#include "roo_testing/devices/microcontroller/esp32/fake_esp32.h"
+#include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 #include "soc/uart_struct.h"
 
 extern "C" {

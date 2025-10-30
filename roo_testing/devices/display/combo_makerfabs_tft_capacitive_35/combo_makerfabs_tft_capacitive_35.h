@@ -1,7 +1,7 @@
 #pragma once
 
 #include "roo_testing/devices/display/ili9488/ili9488spi.h"
-#include "roo_testing/devices/microcontroller/esp32/fake_esp32.h"
+#include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 #include "roo_testing/transducers/ui/viewport/flex_viewport.h"
 #include "roo_testing/devices/touch/ft6x36/ft6x36.h"
 

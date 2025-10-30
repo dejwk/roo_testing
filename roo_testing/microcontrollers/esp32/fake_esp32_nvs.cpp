@@ -9,7 +9,7 @@
 #include <random>
 #include <set>
 
-#include "roo_testing/devices/microcontroller/esp32/storage.pb.h"
+#include "roo_testing/microcontrollers/esp32/storage.pb.h"
 
 // #include "esp32-hal-spi.h"
 // #include "soc/gpio_sig_map.h"

@@ -2,7 +2,7 @@
 
 #ifdef ROO_TESTING
 
-#include "roo_testing/devices/microcontroller/esp32/fake_esp32.h"
+#include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 
 #include "roo_testing/buses/onewire/OneWire.h"
 #include "roo_testing/buses/onewire/fake_onewire.h"

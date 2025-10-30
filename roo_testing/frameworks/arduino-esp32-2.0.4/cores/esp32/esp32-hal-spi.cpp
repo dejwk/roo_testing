@@ -20,7 +20,7 @@
 #include "esp_attr.h"
 #include "soc/spi_reg.h"
 // #include "soc/spi_struct.h"
-#include "roo_testing/devices/microcontroller/esp32/fake_esp32_spi_struct.h"
+#include "roo_testing/microcontrollers/esp32/fake_esp32_spi_struct.h"
 
 #include "soc/io_mux_reg.h"
 #include "soc/gpio_sig_map.h"

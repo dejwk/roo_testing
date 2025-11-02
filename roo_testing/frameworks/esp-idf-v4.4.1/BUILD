@@ -49,6 +49,7 @@ cc_library(
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/esp32:include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/heap",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/littlefs",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/log",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/lwip:include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/lwip/lwip/src:include",

@@ -14,6 +14,12 @@
 
 class FakeRooEnvironmentalSensor : public FakeEspNowDevice {
  public:
+  enum State {
+    kUnpaired,
+    kPairing,
+    kPaired,
+  };
+
   FakeRooEnvironmentalSensor(
       uint64_t addr, const roo_testing_transducers::Thermometer* thermometer);
 
@@ -29,7 +35,7 @@ class FakeRooEnvironmentalSensor : public FakeEspNowDevice {
   void update();
 
   const roo_testing_transducers::Thermometer* thermometer_;
-  bool paired_;
+  State state_;
   bool done_;
   roo_testing::thread updater_;
   roo_testing::mutex mutex_;

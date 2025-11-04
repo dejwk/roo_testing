@@ -12,11 +12,13 @@ class FakeEspNowDevice {
 
   virtual ~FakeEspNowDevice() {}
 
+  // Send data to the device.
   virtual void send(const void* data, size_t len) = 0;
 
  protected:
   uint64_t mac_addr() const { return addr_; }
 
+  // Device sending data back over ESP-NOW.
   void respond(const void* data, size_t len) { 
     if (receive_cb_ != nullptr) receive_cb_(data, len);
   }

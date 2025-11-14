@@ -24,7 +24,7 @@ namespace roo_testing_transducers {
 
 class DeviceManager;
 
-DeviceManager *manager();
+DeviceManager* manager();
 
 struct Message {
   Message() {}
@@ -71,13 +71,13 @@ Message createFillRectMsg(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
 
 class MutexLock {
  public:
-  MutexLock(pthread_mutex_t *mutex) : mutex_(mutex) {
+  MutexLock(pthread_mutex_t* mutex) : mutex_(mutex) {
     pthread_mutex_lock(mutex_);
   }
   ~MutexLock() { pthread_mutex_unlock(mutex_); }
 
  private:
-  pthread_mutex_t *mutex_;
+  pthread_mutex_t* mutex_;
 };
 
 class EventQueue {
@@ -119,7 +119,7 @@ class EventQueue {
     return queue_.size();
   }
 
-  bool popInitMessage(Message::Content::InitMessage *message) {
+  bool popInitMessage(Message::Content::InitMessage* message) {
     MutexLock lock(&mutex_);
     while (!queue_.empty()) {
       if (queue_.size() == capacity_) {
@@ -136,7 +136,7 @@ class EventQueue {
     return false;
   }
 
-  bool popFillRectMessage(Message::Content::FillRectMessage *message) {
+  bool popFillRectMessage(Message::Content::FillRectMessage* message) {
     MutexLock lock(&mutex_);
     while (!queue_.empty()) {
       if (queue_.size() == capacity_) {
@@ -152,7 +152,7 @@ class EventQueue {
     return false;
   }
 
-  void get_mouse_status(int16_t *x, int16_t *y, bool *pressed) const {
+  void get_mouse_status(int16_t* x, int16_t* y, bool* pressed) const {
     MutexLock lock(&mutex_);
     *x = mouse_x_;
     *y = mouse_y_;
@@ -179,28 +179,42 @@ class EventQueue {
 
 typedef pthread_t Fl_Thread;
 extern "C" {
-typedef void *(Fl_Thread_Func)(void *);
+typedef void*(Fl_Thread_Func)(void*);
 }
 
-static int fl_create_thread(Fl_Thread &t, Fl_Thread_Func *f, void *p) {
-  return pthread_create((pthread_t *)&t, 0, f, p);
+static int fl_create_thread(Fl_Thread& t, Fl_Thread_Func* f, void* p) {
+  return pthread_create((pthread_t*)&t, 0, f, p);
 }
 
 static Fl_Thread device_thread;
 
-class OffscreenBox : public Fl_Box {
+class MyWindow : public Fl_Window {
  public:
-  OffscreenBox(int w, int h, EventQueue *queue)
-      : Fl_Box(0, 0, w, h),
-        w_(w),
-        h_(h),
+  MyWindow(int width, int height, EventQueue* queue)
+      : Fl_Window(width, height, "roo_display emulator"),
         queue_(queue),
-        needs_full_redraw_(false) {}
+        needs_full_redraw_(false),
+        framebuffer_(new unsigned char[width * height * 3]) {}
 
-  ~OffscreenBox() {}
+  void drawRect(int x0, int y0, int x1, int y1, uint32_t color_rgbi) {
+    for (int y = y0; y <= y1; y++) {
+      for (int x = x0; x <= x1; x++) {
+        drawPixel(x, y, color_rgbi);
+      }
+    }
+  }
 
-  int16_t raw_width() const { return w_; }
-  int16_t raw_height() const { return h_; }
+  void drawPixel(int x, int y, uint32_t color_rgbi) {
+    unsigned char* p = framebuffer_.get() + 3 * (y * w() + x);
+    p[0] = (color_rgbi >> 24) & 0xFF;
+    p[1] = (color_rgbi >> 16) & 0xFF;
+    p[2] = (color_rgbi >> 8) & 0xFF;
+  }
+
+ private:
+  void draw() override {
+    fl_draw_image(framebuffer_.get(), 0, 0, w(), h(), 3, 0);
+  }
 
   int handle(int event) override {
     switch (event) {
@@ -229,64 +243,7 @@ class OffscreenBox : public Fl_Box {
       }
       case FL_SHOW: {
         needs_full_redraw_ = true;
-        return Fl_Box::handle(event);
-      }
-      default: {
-        return Fl_Box::handle(event);
-      }
-    }
-  }
-
- private:
-  void draw() {
-    // if (needs_full_redraw_) {
-    //   fl_rectf(0, 0, w_, h_, 0xF04040FF);
-    //   needs_full_redraw_ = false;
-    // }
-    int i = 0;
-    // long time = millis();
-    Message::Content::FillRectMessage msg;
-    while (queue_->popFillRectMessage(&msg)) {
-      uint32_t color_rgbi = msg.color_argb << 8;
-#ifdef FLTK_DEVICE_NOISE_BITS
-      color_rgbi ^= (rand() % (1 << FLTK_DEVICE_NOISE_BITS)) * 0x01010100;
-#endif
-      fl_rectf(msg.x0, msg.y0, msg.x1 - msg.x0 + 1, msg.y1 - msg.y0 + 1,
-               color_rgbi);
-      ++i;
-    }
-    // long elapsed = millis() - time;
-    //    Serial.println(String("Drawn ") + i + " pixels in " + elapsed + "
-    //    ms");
-  }
-
-  int w_, h_;
-  EventQueue *queue_;
-  bool needs_full_redraw_;
-  friend class Window;
-};
-
-class Window : public Fl_Window {
- public:
-  Window(int width, int height, EventQueue *queue)
-      : Fl_Window(width, height, "roo_display emulator") {
-    begin();
-    box_.reset(new OffscreenBox(width, height, queue));
-    end();
-  }
-
-  void refresh() { box_->damage(FL_DAMAGE_ALL); }
-
- private:
-  int handle(int event) override {
-    switch (event) {
-      // case FL_FOCUS:
-      // case FL_SHOW:
-      case FL_SHOW: {
-        box_->needs_full_redraw_ = true;
-        // bool result = Fl_Window::handle(event);
-        return 0;
-
+        return Fl_Window::handle(event);
       }
       default: {
         return Fl_Window::handle(event);
@@ -294,11 +251,11 @@ class Window : public Fl_Window {
     }
   }
 
-  std::unique_ptr<OffscreenBox> box_;
+  EventQueue* queue_;
+  bool needs_full_redraw_;
+  // Fl_Offscreen framebuffer_;
+  std::unique_ptr<unsigned char[]> framebuffer_;
 };
-
-/*****************************************************************************/
-// static OffscreenBox *os_box = 0; // a widget to view the offscreen with
 
 /*****************************************************************************/
 
@@ -315,7 +272,7 @@ FltkViewport::~FltkViewport() { delete queue_; }
 
 void FltkViewport::flush() { Fl::awake(); }
 
-bool FltkViewport::isMouseClicked(int16_t *x, int16_t *y) {
+bool FltkViewport::isMouseClicked(int16_t* x, int16_t* y) {
   bool result;
   queue_->get_mouse_status(x, y, &result);
   if (!result) return false;
@@ -327,17 +284,12 @@ bool FltkViewport::isMouseClicked(int16_t *x, int16_t *y) {
 
 class Device {
  public:
-  Device(EventQueue *queue) : initialized_(false), queue_(queue) {}
+  Device(EventQueue* queue) : initialized_(false), queue_(queue) {}
 
   void show(int width, int height) {
-    window_.reset(new Window(width, height, queue_));
-    // window_->begin();
-    // box_.reset(new OffscreenBox(width, height, queue_));
-    // window_->end();
+    window_.reset(new MyWindow(width, height, queue_));
     window_->show();
     window_->make_current();
-    window_->hide();
-    window_->show();
   }
 
   void refresh(bool has_visible_windows) {
@@ -350,17 +302,28 @@ class Device {
       show(msg.width, msg.height);
       initialized_ = true;
     } else {
-      window_->refresh();
+      window_->make_current();
+      Message::Content::FillRectMessage msg;
+      while (queue_->popFillRectMessage(&msg)) {
+        uint32_t color_rgbi = msg.color_argb << 8;
+#ifdef FLTK_DEVICE_NOISE_BITS
+        color_rgbi ^= (rand() % (1 << FLTK_DEVICE_NOISE_BITS)) * 0x01010100;
+#endif
+        window_->drawRect(msg.x0, msg.y0, msg.x1, msg.y1, color_rgbi);
+        // Also draw incrementally to avoid delays.
+        fl_rectf(msg.x0, msg.y0, msg.x1 - msg.x0 + 1, msg.y1 - msg.y0 + 1,
+                 color_rgbi);
+      }
     }
   }
 
  private:
   bool initialized_;
-  std::unique_ptr<Window> window_;
-  EventQueue *queue_;
+  std::unique_ptr<MyWindow> window_;
+  EventQueue* queue_;
 };
 
-extern "C" void *device_func(void *p);
+extern "C" void* device_func(void* p);
 
 class DeviceManager {
  public:
@@ -384,14 +347,14 @@ class DeviceManager {
     int visible_windows;
     while ((visible_windows = Fl::wait()) > 0 || getDevice()) {
       if (exiting()) break;
-      Device *device = getDevice();
+      Device* device = getDevice();
       device->refresh(visible_windows > 0);
     }
     MutexLock lock(&device_mutex_);
     exited_ = true;
   }
 
-  void addDevice(EventQueue *queue) {
+  void addDevice(EventQueue* queue) {
     MutexLock lock(&device_mutex_);
     device_.reset(new Device(queue));
     pthread_cond_signal(&nonempty_);
@@ -413,7 +376,7 @@ class DeviceManager {
   }
 
  private:
-  Device *getDevice() {
+  Device* getDevice() {
     MutexLock lock(&device_mutex_);
     while (device_.get() == nullptr) {
       pthread_cond_wait(&nonempty_, &device_mutex_);
@@ -429,18 +392,18 @@ class DeviceManager {
   pthread_cond_t nonempty_;
 };
 
-extern "C" void *device_func(void *p) {
+extern "C" void* device_func(void* p) {
   sigset_t set;
   sigfillset(&set);
 
   pthread_sigmask(SIG_SETMASK, &set, NULL);
 
-  DeviceManager *manager = (DeviceManager *)p;
+  DeviceManager* manager = (DeviceManager*)p;
   manager->run();
   return nullptr;
 }
 
-DeviceManager *manager() {
+DeviceManager* manager() {
   static DeviceManager manager;
   return &manager;
 }

@@ -28,7 +28,7 @@ DeviceManager* manager();
 
 struct Message {
   Message() {}
-  enum Type { INIT, FILLRECT } type;
+  enum Type { INIT, FILLRECT, DRAWRECT } type;
   union Content {
     Content() {}
     struct FillRectMessage {
@@ -42,6 +42,18 @@ struct Message {
       int y1;
       uint32_t color_argb;
     } fillrect;
+
+    struct DrawRectMessage {
+      DrawRectMessage() {}
+      DrawRectMessage(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
+                      const uint32_t* color_argb)
+          : x0(x0), y0(y0), x1(x1), y1(y1), color_argb(color_argb) {}
+      int x0;
+      int y0;
+      int x1;
+      int y1;
+      const uint32_t* color_argb;
+    } drawrect;
 
     struct InitMessage {
       InitMessage() {}
@@ -66,6 +78,16 @@ Message createFillRectMsg(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
   message.type = Message::FILLRECT;
   message.content.fillrect =
       Message::Content::FillRectMessage(x0, y0, x1, y1, color_argb);
+  return message;
+}
+
+Message createDrawRectMsg(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
+                          const uint32_t* color_argb) {
+  Message message;
+  message.type = Message::DRAWRECT;
+  size_t count = (x1 - x0 + 1) * (y1 - y0 + 1);
+  message.content.drawrect =
+      Message::Content::DrawRectMessage(x0, y0, x1, y1, color_argb);
   return message;
 }
 
@@ -130,20 +152,24 @@ class EventQueue {
         queue_.pop();
         return true;
       } else if (queue_.front().type == Message::FILLRECT) {
+      } else if (queue_.front().type == Message::DRAWRECT) {
+        // Deallocate any allocated memory for drawrect messages.
+        delete[] queue_.front().content.drawrect.color_argb;
       }
       queue_.pop();
     }
     return false;
   }
 
-  bool popFillRectMessage(Message::Content::FillRectMessage* message) {
+  bool popDrawMessage(Message& message) {
     MutexLock lock(&mutex_);
     while (!queue_.empty()) {
       if (queue_.size() == capacity_) {
         pthread_cond_signal(&nonfull_);
       }
-      if (queue_.front().type == Message::FILLRECT) {
-        *message = queue_.front().content.fillrect;
+      if (queue_.front().type == Message::FILLRECT ||
+          queue_.front().type == Message::DRAWRECT) {
+        message = queue_.front();
         queue_.pop();
         return true;
       }
@@ -253,7 +279,6 @@ class MyWindow : public Fl_Window {
 
   EventQueue* queue_;
   bool needs_full_redraw_;
-  // Fl_Offscreen framebuffer_;
   std::unique_ptr<unsigned char[]> framebuffer_;
 };
 
@@ -264,6 +289,11 @@ int pixelCounter = 0;
 void FltkViewport::fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
                             uint32_t color_argb) {
   queue_->push(createFillRectMsg(x0, y0, x1, y1, color_argb));
+}
+
+void FltkViewport::drawRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
+                            const uint32_t* color_argb) {
+  queue_->push(createDrawRectMsg(x0, y0, x1, y1, color_argb));
 }
 
 FltkViewport::FltkViewport() : queue_(new EventQueue(100000)) {}
@@ -303,16 +333,40 @@ class Device {
       initialized_ = true;
     } else {
       window_->make_current();
-      Message::Content::FillRectMessage msg;
-      while (queue_->popFillRectMessage(&msg)) {
-        uint32_t color_rgbi = msg.color_argb << 8;
+      Message msg;
+      while (queue_->popDrawMessage(msg)) {
+        if (msg.type == Message::FILLRECT) {
+          Message::Content::FillRectMessage& fillrect = msg.content.fillrect;
+          uint32_t color_rgbi = fillrect.color_argb << 8;
 #ifdef FLTK_DEVICE_NOISE_BITS
-        color_rgbi ^= (rand() % (1 << FLTK_DEVICE_NOISE_BITS)) * 0x01010100;
+          color_rgbi ^= (rand() % (1 << FLTK_DEVICE_NOISE_BITS)) * 0x01010100;
 #endif
-        window_->drawRect(msg.x0, msg.y0, msg.x1, msg.y1, color_rgbi);
-        // Also draw incrementally to avoid delays.
-        fl_rectf(msg.x0, msg.y0, msg.x1 - msg.x0 + 1, msg.y1 - msg.y0 + 1,
-                 color_rgbi);
+          window_->drawRect(fillrect.x0, fillrect.y0, fillrect.x1, fillrect.y1, color_rgbi);
+          // Also draw incrementally to avoid delays.
+          fl_rectf(fillrect.x0, fillrect.y0, fillrect.x1 - fillrect.x0 + 1, fillrect.y1 - fillrect.y0 + 1,
+                   color_rgbi);
+        } else if (msg.type == Message::DRAWRECT) {
+          Message::Content::DrawRectMessage& drawrect = msg.content.drawrect;
+          int16_t x0 = drawrect.x0;
+          int16_t y0 = drawrect.y0;
+          int16_t x1 = drawrect.x1;
+          int16_t y1 = drawrect.y1;
+          const uint32_t* color_argb = drawrect.color_argb;
+          for (int y = y0; y <= y1; y++) {
+            for (int x = x0; x <= x1; x++) {
+              uint32_t color_rgbi = *color_argb << 8;
+#ifdef FLTK_DEVICE_NOISE_BITS
+              color_rgbi ^=
+                  (rand() % (1 << FLTK_DEVICE_NOISE_BITS)) * 0x01010100;
+#endif
+              window_->drawPixel(x, y, color_rgbi);
+              // Also draw incrementally to avoid delays.
+              fl_rectf(x, y, 1, 1, color_rgbi);
+              color_argb++;
+            }
+          }
+          delete[] drawrect.color_argb;
+        }
       }
     }
   }

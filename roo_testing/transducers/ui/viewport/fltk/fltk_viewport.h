@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+
 #include "roo_testing/transducers/ui/viewport/viewport.h"
 
 namespace roo_testing_transducers {
@@ -21,6 +22,9 @@ class FltkViewport : public Viewport {
 
   void fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
                 uint32_t color_argb) override;
+
+  void drawRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
+                const uint32_t* color_argb) override;
 
  private:
   EventQueue* queue_;

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "roo_testing/transducers/ui/viewport/viewport.h"
-
 #include <algorithm>
+
+#include "roo_testing/transducers/ui/viewport/viewport.h"
 
 namespace roo_testing_transducers {
 
@@ -30,6 +30,9 @@ class FlexViewport : public Viewport {
 
   void fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
                 uint32_t color_argb) override;
+
+  void drawRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
+                const uint32_t* color_argb) override;
 
   void flush() override { delegate_.flush(); }
 

@@ -23,7 +23,18 @@ void FlexViewport::fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
                      (y1 + 1) * magnification_ - 1, color_argb);
 }
 
-FlexViewport::FlexViewport(Viewport &delegate, int magnification,
+void FlexViewport::drawRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
+                            const uint32_t* color_argb) {
+  if (!bottom_to_top_ && !right_to_left_ && !xy_swapped_ &&
+      magnification_ == 1) {
+    delegate_.drawRect(x0, y0, x1, y1, color_argb);
+    return;
+  }
+  delegate_.drawRect(x0, y0, x1, y1, color_argb);
+  return;
+}
+
+FlexViewport::FlexViewport(Viewport& delegate, int magnification,
                            Rotation rotation)
     : delegate_(delegate),
       magnification_(magnification),
@@ -33,7 +44,7 @@ FlexViewport::FlexViewport(Viewport &delegate, int magnification,
       right_to_left_(rotation == kRotationLeft ||
                      rotation == kRotationUpsideDown) {}
 
-bool FlexViewport::isMouseClicked(int16_t *x, int16_t *y) {
+bool FlexViewport::isMouseClicked(int16_t* x, int16_t* y) {
   int16_t dx, dy;
   bool clicked = delegate_.isMouseClicked(&dx, &dy);
   if (!clicked) return false;

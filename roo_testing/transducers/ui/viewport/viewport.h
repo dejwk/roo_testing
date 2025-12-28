@@ -18,6 +18,9 @@ class Viewport {
   virtual void fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
                         uint32_t color_argb) = 0;
 
+  virtual void drawRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
+                        const uint32_t* color_argb) = 0;
+
   virtual void flush() {}
 
   virtual bool isMouseClicked(int16_t* x, int16_t* y) { return false; }

@@ -2,8 +2,8 @@ cc_binary(
     name = "main",
     srcs = glob([
         "src/**/*.cpp",
-        # "lib/**/*.cpp",
-        # "lib/**/*.h",
+        "lib/**/*.cpp", # to compile the 3-rd party DS3231 library.
+        "lib/**/*.h",   # likewise.
     ]),
     defines = [
         "ROO_TESTING",

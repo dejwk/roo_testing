@@ -60,8 +60,10 @@ Another basic example is the VoltageSource, which is a transducer that you can u
 * GPIO, both digital I/O and analog inputs
 * SPI, emulated at pin level, accurately modeling bus speeds
 * I2C
+* UART
 * Networking
-* SPIFFS, mouting a local directory
+* FreeRTOS API
+* SPIFFS and LittleFS, mouting a local directory
 * NVS, using a local file for storage
 * SD (rudimentary)
 * External devices: a couple of TFT displays, the DS3231 real time clock, and the temperature sensors using the OneWire interface.

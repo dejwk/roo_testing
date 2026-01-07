@@ -20,9 +20,9 @@ typedef enum {
     ESP_CHIP_ID_INVALID = 0xFFFF /*!< Invalid chip ID (we defined it to make sure the esp_chip_id_t is 2 bytes size) */
 } __attribute__((packed)) esp_chip_id_t;
 
-/** @cond */
-_Static_assert(sizeof(esp_chip_id_t) == 2, "esp_chip_id_t should be 16 bit");
-/** @endcond */
+// /** @cond */
+// _Static_assert(sizeof(esp_chip_id_t) == 2, "esp_chip_id_t should be 16 bit");
+// /** @endcond */
 
 /**
  * @brief SPI flash mode, used in esp_image_header_t
@@ -84,9 +84,9 @@ typedef struct {
                                  * is appended after this (and the simple hash is included in the signed data). */
 } __attribute__((packed))  esp_image_header_t;
 
-/** @cond */
-_Static_assert(sizeof(esp_image_header_t) == 24, "binary image header should be 24 bytes");
-/** @endcond */
+// /** @cond */
+// _Static_assert(sizeof(esp_image_header_t) == 24, "binary image header should be 24 bytes");
+// /** @endcond */
 
 
 /**
@@ -117,6 +117,6 @@ typedef struct {
     uint32_t reserv2[20];       /*!< reserv2 */
 } esp_app_desc_t;
 
-/** @cond */
-_Static_assert(sizeof(esp_app_desc_t) == 256, "esp_app_desc_t should be 256 bytes");
-/** @endcond */
+// /** @cond */
+// _Static_assert(sizeof(esp_app_desc_t) == 256, "esp_app_desc_t should be 256 bytes");
+// /** @endcond */

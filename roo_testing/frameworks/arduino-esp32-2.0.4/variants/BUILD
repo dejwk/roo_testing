@@ -1,3 +1,5 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
 cc_library(
     name = "esp32",
     srcs = ["esp32/pins_arduino.h"],

@@ -1,3 +1,5 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
 cc_library(
     name = "pcf8574",
     srcs = ["pcf8574.cpp"],

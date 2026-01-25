@@ -1,3 +1,5 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
 cc_library(
     name = "combo_makerfabs_tft_capacitive_35",
     #    srcs = ["combo_makerfabs_tft_capacitive_35.cpp"],

@@ -1,3 +1,7 @@
+load("@protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
+load("@protobuf//bazel:proto_library.bzl", "proto_library")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
 proto_library(
     name = "roo_comms_proto",
     srcs = ["roo_comms.proto"],

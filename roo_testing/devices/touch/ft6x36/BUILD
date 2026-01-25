@@ -1,3 +1,5 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
 cc_library(
     name = "ft6x36",
     srcs = ["ft6x36.cpp"],

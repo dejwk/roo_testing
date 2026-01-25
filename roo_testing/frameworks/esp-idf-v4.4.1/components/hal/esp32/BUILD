@@ -10,37 +10,37 @@ cc_library(
 cc_library(
     name = "rtc_io",
     hdrs = [
+        "include/hal/rtc_cntl_ll.h",
         "include/hal/rtc_io_ll.h",
-        "include/hal/rtc_cntl_ll.h"
     ],
     includes = [
-        "include"
+        "include",
     ],
     visibility = ["//visibility:public"],
     deps = [
-    ]
+    ],
 )
 
 cc_library(
     name = "cpu",
     hdrs = ["include/hal/cpu_ll.h"],
     includes = [
-        "include"
+        "include",
     ],
     visibility = ["//visibility:public"],
     deps = [
-    ]
+    ],
 )
 
 cc_library(
     name = "touch_sensor",
     hdrs = ["include/hal/touch_sensor_ll.h"],
     includes = [
-        "include"
+        "include",
     ],
     visibility = ["//visibility:public"],
     deps = [
-    ]
+    ],
 )
 
 # cc_library(
@@ -59,14 +59,14 @@ cc_library(
     srcs = ["gpio.cpp"],
     hdrs = ["include/hal/gpio_ll.h"],
     includes = [
-        "include"
+        "include",
     ],
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
-    ]
+    ],
 )
 
 cc_library(
@@ -81,16 +81,16 @@ cc_library(
         "include/hal/dac_ll.h",
     ],
     includes = [
-        "include"
+        "include",
     ],
     visibility = ["//visibility:public"],
     deps = [
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:include",
         ":i2s",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
-    ]
+    ],
 )
 
 cc_library(
@@ -99,15 +99,15 @@ cc_library(
         "include/hal/spi_ll.h",
     ],
     includes = [
-        "include"
+        "include",
     ],
     visibility = ["//visibility:public"],
     deps = [
+        ":gpio",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_rom",
-        ":gpio",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
-    ]
+    ],
 )
 
 cc_library(
@@ -116,10 +116,10 @@ cc_library(
         "include/hal/ledc_ll.h",
     ],
     includes = [
-        "include"
+        "include",
     ],
     visibility = ["//visibility:public"],
-    deps = []
+    deps = [],
 )
 
 cc_library(
@@ -128,20 +128,20 @@ cc_library(
         "include/hal/timer_ll.h",
     ],
     includes = [
-        "include"
+        "include",
     ],
     visibility = ["//visibility:public"],
-    deps = []
+    deps = [],
 )
 
 cc_library(
     name = "spi_flash",
     hdrs = [
-        "include/hal/spi_flash_ll.h",
         "include/hal/spi_flash_encrypted_ll.h",
+        "include/hal/spi_flash_ll.h",
     ],
     includes = [
-        "include"
+        "include",
     ],
     visibility = ["//visibility:public"],
     deps = [
@@ -152,7 +152,7 @@ cc_library(
         # "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_rom",
         # ":gpio",
         # "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
-    ]
+    ],
 )
 
 cc_library(
@@ -160,25 +160,25 @@ cc_library(
     srcs = ["i2c.cpp"],
     hdrs = ["include/hal/i2c_ll.h"],
     includes = [
-        "include"
+        "include",
     ],
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal/platform_port/include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
-    ]
+    ],
 )
 
 cc_library(
     name = "i2s",
     hdrs = ["include/hal/i2s_ll.h"],
     includes = [
-        "include"
+        "include",
     ],
     visibility = ["//visibility:public"],
     deps = [
-    ]
+    ],
 )
 
 cc_library(
@@ -186,13 +186,13 @@ cc_library(
     srcs = ["interrupt_descriptor_table.c"],
     hdrs = ["include/hal/interrupt_controller_ll.h"],
     includes = [
-        "include"
+        "include",
     ],
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/hal:interrupt_controller_hal_public",
-    ]
+    ],
 )
 
 cc_library(
@@ -200,12 +200,12 @@ cc_library(
     # srcs = ["interrupt_descriptor_table.c"],
     hdrs = ["include/hal/clk_gate_ll.h"],
     includes = [
-        "include"
+        "include",
     ],
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:soc_esp32",
-    ]
+    ],
 )
 
 cc_library(
@@ -215,11 +215,11 @@ cc_library(
         "include/hal/rwdt_ll.h",
     ],
     includes = [
-        "include"
+        "include",
     ],
     visibility = ["//visibility:public"],
     deps = [
-    ]
+    ],
 )
 
 cc_library(
@@ -228,11 +228,11 @@ cc_library(
         "include/hal/uart_ll.h",
     ],
     includes = [
-        "include"
+        "include",
     ],
     visibility = ["//visibility:public"],
     deps = [
-    ]
+    ],
 )
 
 cc_library(
@@ -241,9 +241,9 @@ cc_library(
         "include/hal/soc_ll.h",
     ],
     includes = [
-        "include"
+        "include",
     ],
     visibility = ["//visibility:public"],
     deps = [
-    ]
+    ],
 )

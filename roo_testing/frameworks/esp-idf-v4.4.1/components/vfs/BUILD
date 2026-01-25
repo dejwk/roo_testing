@@ -13,8 +13,8 @@ cc_library(
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/driver:uart",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_ringbuf",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_timer",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_rom",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_timer",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/freertos",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/newlib:dirent",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/newlib:errno",

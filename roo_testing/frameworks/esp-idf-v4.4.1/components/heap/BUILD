@@ -16,15 +16,15 @@ cc_library(
     ],
     hdrs = [
         "include/esp_heap_caps.h",
-        "include/multi_heap.h",
         "include/heap_memory_layout.h",
-        "include/soc/soc_memory_layout.h"
+        "include/multi_heap.h",
+        "include/soc/soc_memory_layout.h",
     ],
-    visibility = ["//visibility:public"],
     includes = [
         "include",
     ],
+    visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/log",
-    ]
+    ],
 )

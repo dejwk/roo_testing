@@ -6,5 +6,5 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/arduino-esp32-2.0.4/cores/esp32",
-    ]
+    ],
 )

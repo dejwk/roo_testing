@@ -5,6 +5,6 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/buses/gpio",
-        "@glog//:glog",
+        "@glog",
     ],
 )

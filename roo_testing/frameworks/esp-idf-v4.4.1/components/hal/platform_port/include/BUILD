@@ -6,7 +6,7 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-    ]
+    ],
 )
 
 cc_library(
@@ -17,7 +17,7 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-    ]
+    ],
 )
 
 cc_library(
@@ -28,7 +28,7 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-    ]
+    ],
 )
 
 cc_library(
@@ -39,5 +39,5 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-    ]
+    ],
 )

@@ -1,11 +1,14 @@
 cc_library(
     name = "fltk",
-    srcs = ["lib/libfltk.a", "lib/libfltk_images.a"],
+    srcs = [
+        "lib/libfltk.a",
+        "lib/libfltk_images.a",
+    ],
     hdrs = glob(["include/FL/*.h"]) + glob(["include/FL/*.H"]),
     includes = ["include"],
-    alwayslink = 1,
+    linkopts = ["-lX11 -ldl -lm -lpthread"],
     linkstatic = 1,
     visibility = ["//visibility:public"],
-    linkopts = ["-lX11 -ldl -lm -lpthread"],
+    alwayslink = 1,
     # deps = ["@system_libs//:x11"],
 )

@@ -1,4 +1,3 @@
-
 cc_library(
     name = "uart",
     srcs = ["fake_uart.cpp"],

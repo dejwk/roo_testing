@@ -7,10 +7,10 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        "//roo_testing/microcontrollers/esp32:core",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc",
-    ]
+        "//roo_testing/microcontrollers/esp32:core",
+    ],
 )
 
 cc_library(
@@ -26,6 +26,3 @@ cc_library(
     #     "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc",
     # ]
 )
-
-
-

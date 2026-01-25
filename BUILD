@@ -1,3 +1,5 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
 cc_library(
     name = "testing",
     visibility = ["//visibility:public"],
@@ -8,8 +10,8 @@ cc_library(
 
 cc_library(
     name = "arduino",
-    visibility = ["//visibility:public"],
     linkstatic = 1,
+    visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/arduino-esp32-2.0.4/cores/esp32",
     ],
@@ -17,8 +19,8 @@ cc_library(
 
 cc_library(
     name = "arduino_main",
-    visibility = ["//visibility:public"],
     linkstatic = 1,
+    visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/arduino-esp32-2.0.4/cores/esp32:main",
     ],
@@ -26,8 +28,8 @@ cc_library(
 
 cc_library(
     name = "arduino_gtest_main",
-    visibility = ["//visibility:public"],
     linkstatic = 1,
+    visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/arduino-esp32-2.0.4/cores/esp32:gtest_main",
     ],

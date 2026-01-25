@@ -3,7 +3,7 @@ cc_library(
     srcs = glob(["src/**/*.c"]),
     hdrs = glob(["**/*.h"]),
     includes = [
-        "include"
+        "include",
     ],
     visibility = ["//visibility:public"],
     deps = [
@@ -15,7 +15,7 @@ cc_library(
     name = "include",
     hdrs = glob(["**/*.h"]),
     includes = [
-        "include"
+        "include",
     ],
     visibility = ["//visibility:public"],
 )

@@ -1,12 +1,18 @@
 cc_library(
     name = "time",
-    srcs = ["clock.cpp", "default_system_clock.cpp"],
-    hdrs = ["clock.h", "default_system_clock.h"],
+    srcs = [
+        "clock.cpp",
+        "default_system_clock.cpp",
+    ],
+    hdrs = [
+        "clock.h",
+        "default_system_clock.h",
+    ],
     visibility = ["//visibility:public"],
     deps = [
+        "//roo_testing/system:timer",
         "//roo_testing/transducers",
-        "//roo_testing/system:timer"
-        ],
+    ],
 )
 
 # cc_library(

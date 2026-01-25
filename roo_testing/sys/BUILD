@@ -10,6 +10,6 @@ cc_library(
     deps = [
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/freertos",
         "//roo_testing/system:timer",
-        "@glog//:glog",
+        "@glog",
     ],
 )

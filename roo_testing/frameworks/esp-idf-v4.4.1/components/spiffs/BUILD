@@ -1,11 +1,10 @@
 cc_library(
     name = "spiffs",
     srcs = glob(["*.c"]) + [
-        "spiffs/src/spiffs_hydrogen.c",
         "spiffs/src/spiffs_cache.c",
+        "spiffs/src/spiffs_hydrogen.c",
     ],
-    hdrs = glob(["*.h"]) + glob(["include/**/*.h"]) +
-    [
+    hdrs = glob(["*.h"]) + glob(["include/**/*.h"]) + [
         "spiffs/src/spiffs.h",
         "spiffs/src/spiffs_nucleus.h",
     ],
@@ -25,8 +24,7 @@ cc_library(
 
 cc_library(
     name = "include",
-    hdrs = glob(["*.h"]) + glob(["include/**/*.h"]) +
-    [
+    hdrs = glob(["*.h"]) + glob(["include/**/*.h"]) + [
         "spiffs/src/spiffs.h",
         "spiffs/src/spiffs_nucleus.h",
     ],

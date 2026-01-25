@@ -1,4 +1,3 @@
-
 cc_library(
     name = "fltk",
     srcs = [
@@ -9,7 +8,7 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        "//roo_testing/transducers/ui/viewport",
         "//fltk-1.3.5:fltk",
+        "//roo_testing/transducers/ui/viewport",
     ],
 )

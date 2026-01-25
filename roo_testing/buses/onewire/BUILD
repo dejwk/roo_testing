@@ -1,8 +1,12 @@
-
 cc_library(
     name = "onewire",
-    srcs = ["fake_onewire.cpp", "OneWire.cpp"],
-    hdrs = ["fake_onewire.h", "OneWire.h"],
+    srcs = [
+        "OneWire.cpp",
+        "fake_onewire.cpp",
+    ],
+    hdrs = [
+        "OneWire.h",
+        "fake_onewire.h",
+    ],
     visibility = ["//visibility:public"],
 )
-

@@ -3,7 +3,7 @@ cc_library(
     # srcs = glob(["*.cpp"]) + glob(["*.c"]),
     hdrs = glob(["**/*.h"]),
     includes = [
-        "include"
+        "include",
     ],
     visibility = ["//visibility:public"],
     deps = [
@@ -12,7 +12,7 @@ cc_library(
         # "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
         # "//roo_testing/frameworks/esp-idf-v4.4.1/components/freertos",
         # "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support",
-    ]
+    ],
 )
 
 cc_library(
@@ -21,7 +21,7 @@ cc_library(
     srcs = glob(["*.c"]),
     hdrs = glob(["**/*.h"]),
     includes = [
-        "include"
+        "include",
     ],
     visibility = ["//visibility:public"],
     deps = [
@@ -30,5 +30,5 @@ cc_library(
         # "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
         # "//roo_testing/frameworks/esp-idf-v4.4.1/components/freertos",
         # "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support",
-    ]
+    ],
 )

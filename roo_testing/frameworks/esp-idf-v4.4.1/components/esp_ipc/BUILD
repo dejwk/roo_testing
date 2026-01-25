@@ -9,7 +9,10 @@ cc_library(
 
 cc_library(
     name = "esp_ipc",
-    srcs = ["src/esp_ipc.c", "src/esp_ipc_isr/esp_ipc_isr.c"],
+    srcs = [
+        "src/esp_ipc.c",
+        "src/esp_ipc_isr/esp_ipc_isr.c",
+    ],
     hdrs = glob(["**/*.h"]),
     includes = [
         "include",
@@ -19,10 +22,10 @@ cc_library(
         ":include",
         "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:include",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support:soc_esp32",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/freertos",
         "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_system:include",
-    ]
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/freertos",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
+    ],
 )

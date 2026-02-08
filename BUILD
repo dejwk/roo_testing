@@ -34,3 +34,10 @@ cc_library(
         "//roo_testing/frameworks/arduino-esp32-2.0.4/cores/esp32:gtest_main",
     ],
 )
+
+test_suite(
+    name = "all_tests",
+    tests = [
+        "//roo_testing/microcontrollers/esp32:fake_esp32_nvs_test",
+    ],
+)

@@ -26,11 +26,11 @@ jobs:
 
     - name: Build
       run: |
-        bazel build //...
+        bazel build :all
 
     - name: Test
       run: |
-        bazel test //... --test_output=errors
+        bazel test :all --test_output=errors
 
   build_and_test_asan:
     runs-on: ubuntu-latest
@@ -54,8 +54,8 @@ jobs:
 
     - name: Build with address sanitizer
       run: |
-        bazel build --config=asan //...
+        bazel build --config=asan :all
 
     - name: Test with address sanitizer
       run: |
-        bazel test --config=asan //... --test_output=errors
+        bazel test --config=asan :all --test_output=errors

@@ -15,7 +15,7 @@ cc_library(
 
 cc_library(
     name = "core",
-    srcs = glob(["*.cpp"]),
+    srcs = glob(["*.cpp"], exclude = ["*_test.cpp"]),
     hdrs = glob(["*.h"]),
     defines = ["CORE_DEBUG_LEVEL=5"],
     linkstatic = 1,

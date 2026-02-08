@@ -1,5 +1,4 @@
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
-load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
 cc_library(
     name = "esp32",
@@ -39,13 +38,5 @@ cc_library(
     name = "nvs_storage",
     srcs = ["fake_esp32_nvs.cpp"],
     hdrs = ["fake_esp32_nvs.h"],
-)
-
-cc_test(
-    name = "fake_esp32_nvs_test",
-    srcs = ["fake_esp32_nvs_test.cpp"],
-    deps = [
-        ":nvs_storage",
-        "@googletest//:gtest_main",
-    ],
+    visibility = ["//visibility:public"],
 )

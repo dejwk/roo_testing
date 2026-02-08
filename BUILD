@@ -38,6 +38,10 @@ cc_library(
 test_suite(
     name = "all_tests",
     tests = [
-        "//roo_testing/microcontrollers/esp32:fake_esp32_nvs_test",
+        "//test:gpio_test",
+        "//test:nvs_test",
+        "//test:onewire_test",
+        "//test:rtc_ds3231_i2c_test",
+        "//test:simple_test",
     ],
 )

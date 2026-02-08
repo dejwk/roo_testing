@@ -159,6 +159,8 @@ typedef struct {
 
 static uart_obj_t *p_uart_obj[UART_NUM_MAX] = {0};
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-braces"
 static uart_context_t uart_context[UART_NUM_MAX] = {
     UART_CONTEX_INIT_DEF(UART_NUM_0),
     UART_CONTEX_INIT_DEF(UART_NUM_1),
@@ -166,6 +168,7 @@ static uart_context_t uart_context[UART_NUM_MAX] = {
     UART_CONTEX_INIT_DEF(UART_NUM_2),
 #endif
 };
+#pragma GCC diagnostic pop
 
 static portMUX_TYPE uart_selectlock = portMUX_INITIALIZER_UNLOCKED;
 
@@ -531,9 +534,10 @@ esp_err_t uart_enable_pattern_det_intr(uart_port_t uart_num, char pattern_chr, u
     ESP_RETURN_ON_FALSE(chr_tout >= 0 && chr_tout <= UART_RX_GAP_TOUT_V, ESP_FAIL, UART_TAG, "uart pattern set error\n");
     ESP_RETURN_ON_FALSE(post_idle >= 0 && post_idle <= UART_POST_IDLE_NUM_V, ESP_FAIL, UART_TAG, "uart pattern set error\n");
     ESP_RETURN_ON_FALSE(pre_idle >= 0 && pre_idle <= UART_PRE_IDLE_NUM_V, ESP_FAIL, UART_TAG, "uart pattern set error\n");
-    uart_at_cmd_t at_cmd = {0};
+    uart_at_cmd_t at_cmd __attribute__((unused)) = {0};
     at_cmd.cmd_char = pattern_chr;
     at_cmd.char_num = chr_num;
+    (void)at_cmd;
     at_cmd.gap_tout = chr_tout;
     at_cmd.pre_idle = pre_idle;
     at_cmd.post_idle = post_idle;
@@ -555,6 +559,7 @@ esp_err_t uart_enable_pattern_det_baud_intr(uart_port_t uart_num, char pattern_c
     uart_at_cmd_t at_cmd = {0};
     at_cmd.cmd_char = pattern_chr;
     at_cmd.char_num = chr_num;
+    (void)at_cmd;
 
 // #if CONFIG_IDF_TARGET_ESP32
 //     int apb_clk_freq = 0;
@@ -806,7 +811,7 @@ static int UART_ISR_ATTR uart_find_pattern_from_last(uint8_t *buf, int length, u
 }
 
 //internal isr handler for default driver code.
-static void UART_ISR_ATTR uart_rx_intr_handler_default(void *param)
+static void __attribute__((unused)) UART_ISR_ATTR uart_rx_intr_handler_default(void *param)
 {
     uart_obj_t *p_uart = (uart_obj_t *) param;
     uint8_t uart_num = p_uart->uart_num;
@@ -1258,7 +1263,7 @@ esp_err_t uart_wait_tx_done(uart_port_t uart_num, TickType_t ticks_to_wait)
 //     return uart_tx_all(uart_num, src, size, 1, brk_len);
 // }
 
-static bool uart_check_buf_full(uart_port_t uart_num)
+static bool __attribute__((unused)) uart_check_buf_full(uart_port_t uart_num)
 {
     if (p_uart_obj[uart_num]->rx_buffer_full_flg) {
         BaseType_t res = xRingbufferSend(p_uart_obj[uart_num]->rx_ring_buf, p_uart_obj[uart_num]->rx_data_buf, p_uart_obj[uart_num]->rx_stash_len, 1);
@@ -1596,14 +1601,14 @@ esp_err_t uart_driver_install(uart_port_t uart_num, int rx_buffer_size, int tx_b
         uart_pattern_queue_reset(uart_num, UART_PATTERN_DET_QLEN_DEFAULT);
         if (uart_queue) {
             *uart_queue = p_uart_obj[uart_num]->event_queue;
-            ESP_LOGI(UART_TAG, "queue free spaces: %d", uxQueueSpacesAvailable(p_uart_obj[uart_num]->event_queue));
+            ESP_LOGI(UART_TAG, "queue free spaces: %lu", (unsigned long)uxQueueSpacesAvailable(p_uart_obj[uart_num]->event_queue));
         }
     } else {
         ESP_LOGE(UART_TAG, "UART driver already installed");
         return ESP_FAIL;
     }
 
-    uart_intr_config_t uart_intr = {
+    uart_intr_config_t uart_intr __attribute__((unused)) = {
         .intr_enable_mask = UART_INTR_CONFIG_FLAG,
         .rxfifo_full_thresh = UART_FULL_THRESH_DEFAULT,
         .rx_timeout_thresh = UART_TOUT_THRESH_DEFAULT,

@@ -30,7 +30,7 @@
 
 #include "rom/ets_sys.h"
 
-static portMUX_TYPE s_ipc_isr_mux = portMUX_INITIALIZER_UNLOCKED;
+static portMUX_TYPE s_ipc_isr_mux __attribute__((unused)) = portMUX_INITIALIZER_UNLOCKED;
 uint32_t volatile esp_ipc_isr_start_fl;        // the flag shows that it is about to run esp_ipc_func()
 uint32_t volatile esp_ipc_isr_end_fl = 1;      // the flag shows that esp_ipc_func() is done
 esp_ipc_isr_func_t volatile esp_ipc_func;      // the function which will be run in the ipc_isr context

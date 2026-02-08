@@ -270,6 +270,7 @@ void IRAM_ATTR call_start_cpu0(void)
 #else
     soc_reset_reason_t rst_reas[1];
 #endif
+    (void)rst_reas;
 
 #ifdef __riscv
     if (cpu_hal_is_debugger_attached()) {
@@ -627,6 +628,7 @@ void IRAM_ATTR call_start_cpu0(void)
     s_cpu_inited[0] = true;
 
     volatile bool cpus_inited = false;
+    (void)cpus_inited;
 
     // while (!cpus_inited) {
     //     cpus_inited = true;

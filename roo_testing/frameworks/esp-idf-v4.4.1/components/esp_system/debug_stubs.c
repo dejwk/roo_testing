@@ -10,6 +10,7 @@
 
 #include "esp_private/dbg_stubs.h"
 #include "esp_attr.h"
+#include <stdint.h>
 
 /*
     Debug stubs is actually a table of 4-byte entries. Every entry is equal to zero or must contain meaningfull data.
@@ -60,14 +61,14 @@ static void esp_dbg_stubs_data_free(void *addr)
 
 void esp_dbg_stubs_init(void)
 {
-    s_dbg_stubs_ctl_data.tramp_addr     = (uint32_t)s_stub_code_buf;
-    s_dbg_stubs_ctl_data.min_stack_addr = (uint32_t)s_stub_min_stack;
-    s_dbg_stubs_ctl_data.data_alloc     = (uint32_t)esp_dbg_stubs_data_alloc;
-    s_dbg_stubs_ctl_data.data_free      = (uint32_t)esp_dbg_stubs_data_free;
+    s_dbg_stubs_ctl_data.tramp_addr     = (uint32_t)(uintptr_t)s_stub_code_buf;
+    s_dbg_stubs_ctl_data.min_stack_addr = (uint32_t)(uintptr_t)s_stub_min_stack;
+    s_dbg_stubs_ctl_data.data_alloc     = (uint32_t)(uintptr_t)esp_dbg_stubs_data_alloc;
+    s_dbg_stubs_ctl_data.data_free      = (uint32_t)(uintptr_t)esp_dbg_stubs_data_free;
 
     s_stub_entry[ESP_DBG_STUB_MAGIC_NUM] = ESP_DBG_STUB_MAGIC_NUM_VAL;
     s_stub_entry[ESP_DBG_STUB_TABLE_SIZE] = ESP_DBG_STUB_ENTRY_MAX;
-    s_stub_entry[ESP_DBG_STUB_CONTROL_DATA] = (uint32_t)&s_dbg_stubs_ctl_data;
+    s_stub_entry[ESP_DBG_STUB_CONTROL_DATA] = (uint32_t)(uintptr_t)&s_dbg_stubs_ctl_data;
     esp_dbg_stubs_ll_init(s_stub_entry);
 }
 

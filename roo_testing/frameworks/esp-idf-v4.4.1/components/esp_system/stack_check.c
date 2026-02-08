@@ -14,6 +14,7 @@
 
 #include "sdkconfig.h"
 #include "esp_system.h"
+#include <stdint.h>
 #include "esp_rom_sys.h"
 
 #if CONFIG_COMPILER_STACK_CHECK
@@ -27,7 +28,7 @@ static void __attribute__ ((constructor))
 __esp_stack_guard_setup (void)
 {
     ESP_LOGD(TAG, "Intialize random stack guard");
-    __stack_chk_guard = (void *)esp_random();
+    __stack_chk_guard = (void *)(uintptr_t)esp_random();
 }
 
 void __stack_chk_fail (void)

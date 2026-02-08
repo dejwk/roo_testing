@@ -47,6 +47,14 @@
 #include "esp_spi_flash.h"
 #include "esp_log.h"
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
+#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
+#pragma GCC diagnostic ignored "-Wattributes"
+#pragma GCC diagnostic ignored "-Woverflow"
+#endif
+
 static __attribute__((unused)) const char *TAG = "cache";
 
 #define DPORT_CACHE_BIT(cpuid, regid) DPORT_ ## cpuid ## regid
@@ -940,3 +948,7 @@ void IRAM_ATTR spi_flash_enable_cache(uint32_t cpuid)
     spi_flash_restore_cache(0, 0); // TODO cache_value should be non-zero
 #endif
 }
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif

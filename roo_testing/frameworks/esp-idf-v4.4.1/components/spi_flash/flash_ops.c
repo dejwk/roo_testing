@@ -543,6 +543,7 @@ void IRAM_ATTR flash_rom_init(void)
 #elif CONFIG_ESPTOOLPY_FLASHFREQ_20M
     dummy_bit = ESP_ROM_SPIFLASH_DUMMY_LEN_PLUS_20M;
 #endif
+    (void)dummy_bit;
 #endif//CONFIG_IDF_TARGET_ESP32
 
 #if CONFIG_ESPTOOLPY_FLASHFREQ_80M
@@ -554,6 +555,7 @@ void IRAM_ATTR flash_rom_init(void)
 #elif CONFIG_ESPTOOLPY_FLASHFREQ_20M
     freqdiv = 4;
 #endif
+    (void)freqdiv;
 
 #if !CONFIG_IDF_TARGET_ESP32S2 && !CONFIG_IDF_TARGET_ESP32
     esp_rom_spiflash_read_mode_t read_mode;
@@ -566,6 +568,7 @@ void IRAM_ATTR flash_rom_init(void)
 #elif CONFIG_ESPTOOLPY_FLASHMODE_DOUT
     read_mode = ESP_ROM_SPIFLASH_DOUT_MODE;
 #endif
+    (void)read_mode;
 #endif //!CONFIG_IDF_TARGET_ESP32S2 && !CONFIG_IDF_TARGET_ESP32
 
 // #if CONFIG_IDF_TARGET_ESP32

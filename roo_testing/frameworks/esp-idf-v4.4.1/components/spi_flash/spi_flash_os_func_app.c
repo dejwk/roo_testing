@@ -21,7 +21,7 @@
 
 #include "driver/spi_common_internal.h"
 
-static const char TAG[] = "spi_flash";
+static const char TAG[] __attribute__((unused)) = "spi_flash";
 
 /*
  * OS functions providing delay service and arbitration among chips, and with the cache.
@@ -202,7 +202,7 @@ static const DRAM_ATTR esp_flash_os_functions_t esp_flash_spi1_default_os_functi
     .yield = spi1_flash_os_yield,
 };
 
-static const esp_flash_os_functions_t esp_flash_spi23_default_os_functions = {
+static const esp_flash_os_functions_t esp_flash_spi23_default_os_functions __attribute__((unused)) = {
     .start = spi_start,
     .end = spi_end,
     .delay_us = delay_us,
@@ -329,6 +329,10 @@ esp_err_t esp_flash_app_enable_os_functions(esp_flash_t* chip)
 // Valid task execution interval: continuous time with the cache enabled, which is longer than
 // CONFIG_SPI_FLASH_ERASE_YIELD_TICKS. Yield time shorter than CONFIG_SPI_FLASH_ERASE_YIELD_TICKS is
 // not treated as valid interval.
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wattributes"
+#endif
 static inline IRAM_ATTR bool on_spi1_check_yield(spi1_app_func_arg_t* ctx)
 {
 #ifdef CONFIG_SPI_FLASH_YIELD_DURING_ERASE
@@ -364,3 +368,7 @@ static inline IRAM_ATTR void on_spi1_yielded(spi1_app_func_arg_t* ctx)
     uint32_t time = esp_system_get_time();
     ctx->acquired_since_us = time;
 }
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif

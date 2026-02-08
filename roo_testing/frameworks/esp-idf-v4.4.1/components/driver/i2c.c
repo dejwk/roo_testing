@@ -182,12 +182,15 @@ typedef struct
     uint32_t clk_freq;          /*!< I2C source clock frequency */
 } i2c_clk_alloc_t;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-braces"
 static i2c_context_t i2c_context[I2C_NUM_MAX] = {
     I2C_CONTEX_INIT_DEF(I2C_NUM_0),
 #if I2C_NUM_MAX > 1
     I2C_CONTEX_INIT_DEF(I2C_NUM_1),
 #endif
 };
+#pragma GCC diagnostic pop
 
 // i2c clock characteristic, The order is the same as i2c_sclk_t.
 static i2c_clk_alloc_t i2c_clk_alloc[I2C_SCLK_MAX] = {
@@ -1271,6 +1274,8 @@ static inline bool i2c_cmd_is_single_byte(const i2c_cmd_t *cmd) {
     return cmd->total_bytes == 1;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wattributes"
 static void IRAM_ATTR i2c_master_cmd_begin_static(i2c_port_t i2c_num)
 {
     i2c_obj_t *p_i2c = p_i2c_obj[i2c_num];
@@ -1373,6 +1378,7 @@ static void IRAM_ATTR i2c_master_cmd_begin_static(i2c_port_t i2c_num)
     i2c_hal_trans_start(&(i2c_context[i2c_num].hal));
     return;
 }
+#pragma GCC diagnostic pop
 
 // #if CONFIG_SPIRAM_USE_MALLOC
 // //Check whether read or write buffer in cmd_link is internal.

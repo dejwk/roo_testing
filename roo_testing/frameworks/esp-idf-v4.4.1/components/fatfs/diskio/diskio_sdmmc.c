@@ -13,7 +13,7 @@
 
 static sdmmc_card_t* s_cards[FF_VOLUMES] = { NULL };
 
-static const char* TAG = "diskio_sdmmc";
+static const char* TAG __attribute__((unused)) = "diskio_sdmmc";
 
 //Check if SD/MMC card is present
 static DSTATUS ff_sdmmc_card_available(BYTE pdrv)

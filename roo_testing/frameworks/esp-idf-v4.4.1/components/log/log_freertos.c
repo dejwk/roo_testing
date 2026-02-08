@@ -97,11 +97,11 @@ char *esp_log_system_timestamp(void)
 
         _lock_acquire(&bufferLock);
         snprintf(buffer, sizeof(buffer),
-                 "%02d:%02d:%02d.%03ld",
-                 timeinfo.tm_hour,
-                 timeinfo.tm_min,
-                 timeinfo.tm_sec,
-                 tv.tv_usec / 1000);
+             "%02d:%02d:%02d.%03d",
+             timeinfo.tm_hour,
+             timeinfo.tm_min,
+             timeinfo.tm_sec,
+             (int)(tv.tv_usec / 1000));
         _lock_release(&bufferLock);
 
         return buffer;

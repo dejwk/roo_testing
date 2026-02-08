@@ -50,7 +50,7 @@ typedef struct {
 static ledc_obj_t *p_ledc_obj[LEDC_SPEED_MODE_MAX] = {0};
 static ledc_fade_t *s_ledc_fade_rec[LEDC_SPEED_MODE_MAX][LEDC_CHANNEL_MAX];
 static ledc_isr_handle_t s_ledc_fade_isr_handle = NULL;
-static portMUX_TYPE ledc_spinlock = portMUX_INITIALIZER_UNLOCKED;
+static portMUX_TYPE ledc_spinlock __attribute__((unused)) = portMUX_INITIALIZER_UNLOCKED;
 
 #define LEDC_VAL_NO_CHANGE        (-1)
 #define LEDC_STEP_NUM_MAX         (1023)
@@ -824,9 +824,12 @@ esp_err_t ledc_fade_func_install(int intr_alloc_flags)
 
 void ledc_fade_func_uninstall(void)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress"
     if (s_ledc_fade_rec == NULL) {
         return;
     }
+#pragma GCC diagnostic pop
     if (s_ledc_fade_isr_handle) {
         esp_intr_free(s_ledc_fade_isr_handle);
         s_ledc_fade_isr_handle = NULL;

@@ -5,6 +5,7 @@
  */
 
 #include <string.h>
+#include <stdint.h>
 #include <stdbool.h>
 #include <math.h>
 #include <esp_types.h>
@@ -107,9 +108,9 @@ typedef struct {
 } i2s_obj_t;
 
 static i2s_obj_t *p_i2s[SOC_I2S_NUM];
-static portMUX_TYPE i2s_platform_spinlock __attribute__((unused)) = (portMUX_TYPE)portMUX_INITIALIZER_UNLOCKED;
+static portMUX_TYPE i2s_platform_spinlock __attribute__((unused)) = { portMUX_INITIALIZER_UNLOCKED };
 static portMUX_TYPE i2s_spinlock[SOC_I2S_NUM] __attribute__((unused)) = {
-    [0 ... SOC_I2S_NUM - 1] = (portMUX_TYPE)portMUX_INITIALIZER_UNLOCKED,
+    [0 ... SOC_I2S_NUM - 1] = { portMUX_INITIALIZER_UNLOCKED },
 };
 
 #if SOC_I2S_SUPPORTS_ADC
@@ -393,7 +394,7 @@ static bool IRAM_ATTR i2s_dma_tx_callback(gdma_channel_handle_t dma_chan, gdma_e
         if (xQueueIsQueueFullFromISR(p_i2s->tx->queue)) {
             xQueueReceiveFromISR(p_i2s->tx->queue, &dummy, &high_priority_task_awoken);
             if (p_i2s->tx_desc_auto_clear) {
-                memset((void *) dummy, 0, p_i2s->tx->buf_size);
+                memset((void *)(uintptr_t)dummy, 0, p_i2s->tx->buf_size);
             }
         }
         ret = xQueueSendFromISR(p_i2s->tx->queue, &(((lldesc_t *)finish_desc)->buf), &high_priority_task_awoken);
@@ -449,10 +450,10 @@ static void IRAM_ATTR i2s_intr_handler_default(void *arg)
             // This will avoid any kind of noise that may get introduced due to transmission
             // of previous data from tx descriptor on I2S line.
             if (p_i2s->tx_desc_auto_clear == true) {
-                memset((void *) dummy, 0, p_i2s->tx->buf_size);
+                memset((void *)(uintptr_t)dummy, 0, p_i2s->tx->buf_size);
             }
         }
-        xQueueSendFromISR(p_i2s->tx->queue, &(((lldesc_t *)finish_desc)->buf), &high_priority_task_awoken);
+        xQueueSendFromISR(p_i2s->tx->queue, &(((lldesc_t *)(uintptr_t)finish_desc)->buf), &high_priority_task_awoken);
         if (p_i2s->i2s_queue) {
             i2s_event.type = I2S_EVENT_TX_DONE;
             if (xQueueIsQueueFullFromISR(p_i2s->i2s_queue)) {
@@ -468,7 +469,7 @@ static void IRAM_ATTR i2s_intr_handler_default(void *arg)
         if (xQueueIsQueueFullFromISR(p_i2s->rx->queue)) {
             xQueueReceiveFromISR(p_i2s->rx->queue, &dummy, &high_priority_task_awoken);
         }
-        xQueueSendFromISR(p_i2s->rx->queue, &(((lldesc_t *)finish_desc)->buf), &high_priority_task_awoken);
+        xQueueSendFromISR(p_i2s->rx->queue, &(((lldesc_t *)(uintptr_t)finish_desc)->buf), &high_priority_task_awoken);
         if (p_i2s->i2s_queue) {
             i2s_event.type = I2S_EVENT_RX_DONE;
             if (p_i2s->i2s_queue && xQueueIsQueueFullFromISR(p_i2s->i2s_queue)) {
@@ -585,11 +586,11 @@ static void i2s_rx_reset(i2s_port_t i2s_num)
 static void i2s_tx_start(i2s_port_t i2s_num)
 {
 #if SOC_GDMA_SUPPORTED
-    gdma_start(p_i2s[i2s_num]->tx_dma_chan, (uint32_t) p_i2s[i2s_num]->tx->desc[0]);
+    gdma_start(p_i2s[i2s_num]->tx_dma_chan, (uint32_t)(uintptr_t) p_i2s[i2s_num]->tx->desc[0]);
 #else
     i2s_hal_enable_tx_dma(&(p_i2s[i2s_num]->hal));
     i2s_hal_enable_tx_intr(&(p_i2s[i2s_num]->hal));
-    i2s_hal_start_tx_link(&(p_i2s[i2s_num]->hal), (uint32_t) p_i2s[i2s_num]->tx->desc[0]);
+    i2s_hal_start_tx_link(&(p_i2s[i2s_num]->hal), (uint32_t)(uintptr_t) p_i2s[i2s_num]->tx->desc[0]);
 #endif
     i2s_hal_start_tx(&(p_i2s[i2s_num]->hal));
 }
@@ -602,11 +603,11 @@ static void i2s_tx_start(i2s_port_t i2s_num)
 static void i2s_rx_start(i2s_port_t i2s_num)
 {
 #if SOC_GDMA_SUPPORTED
-    gdma_start(p_i2s[i2s_num]->rx_dma_chan, (uint32_t) p_i2s[i2s_num]->rx->desc[0]);
+    gdma_start(p_i2s[i2s_num]->rx_dma_chan, (uint32_t)(uintptr_t) p_i2s[i2s_num]->rx->desc[0]);
 #else
     i2s_hal_enable_rx_dma(&(p_i2s[i2s_num]->hal));
     i2s_hal_enable_rx_intr(&(p_i2s[i2s_num]->hal));
-    i2s_hal_start_rx_link(&(p_i2s[i2s_num]->hal), (uint32_t) p_i2s[i2s_num]->rx->desc[0]);
+    i2s_hal_start_rx_link(&(p_i2s[i2s_num]->hal), (uint32_t)(uintptr_t) p_i2s[i2s_num]->rx->desc[0]);
 #endif
     i2s_hal_start_rx(&(p_i2s[i2s_num]->hal));
 }
@@ -713,7 +714,7 @@ static esp_err_t i2s_alloc_dma_buffer(i2s_port_t i2s_num, i2s_dma_t *dma_obj)
         ESP_GOTO_ON_FALSE(dma_obj->buf[cnt], ESP_ERR_NO_MEM, err, TAG, "Error malloc dma buffer");
         /* Initialize DMA buffer to 0 */
         memset(dma_obj->buf[cnt], 0, dma_obj->buf_size);
-        ESP_LOGD(TAG, "Addr[%d] = %d", cnt, (int)dma_obj->buf[cnt]);
+        ESP_LOGD(TAG, "Addr[%d] = %p", cnt, (void *)dma_obj->buf[cnt]);
 
         /* Allocate DMA descpriptor */
         dma_obj->desc[cnt] = (lldesc_t *) heap_caps_calloc(1, sizeof(lldesc_t), MALLOC_CAP_DMA);
@@ -730,7 +731,7 @@ static esp_err_t i2s_alloc_dma_buffer(i2s_port_t i2s_num, i2s_dma_t *dma_obj)
         dma_obj->desc[cnt]->buf = (uint8_t *) dma_obj->buf[cnt];
         dma_obj->desc[cnt]->offset = 0;
         /* Link to the next descriptor */
-        dma_obj->desc[cnt]->empty = (uint32_t)((cnt < (buf_cnt - 1)) ? (dma_obj->desc[cnt + 1]) : dma_obj->desc[0]);
+        dma_obj->desc[cnt]->empty = (uint32_t)(uintptr_t)((cnt < (buf_cnt - 1)) ? (dma_obj->desc[cnt + 1]) : dma_obj->desc[0]);
     }
     ESP_LOGI(TAG, "DMA Malloc info, datalen=blocksize=%d, dma_buf_count=%d", dma_obj->buf_size, buf_cnt);
     return ESP_OK;
@@ -1929,7 +1930,7 @@ esp_err_t i2s_driver_install(i2s_port_t i2s_num, const i2s_config_t *i2s_config,
         pre_alloc_i2s_obj->i2s_queue = xQueueCreate(queue_size, sizeof(i2s_event_t));
         ESP_GOTO_ON_FALSE(pre_alloc_i2s_obj->i2s_queue, ESP_ERR_NO_MEM, err, TAG, "I2S queue create failed");
         *((QueueHandle_t *) i2s_queue) = pre_alloc_i2s_obj->i2s_queue;
-        ESP_LOGI(TAG, "queue free spaces: %d", uxQueueSpacesAvailable(pre_alloc_i2s_obj->i2s_queue));
+        ESP_LOGI(TAG, "queue free spaces: %lu", (unsigned long)uxQueueSpacesAvailable(pre_alloc_i2s_obj->i2s_queue));
     } else {
         pre_alloc_i2s_obj->i2s_queue = NULL;
     }
@@ -2050,7 +2051,7 @@ esp_err_t i2s_write(i2s_port_t i2s_num, const void *src, size_t size, size_t *by
             }
             p_i2s[i2s_num]->tx->rw_pos = 0;
         }
-        ESP_LOGD(TAG, "size: %d, rw_pos: %d, buf_size: %d, curr_ptr: %d", size, p_i2s[i2s_num]->tx->rw_pos, p_i2s[i2s_num]->tx->buf_size, (int)p_i2s[i2s_num]->tx->curr_ptr);
+        ESP_LOGD(TAG, "size: %zu, rw_pos: %d, buf_size: %d, curr_ptr: %p", size, p_i2s[i2s_num]->tx->rw_pos, p_i2s[i2s_num]->tx->buf_size, p_i2s[i2s_num]->tx->curr_ptr);
         data_ptr = (char *)p_i2s[i2s_num]->tx->curr_ptr;
         data_ptr += p_i2s[i2s_num]->tx->rw_pos;
         bytes_can_write = p_i2s[i2s_num]->tx->buf_size - p_i2s[i2s_num]->tx->rw_pos;

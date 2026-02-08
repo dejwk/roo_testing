@@ -1085,7 +1085,7 @@ static void debug_print_wifi_credentials(wifi_sta_config_t sta, const char* pret
 {
     size_t passlen = strlen((const char*) sta.password);
     ESP_LOGD(TAG, "%s Wi-Fi SSID     : %.*s", pretext,
-             strnlen((const char *) sta.ssid, sizeof(sta.ssid)), (const char *) sta.ssid);
+             (int)strnlen((const char *) sta.ssid, sizeof(sta.ssid)), (const char *) sta.ssid);
 
     if (passlen) {
         /* Mask password partially if longer than 3, else mask it completely */

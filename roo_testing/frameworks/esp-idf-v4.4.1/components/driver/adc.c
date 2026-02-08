@@ -24,6 +24,10 @@
 #include "hal/adc_types.h"
 #include "hal/adc_hal.h"
 #include "hal/dma_types.h"
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wattributes"
+#endif
 //For calibration
 #if CONFIG_IDF_TARGET_ESP32S2
 #include "esp_efuse_rtc_table.h"
@@ -822,6 +826,10 @@ esp_err_t adc_digi_monitor_enable(adc_digi_monitor_idx_t idx, bool enable)
     return ESP_OK;
 }
 #endif  //#if CONFIG_IDF_TARGET_ESP32C3
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 
 #if SOC_ADC_CALIBRATION_V1_SUPPORTED

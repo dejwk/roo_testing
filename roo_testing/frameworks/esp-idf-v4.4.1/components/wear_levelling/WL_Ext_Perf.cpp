@@ -81,7 +81,7 @@ esp_err_t WL_Ext_Perf::erase_sector_fit(uint32_t start_sector, uint32_t count)
     uint32_t pre_check_start = start_sector % this->size_factor;
 
 
-    for (int i = 0; i < this->size_factor; i++) {
+    for (uint32_t i = 0; i < this->size_factor; i++) {
         if ((i < pre_check_start) || (i >= count + pre_check_start)) {
             result = this->read(start_sector / this->size_factor * this->flash_sector_size + i * this->fat_sector_size, &this->sector_buffer[i * this->fat_sector_size / sizeof(uint32_t)], this->fat_sector_size);
             WL_EXT_RESULT_CHECK(result);
@@ -91,7 +91,7 @@ esp_err_t WL_Ext_Perf::erase_sector_fit(uint32_t start_sector, uint32_t count)
     result = WL_Flash::erase_sector(start_sector / this->size_factor); // erase comlete flash sector
     WL_EXT_RESULT_CHECK(result);
     // And write back only data that should not be erased...
-    for (int i = 0; i < this->size_factor; i++) {
+    for (uint32_t i = 0; i < this->size_factor; i++) {
         if ((i < pre_check_start) || (i >= count + pre_check_start)) {
             result = this->write(start_sector / this->size_factor * this->flash_sector_size + i * this->fat_sector_size, &this->sector_buffer[i * this->fat_sector_size / sizeof(uint32_t)], this->fat_sector_size);
             WL_EXT_RESULT_CHECK(result);
@@ -125,7 +125,7 @@ esp_err_t WL_Ext_Perf::erase_range(size_t start_address, size_t size)
     // stored back.
     // For the rest area this operation not needed because complete flash device sector will be erased.
 
-    ESP_LOGV(TAG, "%s begin, addr = 0x%08x, size = %i", __func__, start_address, size);
+    ESP_LOGV(TAG, "%s begin, addr = 0x%08zx, size = %zu", __func__, start_address, size);
     // Calculate pre check values
     uint32_t pre_check_start = (start_address / this->fat_sector_size) % this->size_factor;
     uint32_t sectors_count = size / this->fat_sector_size;

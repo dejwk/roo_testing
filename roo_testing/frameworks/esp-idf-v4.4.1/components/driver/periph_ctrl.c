@@ -8,7 +8,7 @@
 #include "esp_attr.h"
 #include "driver/periph_ctrl.h"
 
-static portMUX_TYPE periph_spinlock = portMUX_INITIALIZER_UNLOCKED;
+static portMUX_TYPE periph_spinlock __attribute__((unused)) = portMUX_INITIALIZER_UNLOCKED;
 
 static uint8_t ref_counts[PERIPH_MODULE_MAX] = {0};
 

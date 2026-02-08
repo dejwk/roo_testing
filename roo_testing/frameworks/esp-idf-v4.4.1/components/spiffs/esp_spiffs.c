@@ -218,8 +218,9 @@ static esp_err_t esp_spiffs_init(const esp_vfs_spiffs_conf_t* conf)
     //     return ESP_ERR_INVALID_ARG;
     // }
 
-    esp_partition_subtype_t subtype = conf->partition_label ?
+        esp_partition_subtype_t subtype = conf->partition_label ?
             ESP_PARTITION_SUBTYPE_ANY : ESP_PARTITION_SUBTYPE_DATA_SPIFFS;
+        (void)subtype;
     // const esp_partition_t* partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA,
     //                                   subtype, conf->partition_label);
     // if (!partition) {

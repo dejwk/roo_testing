@@ -16,6 +16,8 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <stdint.h>
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -85,7 +87,7 @@ typedef struct mmap_entry_{
 static LIST_HEAD(mmap_entries_head, mmap_entry_) s_mmap_entries_head =
         LIST_HEAD_INITIALIZER(s_mmap_entries_head);
 static uint8_t s_mmap_page_refcnt[SOC_MMU_REGIONS_COUNT * SOC_MMU_PAGES_PER_REGION] = {0};
-static uint32_t s_mmap_last_handle = 0;
+static uint32_t s_mmap_last_handle __attribute__((unused)) = 0;
 
 
 static void IRAM_ATTR spi_flash_mmap_init(void)
@@ -95,9 +97,9 @@ static void IRAM_ATTR spi_flash_mmap_init(void)
     }
     DPORT_INTERRUPT_DISABLE();
     for (int i = 0; i < SOC_MMU_REGIONS_COUNT * SOC_MMU_PAGES_PER_REGION; ++i) {
-        uint32_t entry_pro = DPORT_SEQUENCE_REG_READ((uint32_t)&SOC_MMU_DPORT_PRO_FLASH_MMU_TABLE[i]);
+        uint32_t entry_pro = DPORT_SEQUENCE_REG_READ((uint32_t)(uintptr_t)&SOC_MMU_DPORT_PRO_FLASH_MMU_TABLE[i]);
 #if !CONFIG_FREERTOS_UNICORE && CONFIG_IDF_TARGET_ESP32
-        uint32_t entry_app = DPORT_SEQUENCE_REG_READ((uint32_t)&DPORT_APP_FLASH_MMU_TABLE[i]);
+        uint32_t entry_app = DPORT_SEQUENCE_REG_READ((uint32_t)(uintptr_t)&DPORT_APP_FLASH_MMU_TABLE[i]);
 
         if (entry_pro != entry_app) {
             // clean up entries used by boot loader
@@ -135,7 +137,7 @@ static void IRAM_ATTR get_mmu_region(spi_flash_mmap_memory_t memory, int* out_be
 esp_err_t IRAM_ATTR spi_flash_mmap(size_t src_addr, size_t size, spi_flash_mmap_memory_t memory,
                          const void** out_ptr, spi_flash_mmap_handle_t* out_handle)
 {
-    esp_err_t ret;
+    esp_err_t ret = ESP_OK;
     // if (src_addr & 0xffff) {
     //     return ESP_ERR_INVALID_ARG;
     // }
@@ -161,7 +163,7 @@ esp_err_t IRAM_ATTR spi_flash_mmap(size_t src_addr, size_t size, spi_flash_mmap_
 esp_err_t IRAM_ATTR spi_flash_mmap_pages(const int *pages, size_t page_count, spi_flash_mmap_memory_t memory,
                          const void** out_ptr, spi_flash_mmap_handle_t* out_handle)
 {
-     esp_err_t ret;
+    esp_err_t ret = ESP_OK;
 //     const void* temp_ptr = *out_ptr = NULL;
 //     spi_flash_mmap_handle_t temp_handle = *out_handle = (spi_flash_mmap_handle_t)NULL;
 //     bool need_flush = false;
@@ -333,7 +335,7 @@ static uint32_t IRAM_ATTR NOINLINE_ATTR spi_flash_protected_read_mmu_entry(int i
 {
     uint32_t value;
     spi_flash_disable_interrupts_caches_and_other_cpu();
-    value = DPORT_REG_READ((uint32_t)&SOC_MMU_DPORT_PRO_FLASH_MMU_TABLE[index]);
+    value = DPORT_REG_READ((uint32_t)(uintptr_t)&SOC_MMU_DPORT_PRO_FLASH_MMU_TABLE[index]);
     spi_flash_enable_interrupts_caches_and_other_cpu();
     return value;
 }
@@ -365,7 +367,7 @@ uint32_t IRAM_ATTR spi_flash_mmap_get_free_pages(spi_flash_mmap_memory_t memory)
     get_mmu_region(memory,&region_begin,&region_size,&region_addr);
     DPORT_INTERRUPT_DISABLE();
     for (int i = region_begin; i < region_begin + region_size; ++i) {
-        if (s_mmap_page_refcnt[i] == 0 && DPORT_SEQUENCE_REG_READ((uint32_t)&SOC_MMU_DPORT_PRO_FLASH_MMU_TABLE[i]) == SOC_MMU_INVALID_ENTRY_VAL) {
+        if (s_mmap_page_refcnt[i] == 0 && DPORT_SEQUENCE_REG_READ((uint32_t)(uintptr_t)&SOC_MMU_DPORT_PRO_FLASH_MMU_TABLE[i]) == SOC_MMU_INVALID_ENTRY_VAL) {
             count++;
         }
     }
@@ -434,7 +436,7 @@ const void *IRAM_ATTR spi_flash_phys2cache(size_t phys_offs, spi_flash_mmap_memo
     spi_flash_disable_interrupts_caches_and_other_cpu();
     DPORT_INTERRUPT_DISABLE();
     for (int i = start; i < end; i++) {
-        uint32_t mmu_value = DPORT_SEQUENCE_REG_READ((uint32_t)&SOC_MMU_DPORT_PRO_FLASH_MMU_TABLE[i]);
+        uint32_t mmu_value = DPORT_SEQUENCE_REG_READ((uint32_t)(uintptr_t)&SOC_MMU_DPORT_PRO_FLASH_MMU_TABLE[i]);
 #if CONFIG_SPIRAM_FETCH_INSTRUCTIONS
         if (phys_page >= instruction_flash_start_page_get() && phys_page <= instruction_flash_end_page_get()) {
             if (mmu_value & MMU_ACCESS_SPIRAM) {
@@ -481,7 +483,7 @@ static bool IRAM_ATTR is_page_mapped_in_cache(uint32_t phys_page, const void **o
     DPORT_INTERRUPT_DISABLE();
     for (int j = 0; j < 2; j++) {
         for (int i = start[j]; i < end[j]; i++) {
-            if (DPORT_SEQUENCE_REG_READ((uint32_t)&SOC_MMU_DPORT_PRO_FLASH_MMU_TABLE[i]) == SOC_MMU_PAGE_IN_FLASH(phys_page)) {
+            if (DPORT_SEQUENCE_REG_READ((uint32_t)(uintptr_t)&SOC_MMU_DPORT_PRO_FLASH_MMU_TABLE[i]) == SOC_MMU_PAGE_IN_FLASH(phys_page)) {
 #if !CONFIG_IDF_TARGET_ESP32
                 if (j == 0) { /* SPI_FLASH_MMAP_DATA */
                     *out_ptr = (const void *)(SOC_MMU_VADDR0_START_ADDR + SPI_FLASH_MMU_PAGE_SIZE * (i - start[0]));

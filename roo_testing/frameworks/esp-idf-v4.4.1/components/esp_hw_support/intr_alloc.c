@@ -510,7 +510,7 @@ esp_err_t esp_intr_alloc_intrstatus(int source, int flags, uint32_t intrstatusre
             return ESP_ERR_NO_MEM;
         }
         memset(sh_vec, 0, sizeof(shared_vector_desc_t));
-        sh_vec->statusreg=(uint32_t*)intrstatusreg;
+        sh_vec->statusreg=(uint32_t*)(uintptr_t)intrstatusreg;
         sh_vec->statusmask=intrstatusmask;
         sh_vec->isr=handler;
         sh_vec->arg=arg;
@@ -683,7 +683,7 @@ esp_err_t esp_intr_free(intr_handle_t handle)
         }
 #endif
         //Reset to normal handler:
-        interrupt_controller_hal_set_int_handler(handle->vector_desc->intno, NULL, (void*)((int)handle->vector_desc->intno));
+        interrupt_controller_hal_set_int_handler(handle->vector_desc->intno, NULL, (void*)((intptr_t)handle->vector_desc->intno));
         //Theoretically, we could free the vector_desc... not sure if that's worth the few bytes of memory
         //we save.(We can also not use the same exit path for empty shared ints anymore if we delete
         //the desc.) For now, just mark it as free.

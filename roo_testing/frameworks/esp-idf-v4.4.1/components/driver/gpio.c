@@ -59,12 +59,15 @@ static gpio_hal_context_t _gpio_hal = {
     .dev = GPIO_HAL_GET_HW(GPIO_PORT_0)
 };
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-braces"
 static gpio_context_t gpio_context = {
     .gpio_hal = &_gpio_hal,
     .gpio_spinlock = portMUX_INITIALIZER_UNLOCKED,
     .isr_core_id = GPIO_ISR_CORE_ID_UNINIT,
     .gpio_isr_func = NULL,
 };
+#pragma GCC diagnostic pop
 
 esp_err_t gpio_pullup_en(gpio_num_t gpio_num)
 {

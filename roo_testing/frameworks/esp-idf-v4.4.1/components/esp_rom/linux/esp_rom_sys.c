@@ -135,9 +135,14 @@ static int esp_rom_vprintf(void (*putc)(char c), const char *fmt, va_list ap)
                     }
                 } else {
                     if (islong) {
-                        val &= (((long long)1) << (sizeof(long) * 8)) - 1;
+                        unsigned int long_bits = (unsigned int)(sizeof(long) * 8);
+                        if (long_bits >= (unsigned int)(sizeof(unsigned long long) * 8)) {
+                            val &= (long long)~0ULL;
+                        } else {
+                            val &= (long long)((1ULL << long_bits) - 1ULL);
+                        }
                     } else{
-                        val &= (((long long)1) << (sizeof(int) * 8)) - 1;
+                        val &= (long long)((1ULL << (sizeof(int) * 8)) - 1ULL);
                     }
                 }
                 break;

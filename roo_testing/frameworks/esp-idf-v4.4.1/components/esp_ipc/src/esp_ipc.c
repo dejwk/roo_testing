@@ -6,6 +6,7 @@
 
 #include <stddef.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <assert.h>
 #include "esp_err.h"
@@ -42,7 +43,7 @@ static void * volatile s_gcov_func_arg;                      // Argument to pass
 
 static void IRAM_ATTR ipc_task(void* arg)
 {
-    const int cpuid = (int) arg;
+    const int cpuid = (int)(intptr_t) arg;
     //assert(cpuid == xPortGetCoreID());
 #ifdef CONFIG_ESP_IPC_ISR_ENABLE
     esp_ipc_isr_init();
@@ -107,7 +108,7 @@ static void esp_ipc_init(void)
         s_ipc_mutex[i] = xSemaphoreCreateMutex();
         s_ipc_ack[i] = xSemaphoreCreateBinary();
         s_ipc_sem[i] = xSemaphoreCreateBinary();
-        portBASE_TYPE res = xTaskCreatePinnedToCore(ipc_task, task_name, CONFIG_ESP_IPC_TASK_STACK_SIZE, (void*) i,
+        portBASE_TYPE res = xTaskCreatePinnedToCore(ipc_task, task_name, CONFIG_ESP_IPC_TASK_STACK_SIZE, (void*)(intptr_t) i,
                                                     configMAX_PRIORITIES - 1, &s_ipc_task_handle[i], i);
         assert(res == pdTRUE);
         (void)res;

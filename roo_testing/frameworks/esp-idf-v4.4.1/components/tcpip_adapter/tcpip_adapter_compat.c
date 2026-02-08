@@ -32,7 +32,7 @@ extern esp_err_t esp_netif_down(esp_netif_t *esp_netif);
 // with legacy tcpip_adapter interface
 //
 
-static const char* TAG = "tcpip_adapter_compat";
+static const char* TAG __attribute__((unused)) = "tcpip_adapter_compat";
 
 static esp_netif_t *s_esp_netifs[TCPIP_ADAPTER_IF_MAX] = { NULL };
 static const char* s_netif_keyif[TCPIP_ADAPTER_IF_MAX] = {
@@ -309,7 +309,7 @@ esp_err_t tcpip_adapter_get_sta_list(const wifi_sta_list_t *wifi_sta_list, tcpip
     return ESP_OK;
 }
 
-static esp_err_t tcpip_adapter_compat_start_netif(esp_netif_t *netif, uint8_t *mac, tcpip_adapter_ip_info_t *ip_info)
+static esp_err_t __attribute__((unused)) tcpip_adapter_compat_start_netif(esp_netif_t *netif, uint8_t *mac, tcpip_adapter_ip_info_t *ip_info)
 {
     if (netif == NULL || mac == NULL || ip_info == NULL) {
         return ESP_ERR_TCPIP_ADAPTER_INVALID_PARAMS;
@@ -391,6 +391,7 @@ esp_err_t tcpip_adapter_set_old_ip_info(tcpip_adapter_if_t tcpip_if, const tcpip
 esp_err_t tcpip_adapter_set_hostname(tcpip_adapter_if_t tcpip_if, const char *hostname)
 {
     // return esp_netif_set_hostname(netif_from_if(tcpip_if), hostname);
+    return ESP_OK;
 }
 
 esp_err_t tcpip_adapter_get_hostname(tcpip_adapter_if_t tcpip_if, const char **hostname)

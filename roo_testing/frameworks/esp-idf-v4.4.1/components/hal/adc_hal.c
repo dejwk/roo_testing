@@ -5,6 +5,7 @@
  */
 
 #include <sys/param.h>
+#include <stdint.h>
 #include "sdkconfig.h"
 #include "hal/adc_hal.h"
 #include "hal/adc_hal_conf.h"
@@ -50,7 +51,7 @@ typedef enum {
 #define adc_dma_ll_rx_reset_channel(dev, chan)          gdma_ll_rx_reset_channel(dev, chan)
 #define adc_dma_ll_rx_stop(dev, chan)                   gdma_ll_rx_stop(dev, chan)
 #define adc_dma_ll_rx_start(dev, chan, addr) do { \
-            gdma_ll_rx_set_desc_addr(dev, chan, (uint32_t)addr); \
+            gdma_ll_rx_set_desc_addr(dev, chan, (uint32_t)(uintptr_t)addr); \
             gdma_ll_rx_start(dev, chan); \
         } while (0)
 #define adc_ll_digi_dma_set_eof_num(dev, num)           adc_ll_digi_dma_set_eof_num(num)
@@ -82,7 +83,7 @@ typedef enum {
 #define adc_dma_ll_rx_reset_channel(dev, chan)          i2s_ll_rx_reset_dma(dev)
 #define adc_dma_ll_rx_stop(dev, chan)                   i2s_ll_rx_stop_link(dev)
 #define adc_dma_ll_rx_start(dev, chan, address) do { \
-            ((i2s_dev_t *)(dev))->in_link.addr = (uint32_t)(address); \
+            ((i2s_dev_t *)(dev))->in_link.addr = (uint32_t)(uintptr_t)(address); \
             i2s_ll_enable_dma(dev, 1); \
             ((i2s_dev_t *)(dev))->in_link.start = 1; \
         } while (0)
@@ -319,7 +320,7 @@ void adc_hal_digi_init(adc_hal_context_t *hal)
 
 static void adc_hal_digi_dma_link_descriptors(dma_descriptor_t *desc, uint8_t *data_buf, uint32_t size, uint32_t num)
 {
-    HAL_ASSERT(((uint32_t)data_buf % 4) == 0);
+    HAL_ASSERT(((uintptr_t)data_buf % 4) == 0);
     HAL_ASSERT((size % 4) == 0);
     uint32_t n = 0;
 

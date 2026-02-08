@@ -46,7 +46,10 @@ typedef struct {
 } timer_obj_t;
 
 static timer_obj_t *p_timer_obj[TIMER_GROUP_MAX][TIMER_MAX] = {0};
-static portMUX_TYPE timer_spinlock[TIMER_GROUP_MAX] = {portMUX_INITIALIZER_UNLOCKED, portMUX_INITIALIZER_UNLOCKED};
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-braces"
+static portMUX_TYPE timer_spinlock[TIMER_GROUP_MAX] __attribute__((unused)) = {portMUX_INITIALIZER_UNLOCKED, portMUX_INITIALIZER_UNLOCKED};
+#pragma GCC diagnostic pop
 
 esp_err_t timer_get_counter_value(timer_group_t group_num, timer_idx_t timer_num, uint64_t *timer_val)
 {

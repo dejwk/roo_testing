@@ -84,7 +84,7 @@ static slot_info_t* get_slot_info(sdspi_dev_handle_t handle)
     if ((uint32_t) handle < SOC_SPI_PERIPH_NUM) {
         return s_slots[handle];
     } else {
-        return (slot_info_t *) handle;
+        return (slot_info_t *)(uintptr_t) handle;
     }
 }
 
@@ -100,7 +100,7 @@ static sdspi_dev_handle_t store_slot_info(slot_info_t *slot)
         s_slots[slot->host_id] = slot;
         return slot->host_id;
     } else {
-        return (sdspi_dev_handle_t)slot;
+        return (sdspi_dev_handle_t)(uintptr_t)slot;
     }
 }
 
@@ -112,7 +112,7 @@ static slot_info_t* remove_slot_info(sdspi_dev_handle_t handle)
         s_slots[handle] = NULL;
         return slot;
     } else {
-        return (slot_info_t *) handle;
+        return (slot_info_t *)(uintptr_t) handle;
     }
 }
 

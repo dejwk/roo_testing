@@ -59,6 +59,7 @@ void __attribute__((noreturn)) __assert_func(const char *file, int line, const c
     esp_system_abort(buff);
 #else
     char addr[11] = { 0 };
+    (void)addr;
     char buff[200];
     char lbuf[5];
     uint32_t rem_len = sizeof(buff) - 1;

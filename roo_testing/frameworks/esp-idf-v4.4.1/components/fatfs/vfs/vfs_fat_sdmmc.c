@@ -42,7 +42,7 @@ static char * s_base_path = NULL;
     } while(0)
 
 static void call_host_deinit(const sdmmc_host_t *host_config);
-static esp_err_t partition_card(const esp_vfs_fat_mount_config_t *mount_config,
+static esp_err_t __attribute__((unused)) partition_card(const esp_vfs_fat_mount_config_t *mount_config,
                                 const char *drv, sdmmc_card_t *card, BYTE pdrv);
 
 static esp_err_t mount_prepare_mem(const char *base_path,
@@ -87,7 +87,7 @@ cleanup:
     return err;
 }
 
-static esp_err_t mount_to_vfs_fat(const esp_vfs_fat_mount_config_t *mount_config, sdmmc_card_t *card, uint8_t pdrv,
+static esp_err_t __attribute__((unused)) mount_to_vfs_fat(const esp_vfs_fat_mount_config_t *mount_config, sdmmc_card_t *card, uint8_t pdrv,
                                   const char *base_path)
 {
     // FATFS* fs = NULL;
@@ -163,7 +163,7 @@ static esp_err_t partition_card(const esp_vfs_fat_mount_config_t *mount_config,
     size_t alloc_unit_size = esp_vfs_fat_get_allocation_unit_size(
                 card->csd.sector_size,
                 mount_config->allocation_unit_size);
-    ESP_LOGW(TAG, "formatting card, allocation unit size=%d", alloc_unit_size);
+    ESP_LOGW(TAG, "formatting card, allocation unit size=%zu", alloc_unit_size);
     res = f_mkfs(drv, FM_ANY, alloc_unit_size, workbuf, workbuf_size);
     if (res != FR_OK) {
         err = ESP_FAIL;
@@ -179,13 +179,13 @@ fail:
 }
 
 #if SOC_SDMMC_HOST_SUPPORTED
-static esp_err_t init_sdmmc_host(int slot, const void *slot_config, int *out_slot)
+static esp_err_t __attribute__((unused)) init_sdmmc_host(int slot, const void *slot_config, int *out_slot)
 {
     *out_slot = slot;
     return sdmmc_host_init_slot(slot, (const sdmmc_slot_config_t*) slot_config);
 }
 
-static esp_err_t init_sdspi_host_deprecated(int slot, const void *slot_config, int *out_slot)
+static esp_err_t __attribute__((unused)) init_sdspi_host_deprecated(int slot, const void *slot_config, int *out_slot)
 {
     // *out_slot = slot;
     // return sdspi_host_init_slot(slot, (const sdspi_slot_config_t*) slot_config);
@@ -268,8 +268,7 @@ static esp_err_t init_sdspi_host(int slot, const void *slot_config, int *out_slo
 //     esp_err_t err = sdspi_host_init_device((const sdspi_device_config_t*)slot_config, out_slot);
 //     if (err != ESP_OK) {
 //         ESP_LOGE(TAG,
-// "Failed to attach sdspi device onto an SPI bus (rc=0x%x), please initialize the \
-// bus first and check the device parameters."
+// "Failed to attach sdspi device onto an SPI bus (rc=0x%x), please initialize the bus first and check the device parameters."
 //             , err);
 //     }
 //     return err;
@@ -413,6 +412,9 @@ esp_err_t sdmmc_card_init(const sdmmc_host_t* config, sdmmc_card_t* card)
 
     const bool always = true;
     const bool io_supported = true;
+    (void)ret;
+    (void)always;
+    (void)io_supported;
 
     return ESP_OK;
 }

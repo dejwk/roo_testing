@@ -31,7 +31,7 @@
  * @note systimer counter0 and alarm2 are adopted to implemented esp_timer
  */
 
-static const char *TAG = "esp_timer_systimer";
+static const char *TAG __attribute__((unused)) = "esp_timer_systimer";
 
 /* Interrupt handle returned by the interrupt allocator */
 static intr_handle_t s_timer_interrupt_handle;
@@ -134,6 +134,7 @@ esp_err_t esp_timer_impl_init(intr_handler_t alarm_handler)
 {
     s_alarm_handler = alarm_handler;
     const int interrupt_lvl = (1 << CONFIG_ESP_TIMER_INTERRUPT_LEVEL) & ESP_INTR_FLAG_LEVELMASK;
+    (void)interrupt_lvl;
 // #if SOC_SYSTIMER_INT_LEVEL
 //     int int_type = 0;
 // #else

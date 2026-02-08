@@ -116,7 +116,7 @@ esp_err_t esp_vfs_register(const char* base_path, const esp_vfs_t* vfs, void* ct
 esp_err_t esp_vfs_register_fd_range(const esp_vfs_t *vfs, void *ctx, int min_fd, int max_fd)
 {
     if (min_fd < 0 || max_fd < 0 || min_fd > MAX_FDS || max_fd > MAX_FDS || min_fd > max_fd) {
-        ESP_LOGD(TAG, "Invalid arguments: esp_vfs_register_fd_range(0x%x, 0x%x, %d, %d)", (int) vfs, (int) ctx, min_fd, max_fd);
+        ESP_LOGD(TAG, "Invalid arguments: esp_vfs_register_fd_range(%p, %p, %d, %d)", vfs, ctx, min_fd, max_fd);
         return ESP_ERR_INVALID_ARG;
     }
 

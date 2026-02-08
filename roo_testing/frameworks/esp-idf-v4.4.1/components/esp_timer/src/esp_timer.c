@@ -102,9 +102,12 @@ static LIST_HEAD(esp_inactive_timer_list, esp_timer) s_inactive_timers[ESP_TIMER
 static TaskHandle_t s_timer_task;
 
 // lock protecting s_timers, s_inactive_timers
-static portMUX_TYPE s_timer_lock[ESP_TIMER_MAX] = {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-braces"
+static portMUX_TYPE s_timer_lock[ESP_TIMER_MAX] __attribute__((unused)) = {
     [0 ... (ESP_TIMER_MAX - 1)] = portMUX_INITIALIZER_UNLOCKED
 };
+#pragma GCC diagnostic pop
 
 #ifdef CONFIG_ESP_TIMER_SUPPORTS_ISR_DISPATCH_METHOD
 // For ISR dispatch method, a callback function of the timer may require a context switch
@@ -260,6 +263,7 @@ static IRAM_ATTR esp_err_t timer_remove(esp_timer_handle_t timer)
         if (first_timer) { // if after removing the timer from the list, this list is not empty.
             next_timestamp = first_timer->alarm;
         }
+        (void)next_timestamp;
         // esp_timer_impl_set_alarm_id(next_timestamp, dispatch_method);
     }
 #if WITH_PROFILING
@@ -500,13 +504,13 @@ static void print_timer_info(esp_timer_handle_t t, char** dst, size_t* dst_size)
     } else {
         cb = snprintf(*dst, *dst_size, "timer@%-10p  ", t);
     }
-    cb += snprintf(*dst + cb, *dst_size + cb, "%-10lld  %-12lld  %-12d  %-12d  %-12d  %-12lld\n",
-                    (uint64_t)t->period, t->alarm, t->times_armed,
-                    t->times_triggered, t->times_skipped, t->total_callback_run_time);
+    cb += snprintf(*dst + cb, *dst_size + cb, "%-10llu  %-12llu  %-12d  %-12d  %-12d  %-12llu\n",
+                    (unsigned long long)t->period, (unsigned long long)t->alarm, t->times_armed,
+                    t->times_triggered, t->times_skipped, (unsigned long long)t->total_callback_run_time);
     /* keep this in sync with the format string, used in esp_timer_dump */
 #define TIMER_INFO_LINE_LEN 90
 #else
-    size_t cb = snprintf(*dst, *dst_size, "timer@%-14p  %-10lld  %-12lld\n", t, (uint64_t)t->period, t->alarm);
+    size_t cb = snprintf(*dst, *dst_size, "timer@%-14p  %-10llu  %-12llu\n", t, (unsigned long long)t->period, (unsigned long long)t->alarm);
 #define TIMER_INFO_LINE_LEN 46
 #endif
     *dst += cb;

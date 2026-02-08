@@ -119,8 +119,8 @@ esp_err_t sdmmc_host_do_transaction(int slot, sdmmc_command_t* cmdinfo)
     if (cmdinfo->data) {
         // Length should be either <4 or >=4 and =0 (mod 4).
         if (cmdinfo->datalen >= 4 && cmdinfo->datalen % 4 != 0) {
-            ESP_LOGD(TAG, "%s: invalid size: total=%d",
-                    __func__, cmdinfo->datalen);
+                ESP_LOGD(TAG, "%s: invalid size: total=%zu",
+                    __func__, (size_t)cmdinfo->datalen);
             ret = ESP_ERR_INVALID_SIZE;
             goto out;
         }
@@ -220,9 +220,9 @@ static void fill_dma_descriptors(size_t num_desc)
         s_cur_transfer.size_remaining -= size_to_fill;
         s_cur_transfer.ptr += size_to_fill;
         s_cur_transfer.next_desc = (s_cur_transfer.next_desc + 1) % SDMMC_DMA_DESC_CNT;
-        ESP_LOGV(TAG, "fill %d desc=%d rem=%d next=%d last=%d sz=%d",
-                num_desc, next, s_cur_transfer.size_remaining,
-                s_cur_transfer.next_desc, desc->last_descriptor, desc->buffer1_size);
+        ESP_LOGV(TAG, "fill %lu desc=%d rem=%lu next=%d last=%d sz=%lu",
+            (unsigned long)num_desc, (int)next, (unsigned long)s_cur_transfer.size_remaining,
+            (int)s_cur_transfer.next_desc, (int)desc->last_descriptor, (unsigned long)desc->buffer1_size);
     }
 }
 

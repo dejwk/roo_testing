@@ -35,7 +35,7 @@
 #define REASON_PRINT_BACKTRACE  BIT(2)
 #endif
 
-static portMUX_TYPE reason_spinlock = portMUX_INITIALIZER_UNLOCKED;
+static portMUX_TYPE reason_spinlock __attribute__((unused)) = portMUX_INITIALIZER_UNLOCKED;
 static volatile uint32_t reason[portNUM_PROCESSORS];
 
 /*

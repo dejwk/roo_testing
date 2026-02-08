@@ -64,7 +64,7 @@ void FakeSsd1327Spi::transfer(const FakeSpiInterface& spi, uint8_t* buf,
 
 void FakeSsd1327Spi::writeColor(uint8_t color) {
   viewport_.fillRect(x_cursor_, y_cursor_, x_cursor_, y_cursor_,
-                     0xFF00000000 | color * 0x00111111);
+                     0xFF000000 | color * 0x00111111);
   if (x_cursor_ < x1_) {
     ++x_cursor_;
     return;

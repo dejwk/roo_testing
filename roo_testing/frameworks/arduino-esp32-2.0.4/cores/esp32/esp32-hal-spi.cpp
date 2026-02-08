@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstring>
+
 #include "esp32-hal-spi.h"
 #include "esp32-hal.h"
 #include "freertos/FreeRTOS.h"
@@ -1307,7 +1309,13 @@ void spiWriteNL(spi_t * spi, const void * data_in, uint32_t len){
     spi->dev->miso_dlen.usr_miso_dbitlen = 0;
 #endif
         for (int i=0; i<c_longs; i++) {
-            spi->dev->data_buf[i] = data[i];
+            if((c_len & 3) && i == (c_longs - 1)) {
+                uint32_t word = 0;
+                memcpy(&word, ((uint8_t*)data) + (i * 4), (c_len & 3));
+                spi->dev->data_buf[i] = word;
+            } else {
+                spi->dev->data_buf[i] = data[i];
+            }
         }
 #if CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32S3
         spi->dev->cmd.update = 1;
@@ -1342,7 +1350,13 @@ void spiTransferBytesNL(spi_t * spi, const void * data_in, uint8_t * data_out, u
         spi->dev->miso_dlen.usr_miso_dbitlen = (c_len*8)-1;
         if(data){
             for (int i=0; i<c_longs; i++) {
-                spi->dev->data_buf[i] = data[i];
+                if((c_len & 3) && i == (c_longs - 1)) {
+                    uint32_t word = 0;
+                    memcpy(&word, ((uint8_t*)data) + (i * 4), (c_len & 3));
+                    spi->dev->data_buf[i] = word;
+                } else {
+                    spi->dev->data_buf[i] = data[i];
+                }
             }
         } else {
             for (int i=0; i<c_longs; i++) {
@@ -1469,8 +1483,7 @@ void ARDUINO_ISR_ATTR spiWritePixelsNL(spi_t * spi, const void * data_in, uint32
         spi->dev->cmd.usr = 1;
         while(spi->dev->cmd.usr);
 
-        data += c_longs;
-        longs -= c_longs;
+        if (data) data += c_len;
         len -= c_len;
     }
 }

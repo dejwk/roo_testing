@@ -38,6 +38,10 @@ class intrusive_list
 
 public:
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
     class iterator : public std::iterator<std::forward_iterator_tag, T>
     {
     public:
@@ -117,6 +121,9 @@ public:
     protected:
         T* mPos;
     };
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
     void push_back(T* node)
     {

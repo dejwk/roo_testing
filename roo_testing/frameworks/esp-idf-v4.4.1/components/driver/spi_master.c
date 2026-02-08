@@ -172,7 +172,7 @@ static const char *SPI_TAG = "spi_master";
     }
 
 
-static void spi_intr(void *arg);
+static void __attribute__((unused)) spi_intr(void *arg);
 static void spi_bus_intr_enable(void *host);
 static void spi_bus_intr_disable(void *host);
 
@@ -582,7 +582,7 @@ static void SPI_MASTER_ISR_ATTR spi_post_trans(spi_host_t *host)
 }
 
 // This is run in interrupt context.
-static void SPI_MASTER_ISR_ATTR spi_intr(void *arg)
+static void SPI_MASTER_ISR_ATTR __attribute__((unused)) spi_intr(void *arg)
 {
     BaseType_t do_yield = pdFALSE;
     spi_host_t *host = (spi_host_t *)arg;
@@ -749,7 +749,7 @@ static SPI_MASTER_ISR_ATTR esp_err_t setup_priv_desc(spi_transaction_t *trans_de
         //if not use RXDATA neither rx_buffer, buffer_to_rcv assigned to NULL
         rcv_ptr = trans_desc->rx_buffer;
     }
-    if (rcv_ptr && isdma && (!esp_ptr_dma_capable(rcv_ptr) || ((int)rcv_ptr % 4 != 0))) {
+    if (rcv_ptr && isdma && (!esp_ptr_dma_capable(rcv_ptr) || ((uintptr_t)rcv_ptr % 4 != 0))) {
         //if rxbuf in the desc not DMA-capable, malloc a new one. The rx buffer need to be length of multiples of 32 bits to avoid heap corruption.
         ESP_LOGD(SPI_TAG, "Allocate RX buffer for DMA" );
         rcv_ptr = heap_caps_malloc((trans_desc->rxlength + 31) / 8, MALLOC_CAP_DMA);

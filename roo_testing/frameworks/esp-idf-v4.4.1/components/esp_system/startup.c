@@ -167,7 +167,7 @@ static void do_global_ctors(void)
     // void __register_frame_info (const void *begin, struct object *ob);
     // extern char __eh_frame[];
 
-    static struct object ob;
+    static struct object ob __attribute__((unused));
     // __register_frame_info( __eh_frame, &ob );
 #endif // CONFIG_COMPILER_CXX_EXCEPTIONS
 

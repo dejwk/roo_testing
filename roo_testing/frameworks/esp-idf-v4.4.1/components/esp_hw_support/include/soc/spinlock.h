@@ -75,6 +75,7 @@ static inline bool __attribute__((always_inline)) spinlock_acquire(spinlock_t *l
 
     assert(lock);
     irq_status = XTOS_SET_INTLEVEL(XCHAL_EXCM_LEVEL);
+    (void)irq_status;
 
     if (timeout == SPINLOCK_WAIT_FOREVER) {
         pthread_mutex_lock(&lock->mutex);
@@ -119,6 +120,7 @@ static inline void __attribute__((always_inline)) spinlock_release(spinlock_t *l
 
     assert(lock);
     irq_status = XTOS_SET_INTLEVEL(XCHAL_EXCM_LEVEL);
+    (void)irq_status;
     pthread_mutex_unlock(&lock->mutex);
 
     XTOS_RESTORE_INTLEVEL(irq_status);

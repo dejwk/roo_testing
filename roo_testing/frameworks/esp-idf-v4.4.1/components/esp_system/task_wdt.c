@@ -31,7 +31,7 @@
 #include "hal/wdt_hal.h"
 
 
-static const char *TAG = "task_wdt";
+static const char *TAG __attribute__((unused)) = "task_wdt";
 
 //Assertion macro where, if 'cond' is false, will exit the critical section and return 'ret'
 #define ASSERT_EXIT_CRIT_RETURN(cond, ret)  ({                              \
@@ -68,14 +68,14 @@ struct twdt_config_t {
 };
 
 static twdt_config_t *twdt_config = NULL;
-static portMUX_TYPE twdt_spinlock = portMUX_INITIALIZER_UNLOCKED;
+static portMUX_TYPE twdt_spinlock __attribute__((unused)) = portMUX_INITIALIZER_UNLOCKED;
 
 /*
  * Idle hook callback for Idle Tasks to reset the TWDT. This callback will only
  * be registered to the Idle Hook of a particular core when the corresponding
  * Idle Task subscribes to the TWDT.
  */
-static bool idle_hook_cb(void)
+static bool __attribute__((unused)) idle_hook_cb(void)
 {
     esp_task_wdt_reset();
     return true;

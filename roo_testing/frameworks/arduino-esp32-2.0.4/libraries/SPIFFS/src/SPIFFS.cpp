@@ -78,6 +78,7 @@ bool SPIFFSFS::begin(bool formatOnFail, const char * basePath, uint8_t maxOpenFi
       .max_files = maxOpenFiles,
       .format_if_mount_failed = false
     };
+        (void)conf;
 
     // esp_err_t err = esp_vfs_spiffs_register(&conf);
     // if(err == ESP_FAIL && formatOnFail){

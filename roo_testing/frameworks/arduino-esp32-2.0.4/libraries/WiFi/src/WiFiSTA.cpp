@@ -772,6 +772,8 @@ bool WiFiSTAClass::beginSmartConfig(smartconfig_type_t type, char* crypt_key) {
     esp_wifi_disconnect();
 
     smartconfig_start_config_t conf = SMARTCONFIG_START_CONFIG_DEFAULT();
+    (void)err;
+    (void)conf;
 
     if (type == SC_TYPE_ESPTOUCH_V2){
         conf.esp_touch_v2_enable_crypt = true;

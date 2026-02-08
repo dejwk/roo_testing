@@ -25,8 +25,8 @@ static void _on_apb_change(void * arg, apb_change_ev_t ev_type, uint32_t old_apb
     if(old_apb == new_apb){
         return;
     }
-    uint32_t iarg = (uint32_t)arg;
-    uint8_t channel = iarg;
+    uintptr_t iarg = (uintptr_t)arg;
+    uint8_t channel = (uint8_t)iarg;
     if(ev_type == APB_AFTER_CHANGE){
         old_apb /= 1000000;
         new_apb /= 1000000;
@@ -58,7 +58,7 @@ uint32_t sigmaDeltaSetup(uint8_t pin, uint8_t channel, uint32_t freq) //chan 0-x
     sigmadelta_config(&sigmadelta_cfg);
 
     prescaler_set[channel] = prescale;
-    uint32_t iarg = channel;
+    uintptr_t iarg = (uintptr_t)channel;
     addApbChangeCallback((void*)iarg, _on_apb_change);
 
     return apb_freq/((prescale + 1) * 256);

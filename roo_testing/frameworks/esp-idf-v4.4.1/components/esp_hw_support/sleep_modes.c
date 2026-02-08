@@ -33,6 +33,12 @@
 // #include "hal/wdt_hal.h"
 #include "hal/rtc_hal.h"
 // #include "hal/uart_hal.h"
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wattributes"
+#endif
 #if SOC_TOUCH_SENSOR_NUM > 0
 #include "hal/touch_sensor_hal.h"
 // #include "driver/touch_sensor.h"
@@ -175,7 +181,7 @@ static bool s_light_sleep_wakeup = false;
 
 /* Updating RTC_MEMORY_CRC_REG register via set_rtc_memory_crc()
    is not thread-safe, so we need to disable interrupts before going to deep sleep. */
-static portMUX_TYPE spinlock_rtc_deep_sleep = portMUX_INITIALIZER_UNLOCKED;
+static portMUX_TYPE spinlock_rtc_deep_sleep __attribute__((unused)) = portMUX_INITIALIZER_UNLOCKED;
 
 static const char *TAG = "sleep";
 
@@ -184,7 +190,7 @@ static uint32_t get_power_down_flags(void);
 static void ext0_wakeup_prepare(void);
 static void ext1_wakeup_prepare(void);
 #endif
-static void timer_wakeup_prepare(void);
+static void timer_wakeup_prepare(void) {}
 #if CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3
 static void touch_wakeup_prepare(void);
 #endif
@@ -225,7 +231,7 @@ esp_deep_sleep_wake_stub_fn_t esp_get_deep_sleep_wake_stub(void)
 #if SOC_PM_SUPPORT_DEEPSLEEP_VERIFY_STUB_ONLY
     esp_deep_sleep_wake_stub_fn_t stub_ptr = wake_stub_fn_handler;
 #else
-    esp_deep_sleep_wake_stub_fn_t stub_ptr = (esp_deep_sleep_wake_stub_fn_t) REG_READ(RTC_ENTRY_ADDR_REG);
+    esp_deep_sleep_wake_stub_fn_t stub_ptr = (esp_deep_sleep_wake_stub_fn_t)(uintptr_t)REG_READ(RTC_ENTRY_ADDR_REG);
 #endif
     // if (!esp_ptr_executable(stub_ptr)) {
     //     return NULL;
@@ -238,7 +244,7 @@ void esp_set_deep_sleep_wake_stub(esp_deep_sleep_wake_stub_fn_t new_stub)
 #if SOC_PM_SUPPORT_DEEPSLEEP_VERIFY_STUB_ONLY
     wake_stub_fn_handler = new_stub;
 #else
-    REG_WRITE(RTC_ENTRY_ADDR_REG, (uint32_t)new_stub);
+    REG_WRITE(RTC_ENTRY_ADDR_REG, (uint32_t)(uintptr_t)new_stub);
 #endif
 }
 
@@ -571,6 +577,8 @@ void IRAM_ATTR esp_deep_sleep_start(void)
 //     // Never returns here
 //     esp_ipc_isr_release_other_cpu();
 //     portEXIT_CRITICAL(&spinlock_rtc_deep_sleep);
+    for (;;) {
+    }
 }
 
 /**
@@ -751,7 +759,9 @@ esp_err_t esp_light_sleep_start(void)
 //     portEXIT_CRITICAL(&light_sleep_lock);
 //     s_config.sleep_time_overhead_out = (cpu_ll_get_cycle_count() - s_config.ccount_ticks_record) / (esp_clk_cpu_freq() / 1000000ULL);
 //     return err;
+    return ESP_OK;
 }
+
 
 esp_err_t esp_sleep_disable_wakeup_source(esp_sleep_source_t source)
 {
@@ -1304,6 +1314,10 @@ static uint32_t get_power_down_flags(void)
 
     return pd_flags;
 }
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 void esp_deep_sleep_disable_rom_logging(void)
 {

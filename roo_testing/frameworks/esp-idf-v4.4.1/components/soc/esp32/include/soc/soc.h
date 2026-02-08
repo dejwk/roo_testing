@@ -159,9 +159,9 @@ extern uint32_t fake_esp32_read_reg(uint32_t addr, uint32_t mask);
         })
 
 // //set field of a register from variable, uses field _S & _V to determine mask
-// #define REG_SET_FIELD(_r, _f, _v) ({                                                                                   \
-//             ASSERT_IF_DPORT_REG((_r), REG_SET_FIELD);                                                                  \
-//             (REG_WRITE((_r),((REG_READ(_r) & ~((_f##_V) << (_f##_S)))|(((_v) & (_f##_V))<<(_f##_S)))));                \
+// #define REG_SET_FIELD(_r, _f, _v) ({
+//             ASSERT_IF_DPORT_REG((_r), REG_SET_FIELD);
+//             (REG_WRITE((_r),((REG_READ(_r) & ~((_f##_V) << (_f##_S)))|(((_v) & (_f##_V))<<(_f##_S)))));
 //         })
 
 //get field value from a variable, used when _f is not left shifted by _f##_S
@@ -201,9 +201,9 @@ extern uint32_t fake_esp32_read_reg(uint32_t addr, uint32_t mask);
         })
 
 // //clear bits of register controlled by mask
-// #define CLEAR_PERI_REG_MASK(reg, mask) ({                                                                              \
-//             ASSERT_IF_DPORT_REG((reg), CLEAR_PERI_REG_MASK);                                                           \
-//             WRITE_PERI_REG((reg), (READ_PERI_REG(reg)&(~(mask))));                                                     \
+// #define CLEAR_PERI_REG_MASK(reg, mask) ({
+//             ASSERT_IF_DPORT_REG((reg), CLEAR_PERI_REG_MASK);
+//             WRITE_PERI_REG((reg), (READ_PERI_REG(reg)&(~(mask))));
 //         })
 
 //set bits of register controlled by mask
@@ -213,9 +213,9 @@ extern uint32_t fake_esp32_read_reg(uint32_t addr, uint32_t mask);
         })
 
 // //set bits of register controlled by mask
-// #define SET_PERI_REG_MASK(reg, mask) ({                                                                                \
-//             ASSERT_IF_DPORT_REG((reg), SET_PERI_REG_MASK);                                                             \
-//             WRITE_PERI_REG((reg), (READ_PERI_REG(reg)|(mask)));                                                        \
+// #define SET_PERI_REG_MASK(reg, mask) ({
+//             ASSERT_IF_DPORT_REG((reg), SET_PERI_REG_MASK);
+//             WRITE_PERI_REG((reg), (READ_PERI_REG(reg)|(mask)));
 //         })
 
 //get bits of register controlled by mask
@@ -225,9 +225,9 @@ extern uint32_t fake_esp32_read_reg(uint32_t addr, uint32_t mask);
         })
 
 // //get bits of register controlled by mask
-// #define GET_PERI_REG_MASK(reg, mask) ({                                                                                \
-//             ASSERT_IF_DPORT_REG((reg), GET_PERI_REG_MASK);                                                             \
-//             (READ_PERI_REG(reg) & (mask));                                                                             \
+// #define GET_PERI_REG_MASK(reg, mask) ({
+//             ASSERT_IF_DPORT_REG((reg), GET_PERI_REG_MASK);
+//             (READ_PERI_REG(reg) & (mask));
 //         })
 
 //get bits of register controlled by highest bit and lowest bit
@@ -237,9 +237,9 @@ extern uint32_t fake_esp32_read_reg(uint32_t addr, uint32_t mask);
         })
 
 // //set bits of register controlled by mask and shift
-// #define SET_PERI_REG_BITS(reg,bit_map,value,shift) ({                                                                  \
-//             ASSERT_IF_DPORT_REG((reg), SET_PERI_REG_BITS);                                                             \
-//             (WRITE_PERI_REG((reg),(READ_PERI_REG(reg)&(~((bit_map)<<(shift))))|(((value) & bit_map)<<(shift)) ));      \
+// #define SET_PERI_REG_BITS(reg,bit_map,value,shift) ({
+//             ASSERT_IF_DPORT_REG((reg), SET_PERI_REG_BITS);
+//             (WRITE_PERI_REG((reg),(READ_PERI_REG(reg)&(~((bit_map)<<(shift))))|(((value) & bit_map)<<(shift)) ));
 //         })
 
 //set bits of register controlled by mask and shift

@@ -107,8 +107,8 @@ typedef struct {
 } i2s_obj_t;
 
 static i2s_obj_t *p_i2s[SOC_I2S_NUM];
-static portMUX_TYPE i2s_platform_spinlock = (portMUX_TYPE)portMUX_INITIALIZER_UNLOCKED;
-static portMUX_TYPE i2s_spinlock[SOC_I2S_NUM] = {
+static portMUX_TYPE i2s_platform_spinlock __attribute__((unused)) = (portMUX_TYPE)portMUX_INITIALIZER_UNLOCKED;
+static portMUX_TYPE i2s_spinlock[SOC_I2S_NUM] __attribute__((unused)) = {
     [0 ... SOC_I2S_NUM - 1] = (portMUX_TYPE)portMUX_INITIALIZER_UNLOCKED,
 };
 
@@ -2101,19 +2101,19 @@ esp_err_t i2s_write_expand(i2s_port_t i2s_num, const void *src, size_t size, siz
     ESP_RETURN_ON_FALSE((aim_bits >= src_bits), ESP_ERR_INVALID_ARG, TAG, "aim_bits mustn't be less than src_bits");
     ESP_RETURN_ON_FALSE((p_i2s[i2s_num]->tx), ESP_ERR_INVALID_ARG, TAG, "TX mode is not enabled");
     if (src_bits < I2S_BITS_PER_SAMPLE_8BIT || aim_bits < I2S_BITS_PER_SAMPLE_8BIT) {
-        ESP_LOGE(TAG, "bits mustn't be less than 8, src_bits %d aim_bits %d", src_bits, aim_bits);
+        ESP_LOGE(TAG, "bits mustn't be less than 8, src_bits %zu aim_bits %zu", src_bits, aim_bits);
         return ESP_ERR_INVALID_ARG;
     }
     if (src_bits > I2S_BITS_PER_SAMPLE_32BIT || aim_bits > I2S_BITS_PER_SAMPLE_32BIT) {
-        ESP_LOGE(TAG, "bits mustn't be greater than 32, src_bits %d aim_bits %d", src_bits, aim_bits);
+        ESP_LOGE(TAG, "bits mustn't be greater than 32, src_bits %zu aim_bits %zu", src_bits, aim_bits);
         return ESP_ERR_INVALID_ARG;
     }
     if ((src_bits == I2S_BITS_PER_SAMPLE_16BIT || src_bits == I2S_BITS_PER_SAMPLE_32BIT) && (size % 2 != 0)) {
-        ESP_LOGE(TAG, "size must be a even number while src_bits is even, src_bits %d size %d", src_bits, size);
+        ESP_LOGE(TAG, "size must be a even number while src_bits is even, src_bits %zu size %zu", src_bits, size);
         return ESP_ERR_INVALID_ARG;
     }
     if (src_bits == I2S_BITS_PER_SAMPLE_24BIT && (size % 3 != 0)) {
-        ESP_LOGE(TAG, "size must be a multiple of 3 while src_bits is 24, size %d", size);
+        ESP_LOGE(TAG, "size must be a multiple of 3 while src_bits is 24, size %zu", size);
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -2122,7 +2122,7 @@ esp_err_t i2s_write_expand(i2s_port_t i2s_num, const void *src, size_t size, siz
     zero_bytes = aim_bytes - src_bytes;
     xSemaphoreTake(p_i2s[i2s_num]->tx->mux, (portTickType)portMAX_DELAY);
     size = size * aim_bytes / src_bytes;
-    ESP_LOGD(TAG, "aim_bytes %d src_bytes %d size %d", aim_bytes, src_bytes, size);
+    ESP_LOGD(TAG, "aim_bytes %d src_bytes %d size %zu", aim_bytes, src_bytes, size);
     while (size > 0) {
         if (p_i2s[i2s_num]->tx->rw_pos == p_i2s[i2s_num]->tx->buf_size || p_i2s[i2s_num]->tx->curr_ptr == NULL) {
             if (xQueueReceive(p_i2s[i2s_num]->tx->queue, &p_i2s[i2s_num]->tx->curr_ptr, ticks_to_wait) == pdFALSE) {

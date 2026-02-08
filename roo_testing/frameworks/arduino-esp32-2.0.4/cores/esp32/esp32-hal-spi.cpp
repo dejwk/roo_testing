@@ -774,7 +774,7 @@ spi_t * spiStartBus(uint8_t spi_num, uint32_t clockDiv, uint8_t dataMode, uint8_
     spi->dev->user.usr_mosi = 1;
     spi->dev->user.usr_miso = 1;
     spi->dev->user.doutdin = 1;
-    int i;
+    uint32_t i;
     for(i=0; i<16; i++) {
         spi->dev->data_buf[i] = 0x00000000;
     }
@@ -812,7 +812,7 @@ void spiWrite(spi_t * spi, const uint32_t *data, uint8_t len)
     if(!spi) {
         return;
     }
-    int i;
+    uint32_t i;
     if(len > 16) {
         len = 16;
     }
@@ -838,7 +838,7 @@ void spiTransfer(spi_t * spi, uint32_t *data, uint8_t len)
     if(!spi) {
         return;
     }
-    int i;
+    uint32_t i;
     if(len > 16) {
         len = 16;
     }
@@ -1013,7 +1013,7 @@ static void __spiTransferBytes(spi_t * spi, const uint8_t * data, uint8_t * out,
     if(!spi) {
         return;
     }
-    int i;
+    uint32_t i;
 
     if(bytes > 64) {
         bytes = 64;
@@ -1298,7 +1298,8 @@ void spiWriteNL(spi_t * spi, const void * data_in, uint32_t len){
         longs++;
     }
     uint32_t * data = (uint32_t*)data_in;
-    size_t c_len = 0, c_longs = 0;
+    size_t c_len = 0;
+    int c_longs = 0;
 
     while(len){
         c_len = (len>64)?64:len;
@@ -1340,7 +1341,8 @@ void spiTransferBytesNL(spi_t * spi, const void * data_in, uint8_t * data_out, u
     }
     uint32_t * data = (uint32_t*)data_in;
     uint32_t * result = (uint32_t*)data_out;
-    size_t c_len = 0, c_longs = 0;
+    size_t c_len = 0;
+    int c_longs = 0;
 
     while(len){
         c_len = (len>64)?64:len;
@@ -1377,7 +1379,7 @@ void spiTransferBytesNL(spi_t * spi, const void * data_in, uint8_t * data_out, u
                 uint32_t last_data = spi->dev->data_buf[c_longs-1];
                 uint8_t * last_out8 = (uint8_t *)&result[c_longs-1];
                 uint8_t * last_data8 = (uint8_t *)&last_data;
-                for (int i=0; i<(c_len & 3); i++) {
+                for (size_t i = 0; i < (c_len & 3); i++) {
                     last_out8[i] = last_data8[i];
                 }
             } else {
@@ -1450,7 +1452,8 @@ void ARDUINO_ISR_ATTR spiWritePixelsNL(spi_t * spi, const void * data_in, uint32
     }
     bool msb = !spi->dev->ctrl.wr_bit_order;
     uint32_t * data = (uint32_t*)data_in;
-    size_t c_len = 0, c_longs = 0, l_bytes = 0;
+    size_t c_len = 0, l_bytes = 0;
+    int c_longs = 0;
 
     while(len){
         c_len = (len>64)?64:len;

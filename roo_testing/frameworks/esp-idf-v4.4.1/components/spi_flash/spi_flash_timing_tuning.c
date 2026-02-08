@@ -59,7 +59,7 @@ void spi_timing_set_pin_drive_strength(void)
 
 #define SPI_TIMING_CORE_CLOCK_MHZ 40
 
-static uint32_t get_flash_clock_divider(void)
+static uint32_t __attribute__((unused)) get_flash_clock_divider(void)
 {
 #if CONFIG_ESPTOOLPY_FLASHFREQ_20M
     return SPI_TIMING_CORE_CLOCK_MHZ / 20;
@@ -74,7 +74,7 @@ static uint32_t get_flash_clock_divider(void)
 #endif
 }
 
-static uint32_t get_psram_clock_divider(void)
+static uint32_t __attribute__((unused)) get_psram_clock_divider(void)
 {
 #if CONFIG_SPIRAM_SPEED_40M
     return SPI_TIMING_CORE_CLOCK_MHZ / 40;

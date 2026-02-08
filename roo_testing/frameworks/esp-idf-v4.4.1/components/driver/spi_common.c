@@ -88,7 +88,7 @@ static spicommon_bus_context_t* bus_ctx[SOC_SPI_PERIPH_NUM] = {&s_mainbus};
 #if !SOC_GDMA_SUPPORTED
 //Each bit stands for 1 dma channel, BIT(0) should be used for SPI1
 static uint8_t spi_dma_chan_enabled = 0;
-static portMUX_TYPE spi_dma_spinlock = portMUX_INITIALIZER_UNLOCKED;
+static portMUX_TYPE spi_dma_spinlock __attribute__((unused)) = portMUX_INITIALIZER_UNLOCKED;
 #endif  //#if !SOC_GDMA_SUPPORTED
 
 
@@ -905,7 +905,7 @@ Code for workaround for DMA issue in ESP32 v0/v1 silicon
 static volatile int dmaworkaround_channels_busy[2] = {0, 0};
 static dmaworkaround_cb_t dmaworkaround_cb;
 static void *dmaworkaround_cb_arg;
-static portMUX_TYPE dmaworkaround_mux = portMUX_INITIALIZER_UNLOCKED;
+static portMUX_TYPE dmaworkaround_mux __attribute__((unused)) = portMUX_INITIALIZER_UNLOCKED;
 static int dmaworkaround_waiting_for_chan = 0;
 #endif
 

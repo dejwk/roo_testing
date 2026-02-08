@@ -66,7 +66,7 @@
 bool g_panic_abort = false;
 static char *s_panic_abort_details = NULL;
 
-static wdt_hal_context_t rtc_wdt_ctx = {.inst = WDT_RWDT, .rwdt_dev = &RTCCNTL};
+static wdt_hal_context_t rtc_wdt_ctx __attribute__((unused)) = {.inst = WDT_RWDT, .rwdt_dev = &RTCCNTL};
 
 #if !CONFIG_ESP_SYSTEM_PANIC_SILENT_REBOOT
 

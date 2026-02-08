@@ -150,6 +150,7 @@ extern unsigned long ulPortGetRunTime( void );
 #define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS() /* no-op */
 #define portGET_RUN_TIME_COUNTER_VALUE()         ulPortGetRunTime()
 
+#undef portMAX_DELAY
 #define portMAX_DELAY ( TickType_t ) 0xffffffffUL
 
 #define _lock_t SemaphoreHandle_t

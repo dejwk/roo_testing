@@ -35,7 +35,7 @@ inline std::string fromCharArray(const char *cstr) {
   return std::string(cstr, strlen(cstr));
 }
 
-inline void toCharArray(const std::string &in, uint8_t *out, int maxlen) {
+inline void toCharArray(const std::string &in, uint8_t *out, size_t maxlen) {
   size_t len = in.size() + 1;
   if (len > maxlen) len = maxlen;
   memcpy(out, in.c_str(), len);
@@ -223,7 +223,7 @@ class Esp32WifiAdapter {
     }
     wifi_event_sta_scan_done_t event_data = {
         .status = 0,
-        .number = known_networks_.size(),
+        .number = static_cast<uint8_t>(known_networks_.size()),
         .scan_id = 0,
     };
     esp_event_post(WIFI_EVENT, WIFI_EVENT_SCAN_DONE, &event_data,
@@ -250,7 +250,8 @@ class Esp32WifiAdapter {
     if (state_ != CONNECTING) return;
     state_ = CONNECTED;
     const roo_testing_transducers::wifi::AccessPoint &ap =
-        connection_->access_point();
+      connection_->access_point();
+    (void)ap;
     wifi_event_sta_connected_t event_data;
     event_data.authmode = toAuthMode(ap.auth_mode());
     event_data.channel = ap.channel();
@@ -268,6 +269,7 @@ class Esp32WifiAdapter {
   void finalizeGotIP() {
     const roo_testing_transducers::wifi::AccessPoint &ap =
         connection_->access_point();
+    (void)ap;
     ip_event_got_ip_t event_data;
     event_data.if_index = 0;
     esp_event_post(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_data,
@@ -353,7 +355,7 @@ esp_err_t esp_wifi_scan_get_ap_records(uint16_t *number,
 }
 
 esp_err_t esp_wifi_get_config(wifi_interface_t interface, wifi_config_t *conf) {
-  if (interface != ESP_IF_WIFI_STA) {
+  if (interface != static_cast<wifi_interface_t>(ESP_IF_WIFI_STA)) {
     return ESP_ERR_INVALID_ARG;
   }
   conf->sta = adapter().getStaConfig();
@@ -365,7 +367,7 @@ esp_err_t esp_wifi_connect(void) { return adapter().connect(); }
 esp_err_t esp_wifi_disconnect(void) { return adapter().disconnect(); }
 
 esp_err_t esp_wifi_set_config(wifi_interface_t interface, wifi_config_t *conf) {
-  if (interface != ESP_IF_WIFI_STA) {
+  if (interface != static_cast<wifi_interface_t>(ESP_IF_WIFI_STA)) {
     return ESP_ERR_INVALID_ARG;
   }
   adapter().setStaConfig(conf->sta);

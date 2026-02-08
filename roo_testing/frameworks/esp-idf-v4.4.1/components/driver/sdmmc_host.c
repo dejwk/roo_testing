@@ -142,7 +142,7 @@ static void sdmmc_host_input_clk_disable(void)
     // SDMMC.clock.val = 0;
 }
 
-static void sdmmc_host_clock_update_command(int slot)
+static void __attribute__((unused)) sdmmc_host_clock_update_command(int slot)
 {
     // // Clock update command (not a real command; just updates CIU registers)
     // sdmmc_hw_cmd_t cmd_val = {
@@ -177,6 +177,7 @@ esp_err_t sdmmc_host_set_card_clk(int slot, uint32_t freq_khz)
         return ESP_ERR_INVALID_ARG;
     }
     const int clk40m = 40000;
+    (void)clk40m;
 
     // // Disable clock first
     // SDMMC.clkena.cclk_enable &= ~BIT(slot);
@@ -335,6 +336,7 @@ static void configure_pin_iomux(uint8_t gpio_num)
 {
     const int sdmmc_func = 3;
     const int drive_strength = 3;
+    (void)drive_strength;
     assert(gpio_num != (uint8_t) GPIO_NUM_NC);
     gpio_pulldown_dis(gpio_num);
 
@@ -562,6 +564,7 @@ esp_err_t sdmmc_host_set_bus_ddr_mode(int slot, bool ddr_enabled)
         return ESP_ERR_NOT_SUPPORTED;
     }
     uint32_t mask = BIT(slot);
+    (void)mask;
     // if (ddr_enabled) {
     //     SDMMC.uhs.ddr |= mask;
     //     SDMMC.emmc_ddr_reg |= mask;
@@ -573,7 +576,7 @@ esp_err_t sdmmc_host_set_bus_ddr_mode(int slot, bool ddr_enabled)
     return ESP_OK;
 }
 
-static void sdmmc_host_dma_init(void)
+static void __attribute__((unused)) sdmmc_host_dma_init(void)
 {
     // SDMMC.ctrl.dma_enable = 1;
     // SDMMC.bmod.val = 0;
@@ -668,7 +671,7 @@ esp_err_t sdmmc_host_io_int_wait(int slot, TickType_t timeout_ticks)
  * may be dropped. We ignore this problem for now, since the there are no other
  * interesting events which can get lost due to this.
  */
-static void sdmmc_isr(void* arg) {
+static void __attribute__((unused)) sdmmc_isr(void* arg) {
     // QueueHandle_t queue = (QueueHandle_t) arg;
     // sdmmc_event_t event;
     // int higher_priority_task_awoken = pdFALSE;

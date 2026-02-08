@@ -235,6 +235,7 @@ bool setCpuFrequencyMhz(uint32_t cpu_freq_mhz){
 
 #else
     uint32_t fcpu = (conf.freq_mhz >= 80)?(conf.freq_mhz * MHZ):(apb);
+    (void)fcpu;
     // _xt_tick_divisor = fcpu / XT_TICK_PER_SEC;
 #endif
     //Call peripheral functions after the APB change

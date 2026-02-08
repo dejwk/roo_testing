@@ -985,7 +985,7 @@ static inline void spi_dma_ll_rx_reset(spi_dma_dev_t *dma_in, uint32_t channel)
  */
 static inline void spi_dma_ll_rx_start(spi_dma_dev_t *dma_in, uint32_t channel, lldesc_t *addr)
 {
-    dma_in->dma_in_link.addr = (int) addr & 0xFFFFF;
+    dma_in->dma_in_link.addr = (uint32_t)(uintptr_t)addr & 0xFFFFF;
     dma_in->dma_in_link.start = 1;
 }
 
@@ -1035,7 +1035,7 @@ static inline void spi_dma_ll_tx_reset(spi_dma_dev_t *dma_out, uint32_t channel)
  */
 static inline void spi_dma_ll_tx_start(spi_dma_dev_t *dma_out, uint32_t channel, lldesc_t *addr)
 {
-    dma_out->dma_out_link.addr = (int) addr & 0xFFFFF;
+    dma_out->dma_out_link.addr = (uint32_t)(uintptr_t)addr & 0xFFFFF;
     dma_out->dma_out_link.start = 1;
 }
 

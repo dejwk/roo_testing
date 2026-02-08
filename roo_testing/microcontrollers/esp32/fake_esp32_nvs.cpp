@@ -4,22 +4,23 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cstring>
 #include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <map>
 #include <random>
 #include <set>
-
-#include "roo_testing/microcontrollers/esp32/storage.pb.h"
+#include <sstream>
+#include <vector>
 
 // #include "esp32-hal-spi.h"
 // #include "soc/gpio_sig_map.h"
 // #include "soc/gpio_struct.h"
 // #include "soc/spi_struct.h"
 
-#include "google/protobuf/text_format.h"
 // #include "nvs_flash.h"
-
-using namespace google::protobuf;
 
 #define ESP_OK 0
 
@@ -105,6 +106,571 @@ using namespace google::protobuf;
   "nvs" /*!< Default partition name of the NVS partition in the partition \
            table */
 
+namespace {
+
+enum class ValueType {
+  I8,
+  U8,
+  I16,
+  U16,
+  I32,
+  U32,
+  I64,
+  U64,
+  STR,
+  BLOB,
+};
+
+struct EntryValue {
+  ValueType type = ValueType::I32;
+  int64_t sint_value = 0;
+  uint64_t uint_value = 0;
+  std::string str_value;
+  std::string blob_value;
+};
+
+struct NamespaceStorage {
+  std::map<std::string, EntryValue> entries;
+};
+
+struct PartitionStorage {
+  std::map<std::string, NamespaceStorage> name_spaces;
+};
+
+struct NvsStorage {
+  std::map<std::string, PartitionStorage> partitions;
+};
+
+struct JsonValue {
+  enum class Type {
+    kNull,
+    kBool,
+    kNumber,
+    kString,
+    kObject,
+    kArray,
+  };
+
+  Type type = Type::kNull;
+  bool bool_value = false;
+  std::string string_value;
+  std::string number_value;
+  std::map<std::string, JsonValue> object_value;
+  std::vector<JsonValue> array_value;
+};
+
+static void SkipWhitespace(const std::string& input, size_t* pos) {
+  while (*pos < input.size() &&
+         std::isspace(static_cast<unsigned char>(input[*pos]))) {
+    ++(*pos);
+  }
+}
+
+static bool ConsumeChar(const std::string& input, size_t* pos, char ch) {
+  SkipWhitespace(input, pos);
+  if (*pos >= input.size() || input[*pos] != ch) return false;
+  ++(*pos);
+  return true;
+}
+
+static bool ParseString(const std::string& input, size_t* pos,
+                        std::string* out) {
+  SkipWhitespace(input, pos);
+  if (*pos >= input.size() || input[*pos] != '"') return false;
+  ++(*pos);
+  std::string result;
+  while (*pos < input.size()) {
+    char c = input[*pos];
+    if (c == '"') {
+      ++(*pos);
+      *out = std::move(result);
+      return true;
+    }
+    if (c == '\\') {
+      ++(*pos);
+      if (*pos >= input.size()) return false;
+      char esc = input[*pos];
+      switch (esc) {
+        case '"':
+          result.push_back('"');
+          break;
+        case '\\':
+          result.push_back('\\');
+          break;
+        case '/':
+          result.push_back('/');
+          break;
+        case 'b':
+          result.push_back('\b');
+          break;
+        case 'f':
+          result.push_back('\f');
+          break;
+        case 'n':
+          result.push_back('\n');
+          break;
+        case 'r':
+          result.push_back('\r');
+          break;
+        case 't':
+          result.push_back('\t');
+          break;
+        case 'u': {
+          if (*pos + 4 >= input.size()) return false;
+          int code = 0;
+          for (int i = 0; i < 4; ++i) {
+            char h = input[*pos + 1 + i];
+            code <<= 4;
+            if (h >= '0' && h <= '9')
+              code += h - '0';
+            else if (h >= 'a' && h <= 'f')
+              code += 10 + (h - 'a');
+            else if (h >= 'A' && h <= 'F')
+              code += 10 + (h - 'A');
+            else
+              return false;
+          }
+          if (code <= 0x7F)
+            result.push_back(static_cast<char>(code));
+          else
+            result.push_back('?');
+          *pos += 4;
+          break;
+        }
+        default:
+          return false;
+      }
+      ++(*pos);
+      continue;
+    }
+    result.push_back(c);
+    ++(*pos);
+  }
+  return false;
+}
+
+static bool ParseNumber(const std::string& input, size_t* pos,
+                        std::string* out) {
+  SkipWhitespace(input, pos);
+  size_t start = *pos;
+  if (*pos < input.size() && input[*pos] == '-') ++(*pos);
+  bool has_digits = false;
+  while (*pos < input.size() &&
+         std::isdigit(static_cast<unsigned char>(input[*pos]))) {
+    has_digits = true;
+    ++(*pos);
+  }
+  if (!has_digits) return false;
+  *out = input.substr(start, *pos - start);
+  return true;
+}
+
+static bool ParseValue(const std::string& input, size_t* pos, JsonValue* out);
+
+static bool ParseArray(const std::string& input, size_t* pos, JsonValue* out) {
+  if (!ConsumeChar(input, pos, '[')) return false;
+  JsonValue value;
+  value.type = JsonValue::Type::kArray;
+  SkipWhitespace(input, pos);
+  if (*pos < input.size() && input[*pos] == ']') {
+    ++(*pos);
+    *out = std::move(value);
+    return true;
+  }
+  while (true) {
+    JsonValue element;
+    if (!ParseValue(input, pos, &element)) return false;
+    value.array_value.push_back(std::move(element));
+    SkipWhitespace(input, pos);
+    if (*pos < input.size() && input[*pos] == ']') {
+      ++(*pos);
+      *out = std::move(value);
+      return true;
+    }
+    if (!ConsumeChar(input, pos, ',')) return false;
+  }
+}
+
+static bool ParseObject(const std::string& input, size_t* pos, JsonValue* out) {
+  if (!ConsumeChar(input, pos, '{')) return false;
+  JsonValue value;
+  value.type = JsonValue::Type::kObject;
+  SkipWhitespace(input, pos);
+  if (*pos < input.size() && input[*pos] == '}') {
+    ++(*pos);
+    *out = std::move(value);
+    return true;
+  }
+  while (true) {
+    std::string key;
+    if (!ParseString(input, pos, &key)) return false;
+    if (!ConsumeChar(input, pos, ':')) return false;
+    JsonValue element;
+    if (!ParseValue(input, pos, &element)) return false;
+    value.object_value.emplace(std::move(key), std::move(element));
+    SkipWhitespace(input, pos);
+    if (*pos < input.size() && input[*pos] == '}') {
+      ++(*pos);
+      *out = std::move(value);
+      return true;
+    }
+    if (!ConsumeChar(input, pos, ',')) return false;
+  }
+}
+
+static bool ParseValue(const std::string& input, size_t* pos, JsonValue* out) {
+  SkipWhitespace(input, pos);
+  if (*pos >= input.size()) return false;
+  char c = input[*pos];
+  if (c == '"') {
+    std::string s;
+    if (!ParseString(input, pos, &s)) return false;
+    out->type = JsonValue::Type::kString;
+    out->string_value = std::move(s);
+    return true;
+  }
+  if (c == '{') return ParseObject(input, pos, out);
+  if (c == '[') return ParseArray(input, pos, out);
+  if (c == '-' || std::isdigit(static_cast<unsigned char>(c))) {
+    std::string number;
+    if (!ParseNumber(input, pos, &number)) return false;
+    out->type = JsonValue::Type::kNumber;
+    out->number_value = std::move(number);
+    return true;
+  }
+  if (input.compare(*pos, 4, "true") == 0) {
+    *pos += 4;
+    out->type = JsonValue::Type::kBool;
+    out->bool_value = true;
+    return true;
+  }
+  if (input.compare(*pos, 5, "false") == 0) {
+    *pos += 5;
+    out->type = JsonValue::Type::kBool;
+    out->bool_value = false;
+    return true;
+  }
+  if (input.compare(*pos, 4, "null") == 0) {
+    *pos += 4;
+    out->type = JsonValue::Type::kNull;
+    return true;
+  }
+  return false;
+}
+
+static std::string HexEncode(const std::string& input) {
+  std::ostringstream out;
+  out << std::hex << std::setfill('0');
+  for (unsigned char c : input) {
+    out << std::setw(2) << static_cast<int>(c);
+  }
+  return out.str();
+}
+
+static bool HexDecode(const std::string& input, std::string* out) {
+  if (input.size() % 2 != 0) return false;
+  std::string result;
+  result.reserve(input.size() / 2);
+  for (size_t i = 0; i < input.size(); i += 2) {
+    char hi = input[i];
+    char lo = input[i + 1];
+    auto to_val = [](char ch) -> int {
+      if (ch >= '0' && ch <= '9') return ch - '0';
+      if (ch >= 'a' && ch <= 'f') return 10 + (ch - 'a');
+      if (ch >= 'A' && ch <= 'F') return 10 + (ch - 'A');
+      return -1;
+    };
+    int h = to_val(hi);
+    int l = to_val(lo);
+    if (h < 0 || l < 0) return false;
+    result.push_back(static_cast<char>((h << 4) | l));
+  }
+  *out = std::move(result);
+  return true;
+}
+
+static const char* TypeToString(ValueType type) {
+  switch (type) {
+    case ValueType::I8:
+      return "I8";
+    case ValueType::U8:
+      return "U8";
+    case ValueType::I16:
+      return "I16";
+    case ValueType::U16:
+      return "U16";
+    case ValueType::I32:
+      return "I32";
+    case ValueType::U32:
+      return "U32";
+    case ValueType::I64:
+      return "I64";
+    case ValueType::U64:
+      return "U64";
+    case ValueType::STR:
+      return "STR";
+    case ValueType::BLOB:
+      return "BLOB";
+  }
+  return "I32";
+}
+
+static bool TypeFromString(const std::string& value, ValueType* out) {
+  if (value == "I8") {
+    *out = ValueType::I8;
+    return true;
+  }
+  if (value == "U8") {
+    *out = ValueType::U8;
+    return true;
+  }
+  if (value == "I16") {
+    *out = ValueType::I16;
+    return true;
+  }
+  if (value == "U16") {
+    *out = ValueType::U16;
+    return true;
+  }
+  if (value == "I32") {
+    *out = ValueType::I32;
+    return true;
+  }
+  if (value == "U32") {
+    *out = ValueType::U32;
+    return true;
+  }
+  if (value == "I64") {
+    *out = ValueType::I64;
+    return true;
+  }
+  if (value == "U64") {
+    *out = ValueType::U64;
+    return true;
+  }
+  if (value == "STR") {
+    *out = ValueType::STR;
+    return true;
+  }
+  if (value == "BLOB") {
+    *out = ValueType::BLOB;
+    return true;
+  }
+  return false;
+}
+
+static void WriteIndent(std::ostringstream& out, int indent) {
+  for (int i = 0; i < indent; ++i) out << ' ';
+}
+
+static void WriteJsonString(std::ostringstream& out, const std::string& value) {
+  out << '"';
+  for (unsigned char c : value) {
+    switch (c) {
+      case '\\':
+        out << "\\\\";
+        break;
+      case '"':
+        out << "\\\"";
+        break;
+      case '\b':
+        out << "\\b";
+        break;
+      case '\f':
+        out << "\\f";
+        break;
+      case '\n':
+        out << "\\n";
+        break;
+      case '\r':
+        out << "\\r";
+        break;
+      case '\t':
+        out << "\\t";
+        break;
+      default:
+        if (c < 0x20) {
+          out << "\\u" << std::hex << std::setw(4) << std::setfill('0')
+              << static_cast<int>(c) << std::dec;
+        } else {
+          out << c;
+        }
+    }
+  }
+  out << '"';
+}
+
+static void WriteEntryValue(std::ostringstream& out, const EntryValue& value,
+                            int indent) {
+  out << "{\n";
+  WriteIndent(out, indent + 2);
+  out << "\"type\": ";
+  WriteJsonString(out, TypeToString(value.type));
+  out << ",\n";
+  WriteIndent(out, indent + 2);
+  if (value.type == ValueType::STR) {
+    out << "\"str\": ";
+    WriteJsonString(out, value.str_value);
+  } else if (value.type == ValueType::BLOB) {
+    out << "\"blob_hex\": ";
+    WriteJsonString(out, HexEncode(value.blob_value));
+  } else if (value.type == ValueType::U8 || value.type == ValueType::U16 ||
+             value.type == ValueType::U32 || value.type == ValueType::U64) {
+    out << "\"uint\": " << value.uint_value;
+  } else {
+    out << "\"sint\": " << value.sint_value;
+  }
+  out << "\n";
+  WriteIndent(out, indent);
+  out << "}";
+}
+
+static void WriteStorage(std::ostringstream& out, const NvsStorage& storage,
+                         int indent) {
+  out << "{\n";
+  WriteIndent(out, indent + 2);
+  out << "\"partitions\": {";
+  if (!storage.partitions.empty()) out << "\n";
+  bool first_part = true;
+  for (const auto& part_it : storage.partitions) {
+    if (!first_part) out << ",\n";
+    first_part = false;
+    WriteIndent(out, indent + 4);
+    WriteJsonString(out, part_it.first);
+    out << ": {\n";
+    WriteIndent(out, indent + 6);
+    out << "\"name_spaces\": {";
+    if (!part_it.second.name_spaces.empty()) out << "\n";
+    bool first_ns = true;
+    for (const auto& ns_it : part_it.second.name_spaces) {
+      if (!first_ns) out << ",\n";
+      first_ns = false;
+      WriteIndent(out, indent + 8);
+      WriteJsonString(out, ns_it.first);
+      out << ": {\n";
+      WriteIndent(out, indent + 10);
+      out << "\"entries\": {";
+      if (!ns_it.second.entries.empty()) out << "\n";
+      bool first_entry = true;
+      for (const auto& entry_it : ns_it.second.entries) {
+        if (!first_entry) out << ",\n";
+        first_entry = false;
+        WriteIndent(out, indent + 12);
+        WriteJsonString(out, entry_it.first);
+        out << ": ";
+        WriteEntryValue(out, entry_it.second, indent + 12);
+      }
+      if (!ns_it.second.entries.empty()) out << "\n";
+      WriteIndent(out, indent + 10);
+      out << "}";
+      out << "\n";
+      WriteIndent(out, indent + 8);
+      out << "}";
+    }
+    if (!part_it.second.name_spaces.empty()) out << "\n";
+    WriteIndent(out, indent + 6);
+    out << "}";
+    out << "\n";
+    WriteIndent(out, indent + 4);
+    out << "}";
+  }
+  if (!storage.partitions.empty()) out << "\n";
+  WriteIndent(out, indent + 2);
+  out << "}\n";
+  WriteIndent(out, indent);
+  out << "}";
+}
+
+static bool JsonToStorage(const JsonValue& root, NvsStorage* storage,
+                          std::string* error) {
+  if (root.type != JsonValue::Type::kObject) {
+    if (error) *error = "Root must be an object";
+    return false;
+  }
+  auto parts_it = root.object_value.find("partitions");
+  if (parts_it == root.object_value.end()) return true;
+  if (parts_it->second.type != JsonValue::Type::kObject) {
+    if (error) *error = "partitions must be an object";
+    return false;
+  }
+  for (const auto& part_pair : parts_it->second.object_value) {
+    if (part_pair.second.type != JsonValue::Type::kObject) continue;
+    PartitionStorage partition;
+    auto ns_it = part_pair.second.object_value.find("name_spaces");
+    if (ns_it != part_pair.second.object_value.end() &&
+        ns_it->second.type == JsonValue::Type::kObject) {
+      for (const auto& ns_pair : ns_it->second.object_value) {
+        if (ns_pair.second.type != JsonValue::Type::kObject) continue;
+        NamespaceStorage ns_storage;
+        auto entries_it = ns_pair.second.object_value.find("entries");
+        if (entries_it != ns_pair.second.object_value.end() &&
+            entries_it->second.type == JsonValue::Type::kObject) {
+          for (const auto& entry_pair : entries_it->second.object_value) {
+            if (entry_pair.second.type != JsonValue::Type::kObject) continue;
+            const auto& entry_obj = entry_pair.second.object_value;
+            auto type_it = entry_obj.find("type");
+            if (type_it == entry_obj.end() ||
+                type_it->second.type != JsonValue::Type::kString) {
+              if (error) *error = "entry missing type";
+              return false;
+            }
+            EntryValue entry;
+            if (!TypeFromString(type_it->second.string_value, &entry.type)) {
+              if (error) *error = "unknown entry type";
+              return false;
+            }
+            if (entry.type == ValueType::STR) {
+              auto str_it = entry_obj.find("str");
+              if (str_it == entry_obj.end() ||
+                  str_it->second.type != JsonValue::Type::kString) {
+                if (error) *error = "string entry missing str";
+                return false;
+              }
+              entry.str_value = str_it->second.string_value;
+            } else if (entry.type == ValueType::BLOB) {
+              auto blob_it = entry_obj.find("blob_hex");
+              if (blob_it == entry_obj.end() ||
+                  blob_it->second.type != JsonValue::Type::kString) {
+                if (error) *error = "blob entry missing blob_hex";
+                return false;
+              }
+              if (!HexDecode(blob_it->second.string_value, &entry.blob_value)) {
+                if (error) *error = "invalid blob_hex";
+                return false;
+              }
+            } else if (entry.type == ValueType::U8 ||
+                       entry.type == ValueType::U16 ||
+                       entry.type == ValueType::U32 ||
+                       entry.type == ValueType::U64) {
+              auto uint_it = entry_obj.find("uint");
+              if (uint_it == entry_obj.end() ||
+                  uint_it->second.type != JsonValue::Type::kNumber) {
+                if (error) *error = "unsigned entry missing uint";
+                return false;
+              }
+              entry.uint_value = std::stoull(uint_it->second.number_value);
+            } else {
+              auto sint_it = entry_obj.find("sint");
+              if (sint_it == entry_obj.end() ||
+                  sint_it->second.type != JsonValue::Type::kNumber) {
+                if (error) *error = "signed entry missing sint";
+                return false;
+              }
+              entry.sint_value = std::stoll(sint_it->second.number_value);
+            }
+            ns_storage.entries.emplace(entry_pair.first, std::move(entry));
+          }
+        }
+        partition.name_spaces.emplace(ns_pair.first, std::move(ns_storage));
+      }
+    }
+    storage->partitions.emplace(part_pair.first, std::move(partition));
+  }
+  return true;
+}
+
+}  // namespace
+
 class NvsImpl {
  public:
   struct Handle {
@@ -126,26 +692,37 @@ class NvsImpl {
       std::cout << "NVS storage file opened: " << path << std::endl;
       std::string val((std::istreambuf_iterator<char>(input_file)),
                       std::istreambuf_iterator<char>());
-
-      if (!TextFormat::ParseFromString(val, &storage_)) {
-        std::cerr << "Could not parse - '" << path << "'" << std::endl;
+      JsonValue root;
+      size_t pos = 0;
+      if (!ParseValue(val, &pos, &root)) {
+        std::cerr << "Could not parse JSON - '" << path << "'" << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      SkipWhitespace(val, &pos);
+      if (pos != val.size()) {
+        std::cerr << "Trailing data after JSON in '" << path << "'"
+                  << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      std::string error;
+      if (!JsonToStorage(root, &storage_, &error)) {
+        std::cerr << "Could not parse NVS JSON - '" << path << "': " << error
+                  << std::endl;
         exit(EXIT_FAILURE);
       }
     }
   }
 
   esp_err_t init(const char* partition_name) {
-    (*storage_.mutable_partitions())[partition_name];
+    storage_.partitions[partition_name];
     save();
     return ESP_OK;
   }
 
   void save() {
-    std::string val;
-    if (!TextFormat::PrintToString(storage_, &val)) {
-      std::cerr << "Could not print" << std::endl;
-      exit(EXIT_FAILURE);
-    }
+    std::ostringstream out;
+    WriteStorage(out, storage_, 0);
+    std::string val = out.str();
     std::ofstream output_file(path_);
     output_file << val;
     output_file.close();
@@ -153,16 +730,15 @@ class NvsImpl {
 
   esp_err_t open(const char* part_name, const char* name, bool readonly,
                  nvs_handle_t* out_handle) {
-    if (!storage_.mutable_partitions()->contains(part_name)) {
+    if (storage_.partitions.find(part_name) == storage_.partitions.end()) {
       return ESP_ERR_NVS_PART_NOT_FOUND;
     }
-    roo_testing::esp32::nvs::Partition& part =
-        (*storage_.mutable_partitions())[part_name];
-    if (!part.mutable_name_spaces()->contains(name)) {
+    PartitionStorage& part = storage_.partitions[part_name];
+    if (part.name_spaces.find(name) == part.name_spaces.end()) {
       if (readonly) {
         return ESP_ERR_NVS_NOT_FOUND;
       }
-      (*part.mutable_name_spaces())[name];
+      part.name_spaces[name];
     }
     int id = next_id_++;
     Handle handle = {
@@ -175,8 +751,7 @@ class NvsImpl {
     return ESP_OK;
   }
 
-  esp_err_t set(nvs_handle_t handle, const char* key,
-                roo_testing::esp32::nvs::EntryValue val) {
+  esp_err_t set(nvs_handle_t handle, const char* key, EntryValue val) {
     if (open_partitions_.find(handle) == open_partitions_.end()) {
       return ESP_ERR_NVS_INVALID_HANDLE;
     }
@@ -187,15 +762,13 @@ class NvsImpl {
     if (strlen(key) > 15) {
       return ESP_ERR_NVS_INVALID_NAME;
     }
-    (*(*(*storage_.mutable_partitions())[h.partition_name]
-            .mutable_name_spaces())[h.ns_name]
-          .mutable_entries())[key] = std::move(val);
+    storage_.partitions[h.partition_name].name_spaces[h.ns_name].entries[key] =
+        std::move(val);
     return ESP_OK;
   }
 
-  esp_err_t get(nvs_handle_t handle, const char* key,
-                roo_testing::esp32::nvs::Type expected_type,
-                roo_testing::esp32::nvs::EntryValue& val) {
+  esp_err_t get(nvs_handle_t handle, const char* key, ValueType expected_type,
+                EntryValue& val) {
     if (open_partitions_.find(handle) == open_partitions_.end()) {
       return ESP_ERR_NVS_INVALID_HANDLE;
     }
@@ -203,14 +776,13 @@ class NvsImpl {
     if (strlen(key) > 15) {
       return ESP_ERR_NVS_INVALID_NAME;
     }
-    auto& entries = *(*(*storage_.mutable_partitions())[h.partition_name]
-                           .mutable_name_spaces())[h.ns_name]
-                         .mutable_entries();
-    if (!entries.contains(key)) {
+    auto& entries =
+        storage_.partitions[h.partition_name].name_spaces[h.ns_name].entries;
+    if (entries.find(key) == entries.end()) {
       return ESP_ERR_NVS_NOT_FOUND;
     }
     const auto& entry = entries[key];
-    if (entry.type() != expected_type) {
+    if (entry.type != expected_type) {
       return ESP_ERR_NVS_TYPE_MISMATCH;
     }
     val = entry;
@@ -230,10 +802,8 @@ class NvsImpl {
     if (strlen(key) > 15) {
       return ESP_ERR_NVS_INVALID_NAME;
     }
-    (*(*(*storage_.mutable_partitions())[h.partition_name]
-            .mutable_name_spaces())[h.ns_name]
-          .mutable_entries())
-        .erase(key);
+    storage_.partitions[h.partition_name].name_spaces[h.ns_name].entries.erase(
+        key);
     return ESP_OK;
   }
 
@@ -245,15 +815,14 @@ class NvsImpl {
     if (h.readonly) {
       return ESP_ERR_NVS_READ_ONLY;
     }
-    (*(*storage_.mutable_partitions())[h.partition_name]
-          .mutable_name_spaces())[h.ns_name]
-        .mutable_entries()
-        ->clear();
+    storage_.partitions[h.partition_name]
+        .name_spaces[h.ns_name]
+        .entries.clear();
     return ESP_OK;
   }
 
  private:
-  roo_testing::esp32::nvs::Nvs storage_;
+  NvsStorage storage_;
   std::string path_;
   std::map<int, Handle> open_partitions_;
   int next_id_;
@@ -275,149 +844,149 @@ esp_err_t Nvs::open(const char* part_name, const char* name, bool readonly,
 }
 
 esp_err_t Nvs::set_i8(nvs_handle_t handle, const char* key, int8_t value) {
-  roo_testing::esp32::nvs::EntryValue val;
-  val.set_type(roo_testing::esp32::nvs::I8);
-  val.set_sint_value(value);
+  EntryValue val;
+  val.type = ValueType::I8;
+  val.sint_value = value;
   return impl_->set(handle, key, std::move(val));
 }
 
 esp_err_t Nvs::set_u8(nvs_handle_t handle, const char* key, uint8_t value) {
-  roo_testing::esp32::nvs::EntryValue val;
-  val.set_type(roo_testing::esp32::nvs::U8);
-  val.set_uint_value(value);
+  EntryValue val;
+  val.type = ValueType::U8;
+  val.uint_value = value;
   return impl_->set(handle, key, std::move(val));
 }
 
 esp_err_t Nvs::set_i16(nvs_handle_t handle, const char* key, int16_t value) {
-  roo_testing::esp32::nvs::EntryValue val;
-  val.set_type(roo_testing::esp32::nvs::I16);
-  val.set_sint_value(value);
+  EntryValue val;
+  val.type = ValueType::I16;
+  val.sint_value = value;
   return impl_->set(handle, key, std::move(val));
 }
 
 esp_err_t Nvs::set_u16(nvs_handle_t handle, const char* key, uint16_t value) {
-  roo_testing::esp32::nvs::EntryValue val;
-  val.set_type(roo_testing::esp32::nvs::U16);
-  val.set_uint_value(value);
+  EntryValue val;
+  val.type = ValueType::U16;
+  val.uint_value = value;
   return impl_->set(handle, key, std::move(val));
 }
 
 esp_err_t Nvs::set_i32(nvs_handle_t handle, const char* key, int32_t value) {
-  roo_testing::esp32::nvs::EntryValue val;
-  val.set_type(roo_testing::esp32::nvs::I32);
-  val.set_sint_value(value);
+  EntryValue val;
+  val.type = ValueType::I32;
+  val.sint_value = value;
   return impl_->set(handle, key, std::move(val));
 }
 
 esp_err_t Nvs::set_u32(nvs_handle_t handle, const char* key, uint32_t value) {
-  roo_testing::esp32::nvs::EntryValue val;
-  val.set_type(roo_testing::esp32::nvs::U32);
-  val.set_uint_value(value);
+  EntryValue val;
+  val.type = ValueType::U32;
+  val.uint_value = value;
   return impl_->set(handle, key, std::move(val));
 }
 
 esp_err_t Nvs::set_i64(nvs_handle_t handle, const char* key, int64_t value) {
-  roo_testing::esp32::nvs::EntryValue val;
-  val.set_type(roo_testing::esp32::nvs::I64);
-  val.set_sint_value(value);
+  EntryValue val;
+  val.type = ValueType::I64;
+  val.sint_value = value;
   return impl_->set(handle, key, std::move(val));
 }
 
 esp_err_t Nvs::set_u64(nvs_handle_t handle, const char* key, uint64_t value) {
-  roo_testing::esp32::nvs::EntryValue val;
-  val.set_type(roo_testing::esp32::nvs::U64);
-  val.set_uint_value(value);
+  EntryValue val;
+  val.type = ValueType::U64;
+  val.uint_value = value;
   return impl_->set(handle, key, std::move(val));
 }
 
 esp_err_t Nvs::set_str(nvs_handle_t handle, const char* key,
                        const char* value) {
-  roo_testing::esp32::nvs::EntryValue val;
-  val.set_type(roo_testing::esp32::nvs::STR);
-  val.set_str_value(value);
+  EntryValue val;
+  val.type = ValueType::STR;
+  val.str_value = value;
   return impl_->set(handle, key, std::move(val));
 }
 
 esp_err_t Nvs::set_blob(nvs_handle_t handle, const char* key, const void* value,
                         size_t length) {
-  roo_testing::esp32::nvs::EntryValue val;
-  val.set_type(roo_testing::esp32::nvs::BLOB);
-  val.set_blob_value(std::string((const char*)value, length));
+  EntryValue val;
+  val.type = ValueType::BLOB;
+  val.blob_value = std::string((const char*)value, length);
   return impl_->set(handle, key, std::move(val));
 }
 
 esp_err_t Nvs::get_i8(nvs_handle_t handle, const char* key, int8_t* value) {
-  roo_testing::esp32::nvs::EntryValue val;
-  esp_err_t err = impl_->get(handle, key, roo_testing::esp32::nvs::I8, val);
+  EntryValue val;
+  esp_err_t err = impl_->get(handle, key, ValueType::I8, val);
   if (err != ESP_OK) return err;
-  *value = val.sint_value();
+  *value = val.sint_value;
   return ESP_OK;
 }
 
 esp_err_t Nvs::get_u8(nvs_handle_t handle, const char* key, uint8_t* value) {
-  roo_testing::esp32::nvs::EntryValue val;
-  esp_err_t err = impl_->get(handle, key, roo_testing::esp32::nvs::U8, val);
+  EntryValue val;
+  esp_err_t err = impl_->get(handle, key, ValueType::U8, val);
   if (err != ESP_OK) return err;
-  *value = val.uint_value();
+  *value = val.uint_value;
   return ESP_OK;
 }
 
 esp_err_t Nvs::get_i16(nvs_handle_t handle, const char* key, int16_t* value) {
-  roo_testing::esp32::nvs::EntryValue val;
-  esp_err_t err = impl_->get(handle, key, roo_testing::esp32::nvs::I16, val);
+  EntryValue val;
+  esp_err_t err = impl_->get(handle, key, ValueType::I16, val);
   if (err != ESP_OK) return err;
-  *value = val.sint_value();
+  *value = val.sint_value;
   return ESP_OK;
 }
 
 esp_err_t Nvs::get_u16(nvs_handle_t handle, const char* key, uint16_t* value) {
-  roo_testing::esp32::nvs::EntryValue val;
-  esp_err_t err = impl_->get(handle, key, roo_testing::esp32::nvs::U16, val);
+  EntryValue val;
+  esp_err_t err = impl_->get(handle, key, ValueType::U16, val);
   if (err != ESP_OK) return err;
-  *value = val.uint_value();
+  *value = val.uint_value;
   return ESP_OK;
 }
 
 esp_err_t Nvs::get_i32(nvs_handle_t handle, const char* key, int32_t* value) {
-  roo_testing::esp32::nvs::EntryValue val;
-  esp_err_t err = impl_->get(handle, key, roo_testing::esp32::nvs::I32, val);
+  EntryValue val;
+  esp_err_t err = impl_->get(handle, key, ValueType::I32, val);
   if (err != ESP_OK) return err;
-  *value = val.sint_value();
+  *value = val.sint_value;
   return ESP_OK;
 }
 
 esp_err_t Nvs::get_u32(nvs_handle_t handle, const char* key, uint32_t* value) {
-  roo_testing::esp32::nvs::EntryValue val;
-  esp_err_t err = impl_->get(handle, key, roo_testing::esp32::nvs::U32, val);
+  EntryValue val;
+  esp_err_t err = impl_->get(handle, key, ValueType::U32, val);
   if (err != ESP_OK) return err;
-  *value = val.uint_value();
+  *value = val.uint_value;
   return ESP_OK;
 }
 
 esp_err_t Nvs::get_i64(nvs_handle_t handle, const char* key, int64_t* value) {
-  roo_testing::esp32::nvs::EntryValue val;
-  esp_err_t err = impl_->get(handle, key, roo_testing::esp32::nvs::I64, val);
+  EntryValue val;
+  esp_err_t err = impl_->get(handle, key, ValueType::I64, val);
   if (err != ESP_OK) return err;
-  *value = val.sint_value();
+  *value = val.sint_value;
   return ESP_OK;
 }
 
 esp_err_t Nvs::get_u64(nvs_handle_t handle, const char* key, uint64_t* value) {
-  roo_testing::esp32::nvs::EntryValue val;
-  esp_err_t err = impl_->get(handle, key, roo_testing::esp32::nvs::U64, val);
+  EntryValue val;
+  esp_err_t err = impl_->get(handle, key, ValueType::U64, val);
   if (err != ESP_OK) return err;
-  *value = val.uint_value();
+  *value = val.uint_value;
   return ESP_OK;
 }
 
 esp_err_t Nvs::get_str(nvs_handle_t handle, const char* key, char* value,
                        size_t* length) {
-  roo_testing::esp32::nvs::EntryValue val;
-  esp_err_t err = impl_->get(handle, key, roo_testing::esp32::nvs::STR, val);
+  EntryValue val;
+  esp_err_t err = impl_->get(handle, key, ValueType::STR, val);
   if (err != ESP_OK) return err;
-  size_t actual = std::max(*length, val.str_value().size() + 1);
+  size_t actual = std::max(*length, val.str_value.size() + 1);
   if (value != nullptr) {
-    memcpy(value, val.str_value().c_str(), actual);
+    memcpy(value, val.str_value.c_str(), actual);
   }
   *length = actual;
   return ESP_OK;
@@ -425,12 +994,12 @@ esp_err_t Nvs::get_str(nvs_handle_t handle, const char* key, char* value,
 
 esp_err_t Nvs::get_blob(nvs_handle_t handle, const char* key, char* value,
                         size_t* length) {
-  roo_testing::esp32::nvs::EntryValue val;
-  esp_err_t err = impl_->get(handle, key, roo_testing::esp32::nvs::BLOB, val);
+  EntryValue val;
+  esp_err_t err = impl_->get(handle, key, ValueType::BLOB, val);
   if (err != ESP_OK) return err;
-  size_t actual = std::max(*length, val.blob_value().size());
+  size_t actual = std::max(*length, val.blob_value.size());
   if (value != nullptr) {
-    memcpy(value, val.blob_value().c_str(), actual);
+    memcpy(value, val.blob_value.c_str(), actual);
   }
   *length = actual;
   return ESP_OK;

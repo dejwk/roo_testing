@@ -1,16 +1,5 @@
-load("@protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
-load("@protobuf//bazel:proto_library.bzl", "proto_library")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
-
-proto_library(
-    name = "nvs_proto",
-    srcs = ["storage.proto"],
-)
-
-cc_proto_library(
-    name = "nvs_cc_proto",
-    deps = [":nvs_proto"],
-)
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
 cc_library(
     name = "esp32",
@@ -32,7 +21,6 @@ cc_library(
     linkstatic = 1,
     visibility = ["//visibility:public"],
     deps = [
-        ":nvs_cc_proto",
         "//roo_testing/buses/esp_now",
         "//roo_testing/buses/gpio",
         "//roo_testing/buses/i2c",
@@ -44,5 +32,20 @@ cc_library(
         "//roo_testing/transducers/time",
         "//roo_testing/transducers/wifi",
         "@glog",
+    ],
+)
+
+cc_library(
+    name = "nvs_storage",
+    srcs = ["fake_esp32_nvs.cpp"],
+    hdrs = ["fake_esp32_nvs.h"],
+)
+
+cc_test(
+    name = "fake_esp32_nvs_test",
+    srcs = ["fake_esp32_nvs_test.cpp"],
+    deps = [
+        ":nvs_storage",
+        "@googletest//:gtest_main",
     ],
 )

@@ -5,9 +5,9 @@ cc_test(
     srcs = ["gpio_test.cpp"],
     linkstatic = 1,
     deps = [
+        "//:arduino_gtest_main",
         "//roo_testing/buses/gpio",
         "//roo_testing/transducers/voltage",
-        "//:arduino_gtest_main",
     ],
 )
 
@@ -16,10 +16,10 @@ cc_test(
     srcs = ["onewire_test.cpp"],
     linkstatic = 1,
     deps = [
+        "//:arduino_gtest_main",
         "//roo_testing/buses/onewire",
         "//roo_testing/devices/onewire/thermometer",
         "//roo_testing/transducers/temperature",
-        "//:arduino_gtest_main",
     ],
 )
 
@@ -28,8 +28,8 @@ cc_test(
     srcs = ["rtc_ds3231_i2c_test.cpp"],
     linkstatic = 1,
     deps = [
-        "//roo_testing/devices/clock/ds3231",
         "//:arduino_gtest_main",
+        "//roo_testing/devices/clock/ds3231",
     ],
 )
 
@@ -38,8 +38,8 @@ cc_test(
     srcs = ["simple_test.cpp"],
     linkstatic = 1,
     deps = [
-        "//roo_testing/system:timer",
         "//:arduino_gtest_main",
+        "//roo_testing/system:timer",
     ],
 )
 
@@ -48,7 +48,7 @@ cc_test(
     srcs = ["nvs_test.cpp"],
     linkstatic = 1,
     deps = [
-        "//roo_testing/microcontrollers/esp32:nvs_storage",
         "//:arduino_gtest_main",
+        "//roo_testing/microcontrollers/esp32:nvs_storage",
     ],
 )

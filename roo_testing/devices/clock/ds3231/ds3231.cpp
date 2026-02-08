@@ -1,9 +1,10 @@
+#include "roo_testing/devices/clock/ds3231/ds3231.h"
+
 #include <assert.h>
 #include <time.h>
 
 #include <cstring>
 
-#include "roo_testing/devices/clock/ds3231/ds3231.h"
 #include "roo_testing/transducers/time/clock.h"
 
 using roo_testing_transducers::FixedThermometer;
@@ -112,6 +113,9 @@ void FakeDs3231::flush() {
   bool alarm2_written = registers_written_[0x0B] || registers_written_[0x0C] ||
                         registers_written_[0x0D];
   bool control_written = registers_written_[0x0E] || registers_written_[0x0F];
+  (void)alarm1_written;
+  (void)alarm2_written;
+  (void)control_written;
   if (time_written) {
     struct tm t;
     t.tm_sec = bcd2dec(registers_[0x00]);

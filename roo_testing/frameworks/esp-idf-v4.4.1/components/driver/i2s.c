@@ -1076,7 +1076,7 @@ static esp_err_t i2s_calculate_pdm_rx_clock(int i2s_num, i2s_hal_clock_cfg_t *cl
     ESP_RETURN_ON_FALSE(clk_cfg, ESP_ERR_INVALID_ARG, TAG, "input clk_cfg is NULL");
     ESP_RETURN_ON_FALSE(p_i2s[i2s_num]->hal_cfg.mode & I2S_MODE_PDM, ESP_ERR_INVALID_ARG, TAG, "current mode is not PDM");
 
-    i2s_pdm_dsr_t dsr;
+    i2s_pdm_dsr_t dsr = I2S_PDM_DSR_16S;
     i2s_hal_get_rx_pdm_dsr(&(p_i2s[i2s_num]->hal), &dsr);
     /* Set I2S bit clock */
     clk_cfg->bclk = p_i2s[i2s_num]->hal_cfg.sample_rate * I2S_LL_PDM_BCK_FACTOR * (dsr == I2S_PDM_DSR_16S ? 2 : 1);

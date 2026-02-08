@@ -34,6 +34,11 @@
 #include "esp_rom_sys.h"
 #include "hal/cpu_hal.h"
 
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wbuiltin-declaration-mismatch"
+#endif
+
 
 struct source_location {
     const char *file_name;
@@ -287,6 +292,10 @@ void __ubsan_handle_invalid_builtin(struct invalid_builtin_data *data)
     __ubsan_maybe_debugbreak();
     __ubsan_default_handler(&data->loc, __func__);
 }
+
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 /* Hook for the linker to include this object file */
 void __ubsan_include(void)

@@ -1,12 +1,12 @@
 #include "fake_esp32_adc.h"
 
 #include "fake_esp32.h"
-
 #include "glog/logging.h"
 
 Esp32Adc::Esp32Adc(FakeEsp32Board& board, std::vector<int8_t> channel_to_pin)
-    : board_(board),
-      channel_to_pin_(std::move(channel_to_pin)) {}
+    : board_(board), channel_to_pin_(std::move(channel_to_pin)), width_(3) {
+  std::fill_n(attenuation_, 10, 0);
+}
 
 void Esp32Adc::setWidth(uint8_t width) {
   DCHECK_GE(width, 0);
@@ -27,7 +27,7 @@ uint8_t Esp32Adc::getAttenuation(uint8_t channel) {
 int16_t Esp32Adc::convert(int channel) {
   int8_t pin = channel_to_pin_[channel];
   float voltage = board_.gpio.get(pin).read();
-  int16_t value;
+  int16_t value = 0;
   switch (attenuation_[channel]) {
     // https://people.eecs.berkeley.edu/~boser/courses/49_sp_2019/N_gpio.html
     case 0: {
@@ -77,6 +77,10 @@ int16_t Esp32Adc::convert(int channel) {
       } else {
         value = 4095;
       }
+      break;
+    }
+    default: {
+      value = 0;
       break;
     }
   }

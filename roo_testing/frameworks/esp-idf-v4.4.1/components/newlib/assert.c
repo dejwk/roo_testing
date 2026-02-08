@@ -42,7 +42,7 @@ static inline void ra_to_str(char *addr)
 }
 
 static void __attribute__((noreturn)) esp_system_abort(const char* buf) {
-  printf(buf);
+  printf("%s", buf);
   exit(1);
 }
 

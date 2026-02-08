@@ -21,6 +21,7 @@
 #include "Esp.h"
 #include "esp_sleep.h"
 #include "esp_spi_flash.h"
+#include <cstring>
 #include <memory>
 #include <soc/soc.h>
 #include <esp_partition.h>
@@ -319,7 +320,12 @@ const char * EspClass::getSdkVersion(void)
 uint32_t EspClass::getFlashChipSize(void)
 {
     esp_image_header_t fhdr;
-    if(flashRead(ESP_FLASH_IMAGE_BASE, (uint32_t*)&fhdr, sizeof(esp_image_header_t)) && fhdr.magic != ESP_IMAGE_HEADER_MAGIC) {
+    uint32_t header_words[(sizeof(esp_image_header_t) + 3) / 4] = {0};
+    if (!flashRead(ESP_FLASH_IMAGE_BASE, header_words, sizeof(esp_image_header_t))) {
+        return 0;
+    }
+    std::memcpy(&fhdr, header_words, sizeof(esp_image_header_t));
+    if (fhdr.magic != ESP_IMAGE_HEADER_MAGIC) {
         return 0;
     }
     return magicFlashChipSize(fhdr.spi_size);
@@ -328,7 +334,12 @@ uint32_t EspClass::getFlashChipSize(void)
 uint32_t EspClass::getFlashChipSpeed(void)
 {
     esp_image_header_t fhdr;
-    if(flashRead(ESP_FLASH_IMAGE_BASE, (uint32_t*)&fhdr, sizeof(esp_image_header_t)) && fhdr.magic != ESP_IMAGE_HEADER_MAGIC) {
+    uint32_t header_words[(sizeof(esp_image_header_t) + 3) / 4] = {0};
+    if (!flashRead(ESP_FLASH_IMAGE_BASE, header_words, sizeof(esp_image_header_t))) {
+        return 0;
+    }
+    std::memcpy(&fhdr, header_words, sizeof(esp_image_header_t));
+    if (fhdr.magic != ESP_IMAGE_HEADER_MAGIC) {
         return 0;
     }
     return magicFlashChipSpeed(fhdr.spi_speed);
@@ -337,7 +348,12 @@ uint32_t EspClass::getFlashChipSpeed(void)
 FlashMode_t EspClass::getFlashChipMode(void)
 {
     esp_image_header_t fhdr;
-    if(flashRead(ESP_FLASH_IMAGE_BASE, (uint32_t*)&fhdr, sizeof(esp_image_header_t)) && fhdr.magic != ESP_IMAGE_HEADER_MAGIC) {
+    uint32_t header_words[(sizeof(esp_image_header_t) + 3) / 4] = {0};
+    if (!flashRead(ESP_FLASH_IMAGE_BASE, header_words, sizeof(esp_image_header_t))) {
+        return FM_UNKNOWN;
+    }
+    std::memcpy(&fhdr, header_words, sizeof(esp_image_header_t));
+    if (fhdr.magic != ESP_IMAGE_HEADER_MAGIC) {
         return FM_UNKNOWN;
     }
     return magicFlashChipMode(fhdr.spi_mode);

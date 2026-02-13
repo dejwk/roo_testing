@@ -40,7 +40,7 @@
 int64_t IRAM_ATTR __attribute__((weak)) esp_system_get_time(void)
 {
     int64_t t = 0;
-    t = (esp_rtc_get_time_us() - g_startup_time);
+    // t = (esp_rtc_get_time_us() - g_startup_time);
     return t;
 }
 

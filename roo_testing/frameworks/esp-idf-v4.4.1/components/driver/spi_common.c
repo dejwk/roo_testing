@@ -34,6 +34,10 @@
 
 static const char *SPI_TAG = "spi";
 
+#ifndef ATOMIC_VAR_INIT
+#define ATOMIC_VAR_INIT(value) (value)
+#endif
+
 #define SPI_CHECK(a, str, ret_val) do { \
     if (!(a)) { \
         ESP_LOGE(SPI_TAG,"%s(%d): %s", __FUNCTION__, __LINE__, str); \

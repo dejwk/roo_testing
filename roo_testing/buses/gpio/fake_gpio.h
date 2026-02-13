@@ -75,8 +75,7 @@ class FakeGpioInterface {
 
   // Attaches a voltage sink. Takes ownership.
   void attachOutput(
-      int pin,
-      std::unique_ptr<roo_testing_transducers::VoltageSink> voltage);
+      int pin, std::unique_ptr<roo_testing_transducers::VoltageSink> voltage);
 
   // Attaches a voltage source. Does not take ownership.
   void attachInput(int pin,

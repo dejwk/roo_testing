@@ -67,7 +67,7 @@ class FakeXpt2046Spi : public SimpleFakeSpiDevice {
       // Ignore the operand in this case.
       return (conversion_ >> 8);
     }
-    uint8_t result;
+    uint8_t result = 0;
     if (!conversion_requested_) {
       result = 0;
     } else if (conversion_bytes_returned_ == 1) {

@@ -4,6 +4,8 @@ cc_binary(
     name = "main",
     srcs = glob([
         "src/**/*.cpp",
+        "lib/**/src/*.h",
+        "lib/**/src/*.cpp",
     ]),
     includes = [
         "lib/Arduino-DS3231/src",

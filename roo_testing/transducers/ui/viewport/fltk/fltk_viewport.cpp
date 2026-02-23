@@ -85,7 +85,6 @@ Message createDrawRectMsg(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
                           const uint32_t* color_argb) {
   Message message;
   message.type = Message::DRAWRECT;
-  size_t count = (x1 - x0 + 1) * (y1 - y0 + 1);
   message.content.drawrect =
       Message::Content::DrawRectMessage(x0, y0, x1, y1, color_argb);
   return message;
@@ -341,10 +340,11 @@ class Device {
 #ifdef FLTK_DEVICE_NOISE_BITS
           color_rgbi ^= (rand() % (1 << FLTK_DEVICE_NOISE_BITS)) * 0x01010100;
 #endif
-          window_->drawRect(fillrect.x0, fillrect.y0, fillrect.x1, fillrect.y1, color_rgbi);
+          window_->drawRect(fillrect.x0, fillrect.y0, fillrect.x1, fillrect.y1,
+                            color_rgbi);
           // Also draw incrementally to avoid delays.
-          fl_rectf(fillrect.x0, fillrect.y0, fillrect.x1 - fillrect.x0 + 1, fillrect.y1 - fillrect.y0 + 1,
-                   color_rgbi);
+          fl_rectf(fillrect.x0, fillrect.y0, fillrect.x1 - fillrect.x0 + 1,
+                   fillrect.y1 - fillrect.y0 + 1, color_rgbi);
         } else if (msg.type == Message::DRAWRECT) {
           Message::Content::DrawRectMessage& drawrect = msg.content.drawrect;
           int16_t x0 = drawrect.x0;

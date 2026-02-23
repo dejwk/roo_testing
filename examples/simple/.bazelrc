@@ -1,1 +1,4 @@
 build --registry="https://raw.githubusercontent.com/dejwk/roo-registry/main/" --registry="https://bcr.bazel.build"
+
+build --copt -DARDUINO=10810
+build --copt -DROO_TESTING

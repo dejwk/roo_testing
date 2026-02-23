@@ -5,10 +5,6 @@ cc_binary(
     srcs = glob([
         "src/**/*.cpp",
     ]),
-    defines = [
-        "ROO_TESTING",
-        "ARDUINO=10805",
-    ],
     deps = [
         "@roo_display",
         "@roo_testing//roo_testing/devices/display/ili9486:spi",

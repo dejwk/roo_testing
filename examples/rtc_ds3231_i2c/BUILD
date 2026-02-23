@@ -5,10 +5,6 @@ cc_binary(
     srcs = glob([
         "src/**/*.cpp",
     ]),
-    defines = [
-        "ROO_TESTING",
-        "ARDUINO=10805",
-    ],
     includes = [
         "lib/Arduino-DS3231/src",
     ],

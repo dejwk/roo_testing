@@ -38,6 +38,7 @@ cc_library(
 test_suite(
     name = "all_tests",
     tests = [
+        "//test:freertos_posix_thread_join_regression_test",
         "//test:gpio_test",
         "//test:nvs_test",
         "//test:onewire_test",

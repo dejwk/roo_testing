@@ -57,3 +57,14 @@ cc_test(
         "//roo_testing/microcontrollers/esp32:nvs_storage",
     ],
 )
+
+cc_test(
+    name = "freertos_posix_thread_join_regression_test",
+    srcs = ["freertos_posix_thread_join_regression_test.cpp"],
+    linkstatic = 1,
+    size = "small",
+    deps = [
+        "//:arduino_gtest_main",
+        "//roo_testing/frameworks/esp-idf-v4.4.1/components/freertos",
+    ],
+)

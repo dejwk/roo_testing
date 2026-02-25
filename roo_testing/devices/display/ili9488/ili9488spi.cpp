@@ -59,6 +59,10 @@ void FakeIli9488Spi::handleCmd(uint8_t cmd) {
       cmd_done_ = true;
       break;
     }
+    case 0x13: {  // NORON.
+      cmd_done_ = true;
+      break;
+    }
     case 0x20: {  // INVOFF.
       is_inverted_ = false;
       cmd_done_ = true;
@@ -73,13 +77,33 @@ void FakeIli9488Spi::handleCmd(uint8_t cmd) {
       cmd_done_ = true;
       break;
     }
+    case 0x2A: {  // CASET.
+      // Expect 4 data bytes in handleData().
+      break;
+    }
+    case 0x2B: {  // PASET.
+      // Expect 4 data bytes in handleData().
+      break;
+    }
     case 0x2C: {  // RAMWR.
       x_cursor_ = x0_;
       y_cursor_ = y0_;
       cmd_done_ = true;
       break;
     }
+    case 0x36: {  // MADCTL.
+      // Expect 1 data byte in handleData().
+      break;
+    }
+    case 0x3A: {  // PIXSET.
+      // Expect 1 data byte in handleData().
+      break;
+    }
     default: {
+      // Treat unknown commands as no-operand to avoid spurious warnings.
+      LOG(WARNING) << "Received an unsupported command 0x" << std::hex
+                   << (int)cmd << ". Ignoring.";
+      cmd_done_ = true;
       break;
     }
   }

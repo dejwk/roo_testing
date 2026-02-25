@@ -2,7 +2,6 @@
 #include <signal.h>
 #include <stdlib.h>
 
-#include <chrono>
 #include <mutex>
 #include <queue>
 #include <thread>
@@ -324,7 +323,7 @@ class Device {
     Fl::screen_xywh(screen_x, screen_y, screen_w, screen_h);
     // Center the window on the primary screen.
     window_->position(screen_x + (screen_w - width) / 2,
-              screen_y + (screen_h - height) / 2);
+                      screen_y + (screen_h - height) / 2);
     window_->show();
     window_->make_current();
   }

@@ -1,16 +1,29 @@
 #pragma once
 
-#include <memory>
+#include <cstdint>
 
 #include "roo_testing/transducers/ui/viewport/viewport.h"
+
+#ifndef FLTK_DEVICE_NOISE_BITS
+#define FLTK_DEVICE_NOISE_BITS 0
+#endif
+
+#ifndef FLTK_MAX_PIXELS_PER_MS
+#define FLTK_MAX_PIXELS_PER_MS 0
+#endif
 
 namespace roo_testing_transducers {
 
 class EventQueue;
 
+struct FltkViewportOptions {
+  uint8_t noise_bits = FLTK_DEVICE_NOISE_BITS;
+  int max_pixels_per_ms = FLTK_MAX_PIXELS_PER_MS;
+};
+
 class FltkViewport : public Viewport {
  public:
-  FltkViewport();
+  explicit FltkViewport(FltkViewportOptions options = {});
 
   ~FltkViewport();
 
@@ -28,6 +41,7 @@ class FltkViewport : public Viewport {
 
  private:
   EventQueue* queue_;
+  const FltkViewportOptions options_;
 };
 
 }  // namespace roo_testing_transducers

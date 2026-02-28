@@ -2,6 +2,7 @@
 #include <signal.h>
 #include <stdlib.h>
 
+#include <chrono>
 #include <mutex>
 #include <queue>
 #include <thread>
@@ -22,6 +23,12 @@
 namespace roo_testing_transducers {
 
 class DeviceManager;
+
+int noiseSample(int noise_bits) {
+  if (noise_bits <= 0) return 0;
+  if (noise_bits > 8) noise_bits = 8;
+  return rand() % (1 << noise_bits);
+}
 
 DeviceManager* manager();
 
@@ -282,8 +289,6 @@ class MyWindow : public Fl_Window {
 
 /*****************************************************************************/
 
-int pixelCounter = 0;
-
 void FltkViewport::fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
                             uint32_t color_argb) {
   queue_->push(createFillRectMsg(x0, y0, x1, y1, color_argb));
@@ -294,7 +299,8 @@ void FltkViewport::drawRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
   queue_->push(createDrawRectMsg(x0, y0, x1, y1, color_argb));
 }
 
-FltkViewport::FltkViewport() : queue_(new EventQueue(100000)) {}
+FltkViewport::FltkViewport(FltkViewportOptions options)
+  : queue_(new EventQueue(100000)), options_(options) {}
 
 FltkViewport::~FltkViewport() { delete queue_; }
 
@@ -312,7 +318,12 @@ bool FltkViewport::isMouseClicked(int16_t* x, int16_t* y) {
 
 class Device {
  public:
-  Device(EventQueue* queue) : initialized_(false), queue_(queue) {}
+  Device(EventQueue* queue, FltkViewportOptions options)
+      : initialized_(false),
+        queue_(queue),
+        options_(options),
+        rate_window_start_(std::chrono::steady_clock::now()),
+        pixels_in_window_(0) {}
 
   void show(int width, int height) {
     window_.reset(new MyWindow(width, height, queue_));
@@ -344,14 +355,16 @@ class Device {
         if (msg.type == Message::FILLRECT) {
           Message::Content::FillRectMessage& fillrect = msg.content.fillrect;
           uint32_t color_rgbi = fillrect.color_argb << 8;
-#ifdef FLTK_DEVICE_NOISE_BITS
-          color_rgbi ^= (rand() % (1 << FLTK_DEVICE_NOISE_BITS)) * 0x01010100;
-#endif
+          if (options_.noise_bits > 0) {
+            color_rgbi ^= noiseSample(options_.noise_bits) * 0x01010100;
+          }
           window_->drawRect(fillrect.x0, fillrect.y0, fillrect.x1, fillrect.y1,
                             color_rgbi);
           // Also draw incrementally to avoid delays.
           fl_rectf(fillrect.x0, fillrect.y0, fillrect.x1 - fillrect.x0 + 1,
                    fillrect.y1 - fillrect.y0 + 1, color_rgbi);
+          pacePixels((fillrect.x1 - fillrect.x0 + 1) *
+                     (fillrect.y1 - fillrect.y0 + 1));
         } else if (msg.type == Message::DRAWRECT) {
           Message::Content::DrawRectMessage& drawrect = msg.content.drawrect;
           int16_t x0 = drawrect.x0;
@@ -362,13 +375,13 @@ class Device {
           for (int y = y0; y <= y1; y++) {
             for (int x = x0; x <= x1; x++) {
               uint32_t color_rgbi = *color_argb << 8;
-#ifdef FLTK_DEVICE_NOISE_BITS
-              color_rgbi ^=
-                  (rand() % (1 << FLTK_DEVICE_NOISE_BITS)) * 0x01010100;
-#endif
+              if (options_.noise_bits > 0) {
+                color_rgbi ^= noiseSample(options_.noise_bits) * 0x01010100;
+              }
               window_->drawPixel(x, y, color_rgbi);
               // Also draw incrementally to avoid delays.
               fl_rectf(x, y, 1, 1, color_rgbi);
+              pacePixels(1);
               color_argb++;
             }
           }
@@ -379,9 +392,35 @@ class Device {
   }
 
  private:
+  void pacePixels(int num_pixels) {
+    if (num_pixels <= 0) return;
+    if (options_.max_pixels_per_ms <= 0) return;
+
+    using namespace std::chrono_literals;
+    auto now = std::chrono::steady_clock::now();
+    if (now - rate_window_start_ >= 1ms) {
+      rate_window_start_ = now;
+      pixels_in_window_ = 0;
+    }
+    pixels_in_window_ += num_pixels;
+
+    while (pixels_in_window_ > options_.max_pixels_per_ms) {
+      now = std::chrono::steady_clock::now();
+      auto elapsed = now - rate_window_start_;
+      if (elapsed < 1ms) {
+        std::this_thread::sleep_for(1ms - elapsed);
+      }
+      rate_window_start_ = std::chrono::steady_clock::now();
+      pixels_in_window_ -= options_.max_pixels_per_ms;
+    }
+  }
+
   bool initialized_;
   std::unique_ptr<MyWindow> window_;
   EventQueue* queue_;
+  const FltkViewportOptions options_;
+  std::chrono::steady_clock::time_point rate_window_start_;
+  int pixels_in_window_;
 };
 
 extern "C" void* device_func(void* p);
@@ -415,9 +454,9 @@ class DeviceManager {
     exited_ = true;
   }
 
-  void addDevice(EventQueue* queue) {
+  void addDevice(EventQueue* queue, FltkViewportOptions options) {
     MutexLock lock(&device_mutex_);
-    device_.reset(new Device(queue));
+    device_.reset(new Device(queue, options));
     pthread_cond_signal(&nonempty_);
   }
 
@@ -471,7 +510,7 @@ DeviceManager* manager() {
 
 void FltkViewport::init(int16_t width, int16_t height) {
   Viewport::init(width, height);
-  manager()->addDevice(queue_);
+  manager()->addDevice(queue_, options_);
   queue_->push(createInitDisplayMsg(width, height));
   int16_t x1 = width - 1;
   int16_t y1 = height - 1;

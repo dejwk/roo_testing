@@ -115,20 +115,25 @@ class EventQueue {
         mutex_(PTHREAD_MUTEX_INITIALIZER),
         nonempty_(PTHREAD_COND_INITIALIZER),
         nonfull_(PTHREAD_COND_INITIALIZER),
+        mouse_mutex_(PTHREAD_MUTEX_INITIALIZER),
         mouse_x_(0),
         mouse_y_(0),
         mouse_pressed_(false) {}
 
   void push(Message message) {
-    MutexLock lock(&mutex_);
-    while (queue_.size() >= capacity_) {
-      pthread_cond_wait(&nonfull_, &mutex_);
+    {
+      MutexLock lock(&mutex_);
+      while (queue_.size() >= capacity_) {
+        pthread_cond_wait(&nonfull_, &mutex_);
+      }
+      if (queue_.empty()) {
+        pthread_cond_signal(&nonempty_);
+      }
+      queue_.push(message);
     }
-    if (queue_.empty()) {
-      pthread_cond_signal(&nonempty_);
-      Fl::awake();
-    }
-    queue_.push(message);
+    // Wake the FLTK thread whenever work arrives. This avoids a stall where
+    // the queue is non-empty but no wake event is pending.
+    Fl::awake();
   }
 
   bool empty() const {
@@ -184,14 +189,14 @@ class EventQueue {
   }
 
   void get_mouse_status(int16_t* x, int16_t* y, bool* pressed) const {
-    MutexLock lock(&mutex_);
+    MutexLock lock(&mouse_mutex_);
     *x = mouse_x_;
     *y = mouse_y_;
     *pressed = mouse_pressed_;
   }
 
   void set_mouse_status(int16_t x, int16_t y, bool pressed) {
-    MutexLock lock(&mutex_);
+    MutexLock lock(&mouse_mutex_);
     mouse_x_ = x;
     mouse_y_ = y;
     mouse_pressed_ = pressed;
@@ -203,6 +208,7 @@ class EventQueue {
   mutable pthread_mutex_t mutex_;
   pthread_cond_t nonempty_;
   pthread_cond_t nonfull_;
+  mutable pthread_mutex_t mouse_mutex_;
 
   int16_t mouse_x_, mouse_y_;
   bool mouse_pressed_;

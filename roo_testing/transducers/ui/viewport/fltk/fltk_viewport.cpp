@@ -306,7 +306,7 @@ void FltkViewport::drawRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
 }
 
 FltkViewport::FltkViewport(FltkViewportOptions options)
-  : queue_(new EventQueue(100000)), options_(options) {}
+    : queue_(new EventQueue(100000)), options_(options) {}
 
 FltkViewport::~FltkViewport() { delete queue_; }
 

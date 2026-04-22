@@ -63,8 +63,8 @@ void FlexViewport::drawRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
       int dest_sy = ty - dy0;
       for (int my = 0; my < magnification_; ++my) {
         for (int mx = 0; mx < magnification_; ++mx) {
-          dest[(dest_sy * magnification_ + my) * dw +
-               dest_sx * magnification_ + mx] = color;
+          dest[(dest_sy * magnification_ + my) * dw + dest_sx * magnification_ +
+               mx] = color;
         }
       }
     }

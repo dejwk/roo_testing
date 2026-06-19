@@ -65,7 +65,7 @@ typedef struct {
     adc_digi_pattern_config_t *adc_pattern; ///< List of configs for each ADC channel that will be used
     uint32_t sample_freq_hz;                /*!< The expected ADC sampling frequency in Hz. Please refer to `soc/soc_caps.h` to know available sampling frequency range*/
     adc_digi_convert_mode_t conv_mode;      ///< ADC DMA conversion mode, see `adc_digi_convert_mode_t`.
-    adc_digi_output_format_t format;        ///< ADC DMA conversion output format, see `adc_digi_output_format_t`.
+    adc_digi_output_format_t format __attribute__((deprecated));        ///< ADC DMA conversion output format, see `adc_digi_output_format_t`.
 } adc_continuous_config_t;
 
 /**

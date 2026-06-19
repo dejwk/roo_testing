@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -9,6 +9,7 @@
 #include <stdatomic.h>
 #include "sdkconfig.h"
 #include "esp_private/spi_share_hw_ctrl.h"
+#include "esp_private/critical_section.h"
 #include "esp_intr_alloc.h"
 #include "soc/soc_caps.h"
 #include "stdatomic.h"
@@ -266,7 +267,7 @@ struct spi_bus_lock_dev_t {
  */
 portMUX_TYPE s_spinlock = portMUX_INITIALIZER_UNLOCKED;
 
-DRAM_ATTR static const char TAG[] = "bus_lock";
+ESP_LOG_ATTR_TAG_DRAM(TAG, "bus_lock");
 
 static inline int mask_get_id(uint32_t mask);
 static inline int dev_lock_get_id(spi_bus_lock_dev_t *dev_lock);
@@ -368,9 +369,9 @@ SPI_BUS_LOCK_ISR_ATTR static inline bool acquire_core(spi_bus_lock_dev_t *dev_ha
     spi_bus_lock_t* lock = dev_handle->parent;
 
     //For this critical section, search `@note 1` in this file, to know details
-    portENTER_CRITICAL_SAFE(&s_spinlock);
+    esp_os_enter_critical_safe(&s_spinlock);
     uint32_t status = lock_status_fetch_set(lock, dev_handle->mask & LOCK_MASK);
-    portEXIT_CRITICAL_SAFE(&s_spinlock);
+    esp_os_exit_critical_safe(&s_spinlock);
 
     // Check all bits except WEAK_BG
     if ((status & (BG_MASK | LOCK_MASK)) == 0) {
@@ -451,10 +452,10 @@ IRAM_ATTR static inline void acquire_end_core(spi_bus_lock_dev_t *dev_handle)
     spi_bus_lock_dev_t* desired_dev = NULL;
 
     //For this critical section, search `@note 1` in this file, to know details
-    portENTER_CRITICAL_SAFE(&s_spinlock);
+    esp_os_enter_critical_safe(&s_spinlock);
     uint32_t status = lock_status_clear(lock, dev_handle->mask & LOCK_MASK);
     bool invoke_bg = !schedule_core(lock, status, &desired_dev);
-    portEXIT_CRITICAL_SAFE(&s_spinlock);
+    esp_os_exit_critical_safe(&s_spinlock);
 
     if (invoke_bg) {
         bg_enable(lock);
@@ -720,7 +721,7 @@ IRAM_ATTR bool spi_bus_lock_touch(spi_bus_lock_dev_handle_t dev_handle)
 /*******************************************************************************
  * Acquiring service
  ******************************************************************************/
-IRAM_ATTR esp_err_t spi_bus_lock_acquire_start(spi_bus_lock_dev_t *dev_handle, TickType_t wait)
+IRAM_ATTR esp_err_t spi_bus_lock_acquire_start(spi_bus_lock_dev_t *dev_handle, uint32_t wait)
 {
     ESP_RETURN_ON_FALSE_ISR(wait == portMAX_DELAY, ESP_ERR_INVALID_ARG, TAG, "timeout other than portMAX_DELAY not supported");
 
@@ -773,9 +774,9 @@ SPI_BUS_LOCK_ISR_ATTR bool spi_bus_lock_bg_entry(spi_bus_lock_t* lock)
     return bg_entry_core(lock);
 }
 
-SPI_BUS_LOCK_ISR_ATTR bool spi_bus_lock_bg_exit(spi_bus_lock_t* lock, bool wip, BaseType_t* do_yield)
+SPI_BUS_LOCK_ISR_ATTR bool spi_bus_lock_bg_exit(spi_bus_lock_t* lock, bool wip, int* do_yield)
 {
-    return bg_exit_core(lock, wip, do_yield);
+    return bg_exit_core(lock, wip, (BaseType_t*)do_yield);
 }
 
 SPI_BUSLOCK_ATTR esp_err_t spi_bus_lock_bg_request(spi_bus_lock_dev_t *dev_handle)
@@ -784,7 +785,7 @@ SPI_BUSLOCK_ATTR esp_err_t spi_bus_lock_bg_request(spi_bus_lock_dev_t *dev_handl
     return ESP_OK;
 }
 
-IRAM_ATTR esp_err_t spi_bus_lock_wait_bg_done(spi_bus_lock_dev_handle_t dev_handle, TickType_t wait)
+IRAM_ATTR esp_err_t spi_bus_lock_wait_bg_done(spi_bus_lock_dev_handle_t dev_handle, uint32_t wait)
 {
     spi_bus_lock_t *lock = dev_handle->parent;
 

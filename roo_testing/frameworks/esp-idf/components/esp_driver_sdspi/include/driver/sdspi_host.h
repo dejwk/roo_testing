@@ -60,9 +60,10 @@ typedef int sdspi_dev_handle_t;
     .get_real_freq = &sdspi_host_get_real_freq, \
     .input_delay_phase = SDMMC_DELAY_PHASE_0, \
     .set_input_delay = NULL, \
+    .set_input_delayline = NULL, \
+    .unaligned_multi_block_rw_max_chunk_size = 16, \
     .dma_aligned_buffer = NULL, \
     .pwr_ctrl_handle = NULL, \
-    .get_dma_info = NULL, \
     .check_buffer_alignment = sdspi_host_check_buffer_alignment, \
     .is_slot_set_to_uhs1 = NULL, \
 }
@@ -225,20 +226,7 @@ esp_err_t sdspi_host_io_int_enable(sdspi_dev_handle_t handle);
  * @return
  *      - ESP_OK on success
  */
-esp_err_t sdspi_host_io_int_wait(sdspi_dev_handle_t handle, TickType_t timeout_ticks);
-
-/**
- * @brief Get the DMA memory information for the host driver
- *
- * @deprecated This API is deprecated
- *
- * @param[in]  slot          Not used
- * @param[out] dma_mem_info  DMA memory information structure
- * @return
- *        - ESP_OK:                ON success.
- *        - ESP_ERR_INVALID_ARG:   Invalid argument.
- */
-esp_err_t sdspi_host_get_dma_info(int slot, esp_dma_mem_info_t *dma_mem_info) __attribute__((deprecated("This API is deprecated")));
+esp_err_t sdspi_host_io_int_wait(sdspi_dev_handle_t handle, uint32_t timeout_ticks);
 
 /**
  * @brief Check if the buffer meets the alignment requirements

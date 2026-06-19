@@ -12,16 +12,14 @@
 #include "freertos/idf_additions.h"
 #include "esp_log.h"
 #include "esp_check.h"
-#include "soc/ledc_periph.h"
+#include "hal/ledc_periph.h"
 #include "esp_clk_tree.h"
 #include "soc/soc_caps.h"
 #include "hal/ledc_hal.h"
-#include "hal/gpio_hal.h"
 #include "driver/ledc.h"
-#include "esp_rom_gpio.h"
-#include "clk_ctrl_os.h"
 #include "esp_private/esp_sleep_internal.h"
 #include "esp_private/periph_ctrl.h"
+#include "driver/gpio.h"
 #include "esp_private/gpio.h"
 #include "esp_private/esp_clk_tree_common.h"
 #include "esp_private/esp_gpio_reserve.h"
@@ -95,6 +93,7 @@ typedef struct {
     bool channel_keep_alive[LEDC_CHANNEL_MAX];          /*!< Records whether each channel needs to keep output during sleep */
     uint8_t timer_xpd_ref_cnt[LEDC_TIMER_MAX];          /*!< Records the timer (glb_clk) not power down during sleep requirement */
     bool glb_clk_xpd;                                   /*!< Records the power strategy applied to the global clock */
+    uint64_t occupied_pin_mask[LEDC_CHANNEL_MAX];       /*!< Records the pins occupied by each channel */
 } ledc_obj_t;
 
 static ledc_obj_t *p_ledc_obj[LEDC_SPEED_MODE_MAX] = {
@@ -174,18 +173,17 @@ static IRAM_ATTR void ledc_ls_channel_update(ledc_mode_t speed_mode, ledc_channe
 //We know that RC_FAST is about 8M/20M, but don't know the actual value. So we need to do a calibration.
 static bool ledc_slow_clk_calibrate(void)
 {
-    if (periph_rtc_dig_clk8m_enable()) {
-        s_ledc_slow_clk_rc_fast_freq = periph_rtc_dig_clk8m_get_freq();
-#if !SOC_CLK_RC_FAST_SUPPORT_CALIBRATION
-        /* Workaround: RC_FAST calibration cannot be performed, we can only use its theoretic freq */
-        ESP_LOGD(LEDC_TAG, "Calibration cannot be performed, approximate RC_FAST_CLK : %"PRIu32" Hz", s_ledc_slow_clk_rc_fast_freq);
-#else
-        ESP_LOGD(LEDC_TAG, "Calibrate RC_FAST_CLK : %"PRIu32" Hz", s_ledc_slow_clk_rc_fast_freq);
-#endif
-        return true;
+    if (esp_clk_tree_src_get_freq_hz(SOC_MOD_CLK_RC_FAST, ESP_CLK_TREE_SRC_FREQ_PRECISION_EXACT, &s_ledc_slow_clk_rc_fast_freq) != ESP_OK) {
+        ESP_LOGE(LEDC_TAG, "Calibrate RC_FAST_CLK failed");
+        return false;
     }
-    ESP_LOGE(LEDC_TAG, "Calibrate RC_FAST_CLK failed");
-    return false;
+#if !SOC_CLK_RC_FAST_SUPPORT_CALIBRATION
+    /* Workaround: RC_FAST calibration cannot be performed, we can only use its theoretic freq */
+    ESP_LOGD(LEDC_TAG, "Calibration cannot be performed, approximate RC_FAST_CLK : %"PRIu32" Hz", s_ledc_slow_clk_rc_fast_freq);
+#else
+    ESP_LOGD(LEDC_TAG, "Calibrate RC_FAST_CLK : %"PRIu32" Hz", s_ledc_slow_clk_rc_fast_freq);
+#endif
+    return true;
 }
 
 static esp_err_t ledc_enable_intr_type(ledc_mode_t speed_mode, ledc_channel_t channel, ledc_intr_type_t type)
@@ -262,13 +260,6 @@ static esp_err_t ledc_set_timer_params(ledc_mode_t speed_mode, ledc_timer_t time
     return ESP_OK;
 }
 
-// Deprecated public API
-esp_err_t ledc_timer_set(ledc_mode_t speed_mode, ledc_timer_t timer_sel, uint32_t clock_divider, uint32_t duty_resolution,
-                         ledc_clk_src_t clk_src)
-{
-    return ledc_set_timer_params(speed_mode, timer_sel, clock_divider, duty_resolution, clk_src);
-}
-
 static IRAM_ATTR esp_err_t ledc_duty_config(ledc_mode_t speed_mode, ledc_channel_t channel, int hpoint_val,
                                             int duty_val, ledc_duty_direction_t duty_direction, uint32_t duty_num, uint32_t duty_cycle, uint32_t duty_scale)
 {
@@ -284,6 +275,7 @@ static IRAM_ATTR esp_err_t ledc_duty_config(ledc_mode_t speed_mode, ledc_channel
     // Clear left-off LEDC gamma ram registers, random data in ram could cause output waveform error
     ledc_hal_clear_left_off_fade_param(&(p_ledc_obj[speed_mode]->ledc_hal), channel, 1);
 #endif
+    ESP_EARLY_LOGD(LEDC_TAG, "duty_config: duty-%d, dir-%d, cycle-%d, scale-%d, step-%d", duty_val, duty_direction, duty_cycle, duty_scale, duty_num);
     return ESP_OK;
 }
 
@@ -293,6 +285,7 @@ static IRAM_ATTR esp_err_t ledc_duty_config(ledc_mode_t speed_mode, ledc_channel
 static bool ledc_glb_clk_set_sleep_mode(ledc_mode_t speed_mode, bool xpd)
 {
     bool glb_clk_xpd_err = false;
+#if SOC_LIGHT_SLEEP_SUPPORTED
     if (p_ledc_obj[speed_mode]->glb_clk == LEDC_SLOW_CLK_RC_FAST) {
         esp_sleep_sub_mode_config(ESP_SLEEP_DIG_USE_RC_FAST_MODE, xpd);
         p_ledc_obj[speed_mode]->glb_clk_xpd = xpd;
@@ -308,6 +301,7 @@ static bool ledc_glb_clk_set_sleep_mode(ledc_mode_t speed_mode, bool xpd)
             glb_clk_xpd_err = true;
         }
     }
+#endif
     return glb_clk_xpd_err;
 }
 
@@ -396,6 +390,21 @@ esp_err_t ledc_timer_resume(ledc_mode_t speed_mode, ledc_timer_t timer_sel)
     portEXIT_CRITICAL(&ledc_spinlock);
     return ESP_OK;
 }
+
+#if SOC_LEDC_SUPPORT_ETM
+esp_err_t ledc_channel_configure_maximum_timer_ovf_cnt(ledc_mode_t speed_mode, ledc_channel_t channel, uint32_t max_ovf_cnt)
+{
+    LEDC_ARG_CHECK(speed_mode < LEDC_SPEED_MODE_MAX, "speed_mode");
+    LEDC_ARG_CHECK(channel < LEDC_CHANNEL_MAX, "channel");
+    LEDC_ARG_CHECK(max_ovf_cnt <= LEDC_LL_OVF_CNT_MAX, "max_ovf_cnt");
+    LEDC_CHECK(p_ledc_obj[speed_mode] != NULL, LEDC_NOT_INIT, ESP_ERR_INVALID_STATE);
+
+    ledc_hal_channel_configure_maximum_timer_ovf_cnt(&(p_ledc_obj[speed_mode]->ledc_hal), channel, max_ovf_cnt);
+    ledc_ls_channel_update(speed_mode, channel);
+
+    return ESP_OK;
+}
+#endif
 
 esp_err_t ledc_isr_register(void (*fn)(void *), void *arg, int intr_alloc_flags, ledc_isr_handle_t *handle)
 {
@@ -769,6 +778,7 @@ static esp_err_t ledc_timer_del(ledc_mode_t speed_mode, ledc_timer_t timer_sel)
                 ledc_glb_clk_set_sleep_mode(speed_mode, false);
             }
         }
+        ledc_ll_enable_timer_power(LEDC_LL_GET_HW(), speed_mode, timer_sel, false);
     }
     portEXIT_CRITICAL(&ledc_spinlock);
     ESP_RETURN_ON_FALSE(is_configured && is_deleted, ESP_ERR_INVALID_STATE, LEDC_TAG, "timer hasn't been configured, or it is still running, please stop it with ledc_timer_pause first");
@@ -797,6 +807,10 @@ esp_err_t ledc_timer_config(const ledc_timer_config_t *timer_conf)
         return ESP_ERR_NO_MEM;
     }
 
+    portENTER_CRITICAL(&ledc_spinlock);
+    ledc_ll_enable_timer_power(LEDC_LL_GET_HW(), speed_mode, timer_num, true);
+    portEXIT_CRITICAL(&ledc_spinlock);
+
     esp_err_t ret = ledc_set_timer_div(speed_mode, timer_num, timer_conf->clk_cfg, freq_hz, duty_resolution);
     if (ret == ESP_OK) {
         /* Make sure timer is running and reset the timer. */
@@ -806,16 +820,18 @@ esp_err_t ledc_timer_config(const ledc_timer_config_t *timer_conf)
     return ret;
 }
 
-esp_err_t _ledc_set_pin(int gpio_num, bool out_inv, ledc_mode_t speed_mode, ledc_channel_t channel)
+static esp_err_t _ledc_set_pin(int gpio_num, bool out_inv, ledc_mode_t speed_mode, ledc_channel_t channel)
 {
-    gpio_func_sel(gpio_num, PIN_FUNC_GPIO);
     // reserve the GPIO output path, because we don't expect another peripheral to signal to the same GPIO
     uint64_t old_gpio_rsv_mask = esp_gpio_reserve(BIT64(gpio_num));
     // check if the GPIO is already used by others, LEDC signal only uses the output path of the GPIO
     if (old_gpio_rsv_mask & BIT64(gpio_num)) {
         ESP_LOGW(LEDC_TAG, "GPIO %d is not usable, maybe conflict with others", gpio_num);
     }
-    esp_rom_gpio_connect_out_signal(gpio_num, ledc_periph_signal[speed_mode].sig_out0_idx + channel, out_inv, 0);
+    gpio_matrix_output(gpio_num, ledc_periph_signal[speed_mode].sig_out0_idx + channel, out_inv, false);
+    portENTER_CRITICAL(&ledc_spinlock);
+    p_ledc_obj[speed_mode]->occupied_pin_mask[channel] |= BIT64(gpio_num);
+    portEXIT_CRITICAL(&ledc_spinlock);
     return ESP_OK;
 }
 
@@ -825,7 +841,29 @@ esp_err_t ledc_set_pin(int gpio_num, ledc_mode_t speed_mode, ledc_channel_t chan
     LEDC_ARG_CHECK(channel < LEDC_CHANNEL_MAX, "channel");
     LEDC_ARG_CHECK(speed_mode < LEDC_SPEED_MODE_MAX, "speed_mode");
     LEDC_ARG_CHECK(GPIO_IS_VALID_OUTPUT_GPIO(gpio_num), "gpio_num");
+    LEDC_CHECK(p_ledc_obj[speed_mode] != NULL, LEDC_NOT_INIT, ESP_ERR_INVALID_STATE);
     return _ledc_set_pin(gpio_num, false, speed_mode, channel);
+}
+
+static esp_err_t ledc_channel_del(ledc_mode_t speed_mode, ledc_channel_t channel)
+{
+    LEDC_CHECK(p_ledc_obj[speed_mode] != NULL, LEDC_NOT_INIT, ESP_ERR_INVALID_STATE);
+
+    portENTER_CRITICAL(&ledc_spinlock);
+    // release all the pins occupied by this channel
+    while (p_ledc_obj[speed_mode]->occupied_pin_mask[channel]) {
+        int gpio_num = __builtin_ffsll(p_ledc_obj[speed_mode]->occupied_pin_mask[channel]) - 1;
+        gpio_output_disable(gpio_num);
+        esp_gpio_revoke(BIT64(gpio_num));
+        p_ledc_obj[speed_mode]->occupied_pin_mask[channel] &= ~BIT64(gpio_num);
+    }
+    ledc_ll_enable_channel_power(LEDC_LL_GET_HW(), speed_mode, channel, false);
+    portEXIT_CRITICAL(&ledc_spinlock);
+
+    // p_ledc_obj[speed_mode]->channel_keep_alive[channel] = false;
+    // TODO: dealing whether need to release the timer clock source xpd
+    // TODO: dealing whether can downgrade the sleep mode, so that retention link can be freed or peripheral clock can be gated during sleep
+    return ESP_OK;
 }
 
 esp_err_t ledc_channel_config(const ledc_channel_config_t *ledc_conf)
@@ -835,15 +873,18 @@ esp_err_t ledc_channel_config(const ledc_channel_config_t *ledc_conf)
     int gpio_num = ledc_conf->gpio_num;
     uint32_t ledc_channel = ledc_conf->channel;
     uint32_t timer_select = ledc_conf->timer_sel;
-    uint32_t intr_type = ledc_conf->intr_type;
     uint32_t duty = ledc_conf->duty;
     uint32_t hpoint = ledc_conf->hpoint;
     bool output_invert = ledc_conf->flags.output_invert;
     LEDC_ARG_CHECK(ledc_channel < LEDC_CHANNEL_MAX, "ledc_channel");
     LEDC_ARG_CHECK(speed_mode < LEDC_SPEED_MODE_MAX, "speed_mode");
+
+    if (ledc_conf->deconfigure) {
+        return ledc_channel_del(speed_mode, ledc_channel);
+    }
+
     LEDC_ARG_CHECK(GPIO_IS_VALID_OUTPUT_GPIO(gpio_num), "gpio_num");
     LEDC_ARG_CHECK(timer_select < LEDC_TIMER_MAX, "timer_select");
-    LEDC_ARG_CHECK(intr_type < LEDC_INTR_MAX, "intr_type");
     LEDC_ARG_CHECK(ledc_conf->sleep_mode < LEDC_SLEEP_MODE_INVALID, "sleep_mode");
 #if !SOC_LEDC_SUPPORT_SLEEP_RETENTION
     ESP_RETURN_ON_FALSE(ledc_conf->sleep_mode != LEDC_SLEEP_MODE_NO_ALIVE_ALLOW_PD, ESP_ERR_NOT_SUPPORTED, LEDC_TAG, "register back up is not supported");
@@ -855,7 +896,7 @@ esp_err_t ledc_channel_config(const ledc_channel_config_t *ledc_conf)
     if (!new_speed_mode_ctx_created && !p_ledc_obj[speed_mode]) {
         return ESP_ERR_NO_MEM;
     }
-#if !(CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32H2 || CONFIG_IDF_TARGET_ESP32P4 || CONFIG_IDF_TARGET_ESP32C5 || CONFIG_IDF_TARGET_ESP32C61)
+#if LEDC_LL_GLOBAL_CLK_NC_BY_DEFAULT
     // On such targets, the default ledc core(global) clock does not connect to any clock source
     // Set channel configurations and update bits before core clock is on could lead to error
     // Therefore, we should connect the core clock to a real clock source to make it on before any ledc register operation
@@ -864,12 +905,16 @@ esp_err_t ledc_channel_config(const ledc_channel_config_t *ledc_conf)
     else if (new_speed_mode_ctx_created) {
         portENTER_CRITICAL(&ledc_spinlock);
         if (p_ledc_obj[speed_mode]->glb_clk == LEDC_SLOW_CLK_UNINIT) {
-            ESP_ERROR_CHECK(esp_clk_tree_enable_src((soc_module_clk_t)LEDC_LL_GLOBAL_CLK_DEFAULT, true));
+            esp_clk_tree_enable_src((soc_module_clk_t)LEDC_LL_GLOBAL_CLK_DEFAULT, true);
             ledc_hal_set_slow_clk_sel(&(p_ledc_obj[speed_mode]->ledc_hal), LEDC_LL_GLOBAL_CLK_DEFAULT);
         }
         portEXIT_CRITICAL(&ledc_spinlock);
     }
 #endif
+
+    portENTER_CRITICAL(&ledc_spinlock);
+    ledc_ll_enable_channel_power(LEDC_LL_GET_HW(), speed_mode, ledc_channel, true);
+    portEXIT_CRITICAL(&ledc_spinlock);
 
     /*set channel parameters*/
     /*   channel parameters decide how the waveform looks like in one period */
@@ -884,10 +929,6 @@ esp_err_t ledc_channel_config(const ledc_channel_config_t *ledc_conf)
     ledc_update_duty(speed_mode, ledc_channel);
     /*bind the channel with the timer*/
     ledc_bind_channel_timer(speed_mode, ledc_channel, timer_select);
-    /*set interrupt type*/
-    portENTER_CRITICAL(&ledc_spinlock);
-    ledc_enable_intr_type(speed_mode, ledc_channel, intr_type);
-    portEXIT_CRITICAL(&ledc_spinlock);
     ESP_LOGD(LEDC_TAG, "LEDC_PWM CHANNEL %"PRIu32"|GPIO %02u|Duty %04"PRIu32"|Time %"PRIu32,
              ledc_channel, gpio_num, duty, timer_select);
     /*set LEDC signal in gpio matrix*/
@@ -944,6 +985,7 @@ esp_err_t ledc_channel_config(const ledc_channel_config_t *ledc_conf)
     }
 #endif
 
+#if SOC_LIGHT_SLEEP_SUPPORTED
     if (ledc_conf->sleep_mode == LEDC_SLEEP_MODE_KEEP_ALIVE) {
         // 1. timer clock source should not be powered down during sleep
         bool timer_xpd_err = false;
@@ -960,7 +1002,7 @@ esp_err_t ledc_channel_config(const ledc_channel_config_t *ledc_conf)
         // To workaround DIG-399, all LP IOs are held when LP_PERIPH is powered off to ensure EXT wakeup functionality
         // But holding LP IOs will cause LEDC signal cannot output on the pad during sleep
         // Therefore, we will force LP periph xpd in such case
-        if ((1ULL << gpio_num) & SOC_GPIO_DEEP_SLEEP_WAKE_VALID_GPIO_MASK) {
+        if (GPIO_IS_HP_PERIPH_PD_WAKEUP_VALID_IO(gpio_num)) {
             esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
         }
 #endif
@@ -971,6 +1013,7 @@ esp_err_t ledc_channel_config(const ledc_channel_config_t *ledc_conf)
         esp_sleep_clock_config(ESP_SLEEP_CLOCK_IOMUX, ESP_SLEEP_CLOCK_OPTION_UNGATE);
 #endif
     }
+#endif
 
     return ret;
 }
@@ -1147,11 +1190,13 @@ uint32_t ledc_find_suitable_duty_resolution(uint32_t src_clk_freq, uint32_t time
 {
     // Highest resolution is calculated when LEDC_CLK_DIV = 1 (i.e. div_param = 1 << LEDC_LL_FRACTIONAL_BITS)
     uint32_t div = (src_clk_freq + timer_freq / 2) / timer_freq; // rounded
-    uint32_t duty_resolution = MIN(ilog2(div), SOC_LEDC_TIMER_BIT_WIDTH);
+    uint32_t ilog2_div = ilog2(div);
+    uint32_t duty_resolution = MIN(ilog2_div, SOC_LEDC_TIMER_BIT_WIDTH);
     uint32_t div_param = ledc_calculate_divisor(src_clk_freq, timer_freq, 1 << duty_resolution);
     if (LEDC_IS_DIV_INVALID(div_param)) {
         div = src_clk_freq / timer_freq; // truncated
-        duty_resolution = MIN(ilog2(div), SOC_LEDC_TIMER_BIT_WIDTH);
+        ilog2_div = ilog2(div);
+        duty_resolution = MIN(ilog2_div, SOC_LEDC_TIMER_BIT_WIDTH);
         div_param = ledc_calculate_divisor(src_clk_freq, timer_freq, 1 << duty_resolution);
         if (LEDC_IS_DIV_INVALID(div_param)) {
             duty_resolution = 0;

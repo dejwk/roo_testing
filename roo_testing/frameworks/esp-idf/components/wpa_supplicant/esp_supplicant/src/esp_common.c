@@ -140,7 +140,7 @@ static void register_mgmt_frames(struct wpa_supplicant *wpa_s)
 
 #ifdef CONFIG_IEEE80211R
     /* register auth/assoc frames if FT is enabled */
-    if (esp_wifi_is_ft_enabled_internal(ESP_IF_WIFI_STA))
+    if (esp_wifi_is_ft_enabled_internal(WIFI_IF_STA))
         wpa_s->type |= (1 << WLAN_FC_STYPE_AUTH) |
                        (1 << WLAN_FC_STYPE_ASSOC_RESP) |
                        (1 << WLAN_FC_STYPE_REASSOC_RESP);
@@ -153,7 +153,7 @@ static void register_mgmt_frames(struct wpa_supplicant *wpa_s)
 static int handle_auth_frame(u8 *frame, size_t len,
                              u8 *sender, int8_t rssi, u8 channel)
 {
-    if (gWpaSm.key_mgmt == WPA_KEY_MGMT_FT_PSK) {
+    if (gWpaSm.key_mgmt == WPA_KEY_MGMT_FT_PSK || gWpaSm.key_mgmt == WPA_KEY_MGMT_FT_SAE) {
         if (gWpaSm.ft_protocol) {
             if (wpa_ft_process_response(&gWpaSm, frame + 6,
                                         len - 6, 0, sender, NULL, 0) < 0) {
@@ -168,7 +168,7 @@ static int handle_auth_frame(u8 *frame, size_t len,
 static int handle_assoc_frame(u8 *frame, size_t len,
                               u8 *sender, int8_t rssi, u8 channel)
 {
-    if (gWpaSm.key_mgmt == WPA_KEY_MGMT_FT_PSK) {
+    if (gWpaSm.key_mgmt == WPA_KEY_MGMT_FT_PSK || gWpaSm.key_mgmt == WPA_KEY_MGMT_FT_SAE) {
         if (len < 6) { /* Cap info + status code */
             return -1;
         }
@@ -326,6 +326,10 @@ void supplicant_sta_conn_handler(uint8_t *bssid)
     u8 *ie;
     struct wpa_supplicant *wpa_s = &g_wpa_supp;
     struct wpa_bss *bss = wpa_bss_get_bssid(wpa_s, bssid);
+#ifdef CONFIG_RRM
+    struct ieee802_11_elems elems;
+#endif
+
     if (!bss) {
         wpa_printf(MSG_INFO, "connected bss entry not present in scan cache");
         return;
@@ -333,7 +337,13 @@ void supplicant_sta_conn_handler(uint8_t *bssid)
     wpa_s->current_bss = bss;
     ie = (u8 *)bss;
     ie += sizeof(struct wpa_bss);
-    ieee802_11_parse_elems(wpa_s, ie, bss->ie_len);
+#ifdef CONFIG_RRM
+    ieee802_11_parse_elems(ie, bss->ie_len, &elems, 0);
+    if (elems.rrm_enabled_len > 0 && elems.rrm_enabled != NULL) {
+        os_memcpy(wpa_s->rrm_ie, elems.rrm_enabled, 5);
+        wpa_s->rrm.rrm_used = true;
+    }
+#endif
     wpa_bss_flush(wpa_s);
     /* Register for mgmt frames */
     register_mgmt_frames(wpa_s);
@@ -385,32 +395,6 @@ bool esp_rrm_is_rrm_supported_connection(void)
 
     return true;
 }
-/*This function has been deprecated in favour of esp_rrm_send_neighbor_report_request*/
-int esp_rrm_send_neighbor_rep_request(neighbor_rep_request_cb cb,
-                                      void *cb_ctx)
-{
-    struct wpa_supplicant *wpa_s = &g_wpa_supp;
-    struct wpa_ssid_value wpa_ssid = {0};
-    struct wifi_ssid *ssid;
-
-    if (!wpa_s->current_bss) {
-        wpa_printf(MSG_ERROR, "STA not associated, return");
-        return -2;
-    }
-
-    if (!(wpa_s->rrm_ie[0] & WLAN_RRM_CAPS_NEIGHBOR_REPORT)) {
-        wpa_printf(MSG_ERROR,
-                   "RRM: No network support for Neighbor Report.");
-        return -1;
-    }
-
-    ssid = esp_wifi_sta_get_prof_ssid_internal();
-
-    os_memcpy(wpa_ssid.ssid, ssid->ssid, ssid->len);
-    wpa_ssid.ssid_len = ssid->len;
-
-    return wpas_rrm_send_neighbor_rep_request(wpa_s, &wpa_ssid, 0, 0, cb, cb_ctx);
-}
 
 void neighbor_report_recvd_cb(void *ctx, const uint8_t *report, size_t report_len)
 {
@@ -427,7 +411,6 @@ void neighbor_report_recvd_cb(void *ctx, const uint8_t *report, size_t report_le
         return;
     }
 
-    os_memcpy(neighbor_report_event->report, report, ESP_WIFI_MAX_NEIGHBOR_REP_LEN);
     os_memcpy(neighbor_report_event->n_report, report, report_len);
     neighbor_report_event->report_len = report_len;
     esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_NEIGHBOR_REP, neighbor_report_event, sizeof(wifi_event_neighbor_report_t) + report_len, 0);
@@ -826,12 +809,6 @@ bool esp_rrm_is_rrm_supported_connection(void)
 }
 
 int esp_rrm_send_neighbor_report_request(void)
-{
-    return -1;
-}
-
-int esp_rrm_send_neighbor_rep_request(neighbor_rep_request_cb cb,
-                                      void *cb_ctx)
 {
     return -1;
 }

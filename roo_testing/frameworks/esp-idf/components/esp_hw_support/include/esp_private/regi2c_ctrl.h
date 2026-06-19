@@ -10,7 +10,6 @@
 #include <stdbool.h>
 #include "sdkconfig.h"
 #include "esp_rom_regi2c.h"
-#include "soc/regi2c_defs.h"
 #include "soc/soc_caps.h"
 #include "esp_private/periph_ctrl.h"
 #include "hal/regi2c_ctrl_ll.h"
@@ -25,9 +24,10 @@ extern "C" {
 
 #ifdef BOOTLOADER_BUILD
 
-// For bootloader, the strategy is to keep the analog i2c master clock always enabled if SOC_CLK_ANA_I2C_MST_HAS_ROOT_GATE (in bootloader_hardware_init())
+// For bootloader, the strategy is to keep the analog i2c master clock always enabled if ANA_I2C_MST_CLK_HAS_ROOT_GATING (in bootloader_hardware_init())
 #define ANALOG_CLOCK_ENABLE()
 #define ANALOG_CLOCK_DISABLE()
+#define ANALOG_CLOCK_IS_ENABLED()
 
 #else // !BOOTLOADER_BUILD
 
@@ -37,7 +37,7 @@ static inline __attribute__((always_inline)) void ANA_I2C_SRC_CLOCK_ENABLE(bool 
 #endif
 }
 
-#if SOC_CLK_ANA_I2C_MST_HAS_ROOT_GATE
+#if ANA_I2C_MST_CLK_HAS_ROOT_GATING
 // This clock needs to be enabled for regi2c write/read, pll calibaration, PHY, RNG, ADC, etc.
 // Use reference count to manage the analog i2c master clock
 #define ANALOG_CLOCK_ENABLE() { \
@@ -58,9 +58,11 @@ static inline __attribute__((always_inline)) void ANA_I2C_SRC_CLOCK_ENABLE(bool 
       ANA_I2C_SRC_CLOCK_ENABLE(false); \
    }
 
+#define ANALOG_CLOCK_IS_ENABLED() regi2c_ctrl_ll_master_is_clock_enabled()
 #else
 #define ANALOG_CLOCK_ENABLE()
 #define ANALOG_CLOCK_DISABLE()
+#define ANALOG_CLOCK_IS_ENABLED()
 #endif
 
 #endif // BOOTLOADER_BUILD
@@ -85,6 +87,7 @@ static inline __attribute__((always_inline)) void ANA_I2C_SRC_CLOCK_ENABLE(bool 
 #define regi2c_ctrl_read_reg_mask    regi2c_read_reg_mask_raw
 #define regi2c_ctrl_write_reg        regi2c_write_reg_raw
 #define regi2c_ctrl_write_reg_mask   regi2c_write_reg_mask_raw
+
 #define REGI2C_ENTER_CRITICAL()
 #define REGI2C_EXIT_CRITICAL()
 #else
@@ -121,7 +124,7 @@ void regi2c_exit_critical(void);
  * Restore regi2c analog calibration related configuration registers.
  * This is a workaround, and is fixed on later chips
  */
-#if REGI2C_ANA_CALI_PD_WORKAROUND
+#if REGI2C_LL_ANA_CALI_PD_WORKAROUND
 void regi2c_analog_cali_reg_read(void);
 void regi2c_analog_cali_reg_write(void);
 #endif   //#if ADC_CALI_PD_WORKAROUND

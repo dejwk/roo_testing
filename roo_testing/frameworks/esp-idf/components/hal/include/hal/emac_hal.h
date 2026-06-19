@@ -12,6 +12,7 @@
 #include "esp_err.h"
 #include "hal/eth_types.h"
 #include "soc/soc_caps.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -25,7 +26,7 @@ extern "C" {
 #define TYPE_SIZE_ERR_MSG(DATATYPE, SIZE)  #DATATYPE " should occupy " STR(SIZE) " bytes in memory"
 #define ASSERT_TYPE_SIZE(DATATYPE, SIZE) ESP_STATIC_ASSERT(sizeof(DATATYPE) == SIZE, TYPE_SIZE_ERR_MSG(DATATYPE, SIZE))
 
-#if CONFIG_IDF_TARGET_ESP32P4
+#if SOC_IS(ESP32P4)
 // Descriptor must be 64B aligned for ESP32P4 due to cache arrangement
 #define EMAC_HAL_DMA_DESC_SIZE                              (64)
 #else
@@ -191,7 +192,7 @@ ASSERT_TYPE_SIZE(eth_dma_rx_descriptor_t, EMAC_HAL_DMA_DESC_SIZE);
 
 typedef struct emac_mac_dev_s *emac_mac_soc_regs_t;
 typedef struct emac_dma_dev_s *emac_dma_soc_regs_t;
-#if CONFIG_IDF_TARGET_ESP32
+#if SOC_IS(ESP32)
 typedef struct emac_ext_dev_s *emac_ext_soc_regs_t;
 #else
 typedef void *emac_ext_soc_regs_t;
@@ -223,8 +224,8 @@ typedef struct {
 typedef struct {
     eth_mac_ptp_update_method_t upd_method;
     eth_mac_ptp_roll_type_t roll;
-    uint32_t ptp_clk_src_period_ns;         /*!< 1/ptp_ref_clk */
-    uint32_t ptp_req_accuracy_ns;           /*!< required PTP accuracy in ns, must be greater than clk_src period */
+    float ptp_clk_src_period_ns;         /*!< 1/ptp_ref_clk */
+    float ptp_req_accuracy_ns;           /*!< required PTP accuracy in ns, must be greater than clk_src period */
 } emac_hal_ptp_config_t;
 #endif
 
@@ -236,9 +237,9 @@ void emac_hal_init(emac_hal_context_t *hal);
 
 #define emac_hal_clock_enable_rmii_input(hal) emac_ll_clock_enable_rmii_input((hal)->ext_regs)
 
-#ifdef CONFIG_IDF_TARGET_ESP32P4
+#if SOC_IS(ESP32P4)
 #define emac_hal_clock_rmii_rx_tx_div(hal, div) emac_ll_clock_rmii_rx_tx_div((hal)->ext_regs, div)
-#endif // CONFIG_IDF_TARGET_ESP32P4
+#endif // SOC_IS(ESP32P4)
 
 #define emac_hal_clock_enable_rmii_output(hal) emac_ll_clock_enable_rmii_output((hal)->ext_regs)
 
@@ -276,6 +277,8 @@ void emac_hal_set_phy_cmd(emac_hal_context_t *hal, uint32_t phy_addr, uint32_t p
 #define emac_hal_get_phy_data(hal) emac_ll_get_phy_data((hal)->mac_regs)
 
 void emac_hal_set_address(emac_hal_context_t *hal, uint8_t *mac_addr);
+
+#define emac_hal_get_address(hal, mac_addr) emac_ll_get_addr((hal)->mac_regs, mac_addr)
 
 esp_err_t emac_hal_add_addr_da_filter(emac_hal_context_t *hal, const uint8_t *mac_addr, uint8_t addr_num);
 
@@ -321,6 +324,8 @@ void emac_hal_set_rx_tx_desc_addr(emac_hal_context_t *hal, eth_dma_rx_descriptor
 #define emac_hal_receive_poll_demand(hal) emac_ll_receive_poll_demand((hal)->dma_regs, 0)
 
 #define emac_hal_transmit_poll_demand(hal) emac_ll_transmit_poll_demand((hal)->dma_regs, 0)
+
+#define emac_hal_get_hw_feat(hal) emac_ll_get_hw_feat((hal)->dma_regs)
 
 #if SOC_EMAC_IEEE1588V2_SUPPORTED
 #define emac_hal_get_ts_status(hal) emac_ll_get_ts_status((hal)->ptp_regs);
@@ -418,6 +423,16 @@ esp_err_t emac_hal_ptp_get_sys_time(emac_hal_context_t *hal, uint32_t *seconds, 
 esp_err_t emac_hal_ptp_set_target_time(emac_hal_context_t *hal, uint32_t seconds, uint32_t nano_seconds);
 
 /**
+ * @brief Enable rx/tx timestamps for all Ethernet frames
+ *
+ * @param hal EMAC HAL context infostructure
+ * @param enable timestamping for non-PTP Ethernet frames
+ * @return
+ *          - ESP_OK on success
+ */
+esp_err_t emac_hal_ptp_enable_ts4all(emac_hal_context_t *hal, bool enable);
+
+/**
  * @brief Get timestamp from receive descriptor
  *
  * @param hal EMAC HAL context infostructure
@@ -444,6 +459,8 @@ esp_err_t emac_hal_get_rxdesc_timestamp(emac_hal_context_t *hal, eth_dma_rx_desc
  *     - ESP_ERR_INVALID_STATE: descriptor is still owned by DMA or time stamp is not ready yet
  */
 esp_err_t emac_hal_get_txdesc_timestamp(emac_hal_context_t *hal, eth_dma_tx_descriptor_t *txdesc, uint32_t *seconds, uint32_t *nano_seconds);
+
+esp_err_t emac_hal_set_pps0_out_freq(emac_hal_context_t *hal, uint32_t freq_hz);
 
 #endif // SOC_EMAC_IEEE1588V2_SUPPORTED
 #endif  // SOC_EMAC_SUPPORTED

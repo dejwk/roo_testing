@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -21,8 +21,8 @@
 #include "soc/soc_memory_layout.h"
 #include "hal/i2c_hal.h"
 #include "hal/gpio_hal.h"
-#include "soc/i2c_periph.h"
-#include "driver/i2c.h"
+#include "hal/i2c_periph.h"
+#include "driver/i2c_types_legacy.h"
 #include "esp_private/periph_ctrl.h"
 #include "esp_rom_gpio.h"
 #include "esp_rom_sys.h"
@@ -36,9 +36,7 @@
 #if SOC_I2C_SUPPORT_APB || SOC_I2C_SUPPORT_XTAL
 #include "esp_private/esp_clk.h"
 #endif
-#if SOC_I2C_SUPPORT_RTC
-#include "clk_ctrl_os.h"
-#endif
+#include "esp_private/esp_clk_tree_common.h"
 
 static const char *I2C_TAG = "i2c";
 
@@ -189,7 +187,7 @@ typedef struct {
     int cmd_idx;                     /*!< record current command index, for master mode */
     int status;                      /*!< record current command status, for master mode */
     int rx_cnt;                      /*!< record current read index, for master mode */
-    uint8_t data_buf[SOC_I2C_FIFO_LEN ];  /*!< a buffer to store i2c fifo data */
+    uint8_t data_buf[I2C_LL_GET(FIFO_LEN)];  /*!< a buffer to store i2c fifo data */
 
     i2c_cmd_desc_t cmd_link;         /*!< I2C command link */
     QueueHandle_t cmd_evt_queue;     /*!< I2C command event queue */
@@ -214,7 +212,7 @@ typedef struct {
     i2c_hal_context_t hal;      /*!< I2C hal context */
     portMUX_TYPE spinlock;
     bool hw_enabled;
-#if !SOC_I2C_SUPPORT_HW_CLR_BUS
+#if !I2C_LL_SUPPORT_HW_CLR_BUS
     int scl_io_num;
     int sda_io_num;
 #endif
@@ -253,6 +251,17 @@ static i2c_obj_t *p_i2c_obj[I2C_NUM_MAX] = {0};
 static void i2c_isr_handler_default(void *arg);
 static void i2c_master_cmd_begin_static(i2c_port_t i2c_num, BaseType_t* HPTaskAwoken);
 static esp_err_t i2c_hw_fsm_reset(i2c_port_t i2c_num);
+
+// Forward declarations for functions used before their definitions
+esp_err_t i2c_set_pin(i2c_port_t i2c_num, gpio_num_t sda_io_num, gpio_num_t scl_io_num, bool sda_pullup_en, bool scl_pullup_en, i2c_mode_t mode);
+i2c_cmd_handle_t i2c_cmd_link_create_static(uint8_t* buffer, uint32_t size);
+void i2c_cmd_link_delete_static(i2c_cmd_handle_t cmd_handle);
+esp_err_t i2c_master_start(i2c_cmd_handle_t cmd_handle);
+esp_err_t i2c_master_stop(i2c_cmd_handle_t cmd_handle);
+esp_err_t i2c_master_write(i2c_cmd_handle_t cmd_handle, const uint8_t *data, size_t data_len, bool ack_en);
+esp_err_t i2c_master_write_byte(i2c_cmd_handle_t cmd_handle, uint8_t data, bool ack_en);
+esp_err_t i2c_master_read(i2c_cmd_handle_t cmd_handle, uint8_t *data, size_t data_len, i2c_ack_type_t ack);
+esp_err_t i2c_master_cmd_begin(i2c_port_t i2c_num, i2c_cmd_handle_t cmd_handle, TickType_t ticks_to_wait);
 
 static void i2c_hw_disable(i2c_port_t i2c_num)
 {
@@ -661,7 +670,7 @@ esp_err_t i2c_get_data_mode(i2c_port_t i2c_num, i2c_trans_mode_t *tx_trans_mode,
 static esp_err_t i2c_master_clear_bus(i2c_port_t i2c_num)
 {
     esp_err_t ret = ESP_OK;
-#if !SOC_I2C_SUPPORT_HW_CLR_BUS
+#if !I2C_LL_SUPPORT_HW_CLR_BUS
     const int scl_half_period = I2C_CLR_BUS_HALF_PERIOD_US; // use standard 100kHz data rate
     int i = 0;
     int scl_io = i2c_context[i2c_num].scl_io_num;
@@ -715,7 +724,7 @@ static esp_err_t i2c_hw_fsm_reset(i2c_port_t i2c_num)
 {
 // A workaround for avoiding cause timeout issue when using
 // hardware reset.
-#if !SOC_I2C_SUPPORT_HW_FSM_RST
+#if !I2C_LL_SUPPORT_HW_FSM_RST
     i2c_hal_timing_config_t timing_config;
     uint8_t filter_cfg;
 
@@ -741,34 +750,8 @@ static esp_err_t i2c_hw_fsm_reset(i2c_port_t i2c_num)
 
 static uint32_t s_get_src_clk_freq(i2c_clock_source_t clk_src)
 {
-    // TODO: replace the following switch table by clk_tree API
     uint32_t periph_src_clk_hz = 0;
-    switch (clk_src) {
-#if SOC_I2C_SUPPORT_APB
-    case I2C_CLK_SRC_APB:
-        periph_src_clk_hz = esp_clk_apb_freq();
-        break;
-#endif
-#if SOC_I2C_SUPPORT_XTAL
-    case I2C_CLK_SRC_XTAL:
-        periph_src_clk_hz = esp_clk_xtal_freq();
-        break;
-#endif
-#if SOC_I2C_SUPPORT_RTC
-    case I2C_CLK_SRC_RC_FAST:
-        periph_rtc_dig_clk8m_enable();
-        periph_src_clk_hz = periph_rtc_dig_clk8m_get_freq();
-        break;
-#endif
-#if SOC_I2C_SUPPORT_REF_TICK
-    case RMT_CLK_SRC_REF_TICK:
-        periph_src_clk_hz = REF_CLK_FREQ;
-        break;
-#endif
-    default:
-        ESP_RETURN_ON_FALSE(false, ESP_ERR_NOT_SUPPORTED, I2C_TAG, "clock source %d is not supported", clk_src);
-        break;
-    }
+    esp_clk_tree_src_get_freq_hz(clk_src, ESP_CLK_TREE_SRC_FREQ_PRECISION_CACHED, &periph_src_clk_hz);
 
     return periph_src_clk_hz;
 }
@@ -981,7 +964,7 @@ esp_err_t i2c_get_timeout(i2c_port_t i2c_num, int *timeout)
     return ESP_OK;
 }
 
-esp_err_t i2c_set_pin(i2c_port_t i2c_num, int sda_io_num, int scl_io_num, bool sda_pullup_en, bool scl_pullup_en, i2c_mode_t mode)
+esp_err_t i2c_set_pin(i2c_port_t i2c_num, gpio_num_t sda_io_num, gpio_num_t scl_io_num, bool sda_pullup_en, bool scl_pullup_en, i2c_mode_t mode)
 {
     ESP_RETURN_ON_FALSE((i2c_num < I2C_NUM_MAX), ESP_ERR_INVALID_ARG, I2C_TAG, I2C_NUM_ERROR_STR);
     ESP_RETURN_ON_FALSE(((sda_io_num < 0) || ((GPIO_IS_VALID_OUTPUT_GPIO(sda_io_num)))), ESP_ERR_INVALID_ARG, I2C_TAG, I2C_SDA_IO_ERR_STR);
@@ -1035,7 +1018,7 @@ esp_err_t i2c_set_pin(i2c_port_t i2c_num, int sda_io_num, int scl_io_num, bool s
             gpio_set_pull_mode(scl_io_num, GPIO_FLOATING);
         }
     }
-#if !SOC_I2C_SUPPORT_HW_CLR_BUS
+#if !I2C_LL_SUPPORT_HW_CLR_BUS
     i2c_context[i2c_num].scl_io_num = scl_io_num;
     i2c_context[i2c_num].sda_io_num = sda_io_num;
 #endif
@@ -1473,7 +1456,7 @@ static void IRAM_ATTR i2c_master_cmd_begin_static(i2c_port_t i2c_num, BaseType_t
 
             //TODO: to reduce interrupt number
             if (!i2c_cmd_is_single_byte(cmd)) {
-                fifo_fill = MIN(remaining_bytes, SOC_I2C_FIFO_LEN);
+                fifo_fill = MIN(remaining_bytes, I2C_LL_FIFO_LEN);
                 /* cmd->data shall not be altered!
                  * Else it would not be possible to reuse the commands list. */
                 write_pr = cmd->data + cmd->bytes_used;
@@ -1503,7 +1486,7 @@ static void IRAM_ATTR i2c_master_cmd_begin_static(i2c_port_t i2c_num, BaseType_t
             break;
         } else if (cmd->hw_cmd.op_code == I2C_LL_CMD_READ) {
             //TODO: to reduce interrupt number
-            fifo_fill = MIN(remaining_bytes, SOC_I2C_FIFO_LEN);
+            fifo_fill = MIN(remaining_bytes, I2C_LL_FIFO_LEN);
             p_i2c->rx_cnt = fifo_fill;
             hw_cmd.byte_num = fifo_fill;
             i2c_ll_master_write_cmd_reg(i2c_context[i2c_num].hal.dev, hw_cmd, p_i2c->cmd_idx);
@@ -1516,7 +1499,7 @@ static void IRAM_ATTR i2c_master_cmd_begin_static(i2c_port_t i2c_num, BaseType_t
         }
         p_i2c->cmd_idx++;
         p_i2c->cmd_link.head = p_i2c->cmd_link.head->next;
-        if (p_i2c->cmd_link.head == NULL || p_i2c->cmd_idx >= (SOC_I2C_CMD_REG_NUM - 1)) {
+        if (p_i2c->cmd_link.head == NULL || p_i2c->cmd_idx >= (I2C_LL_GET(CMD_REG_NUM) - 1)) {
             p_i2c->cmd_idx = 0;
             break;
         }

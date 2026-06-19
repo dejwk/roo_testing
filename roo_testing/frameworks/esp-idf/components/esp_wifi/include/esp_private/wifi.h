@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -39,7 +39,7 @@ typedef struct {
     void *storage;        /**< storage for FreeRTOS queue */
 } wifi_static_queue_t;
 
-struct nan_callbacks {
+struct nan_sync_callbacks {
     void (* service_match)(uint8_t sub_id, uint8_t pub_id, uint8_t pub_mac[6], uint16_t capab,
                            uint8_t ssi_ver, uint8_t *ssi, uint16_t ssi_len);
     void (* replied)(uint8_t pub_id, uint8_t sub_id, uint8_t pub_mac[6], uint8_t *ssi, uint16_t ssi_len);
@@ -499,6 +499,9 @@ esp_err_t esp_wifi_internal_get_config_channel(wifi_interface_t ifx, uint8_t *pr
   *
   * @return
   *    - ESP_OK: succeed
+  *    - ESP_ERR_INVALID_ARG : invalid argument
+  *    - ESP_ERR_WIFI_NOT_STARTED : WiFi is not started by esp_wifi_start
+  *    - ESP_ERR_WIFI_NOT_CONNECT : No connection between STA and AP
   */
 esp_err_t esp_wifi_internal_get_negotiated_channel(wifi_interface_t ifx, uint8_t aid, uint8_t *primary, uint8_t *second);
 
@@ -510,6 +513,9 @@ esp_err_t esp_wifi_internal_get_negotiated_channel(wifi_interface_t ifx, uint8_t
   *
   * @return
   *    - ESP_OK: succeed
+  *    - ESP_ERR_INVALID_ARG : invalid argument
+  *    - ESP_ERR_WIFI_NOT_STARTED : WiFi is not started by esp_wifi_start
+  *    - ESP_ERR_WIFI_NOT_CONNECT : No connection between STA and AP
   */
 esp_err_t esp_wifi_internal_get_negotiated_bandwidth(wifi_interface_t ifx, uint8_t aid, uint8_t *bw);
 
@@ -780,7 +786,7 @@ esp_err_t esp_nan_internal_datapath_end(wifi_nan_datapath_end_req_t *req);
   *    - ESP_OK: succeed
   *    - others: failed
   */
-esp_err_t esp_nan_internal_register_callbacks(struct nan_callbacks *cb);
+esp_err_t esp_nan_internal_register_callbacks(struct nan_sync_callbacks *cb);
 
 /**
   * @brief     Connect WiFi station to the AP.
@@ -839,6 +845,28 @@ void pm_beacon_offset_funcs_empty_init(void);
  * @brief This API is not context safe and enable easy fragment just for internal test only.
  */
 void esp_wifi_enable_easy_fragment(bool enable);
+
+/**
+  * @brief     Function signature for received Vendor-Specific Information Element callback with return value.
+  * @param     ctx Context argument, as passed to esp_wifi_set_vendor_ie_cb() when registering callback.
+  * @param     type Information element type, based on frame type received.
+  * @param     sa Source 802.11 address.
+  * @param     vnd_ie Pointer to the vendor specific element data received.
+  * @param     rssi Received signal strength indication.
+  */
+typedef esp_err_t (*esp_vendor_ie_cb_with_ret_t)(void *ctx, wifi_vendor_ie_type_t type, const uint8_t sa[6], const vendor_ie_data_t *vnd_ie, int rssi);
+
+/**
+  * @brief     Register Vendor-Specific Information Element monitoring callback.
+  *
+  * @param     cb   Callback function with return value
+  * @param     ctx  Context argument, passed to callback function.
+  *
+  * @return
+  *    - ESP_OK: succeed
+  *    - ESP_ERR_WIFI_NOT_INIT: WiFi is not initialized by esp_wifi_init
+  */
+esp_err_t esp_wifi_set_vendor_ie_with_ret_cb(esp_vendor_ie_cb_with_ret_t cb, void *ctx);
 
 #ifdef __cplusplus
 }

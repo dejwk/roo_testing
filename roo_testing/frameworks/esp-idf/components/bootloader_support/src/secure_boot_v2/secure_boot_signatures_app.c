@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -11,12 +11,6 @@
 #include "bootloader_signature.h"
 #include "esp_log.h"
 #include "esp_image_format.h"
-#include "mbedtls/sha256.h"
-#include "mbedtls/x509.h"
-#include "mbedtls/md.h"
-#include "mbedtls/platform.h"
-#include "mbedtls/entropy.h"
-#include "mbedtls/ctr_drbg.h"
 #include <string.h>
 #include <sys/param.h>
 #include "esp_secure_boot.h"
@@ -34,7 +28,7 @@ _Static_assert(SOC_EFUSE_SECURE_BOOT_KEY_DIGESTS == SECURE_BOOT_NUM_BLOCKS,
 
 #if CONFIG_SECURE_SIGNED_APPS_RSA_SCHEME || CONFIG_SECURE_SIGNED_APPS_ECDSA_V2_SCHEME || CONFIG_SECURE_SIGNED_ON_UPDATE_NO_SECURE_BOOT
 
-static const char *TAG = "secure_boot_v2";
+ESP_LOG_ATTR_TAG(TAG, "secure_boot_v2");
 #define ALIGN_UP(num, align) (((num) + ((align) - 1)) & ~((align) - 1))
 
 /* A signature block is valid when it has correct magic byte, crc. */
@@ -49,14 +43,10 @@ static esp_err_t validate_signature_block(const ets_secure_boot_sig_block_t *blo
         return ESP_FAIL;
     }
 
-#if SOC_ECDSA_P192_CURVE_DEFAULT_DISABLED && CONFIG_SECURE_SIGNED_APPS_ECDSA_V2_SCHEME
-    if (block->ecdsa.key.curve_id == ECDSA_CURVE_P192) {
-        // Enabling ECDSA-192 Curve mode
-        esp_err_t err = esp_efuse_enable_ecdsa_p192_curve_mode();
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to enable ECDSA-192 curve mode: %d", err);
-            return err;
-        }
+#if CONFIG_SECURE_SIGNED_APPS_ECDSA_V2_SCHEME
+    if (block->ecdsa.key.curve_id != ESP_SECURE_BOOT_ECDSA_CURVE_ID) {
+        ESP_LOGE(TAG, "ECDSA curve mismatch: actual (curve_id %u), expected (curve_id %u)", (unsigned) block->ecdsa.key.curve_id, (unsigned) ESP_SECURE_BOOT_ECDSA_CURVE_ID);
+        return ESP_FAIL;
     }
 #endif
 

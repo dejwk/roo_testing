@@ -49,6 +49,7 @@ extern "C" {
 #define REGDMA_MODEM_BT_BB_LINK(_pri)       ((0x15 << 8) | _pri)
 #define REGDMA_MODEM_IEEE802154_LINK(_pri)  ((0x16 << 8) | _pri)
 #define REGDMA_GDMA_LINK(_pri)              ((0x17 << 8) | _pri)
+#define REGDMA_AHB_DMA_LINK(_pri)           ((0x17 << 8) | _pri)
 #define REGDMA_I2C_LINK(_pri)               ((0x18 << 8) | _pri)
 #define REGDMA_RMT_LINK(_pri)               ((0x19 << 8) | _pri)
 #define REGDMA_TG0_WDT_LINK(_pri)           ((0x1A << 8) | _pri)
@@ -62,8 +63,12 @@ extern "C" {
 #define REGDMA_PARLIO_LINK(_pri)            ((0x22 << 8) | _pri)
 #define REGDMA_GPSPI_LINK(_pri)             ((0x23 << 8) | _pri)
 #define REGDMA_LEDC_LINK(_pri)              ((0x24 << 8) | _pri)
-#define REGDMA_PCNT_LINK(_pri)              ((0x25 << 8) | _pri)
-#define REGDMA_MCPWM_LINK(_pri)             ((0x26 << 8) | _pri)
+#define REGDMA_MCPWM_LINK(_pri)             ((0x25 << 8) | _pri)
+#define REGDMA_SDM_LINK(_pri)               ((0x26 << 8) | _pri)
+#define REGDMA_EMAC_LINK(_pri)              ((0x27 << 8) | _pri)
+#define REGDMA_JPEG_LINK(_pri)              ((0x28 << 8) | _pri)
+#define REGDMA_LCDCAM_LINK(_pri)            ((0x29 << 8) | _pri)
+#define REGDMA_H264_LINK(_pri)              ((0x2a << 8) | _pri)
 
 #define REGDMA_MODEM_FE_LINK(_pri)          ((0xFF << 8) | _pri)
 
@@ -84,13 +89,17 @@ extern "C" {
 #define REGDMA_LINK_PRI_I2C                     REGDMA_LINK_PRI_GENERAL_PERIPH
 #define REGDMA_LINK_PRI_I2S                     REGDMA_LINK_PRI_GENERAL_PERIPH
 #define REGDMA_LINK_PRI_PARLIO                  REGDMA_LINK_PRI_GENERAL_PERIPH
-#define REGDMA_LINK_PRI_PCNT                    REGDMA_LINK_PRI_GENERAL_PERIPH
 #define REGDMA_LINK_PRI_UART                    REGDMA_LINK_PRI_GENERAL_PERIPH
 #define REGDMA_LINK_PRI_TEMPERATURE_SENSOR      REGDMA_LINK_PRI_GENERAL_PERIPH
 #define REGDMA_LINK_PRI_TWAI                    REGDMA_LINK_PRI_GENERAL_PERIPH
 #define REGDMA_LINK_PRI_GPSPI                   REGDMA_LINK_PRI_GENERAL_PERIPH
 #define REGDMA_LINK_PRI_LEDC                    REGDMA_LINK_PRI_GENERAL_PERIPH
 #define REGDMA_LINK_PRI_MCPWM                   REGDMA_LINK_PRI_GENERAL_PERIPH
+#define REGDMA_LINK_PRI_SDM                     REGDMA_LINK_PRI_GENERAL_PERIPH
+#define REGDMA_LINK_PRI_EMAC                    REGDMA_LINK_PRI_GENERAL_PERIPH
+#define REGDMA_LINK_PRI_LCDCAM                  REGDMA_LINK_PRI_GENERAL_PERIPH
+#define REGDMA_LINK_PRI_JPEG                    REGDMA_LINK_PRI_GENERAL_PERIPH
+#define REGDMA_LINK_PRI_H264                    REGDMA_LINK_PRI_GENERAL_PERIPH
 
 typedef enum {
     REGDMA_LINK_PRI_0 = 0,

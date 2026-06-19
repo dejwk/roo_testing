@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -27,7 +27,7 @@
 #if __has_include("esp_psram.h")
 #include "esp_psram.h"
 #endif
-#ifdef CONFIG_ESP_WIFI_NAN_ENABLE
+#ifdef CONFIG_ESP_WIFI_NAN_SYNC_ENABLE
 #include "apps_private/wifi_apps_private.h"
 #endif
 #ifdef CONFIG_ESP_WIFI_FTM_ENABLE
@@ -191,7 +191,7 @@ static esp_err_t wifi_deinit_internal(void)
         ESP_LOGW(TAG, "Failed to unregister Rx callbacks");
     }
 
-#ifdef CONFIG_ESP_WIFI_NAN_ENABLE
+#ifdef CONFIG_ESP_WIFI_NAN_SYNC_ENABLE
     esp_nan_app_deinit();
 #endif
 
@@ -348,7 +348,8 @@ static esp_err_t esp_wifi_psram_check(const wifi_init_config_t *config)
 esp_err_t esp_wifi_init(const wifi_init_config_t *config)
 {
     if (s_wifi_inited) {
-        return ESP_OK;
+        ESP_LOGE(TAG, "Failed to init, WiFi is initialized by esp_wifi_init");
+        return ESP_ERR_INVALID_STATE;
     }
 
     esp_err_t result = ESP_OK;
@@ -501,7 +502,7 @@ esp_err_t esp_wifi_init(const wifi_init_config_t *config)
 
     esp_wifi_config_info();
 
-#ifdef CONFIG_ESP_WIFI_NAN_ENABLE
+#ifdef CONFIG_ESP_WIFI_NAN_SYNC_ENABLE
     esp_nan_app_init();
 #endif
 
@@ -670,7 +671,7 @@ void create_new_bss_for_sa_query_failed_sta(uint8_t arg)
 }
 #endif /* CONFIG_ESP_WIFI_SOFTAP_SUPPORT */
 
-#ifndef CONFIG_ESP_WIFI_NAN_ENABLE
+#ifndef CONFIG_ESP_WIFI_NAN_SYNC_ENABLE
 
 esp_err_t nan_start(void)
 {
@@ -701,7 +702,7 @@ int wifi_create_nan(void)
     return 0;
 }
 
-int wifi_nan_set_config_local(wifi_nan_config_t *p)
+int wifi_nan_set_config_local(wifi_nan_sync_config_t *p)
 {
     /* Do not remove, stub to overwrite weak link in Wi-Fi Lib */
     return 0;
@@ -728,7 +729,7 @@ void nan_ndp_resp_timeout_process(void *p)
 {
     /* Do not remove, stub to overwrite weak link in Wi-Fi Lib */
 }
-#endif /* CONFIG_ESP_WIFI_NAN_ENABLE */
+#endif /* CONFIG_ESP_WIFI_NAN_SYNC_ENABLE */
 
 #if CONFIG_IDF_TARGET_ESP32C5
 #if CONFIG_ESP32C5_REV_MIN_FULL <= 100

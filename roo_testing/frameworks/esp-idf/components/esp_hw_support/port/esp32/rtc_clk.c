@@ -11,7 +11,7 @@
 #include "soc/rtc.h"
 #include "esp_private/rtc_clk.h"
 #include "esp_private/esp_sleep_internal.h"
-#include "soc/rtc_periph.h"
+#include "soc/rtc_io_reg.h"
 #include "soc/sens_reg.h"
 #include "soc/soc_caps.h"
 #include "soc/chip_revision.h"
@@ -29,19 +29,19 @@
 #include "soc/io_mux_reg.h"
 #ifndef BOOTLOADER_BUILD
 #include "esp_private/systimer.h"
-#include "hal/timer_ll.h"
+#include "hal/lact_ll.h"
 #endif
 #include "esp_attr.h"
 
 #define XTAL_32K_BOOTSTRAP_TIME_US      7
 
-static void rtc_clk_cpu_freq_to_8m(void);
+static void rtc_clk_cpu_freq_to_rc_fast(void);
 static void rtc_clk_cpu_freq_to_pll_mhz(int cpu_freq_mhz);
 
 // Current PLL frequency, in MHZ (320 or 480). Zero if PLL is not enabled.
 static uint32_t s_cur_pll_freq;
 
-static const char* TAG = "rtc_clk";
+ESP_HW_LOG_ATTR_TAG(TAG, "rtc_clk");
 
 static void rtc_clk_32k_enable_common(clk_ll_xtal32k_enable_mode_t mode)
 {
@@ -380,7 +380,7 @@ FORCE_IRAM_ATTR void rtc_clk_cpu_freq_to_xtal(int cpu_freq, int div)
     /* switch clock source */
     clk_ll_cpu_set_src(SOC_CPU_CLK_SRC_XTAL);
 #ifndef BOOTLOADER_BUILD
-    timer_ll_set_lact_clock_prescale(TIMER_LL_GET_HW(LACT_MODULE), cpu_freq / LACT_TICKS_PER_US);
+    lact_ll_set_clock_prescale(LACT_LL_GET_HW(LACT_MODULE), cpu_freq / LACT_TICKS_PER_US);
 #endif
     rtc_clk_apb_freq_update(cpu_freq * MHZ);
     /* lower the voltage */
@@ -388,7 +388,7 @@ FORCE_IRAM_ATTR void rtc_clk_cpu_freq_to_xtal(int cpu_freq, int div)
     REG_SET_FIELD(RTC_CNTL_REG, RTC_CNTL_DIG_DBIAS_WAK, dbias);
 }
 
-static void rtc_clk_cpu_freq_to_8m(void)
+static void rtc_clk_cpu_freq_to_rc_fast(void)
 {
     esp_rom_set_cpu_ticks_per_us(8);
     REG_SET_FIELD(RTC_CNTL_REG, RTC_CNTL_DIG_DBIAS_WAK, DIG_DBIAS_XTAL);
@@ -398,7 +398,7 @@ static void rtc_clk_cpu_freq_to_8m(void)
     /* switch clock source */
     clk_ll_cpu_set_src(SOC_CPU_CLK_SRC_RC_FAST);
 #ifndef BOOTLOADER_BUILD
-    timer_ll_set_lact_clock_prescale(TIMER_LL_GET_HW(LACT_MODULE), SOC_CLK_RC_FAST_FREQ_APPROX / MHZ / LACT_TICKS_PER_US);
+    lact_ll_set_clock_prescale(LACT_LL_GET_HW(LACT_MODULE), SOC_CLK_RC_FAST_FREQ_APPROX / MHZ / LACT_TICKS_PER_US);
 #endif
     rtc_clk_apb_freq_update(SOC_CLK_RC_FAST_FREQ_APPROX);
 }
@@ -431,7 +431,7 @@ NOINLINE_ATTR static void rtc_clk_cpu_freq_to_pll_mhz(int cpu_freq_mhz)
     uint32_t cur_freq = esp_rom_get_cpu_ticks_per_us();
     int16_t delay_cycle = rtc_clk_get_lact_compensation_delay(cur_freq, cpu_freq_mhz);
     if (cur_freq <= 40 && delay_cycle >= 0) {
-        timer_ll_set_lact_clock_prescale(TIMER_LL_GET_HW(LACT_MODULE), 80 / LACT_TICKS_PER_US);
+        lact_ll_set_clock_prescale(LACT_LL_GET_HW(LACT_MODULE), 80 / LACT_TICKS_PER_US);
         for (int i = 0; i < delay_cycle; ++i) {
             __asm__ __volatile__("nop");
         }
@@ -449,7 +449,7 @@ NOINLINE_ATTR static void rtc_clk_cpu_freq_to_pll_mhz(int cpu_freq_mhz)
         for (int i = 0; i > delay_cycle; --i) {
             __asm__ __volatile__("nop");
         }
-        timer_ll_set_lact_clock_prescale(TIMER_LL_GET_HW(LACT_MODULE), 80 / LACT_TICKS_PER_US);
+        lact_ll_set_clock_prescale(LACT_LL_GET_HW(LACT_MODULE), 80 / LACT_TICKS_PER_US);
     }
 #endif
     rtc_clk_wait_for_slow_cycle();
@@ -543,7 +543,7 @@ void rtc_clk_cpu_freq_set_config(const rtc_cpu_freq_config_t* config)
         rtc_clk_bbpll_configure(rtc_clk_xtal_freq_get(), config->source_freq_mhz);
         rtc_clk_cpu_freq_to_pll_mhz(config->freq_mhz);
     } else if (config->source == SOC_CPU_CLK_SRC_RC_FAST) {
-        rtc_clk_cpu_freq_to_8m();
+        rtc_clk_cpu_freq_to_rc_fast();
     }
 }
 

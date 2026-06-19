@@ -15,19 +15,10 @@
 extern "C" {
 #endif
 
-/**
- * @brief I2S controller port number, the max port number is (SOC_I2S_NUM -1).
- */
-typedef enum {
-    I2S_NUM_0 = 0,                 /*!< I2S controller port 0 */
-#if SOC_I2S_NUM > 1
-    I2S_NUM_1 = 1,                 /*!< I2S controller port 1 */
-#endif
-#if SOC_I2S_NUM > 2
-    I2S_NUM_2 = 2,                 /*!< I2S controller port 2 */
-#endif
-    I2S_NUM_AUTO,                  /*!< Select whichever port is available */
-} i2s_port_t;
+#define I2S_NUM_0           0       /*!< I2S controller port 0 */
+#define I2S_NUM_1           1       /*!< I2S controller port 1 */
+#define I2S_NUM_2           2       /*!< I2S controller port 2 */
+#define I2S_NUM_AUTO        -1      /*!< Select an available port automatically */
 
 /**
  * @brief I2S controller communication mode
@@ -75,9 +66,6 @@ typedef struct {
  * @brief Event structure used in I2S event queue
  */
 typedef struct {
-    void                *data __attribute__((deprecated));  /**< (Deprecated) The secondary pointer of DMA buffer that just finished sending or receiving for `on_recv` and `on_sent` callback
-                                  *  NULL for `on_recv_q_ovf` and `on_send_q_ovf` callback
-                                  */
     void                *dma_buf;/**< The first level pointer of DMA buffer that just finished sending or receiving for `on_recv` and `on_sent` callback
                                   *  NULL for `on_recv_q_ovf` and `on_send_q_ovf` callback
                                   */

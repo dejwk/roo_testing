@@ -32,14 +32,13 @@
 #include "esp_attr.h"
 #include "esp_memory_utils.h"
 #include "esp_intr_alloc.h"
-#include "spi_flash_override.h"
 #include "esp_private/esp_cache_private.h"
 #include "esp_private/cache_utils.h"
 #include "esp_private/spi_flash_os.h"
 #include "esp_private/freertos_idf_additions_priv.h"
 #include "esp_log.h"
 
-static __attribute__((unused)) const char *TAG = "cache";
+ESP_LOG_ATTR_TAG(TAG, "cache");
 
 // Used only on ROM impl. in idf, this param unused, cache status hold by hal
 static uint32_t s_flash_op_cache_state[2];

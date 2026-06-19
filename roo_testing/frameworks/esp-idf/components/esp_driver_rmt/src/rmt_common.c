@@ -1,11 +1,11 @@
 /*
- * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 #include "rmt_private.h"
-#include "clk_ctrl_os.h"
+#include "esp_clk_tree.h"
 #include "soc/rtc.h"
 #include "driver/gpio.h"
 
@@ -22,9 +22,9 @@
 #endif
 
 typedef struct rmt_platform_t {
-    _lock_t mutex;                        // platform level mutex lock
-    rmt_group_t *groups[SOC_RMT_GROUPS];  // array of RMT group instances
-    int group_ref_counts[SOC_RMT_GROUPS]; // reference count used to protect group install/uninstall
+    _lock_t mutex;                              // platform level mutex lock
+    rmt_group_t *groups[RMT_LL_GET(INST_NUM)];  // array of RMT group instances
+    int group_ref_counts[RMT_LL_GET(INST_NUM)]; // reference count used to protect group install/uninstall
 } rmt_platform_t;
 
 static rmt_platform_t s_platform; // singleton platform
@@ -48,7 +48,7 @@ rmt_group_t *rmt_acquire_group_handle(int group_id)
             group->group_id = group_id;
             group->spinlock = (portMUX_TYPE)portMUX_INITIALIZER_UNLOCKED;
             // initial occupy_mask: 1111...100...0
-            group->occupy_mask = UINT32_MAX & ~((1 << SOC_RMT_CHANNELS_PER_GROUP) - 1);
+            group->occupy_mask = UINT32_MAX & ~((1 << RMT_LL_GET(CHANS_PER_INST)) - 1);
             // group clock won't be configured at this stage, it will be set when allocate the first channel
             group->clk_src = 0;
             // group interrupt priority is shared between all channels, it will be set when allocate the first channel
@@ -95,7 +95,6 @@ rmt_group_t *rmt_acquire_group_handle(int group_id)
 void rmt_release_group_handle(rmt_group_t *group)
 {
     int group_id = group->group_id;
-    rmt_clock_source_t clk_src = group->clk_src;
     bool do_deinitialize = false;
     rmt_hal_context_t *hal = &group->hal;
 
@@ -117,16 +116,6 @@ void rmt_release_group_handle(rmt_group_t *group)
     }
     _lock_release(&s_platform.mutex);
 
-    switch (clk_src) {
-#if SOC_RMT_SUPPORT_RC_FAST
-    case RMT_CLK_SRC_RC_FAST:
-        periph_rtc_dig_clk8m_disable();
-        break;
-#endif // SOC_RMT_SUPPORT_RC_FAST
-    default:
-        break;
-    }
-
     if (do_deinitialize) {
 #if RMT_USE_RETENTION_LINK
         sleep_retention_module_t module = rmt_reg_retention_info[group_id].module;
@@ -142,8 +131,8 @@ void rmt_release_group_handle(rmt_group_t *group)
     }
 }
 
-#if !SOC_RMT_CHANNEL_CLK_INDEPENDENT
-static esp_err_t s_rmt_set_group_prescale(rmt_channel_t *chan, uint32_t expect_resolution_hz, uint32_t *ret_channel_prescale)
+#if !RMT_LL_GET(CHANNEL_CLK_INDEPENDENT)
+static esp_err_t rmt_set_group_prescale(rmt_channel_t *chan, uint32_t expect_resolution_hz, uint32_t *ret_channel_prescale)
 {
     uint32_t periph_src_clk_hz = 0;
     rmt_group_t *group = chan->group;
@@ -194,7 +183,7 @@ static esp_err_t s_rmt_set_group_prescale(rmt_channel_t *chan, uint32_t expect_r
     *ret_channel_prescale = channel_prescale;
     return ESP_OK;
 }
-#endif // SOC_RMT_CHANNEL_CLK_INDEPENDENT
+#endif // RMT_LL_GET(CHANNEL_CLK_INDEPENDENT)
 
 esp_err_t rmt_select_periph_clock(rmt_channel_handle_t chan, rmt_clock_source_t clk_src, uint32_t expect_channel_resolution)
 {
@@ -209,17 +198,8 @@ esp_err_t rmt_select_periph_clock(rmt_channel_handle_t chan, rmt_clock_source_t 
         clock_selection_conflict = (group->clk_src != clk_src);
     }
     portEXIT_CRITICAL(&group->spinlock);
-    ESP_RETURN_ON_FALSE(!clock_selection_conflict, ESP_ERR_INVALID_ARG, TAG,
+    ESP_RETURN_ON_FALSE(!clock_selection_conflict, ESP_ERR_INVALID_STATE, TAG,
                         "group clock conflict, already is %d but attempt to %d", group->clk_src, clk_src);
-
-    // TODO: [clk_tree] to use a generic clock enable/disable or acquire/release function for all clock source
-#if SOC_RMT_SUPPORT_RC_FAST
-    if (clk_src == RMT_CLK_SRC_RC_FAST) {
-        // RC_FAST clock is not enabled automatically on start up, we enable it here manually.
-        // Note there's a ref count in the enable/disable function, we must call them in pair in the driver.
-        periph_rtc_dig_clk8m_enable();
-    }
-#endif // SOC_RMT_SUPPORT_RC_FAST
 
 #if CONFIG_PM_ENABLE
     // if DMA is not used, we're using CPU to push the data to the RMT FIFO
@@ -236,11 +216,11 @@ esp_err_t rmt_select_periph_clock(rmt_channel_handle_t chan, rmt_clock_source_t 
 
     ESP_RETURN_ON_ERROR(esp_clk_tree_enable_src((soc_module_clk_t)clk_src, true), TAG, "clock source enable failed");
     uint32_t real_div;
-#if SOC_RMT_CHANNEL_CLK_INDEPENDENT
+#if RMT_LL_GET(CHANNEL_CLK_INDEPENDENT)
     uint32_t periph_src_clk_hz = 0;
     // get clock source frequency
-    ESP_RETURN_ON_ERROR(esp_clk_tree_src_get_freq_hz((soc_module_clk_t)clk_src, ESP_CLK_TREE_SRC_FREQ_PRECISION_CACHED, &periph_src_clk_hz),
-                        TAG, "get clock source frequency failed");
+    ESP_GOTO_ON_ERROR(esp_clk_tree_src_get_freq_hz((soc_module_clk_t)clk_src, ESP_CLK_TREE_SRC_FREQ_PRECISION_CACHED, &periph_src_clk_hz),
+                      err, TAG, "get clock source frequency failed");
     RMT_CLOCK_SRC_ATOMIC() {
         rmt_ll_set_group_clock_src(group->hal.regs, chan->channel_id, clk_src, 1, 1, 0);
         rmt_ll_enable_group_clock(group->hal.regs, true);
@@ -250,8 +230,8 @@ esp_err_t rmt_select_periph_clock(rmt_channel_handle_t chan, rmt_clock_source_t 
     real_div = (group->resolution_hz + expect_channel_resolution / 2) / expect_channel_resolution;
 #else
     // set division for group clock source, to achieve highest resolution while guaranteeing the channel resolution.
-    ESP_RETURN_ON_ERROR(s_rmt_set_group_prescale(chan, expect_channel_resolution, &real_div), TAG, "set rmt group prescale failed");
-#endif // SOC_RMT_CHANNEL_CLK_INDEPENDENT
+    ESP_GOTO_ON_ERROR(rmt_set_group_prescale(chan, expect_channel_resolution, &real_div), err, TAG, "set rmt group prescale failed");
+#endif // RMT_LL_GET(CHANNEL_CLK_INDEPENDENT)
 
     if (chan->direction == RMT_CHANNEL_DIRECTION_TX) {
         rmt_ll_tx_set_channel_clock_div(group->hal.regs, chan->channel_id, real_div);
@@ -263,6 +243,10 @@ esp_err_t rmt_select_periph_clock(rmt_channel_handle_t chan, rmt_clock_source_t 
     if (chan->resolution_hz != expect_channel_resolution) {
         ESP_LOGW(TAG, "channel resolution loss, real=%"PRIu32, chan->resolution_hz);
     }
+    return ret;
+
+err:
+    esp_clk_tree_enable_src((soc_module_clk_t)clk_src, false);
     return ret;
 }
 

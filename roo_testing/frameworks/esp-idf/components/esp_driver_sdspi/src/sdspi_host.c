@@ -400,7 +400,7 @@ esp_err_t sdspi_host_init_device(const sdspi_device_config_t* slot_config, sdspi
         .intr_type = GPIO_INTR_DISABLE,
         .mode = GPIO_MODE_INPUT,
         .pin_bit_mask = 0,
-        .pull_up_en = true
+        .pull_up_en = GPIO_PULLUP_ENABLE
     };
     if (slot_config->gpio_cd != SDSPI_SLOT_NO_CD) {
         io_conf.pin_bit_mask |= (1ULL << slot_config->gpio_cd);
@@ -414,8 +414,8 @@ esp_err_t sdspi_host_init_device(const sdspi_device_config_t* slot_config, sdspi
         slot->gpio_wp = slot_config->gpio_wp;
         slot->gpio_wp_polarity = slot_config->gpio_wp_polarity;
         if (slot->gpio_wp_polarity) {
-            io_conf.pull_down_en = true;
-            io_conf.pull_up_en = false;
+            io_conf.pull_down_en = GPIO_PULLDOWN_ENABLE;
+            io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
         }
     } else {
         slot->gpio_wp = GPIO_UNUSED;
@@ -434,7 +434,7 @@ esp_err_t sdspi_host_init_device(const sdspi_device_config_t* slot_config, sdspi
         io_conf = (gpio_config_t) {
             .intr_type = GPIO_INTR_LOW_LEVEL,
             .mode = GPIO_MODE_INPUT,
-            .pull_up_en = true,
+            .pull_up_en = GPIO_PULLUP_ENABLE,
             .pin_bit_mask = (1ULL << slot_config->gpio_int),
         };
         ret = gpio_config(&io_conf);
@@ -1024,7 +1024,7 @@ esp_err_t sdspi_host_io_int_enable(sdspi_dev_handle_t handle)
 }
 
 //the interrupt will give the semaphore and then disable itself
-esp_err_t sdspi_host_io_int_wait(sdspi_dev_handle_t handle, TickType_t timeout_ticks)
+esp_err_t sdspi_host_io_int_wait(sdspi_dev_handle_t handle, uint32_t timeout_ticks)
 {
     slot_info_t* slot = get_slot_info(handle);
     //skip the interrupt and semaphore if the gpio is already low.
@@ -1041,14 +1041,6 @@ esp_err_t sdspi_host_io_int_wait(sdspi_dev_handle_t handle, TickType_t timeout_t
         gpio_intr_disable(slot->gpio_int);
         return ESP_ERR_TIMEOUT;
     }
-    return ESP_OK;
-}
-
-esp_err_t sdspi_host_get_dma_info(int slot, esp_dma_mem_info_t *dma_mem_info)
-{
-    (void)slot;
-    dma_mem_info->extra_heap_caps = MALLOC_CAP_DMA;
-    dma_mem_info->dma_alignment_bytes = 4;
     return ESP_OK;
 }
 

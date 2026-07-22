@@ -7,7 +7,7 @@
 #include "WiFi.h"
 #include "WiFiGeneric.h"
 #include "WiFiAP.h"
-#if SOC_WIFI_SUPPORTED || CONFIG_ESP_WIFI_REMOTE_ENABLED
+#if SOC_WIFI_SUPPORTED || CONFIG_ESP_HOSTED_ENABLED
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -21,6 +21,11 @@
 #include <lwip/ip_addr.h>
 #include "dhcpserver/dhcpserver_options.h"
 #include "esp_netif.h"
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+#define esp_interface_t wifi_interface_t
+#define ESP_IF_WIFI_AP  WIFI_IF_AP
+#endif
 
 esp_netif_t *get_esp_interface_netif(esp_interface_t interface);
 
@@ -153,7 +158,9 @@ APClass::APClass() : _wifi_ap_event_handle(0) {
 }
 
 APClass::~APClass() {
-  end();
+  // Calling end() here causes a lot of WiFi code to be linked to the final executable by just including "WiFi.h"
+  // If globals are disabled, then the user should call WiFi.AP.end() before destroying the WiFi object
+  // end();
   _ap_network_if = NULL;
 }
 

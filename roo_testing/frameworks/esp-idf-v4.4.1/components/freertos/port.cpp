@@ -3,6 +3,8 @@
 #include <FreeRTOS.h>
 #include "task.h"
 
+#include "roo_testing/host_event/host_event_endpoint.h"
+
 extern "C" {
 
 void* pvPortMalloc(size_t xSize) { return malloc(xSize); }
@@ -13,6 +15,7 @@ void vAssertCalled(const char* const pcFileName, unsigned long ulLine) {
 }
 
 void vApplicationTickHook( void ) {
+  roo_testing::internal::hostEventTickHook();
   timespec t = {
 	.tv_sec = 0,
 	.tv_nsec = 5,

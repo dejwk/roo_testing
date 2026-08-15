@@ -110,6 +110,7 @@ extern void vPortClearInterruptMask( portBASE_TYPE xMask );
 
 extern void vPortEnterCritical( void );
 extern void vPortExitCritical( void );
+extern BaseType_t xPortIsFreeRtosTask( void );
 #define portSET_INTERRUPT_MASK_FROM_ISR()		xPortSetInterruptMask()
 #define portCLEAR_INTERRUPT_MASK_FROM_ISR(x)	vPortClearInterruptMask(x)
 #define portDISABLE_INTERRUPTS()				portSET_INTERRUPT_MASK()

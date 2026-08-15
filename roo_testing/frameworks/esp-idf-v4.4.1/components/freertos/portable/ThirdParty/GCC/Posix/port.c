@@ -267,6 +267,20 @@ void vPortExitCritical( void )
 }
 /*-----------------------------------------------------------*/
 
+BaseType_t xPortIsFreeRtosTask( void )
+{
+    TaskHandle_t xTask = xTaskGetCurrentTaskHandle();
+
+    if( xTask == NULL )
+    {
+        return pdFALSE;
+    }
+
+    return pthread_equal( pthread_self(), prvGetThreadFromTask( xTask )->pthread )
+           ? pdTRUE : pdFALSE;
+}
+/*-----------------------------------------------------------*/
+
 bool xPortCanYield(void) {
     return uxCriticalNesting == 0;
 }

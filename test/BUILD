@@ -1,6 +1,17 @@
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
 cc_test(
+    name = "host_event_gateway_test",
+    srcs = ["host_event_gateway_test.cpp"],
+    linkstatic = 1,
+    size = "small",
+    deps = [
+        "//:arduino_gtest_main",
+        "//roo_testing/host_event",
+    ],
+)
+
+cc_test(
     name = "gpio_test",
     srcs = ["gpio_test.cpp"],
     linkstatic = 1,

@@ -16,6 +16,7 @@
 #include <FL/Fl.H>
 #include <FL/Fl_Box.H>
 #include <FL/Fl_Double_Window.H>
+#include <FL/Fl_Image.H>
 #include <FL/fl_draw.H>
 #include <FL/x.H>
 
@@ -231,8 +232,16 @@ class MyWindow : public Fl_Window {
   MyWindow(int width, int height, EventQueue* queue)
       : Fl_Window(width, height, "roo_display emulator"),
         queue_(queue),
+        logical_width_(width),
+        logical_height_(height),
+        magnification_(1),
         needs_full_redraw_(false),
         framebuffer_(new unsigned char[width * height * 3]) {
+    // Permit resizing only by whole-display increments. The explicit resize
+    // override below also snaps sizes for window managers that don't honor
+    // size increments.
+    resizable(this);
+    size_range(width, height, 0, 0, width, height, 1);
     // Register per-window close handler so closing the OS window triggers
     // a clean shutdown of the device manager instead of freezing.
     callback(on_close_cb, this);
@@ -250,40 +259,71 @@ class MyWindow : public Fl_Window {
   }
 
   void drawPixel(int x, int y, uint32_t color_rgbi) {
-    unsigned char* p = framebuffer_.get() + 3 * (y * w() + x);
+    unsigned char* p =
+        framebuffer_.get() + 3 * (y * logical_width_ + x);
     p[0] = (color_rgbi >> 24) & 0xFF;
     p[1] = (color_rgbi >> 16) & 0xFF;
     p[2] = (color_rgbi >> 8) & 0xFF;
   }
 
+  void drawScreenRect(int x, int y, int width, int height,
+                      uint32_t color_rgbi) {
+    fl_rectf(x * magnification_, y * magnification_,
+             width * magnification_, height * magnification_, color_rgbi);
+  }
+
+  void resize(int x, int y, int width, int height) override {
+    int scale_x = (width + logical_width_ / 2) / logical_width_;
+    int scale_y = (height + logical_height_ / 2) / logical_height_;
+    int magnification = scale_x < scale_y ? scale_x : scale_y;
+    if (magnification < 1) magnification = 1;
+
+    magnification_ = magnification;
+    Fl_Window::resize(x, y, logical_width_ * magnification_,
+                      logical_height_ * magnification_);
+    redraw();
+  }
+
  private:
   void draw() override {
-    fl_draw_image(framebuffer_.get(), 0, 0, w(), h(), 3, 0);
+    if (magnification_ == 1) {
+      fl_draw_image(framebuffer_.get(), 0, 0, logical_width_, logical_height_,
+                    3, 0);
+      return;
+    }
+    Fl_RGB_Image source(framebuffer_.get(), logical_width_, logical_height_, 3);
+    std::unique_ptr<Fl_Image> scaled(source.copy(w(), h()));
+    scaled->draw(0, 0);
+  }
+
+  void setMouseStatus(bool pressed) {
+    queue_->set_mouse_status(Fl::event_x() / magnification_,
+                             Fl::event_y() / magnification_, pressed);
   }
 
   int handle(int event) override {
     switch (event) {
       case FL_ENTER: {
-        queue_->set_mouse_status(Fl::event_x(), Fl::event_y(), false);
+        setMouseStatus(false);
         return 1;
       }
       case FL_LEAVE: {
-        queue_->set_mouse_status(Fl::event_x(), Fl::event_y(), false);
+        setMouseStatus(false);
         return 0;
       }
       case FL_DRAG: {
-        queue_->set_mouse_status(Fl::event_x(), Fl::event_y(), true);
+        setMouseStatus(true);
         return 0;
       }
       case FL_MOVE: {
-        queue_->set_mouse_status(Fl::event_x(), Fl::event_y(), false);
+        setMouseStatus(false);
         return 0;
       }
       case FL_PUSH:
-        queue_->set_mouse_status(Fl::event_x(), Fl::event_y(), true);
+        setMouseStatus(true);
         return 1;
       case FL_RELEASE: {
-        queue_->set_mouse_status(Fl::event_x(), Fl::event_y(), false);
+        setMouseStatus(false);
         return 1;
       }
       case FL_SHOW: {
@@ -297,6 +337,9 @@ class MyWindow : public Fl_Window {
   }
 
   EventQueue* queue_;
+  const int logical_width_;
+  const int logical_height_;
+  int magnification_;
   bool needs_full_redraw_;
   std::unique_ptr<unsigned char[]> framebuffer_;
 };
@@ -382,8 +425,9 @@ class Device {
           window_->drawRect(fillrect.x0, fillrect.y0, fillrect.x1, fillrect.y1,
                             color_rgbi);
           // Also draw incrementally to avoid delays.
-          fl_rectf(fillrect.x0, fillrect.y0, fillrect.x1 - fillrect.x0 + 1,
-                   fillrect.y1 - fillrect.y0 + 1, color_rgbi);
+          window_->drawScreenRect(fillrect.x0, fillrect.y0,
+                                  fillrect.x1 - fillrect.x0 + 1,
+                                  fillrect.y1 - fillrect.y0 + 1, color_rgbi);
           pacePixels((fillrect.x1 - fillrect.x0 + 1) *
                      (fillrect.y1 - fillrect.y0 + 1));
         } else if (msg.type == Message::DRAWRECT) {
@@ -401,7 +445,7 @@ class Device {
               }
               window_->drawPixel(x, y, color_rgbi);
               // Also draw incrementally to avoid delays.
-              fl_rectf(x, y, 1, 1, color_rgbi);
+              window_->drawScreenRect(x, y, 1, 1, color_rgbi);
               pacePixels(1);
               color_argb++;
             }

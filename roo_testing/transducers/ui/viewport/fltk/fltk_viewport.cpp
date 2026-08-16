@@ -6,6 +6,7 @@
 #include <mutex>
 #include <queue>
 #include <thread>
+#include <vector>
 
 // #define FLTK_DEVICE_NOISE_BITS 6
 // #define FLTK_MAX_PIXELS_PER_MS 100
@@ -334,10 +335,11 @@ bool FltkViewport::isMouseClicked(int16_t* x, int16_t* y) {
 
 class Device {
  public:
-  Device(EventQueue* queue, FltkViewportOptions options)
+  Device(EventQueue* queue, FltkViewportOptions options, size_t display_index)
       : initialized_(false),
         queue_(queue),
         options_(options),
+        display_index_(display_index),
         rate_window_start_(std::chrono::steady_clock::now()),
         pixels_in_window_(0) {}
 
@@ -348,9 +350,12 @@ class Device {
     int screen_w = 0;
     int screen_h = 0;
     Fl::screen_xywh(screen_x, screen_y, screen_w, screen_h);
-    // Center the window on the primary screen.
-    window_->position(screen_x + (screen_w - width) / 2,
-                      screen_y + (screen_h - height) / 2);
+    // Center the first window and cascade subsequent windows so that multiple
+    // emulated displays don't completely obscure one another.
+    constexpr int kWindowOffset = 30;
+    int offset = kWindowOffset * (display_index_ % 8);
+    window_->position(screen_x + (screen_w - width) / 2 + offset,
+                      screen_y + (screen_h - height) / 2 + offset);
     window_->show();
     window_->make_current();
   }
@@ -435,6 +440,7 @@ class Device {
   std::unique_ptr<MyWindow> window_;
   EventQueue* queue_;
   const FltkViewportOptions options_;
+  const size_t display_index_;
   std::chrono::steady_clock::time_point rate_window_start_;
   int pixels_in_window_;
 };
@@ -444,8 +450,7 @@ extern "C" void* device_func(void* p);
 class DeviceManager {
  public:
   DeviceManager()
-      : device_(nullptr),
-        exiting_(false),
+      : exiting_(false),
         exited_(false),
         device_mutex_(PTHREAD_MUTEX_INITIALIZER),
         nonempty_(PTHREAD_COND_INITIALIZER) {
@@ -460,12 +465,13 @@ class DeviceManager {
 
   void run() {
     Fl::lock();
-    int visible_windows;
-    while ((visible_windows = Fl::wait()) > 0 || getDevice() != nullptr) {
+    while (true) {
+      int visible_windows = Fl::wait();
+      std::vector<Device*> devices = getDevices();
       if (exiting()) break;
-      Device* device = getDevice();
-      if (device == nullptr) break;
-      device->refresh(visible_windows > 0);
+      for (Device* device : devices) {
+        device->refresh(visible_windows > 0);
+      }
     }
     MutexLock lock(&device_mutex_);
     exited_ = true;
@@ -473,13 +479,17 @@ class DeviceManager {
 
   void addDevice(EventQueue* queue, FltkViewportOptions options) {
     MutexLock lock(&device_mutex_);
-    device_.reset(new Device(queue, options));
+    devices_.emplace_back(new Device(queue, options, devices_.size()));
     pthread_cond_signal(&nonempty_);
   }
 
   void exit() {
-    MutexLock lock(&device_mutex_);
-    exiting_ = true;
+    {
+      MutexLock lock(&device_mutex_);
+      exiting_ = true;
+      pthread_cond_signal(&nonempty_);
+    }
+    Fl::awake();
   }
 
   bool exiting() {
@@ -493,15 +503,20 @@ class DeviceManager {
   }
 
  private:
-  Device* getDevice() {
+  std::vector<Device*> getDevices() {
     MutexLock lock(&device_mutex_);
-    while (device_.get() == nullptr && !exiting_) {
+    while (devices_.empty() && !exiting_) {
       pthread_cond_wait(&nonempty_, &device_mutex_);
     }
-    return device_.get();
+    std::vector<Device*> result;
+    result.reserve(devices_.size());
+    for (const auto& device : devices_) {
+      result.push_back(device.get());
+    }
+    return result;
   }
 
-  std::unique_ptr<Device> device_;
+  std::vector<std::unique_ptr<Device>> devices_;
   bool exiting_;
   bool exited_;
 

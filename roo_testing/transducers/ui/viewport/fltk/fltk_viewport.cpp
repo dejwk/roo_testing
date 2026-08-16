@@ -237,15 +237,16 @@ class MyWindow : public Fl_Window {
         magnification_(1),
         needs_full_redraw_(false),
         framebuffer_(new unsigned char[width * height * 3]) {
-    // Permit resizing only by whole-display increments. The explicit resize
-    // override below also snaps sizes for window managers that don't honor
-    // size increments.
+    // Preserve the display aspect ratio during resizing. Once the gesture is
+    // complete, the resize callback snaps to a whole-display multiple.
     resizable(this);
-    size_range(width, height, 0, 0, width, height, 1);
+    size_range(width, height, 0, 0, 0, 0, 1);
     // Register per-window close handler so closing the OS window triggers
     // a clean shutdown of the device manager instead of freezing.
     callback(on_close_cb, this);
   }
+
+  ~MyWindow() override { Fl::remove_timeout(snap_resize_cb, this); }
 
   // Called when the user closes the window via the window manager.
   static void on_close_cb(Fl_Widget* w, void* data);
@@ -259,8 +260,7 @@ class MyWindow : public Fl_Window {
   }
 
   void drawPixel(int x, int y, uint32_t color_rgbi) {
-    unsigned char* p =
-        framebuffer_.get() + 3 * (y * logical_width_ + x);
+    unsigned char* p = framebuffer_.get() + 3 * (y * logical_width_ + x);
     p[0] = (color_rgbi >> 24) & 0xFF;
     p[1] = (color_rgbi >> 16) & 0xFF;
     p[2] = (color_rgbi >> 8) & 0xFF;
@@ -268,25 +268,47 @@ class MyWindow : public Fl_Window {
 
   void drawScreenRect(int x, int y, int width, int height,
                       uint32_t color_rgbi) {
-    fl_rectf(x * magnification_, y * magnification_,
-             width * magnification_, height * magnification_, color_rgbi);
+    int x0 = x * w() / logical_width_;
+    int y0 = y * h() / logical_height_;
+    int x1 = (x + width) * w() / logical_width_;
+    int y1 = (y + height) * h() / logical_height_;
+    fl_rectf(x0, y0, x1 - x0, y1 - y0, color_rgbi);
   }
 
   void resize(int x, int y, int width, int height) override {
+    bool size_changed = width != w() || height != h();
+    Fl_Window::resize(x, y, width, height);
+    if (!size_changed) return;
+
     int scale_x = (width + logical_width_ / 2) / logical_width_;
     int scale_y = (height + logical_height_ / 2) / logical_height_;
     int magnification = scale_x < scale_y ? scale_x : scale_y;
     if (magnification < 1) magnification = 1;
 
     magnification_ = magnification;
-    Fl_Window::resize(x, y, logical_width_ * magnification_,
-                      logical_height_ * magnification_);
+    Fl::remove_timeout(snap_resize_cb, this);
+    Fl::add_timeout(kResizeIdleSeconds, snap_resize_cb, this);
     redraw();
   }
 
  private:
+  static constexpr double kResizeIdleSeconds = 0.15;
+
+  static void snap_resize_cb(void* data) {
+    static_cast<MyWindow*>(data)->snapToMagnification();
+  }
+
+  void snapToMagnification() {
+    int width = logical_width_ * magnification_;
+    int height = logical_height_ * magnification_;
+    if (w() != width || h() != height) {
+      Fl_Window::resize(x(), y(), width, height);
+    }
+    redraw();
+  }
+
   void draw() override {
-    if (magnification_ == 1) {
+    if (w() == logical_width_ && h() == logical_height_) {
       fl_draw_image(framebuffer_.get(), 0, 0, logical_width_, logical_height_,
                     3, 0);
       return;
@@ -297,8 +319,11 @@ class MyWindow : public Fl_Window {
   }
 
   void setMouseStatus(bool pressed) {
-    queue_->set_mouse_status(Fl::event_x() / magnification_,
-                             Fl::event_y() / magnification_, pressed);
+    int mouse_x = Fl::event_x();
+    int mouse_y = Fl::event_y();
+    if (mouse_x >= 0) mouse_x = mouse_x * logical_width_ / w();
+    if (mouse_y >= 0) mouse_y = mouse_y * logical_height_ / h();
+    queue_->set_mouse_status(mouse_x, mouse_y, pressed);
   }
 
   int handle(int event) override {

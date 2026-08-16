@@ -231,7 +231,14 @@ class MyWindow : public Fl_Window {
       : Fl_Window(width, height, "roo_display emulator"),
         queue_(queue),
         needs_full_redraw_(false),
-        framebuffer_(new unsigned char[width * height * 3]) {}
+        framebuffer_(new unsigned char[width * height * 3]) {
+    // Register per-window close handler so closing the OS window triggers
+    // a clean shutdown of the device manager instead of freezing.
+    callback(on_close_cb, this);
+  }
+
+  // Called when the user closes the window via the window manager.
+  static void on_close_cb(Fl_Widget* w, void* data);
 
   void drawRect(int x0, int y0, int x1, int y1, uint32_t color_rgbi) {
     for (int y = y0; y <= y1; y++) {
@@ -292,6 +299,9 @@ class MyWindow : public Fl_Window {
   bool needs_full_redraw_;
   std::unique_ptr<unsigned char[]> framebuffer_;
 };
+
+// Define the close callback: kill the process.
+void MyWindow::on_close_cb(Fl_Widget* w, void* /*data*/) { abort(); }
 
 /*****************************************************************************/
 
@@ -451,9 +461,10 @@ class DeviceManager {
   void run() {
     Fl::lock();
     int visible_windows;
-    while ((visible_windows = Fl::wait()) > 0 || getDevice()) {
+    while ((visible_windows = Fl::wait()) > 0 || getDevice() != nullptr) {
       if (exiting()) break;
       Device* device = getDevice();
+      if (device == nullptr) break;
       device->refresh(visible_windows > 0);
     }
     MutexLock lock(&device_mutex_);
@@ -484,7 +495,7 @@ class DeviceManager {
  private:
   Device* getDevice() {
     MutexLock lock(&device_mutex_);
-    while (device_.get() == nullptr) {
+    while (device_.get() == nullptr && !exiting_) {
       pthread_cond_wait(&nonempty_, &device_mutex_);
     }
     return device_.get();

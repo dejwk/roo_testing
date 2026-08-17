@@ -1,4 +1,5 @@
 #include "esp32-hal-i2c.h"
+#include "esp32-hal-i2c-slave.h"
 #include "esp32-hal-periman.h"
 
 #include <array>
@@ -73,5 +74,27 @@ esp_err_t i2cWriteReadNonStop(uint8_t bus, uint16_t address,
 
 bool i2cIsInit(uint8_t bus) { return valid(bus) && buses[bus].initialized; }
 void *i2cBusHandle(uint8_t bus) { return i2cIsInit(bus) ? &buses[bus] : nullptr; }
+
+#if SOC_I2C_SUPPORT_SLAVE
+// Slave-mode events have never been modeled by roo_testing. Arduino's Wire
+// implementation keeps the master and slave methods in the same object file,
+// so exact-signature unsupported stubs are still required for master-only
+// applications to link.
+esp_err_t i2cSlaveAttachCallbacks(
+    uint8_t, i2c_slave_request_cb_t, i2c_slave_receive_cb_t, void *) {
+  return ESP_ERR_NOT_SUPPORTED;
+}
+
+esp_err_t i2cSlaveInit(uint8_t, int, int, uint16_t, uint32_t, size_t,
+                       size_t) {
+  return ESP_ERR_NOT_SUPPORTED;
+}
+
+esp_err_t i2cSlaveDeinit(uint8_t) { return ESP_ERR_NOT_SUPPORTED; }
+
+size_t i2cSlaveWrite(uint8_t, const uint8_t *, uint32_t, uint32_t) {
+  return 0;
+}
+#endif
 
 }  // extern "C"

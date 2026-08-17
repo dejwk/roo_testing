@@ -71,8 +71,9 @@ another SoC must wait for matching headers, Arduino pins, shims, and
 
 Bazel reads rc files only from the root workspace; it does not inherit the
 `.bazelrc` of a Bzlmod dependency or local override. Vendor the shared ESP32
-base fragment and exactly one frontend fragment from `bazelrc/esp32/`, then
-import and activate them in the root `.bazelrc`. For Arduino:
+base fragment and the frontend fragment(s) the workspace supports from
+`bazelrc/esp32/`, then import them in the root `.bazelrc`. Activate exactly one
+frontend per invocation. For an Arduino-only workspace:
 
 ```bazelrc
 import %workspace%/bazelrc/esp32/base.bazelrc
@@ -81,10 +82,12 @@ build --config=roo_testing_arduino_esp32
 ```
 
 For ESP-IDF only, import `base.bazelrc` and `idf.bazelrc`, then activate
-`roo_testing_idf_esp32`. The fragments include their canonical source URLs so
-vendored copies can be audited and refreshed. Do not activate both frontends:
-their platform values are mutually exclusive, and accumulating repeatable
-compiler options would be contradictory.
+`roo_testing_idf_esp32`. A mixed workspace may import both frontend fragments
+and choose one with `--config` on each command. The fragments include their
+canonical source URLs so vendored copies can be audited and refreshed. Do not
+activate both frontends in one invocation: their platform values are mutually
+exclusive, and accumulating repeatable compiler options would be
+contradictory.
 
 For backward compatibility, roo_testing's own root rc imports all three
 fragment definitions and defaults to Arduino, so its original smoke command

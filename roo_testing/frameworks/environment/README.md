@@ -36,7 +36,8 @@ configuration.
 ## Root-workspace setup
 
 Dependency `.bazelrc` files are not inherited. Vendor the canonical shared base
-and exactly one frontend fragment in the root workspace. Arduino clients use:
+and the frontend fragment(s) supported by the root workspace. Activate exactly
+one frontend per invocation. Arduino-only clients use:
 
 ```bazelrc
 import %workspace%/bazelrc/esp32/base.bazelrc
@@ -45,12 +46,14 @@ build --config=roo_testing_arduino_esp32
 ```
 
 ESP-IDF-only clients replace the Arduino fragment and config with
-`bazelrc/esp32/idf.bazelrc` and `roo_testing_idf_esp32`. The source of truth is
-the [`bazelrc/esp32`](../../../bazelrc/esp32) hierarchy; source URLs are
-embedded in its files so vendored copies can be audited and refreshed. The
-filesystem import is required because Bazel cannot resolve an
-`@roo_testing//...` label while reading rc files. Dependency rc files are never
-inherited, including with a local module override.
+`bazelrc/esp32/idf.bazelrc` and `roo_testing_idf_esp32`. Mixed clients may
+import both frontend fragments and select one explicitly on each Bazel command;
+they must never expand both configs together. The source of truth is the
+[`bazelrc/esp32`](../../../bazelrc/esp32) hierarchy; source URLs are embedded in
+its files so vendored copies can be audited and refreshed. The filesystem
+import is required because Bazel cannot resolve an `@roo_testing//...` label
+while reading rc files. Dependency rc files are never inherited, including
+with a local module override.
 
 `base.bazelrc` is the single source for emulator, ESP-IDF, and classic ESP32
 macros. The frontend fragments add only their platform and frontend-specific

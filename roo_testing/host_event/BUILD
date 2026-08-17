@@ -8,6 +8,6 @@ cc_library(
     include_prefix = "roo_testing/host_event",
     visibility = ["//visibility:public"],
     deps = [
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/freertos:include",
+        "//roo_testing/frameworks/esp-idf/components/freertos:include",
     ],
 )

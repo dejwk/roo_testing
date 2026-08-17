@@ -10,7 +10,7 @@ cc_library(
         "//roo_testing/buses/spi",
         "//roo_testing/devices/display/ili9488:spi",
         "//roo_testing/devices/touch/ft6x36",
-        "//roo_testing/frameworks/arduino-esp32-2.0.4/cores/esp32:main",
+        "//roo_testing/frameworks/arduino-esp32/cores/esp32:main",
         "//roo_testing/transducers/ui/viewport:flex",
         "//roo_testing/transducers/ui/viewport/fltk",
         "@glog",

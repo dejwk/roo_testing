@@ -13,7 +13,7 @@ cc_library(
     linkstatic = 1,
     visibility = ["//visibility:public"],
     deps = [
-        "//roo_testing/frameworks/arduino-esp32-2.0.4/cores/esp32",
+        "//roo_testing/frameworks/arduino-esp32/cores/esp32",
     ],
 )
 
@@ -22,7 +22,7 @@ cc_library(
     linkstatic = 1,
     visibility = ["//visibility:public"],
     deps = [
-        "//roo_testing/frameworks/arduino-esp32-2.0.4/cores/esp32:main",
+        "//roo_testing/frameworks/arduino-esp32/cores/esp32:main",
     ],
 )
 
@@ -31,6 +31,6 @@ cc_library(
     linkstatic = 1,
     visibility = ["//visibility:public"],
     deps = [
-        "//roo_testing/frameworks/arduino-esp32-2.0.4/cores/esp32:gtest_main",
+        "//roo_testing/frameworks/arduino-esp32/cores/esp32:gtest_main",
     ],
 )

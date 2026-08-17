@@ -76,6 +76,6 @@ cc_test(
     size = "small",
     deps = [
         "//:arduino_gtest_main",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/freertos",
+        "//roo_testing/frameworks/esp-idf/components/freertos",
     ],
 )

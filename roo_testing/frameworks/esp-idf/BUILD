@@ -1,0 +1,130 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+
+# ESP-IDF's target-oriented component build graph is intentionally not mirrored.
+# Host builds consume current public headers and the upstream Linux FreeRTOS
+# port, while hardware-facing symbols are provided by //.../esp32_shims.
+cc_library(
+    name = "freertos_support_headers",
+    hdrs = ["sdkconfig.h"] + glob([
+        "components/esp_common/include/**/*.h",
+        "components/esp_system/include/**/*.h",
+        "components/heap/include/**/*.h",
+    ]),
+    includes = [
+        ".",
+        "components/esp_common/include",
+        "components/esp_system/include",
+        "components/heap/include",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "headers",
+    hdrs = glob([
+        "components/**/*.h",
+        "components/**/*.inc",
+    ]),
+    defines = [
+        "CONFIG_IDF_TARGET_ESP32=1",
+        "CONFIG_IDF_TARGET=\"esp32\"",
+    ],
+    includes = [
+        ".",
+        "components/app_update/include",
+        "components/bootloader_support/include",
+        "components/bt/include",
+        "components/bt/include/esp32/include",
+        "components/driver/i2c/include",
+        "components/efuse/include",
+        "components/efuse/esp32/include",
+        "components/esp_adc/deprecated/include",
+        "components/esp_adc/include",
+        "components/esp_adc/esp32/include",
+        "components/esp_app_format/include",
+        "components/esp_bootloader_format/include",
+        "components/esp_coex/include",
+        "components/esp_common/include",
+        "components/esp_driver_gpio/include",
+        "components/esp_driver_gptimer/include",
+        "components/esp_driver_i2c/include",
+        "components/esp_driver_i2s/include",
+        "components/esp_driver_ledc/include",
+        "components/esp_driver_rmt/include",
+        "components/esp_driver_sdm/include",
+        "components/esp_driver_sdmmc/include",
+        "components/esp_driver_sdspi/include",
+        "components/esp_driver_spi/include",
+        "components/esp_driver_uart/include",
+        "components/esp_eth/include",
+        "components/esp_event/include",
+        "components/esp_hw_support/include",
+        "components/esp_mm/include",
+        "components/esp_netif/include",
+        "components/esp_partition/include",
+        "components/esp_phy/include",
+        "components/esp_phy/esp32/include",
+        "components/esp_psram/include",
+        "components/esp_ringbuf/include",
+        "components/esp_rom/include",
+        "components/esp_rom/esp32/include",
+        "components/esp_system/include",
+        "components/esp_system/port/include",
+        "components/esp_timer/include",
+        "components/esp_wifi/include",
+        "components/hal/include",
+        "components/hal/esp32/include",
+        "components/hal/linux/include",
+        "components/hal/platform_port/include",
+        "components/heap/include",
+        "components/linux/include",
+        "components/log/include",
+        "components/lwip/include",
+        "components/lwip/lwip/src/include",
+        "components/lwip/port/include",
+        "components/lwip/port/linux/include",
+        "components/nvs_flash/include",
+        "components/pthread/include",
+        "components/sdmmc/include",
+        "components/soc/include",
+        "components/soc/esp32/include",
+        "components/soc/linux/include",
+        "components/spi_flash/include",
+        "components/spiffs/include",
+        "components/vfs/include",
+        "components/wear_levelling/include",
+        "components/wifi_provisioning/include",
+        "components/wpa_supplicant/include",
+        "components/wpa_supplicant/port/include",
+        "components/xtensa/include",
+        "components/xtensa/esp32/include",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":sdkconfig",
+        "//roo_testing/frameworks/esp-idf/components/freertos:include",
+    ],
+)
+
+cc_library(
+    name = "core",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":headers",
+        "//roo_testing/frameworks/esp-idf/components/freertos",
+        "//roo_testing/frameworks/esp32_shims:idf",
+    ],
+)
+
+alias(
+    name = "esp-idf",
+    actual = ":core",
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "sdkconfig",
+    hdrs = ["sdkconfig.h"],
+    includes = ["."],
+    visibility = ["//visibility:public"],
+)

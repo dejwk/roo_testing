@@ -3,6 +3,7 @@
 #include "esp_netif.h"
 #include "esp_wifi.h"
 #include "esp_wifi_default.h"
+#include "lwip/ip6_addr.h"
 
 #include <algorithm>
 #include <array>
@@ -28,6 +29,8 @@ struct esp_netif_obj {
   esp_netif_dns_info_t dns[ESP_NETIF_DNS_MAX] = {};
   std::array<uint8_t, 6> mac{};
   esp_netif_flags_t flags = ESP_NETIF_FLAG_AUTOUP;
+  int32_t get_ip_event = 0;
+  int32_t lost_ip_event = 0;
   int route_priority = 100;
   bool up = true;
   esp_netif_dhcp_status_t dhcp_client = ESP_NETIF_DHCP_INIT;
@@ -122,12 +125,15 @@ void PostDisconnect(wifi_err_reason_t reason) {
 }
 
 esp_netif_t* NewNetif(const char* key, const char* description,
-                      esp_netif_flags_t flags) {
+                      esp_netif_flags_t flags, int32_t get_ip_event = 0,
+                      int32_t lost_ip_event = 0) {
   auto* netif = new esp_netif_t();
   netif->key = key;
   netif->description = description;
   netif->hostname = "roo-testing";
   netif->flags = flags;
+  netif->get_ip_event = get_ip_event;
+  netif->lost_ip_event = lost_ip_event;
   netif->ip_info.ip.addr = 0x6401A8C0U;      // 192.168.1.100
   netif->ip_info.netmask.addr = 0x00FFFFFFU; // 255.255.255.0
   netif->ip_info.gw.addr = 0x0101A8C0U;      // 192.168.1.1
@@ -457,9 +463,17 @@ esp_err_t esp_wifi_get_band_mode(wifi_band_mode_t* mode) {
 
 esp_err_t esp_netif_init(void) { return ESP_OK; }
 esp_err_t esp_netif_deinit(void) { return ESP_OK; }
-esp_netif_t* esp_netif_new(const esp_netif_config_t*) {
-  return NewNetif("HOST_NETIF", "host network interface",
-                  ESP_NETIF_FLAG_AUTOUP);
+esp_netif_t* esp_netif_new(const esp_netif_config_t* config) {
+  const esp_netif_inherent_config_t* base =
+      config == nullptr ? nullptr : config->base;
+  return NewNetif(
+      base != nullptr && base->if_key != nullptr ? base->if_key : "HOST_NETIF",
+      base != nullptr && base->if_desc != nullptr
+          ? base->if_desc
+          : "host network interface",
+      base != nullptr ? base->flags : ESP_NETIF_FLAG_AUTOUP,
+      base != nullptr ? static_cast<int32_t>(base->get_ip_event) : 0,
+      base != nullptr ? static_cast<int32_t>(base->lost_ip_event) : 0);
 }
 void esp_netif_destroy(esp_netif_t* netif) {
   if (netif == nullptr) return;
@@ -472,7 +486,8 @@ void esp_netif_destroy(esp_netif_t* netif) {
 }
 esp_netif_t* esp_netif_create_default_wifi_sta(void) {
   return NewNetif("WIFI_STA_DEF", "sta", static_cast<esp_netif_flags_t>(
-      ESP_NETIF_DHCP_CLIENT | ESP_NETIF_FLAG_AUTOUP));
+      ESP_NETIF_DHCP_CLIENT | ESP_NETIF_FLAG_AUTOUP),
+      IP_EVENT_STA_GOT_IP, IP_EVENT_STA_LOST_IP);
 }
 esp_netif_t* esp_netif_create_default_wifi_ap(void) {
   return NewNetif("WIFI_AP_DEF", "ap", static_cast<esp_netif_flags_t>(
@@ -480,6 +495,18 @@ esp_netif_t* esp_netif_create_default_wifi_ap(void) {
 }
 void esp_netif_destroy_default_wifi(void* netif) {
   esp_netif_destroy(static_cast<esp_netif_t*>(netif));
+}
+int32_t esp_netif_get_event_id(esp_netif_t* netif,
+                               esp_netif_ip_event_type_t event_type) {
+  if (netif == nullptr) return -1;
+  switch (event_type) {
+    case ESP_NETIF_IP_EVENT_GOT_IP:
+      return netif->get_ip_event;
+    case ESP_NETIF_IP_EVENT_LOST_IP:
+      return netif->lost_ip_event;
+    default:
+      return -1;
+  }
 }
 esp_err_t esp_netif_attach_wifi_station(esp_netif_t* netif) {
   return netif == nullptr ? ESP_ERR_INVALID_ARG : ESP_OK;
@@ -601,6 +628,27 @@ esp_err_t esp_netif_get_ip6_global(esp_netif_t* netif,
   return esp_netif_get_ip6_linklocal(netif, address);
 }
 int esp_netif_get_all_ip6(esp_netif_t*, esp_ip6_addr_t[]) { return 0; }
+esp_ip6_addr_type_t esp_netif_ip6_get_addr_type(
+    const esp_ip6_addr_t* address) {
+  if (address == nullptr) return ESP_IP6_ADDR_IS_UNKNOWN;
+  const auto* lwip_address = reinterpret_cast<const ip6_addr_t*>(address);
+  if (ip6_addr_isglobal(lwip_address)) {
+    return ESP_IP6_ADDR_IS_GLOBAL;
+  }
+  if (ip6_addr_islinklocal(lwip_address)) {
+    return ESP_IP6_ADDR_IS_LINK_LOCAL;
+  }
+  if (ip6_addr_issitelocal(lwip_address)) {
+    return ESP_IP6_ADDR_IS_SITE_LOCAL;
+  }
+  if (ip6_addr_isuniquelocal(lwip_address)) {
+    return ESP_IP6_ADDR_IS_UNIQUE_LOCAL;
+  }
+  if (ip6_addr_isipv4mappedipv6(lwip_address)) {
+    return ESP_IP6_ADDR_IS_IPV4_MAPPED_IPV6;
+  }
+  return ESP_IP6_ADDR_IS_UNKNOWN;
+}
 int esp_netif_get_netif_impl_index(esp_netif_t* netif) {
   if (netif == nullptr) return -1;
   const auto it = std::find(g_netifs.begin(), g_netifs.end(), netif);

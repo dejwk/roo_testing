@@ -1,6 +1,17 @@
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
 cc_test(
+    name = "framework_version_test",
+    srcs = ["framework_version_test.cpp"],
+    linkstatic = 1,
+    size = "small",
+    deps = [
+        "//:arduino_gtest_main",
+        "//roo_testing/frameworks/esp-idf:headers",
+    ],
+)
+
+cc_test(
     name = "host_event_gateway_test",
     srcs = ["host_event_gateway_test.cpp"],
     linkstatic = 1,

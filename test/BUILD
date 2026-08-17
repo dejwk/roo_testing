@@ -106,10 +106,12 @@ cc_test(
     timeout = "short",
     srcs = ["host_network_test.cpp"],
     linkstatic = 1,
-    deps = [
+    # Put the host socket overlay before Arduino's aggregate ESP-IDF headers.
+    # The test includes lwip/sockets.h directly, so include-path order is part
+    # of the bridge contract being exercised here.
+    deps = ["//roo_testing/frameworks/posix_lwip"] + [
         "//:arduino_gtest_main",
         "//roo_testing/frameworks/arduino-esp32/libraries/Network",
-        "//roo_testing/frameworks/posix_lwip",
     ],
 )
 

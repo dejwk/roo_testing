@@ -103,6 +103,9 @@
 #define CONFIG_ESP_WIFI_DYNAMIC_RX_MGMT_BUF 0
 #define CONFIG_ESP_WIFI_ESPNOW_MAX_ENCRYPT_NUM 7
 
+/* Wear-levelling sector size used by FatFs public configuration headers. */
+#define CONFIG_WL_SECTOR_SIZE 4096
+
 /* lwIP settings.  These retain the networking shape of the previous host
  * configuration while supplying the explicit choices required by IDF 6. */
 #define CONFIG_LWIP_IPV4 1

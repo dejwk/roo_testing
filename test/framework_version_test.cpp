@@ -1,3 +1,4 @@
+#include "diskio_sdmmc.h"
 #include "esp_arduino_version.h"
 #include "esp_idf_version.h"
 #include "gtest/gtest.h"

@@ -5,6 +5,7 @@ cc_library(
     hdrs = [
         "src/SD.h",
         "src/sd_defines.h",
+        "src/sd_diskio.h",
     ],
     includes = ["src"],
     visibility = ["//visibility:public"],

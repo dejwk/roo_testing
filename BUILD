@@ -13,7 +13,7 @@ cc_library(
     linkstatic = 1,
     visibility = ["//visibility:public"],
     deps = [
-        "//roo_testing/frameworks/arduino-esp32/cores/esp32",
+        "//roo_testing/frameworks/arduino-esp32/cores/esp32:arduino",
     ],
 )
 

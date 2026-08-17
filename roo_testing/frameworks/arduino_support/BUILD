@@ -22,3 +22,14 @@ cc_library(
         "@googletest//:gtest",
     ],
 )
+
+cc_library(
+    name = "freertos_gtest_main",
+    srcs = ["freertos_gtest_main.cpp"],
+    alwayslink = 1,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//roo_testing/frameworks/esp-idf/components/freertos",
+        "@googletest//:gtest",
+    ],
+)

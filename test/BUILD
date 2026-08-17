@@ -86,7 +86,7 @@ cc_test(
     linkstatic = 1,
     size = "small",
     deps = [
-        "//:arduino_gtest_main",
+        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
         "//roo_testing/frameworks/esp-idf/components/freertos",
     ],
 )

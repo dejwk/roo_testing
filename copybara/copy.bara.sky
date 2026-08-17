@@ -240,7 +240,10 @@ core.workflow(
     origin = git.origin(
         url = "https://github.com/espressif/esp-idf.git",
         ref = ESP_IDF_REV,
-        partial_fetch = True,
+        # Do not enable partial_fetch here. Copybara v20260629 checks out only
+        # top-level submodule files in that mode, silently omitting lwIP and
+        # SPIFFS source directories. Arduino has no imported submodules and can
+        # use partial fetch safely.
         submodules = "YES",
         # Only these two source submodules are used by the Linux emulator. All
         # target-only binary libraries and unrelated third-party stacks stay out.

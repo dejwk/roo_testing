@@ -29,7 +29,10 @@ instead of editing an imported file without a patch.
 
 ESP-IDF embeds many Git submodules. The workflow fetches only the lwIP and
 SPIFFS source submodules and explicitly excludes target binary libraries and
-unrelated third-party stacks.
+unrelated third-party stacks. Keep ESP-IDF's origin on a full fetch: Copybara
+v20260629's partial-fetch mode materializes only the top-level files from these
+submodules and silently omits their source directories. The Arduino origin can
+use partial fetch because none of its submodules are imported.
 
 ## Prerequisites
 

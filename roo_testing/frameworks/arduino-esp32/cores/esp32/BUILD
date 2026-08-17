@@ -63,6 +63,7 @@ cc_library(
     deps = [
         ":esp32",
         "//roo_testing/frameworks/arduino-esp32/libraries/FS",
+        "//roo_testing/frameworks/arduino-esp32/libraries/LittleFS",
         "//roo_testing/frameworks/arduino-esp32/libraries/Preferences",
         "//roo_testing/frameworks/arduino-esp32/libraries/SD",
         "//roo_testing/frameworks/arduino-esp32/libraries/SD_MMC",

@@ -39,9 +39,10 @@ test_suite(
     name = "all_tests",
     tests = [
         "//test:framework_version_test",
-        "//test:host_event_gateway_test",
         "//test:freertos_posix_thread_join_regression_test",
         "//test:gpio_test",
+        "//test:host_event_gateway_test",
+        "//test:host_filesystem_test",
         "//test:nvs_test",
         "//test:onewire_test",
         "//test:rtc_ds3231_i2c_test",

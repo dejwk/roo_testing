@@ -1,0 +1,56 @@
+diff --git a/components/freertos/FreeRTOS-Kernel/portable/linux/include/freertos/portmacro_idf.h b/components/freertos/FreeRTOS-Kernel/portable/linux/include/freertos/portmacro_idf.h
+index bff384a..21c7720 100644
+--- a/components/freertos/FreeRTOS-Kernel/portable/linux/include/freertos/portmacro_idf.h
++++ b/components/freertos/FreeRTOS-Kernel/portable/linux/include/freertos/portmacro_idf.h
+@@ -13,6 +13,7 @@
+ #pragma once
+ 
+ #include <stdint.h>
++#include <stdbool.h>
+ #include <stdlib.h> // This is for malloc(), used by portmacro.h
+ #include "sdkconfig.h"
+ #include "esp_attr.h"
+@@ -87,6 +88,12 @@ bool xPortcheckValidStackMem(const void *ptr);
+ 
+ BaseType_t xPortCheckIfInISR(void);
+ 
++/** Return whether the caller is the pthread backing a FreeRTOS task. */
++BaseType_t xPortIsFreeRtosTask(void);
++
++/** Return whether the caller can yield without leaving a critical section. */
++bool xPortCanYield(void);
++
+ /**
+  * @brief Checks if the current core is in an ISR context
+  *
+diff --git a/components/freertos/FreeRTOS-Kernel/portable/linux/port.c b/components/freertos/FreeRTOS-Kernel/portable/linux/port.c
+index d79d423..d68827f 100644
+--- a/components/freertos/FreeRTOS-Kernel/portable/linux/port.c
++++ b/components/freertos/FreeRTOS-Kernel/portable/linux/port.c
+@@ -277,6 +277,26 @@ void vPortExitCritical( void )
+ }
+ /*-----------------------------------------------------------*/
+ 
++BaseType_t xPortIsFreeRtosTask( void )
++{
++    TaskHandle_t xTask = xTaskGetCurrentTaskHandle();
++
++    if( xTask == NULL )
++    {
++        return pdFALSE;
++    }
++
++    return pthread_equal( pthread_self(), prvGetThreadFromTask( xTask )->pthread )
++           ? pdTRUE : pdFALSE;
++}
++/*-----------------------------------------------------------*/
++
++bool xPortCanYield( void )
++{
++    return uxCriticalNesting == 0;
++}
++/*-----------------------------------------------------------*/
++
+ void vPortYieldFromISR( void )
+ {
+     Thread_t *xThreadToSuspend;

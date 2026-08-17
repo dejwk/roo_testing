@@ -1,1 +1,2 @@
 # ESP-IDF source patches, in application order.
+0001-expose-linux-task-context.patch

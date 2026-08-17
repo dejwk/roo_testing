@@ -72,6 +72,7 @@ test_suite(
         "//test:arduino_main_environment_test",
         "//test:arduino_periman_static_initialization_test",
         "//test:arduino_preferences_startup_test",
+        "//test:arduino_sd_diskio_link_test",
         "//test:arduino_spi_clock_test",
         "//test:arduino_uart_api_test",
         "//test:emulator_environment_test",

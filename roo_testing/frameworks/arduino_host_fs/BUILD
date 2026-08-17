@@ -35,7 +35,10 @@ cc_library(
 
 cc_library(
     name = "SD",
-    srcs = ["sd.cpp"],
+    srcs = [
+        "sd.cpp",
+        "sd_diskio.cpp",
+    ],
     visibility = ["//visibility:public"],
     deps = [
         ":FS",

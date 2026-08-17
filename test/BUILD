@@ -178,6 +178,17 @@ cc_test(
 )
 
 cc_test(
+    name = "arduino_sd_diskio_link_test",
+    size = "small",
+    srcs = ["arduino_sd_diskio_link_test.cpp"],
+    linkstatic = 1,
+    deps = [
+        "//:arduino_gtest_main",
+        "//roo_testing/frameworks/arduino-esp32/libraries/SD",
+    ],
+)
+
+cc_test(
     name = "arduino_uart_api_test",
     size = "small",
     srcs = ["arduino_uart_api_test.cpp"],

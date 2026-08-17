@@ -85,6 +85,7 @@ cc_library(
         "components/lwip/lwip/src/include",
         "components/lwip/port/include",
         "components/lwip/port/linux/include",
+        "components/lwip/port/freertos/include",
         "components/nvs_flash/include",
         "components/pthread/include",
         "components/sdmmc/include",

@@ -1,11 +1,3 @@
-load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("//roo_testing/frameworks/esp-idf-v4.4.1:legacy_aliases.bzl", "legacy_idf_aliases")
 
-cc_library(
-    name = "include",
-    hdrs = glob(["**/*.h"]),
-    includes = [
-        ".",
-        "esp32",
-    ],
-    visibility = ["//visibility:public"],
-)
+legacy_idf_aliases(["include"])

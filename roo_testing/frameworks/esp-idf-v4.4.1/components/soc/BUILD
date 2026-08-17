@@ -1,36 +1,3 @@
-load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("//roo_testing/frameworks/esp-idf-v4.4.1:legacy_aliases.bzl", "legacy_idf_aliases")
 
-cc_library(
-    name = "include",
-    # srcs = glob(["*.cpp"]) + glob(["*.c"]),
-    hdrs = glob(["**/*.h"]),
-    includes = [
-        "include",
-    ],
-    visibility = ["//visibility:public"],
-    deps = [
-        "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_rom:include",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/freertos",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support",
-    ],
-)
-
-cc_library(
-    name = "soc",
-    # srcs = glob(["*.cpp"]) + glob(["*.c"]),
-    srcs = glob(["*.c"]),
-    hdrs = glob(["**/*.h"]),
-    includes = [
-        "include",
-    ],
-    visibility = ["//visibility:public"],
-    deps = [
-        "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_rom:include",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc/esp32",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/freertos",
-        # "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_hw_support",
-    ],
-)
+legacy_idf_aliases(["include", "soc"])

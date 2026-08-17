@@ -1,30 +1,3 @@
-load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("//roo_testing/frameworks/esp-idf-v4.4.1:legacy_aliases.bzl", "legacy_idf_aliases")
 
-cc_library(
-    name = "esp32",
-    srcs = glob(["**/*.cpp"]) + glob(["**/*.c"]),
-    hdrs = glob(["**/*.h"]),
-    includes = [
-        "include",
-    ],
-    visibility = ["//visibility:public"],
-    deps = [
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common",
-        "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc",
-        "//roo_testing/microcontrollers/esp32:core",
-    ],
-)
-
-cc_library(
-    name = "include",
-    hdrs = glob(["**/*.h"]),
-    includes = [
-        "include",
-    ],
-    visibility = ["//visibility:public"],
-    # deps = [
-    #     "//roo_testing/microcontrollers/esp32:core",
-    #     "//roo_testing/frameworks/esp-idf-v4.4.1/components/esp_common",
-    #     "//roo_testing/frameworks/esp-idf-v4.4.1/components/soc",
-    # ]
-)
+legacy_idf_aliases(["esp32", "include"])

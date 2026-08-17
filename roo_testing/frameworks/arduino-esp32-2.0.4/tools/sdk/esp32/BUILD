@@ -1,26 +1,5 @@
-load("@rules_cc//cc:cc_library.bzl", "cc_library")
-
-cc_library(
+alias(
     name = "esp32",
-    # srcs = glob(["*hal*.c"]) + glob(
-    #     ["**/*.cpp"],
-    #     exclude = ["main.cpp"],
-    # ) + glob([
-    #     "tools/sdk/src/*.c",
-    # ]),
-    srcs = glob(["**/*.cpp"]),
-    hdrs = glob(["**/*.h"]),
-    defines = [
-        "CORE_DEBUG_LEVEL=5",
-        "CONFIG_IDF_TARGET_LINUX",
-    ],
-    includes = [
-    ],
+    actual = "//roo_testing/frameworks/esp-idf:core",
     visibility = ["//visibility:public"],
-    deps = [
-        "//roo_testing/frameworks/arduino-esp32-2.0.4/variants:esp32",
-        "//roo_testing/frameworks/esp-idf-v4.4.1",
-        "//roo_testing/microcontrollers/esp32",
-        "@glog",
-    ],
 )

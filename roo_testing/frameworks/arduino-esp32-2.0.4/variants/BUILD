@@ -1,8 +1,5 @@
-load("@rules_cc//cc:cc_library.bzl", "cc_library")
-
-cc_library(
+alias(
     name = "esp32",
-    srcs = ["esp32/pins_arduino.h"],
-    includes = ["esp32"],
+    actual = "//roo_testing/frameworks/arduino-esp32/variants:esp32",
     visibility = ["//visibility:public"],
 )

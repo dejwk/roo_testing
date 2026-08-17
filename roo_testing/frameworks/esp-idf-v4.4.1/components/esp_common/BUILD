@@ -1,23 +1,3 @@
-load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("//roo_testing/frameworks/esp-idf-v4.4.1:legacy_aliases.bzl", "legacy_idf_aliases")
 
-cc_library(
-    name = "esp_common",
-    srcs = glob(["src/**/*.c"]),
-    hdrs = glob(["**/*.h"]),
-    includes = [
-        "include",
-    ],
-    visibility = ["//visibility:public"],
-    deps = [
-        "//roo_testing/frameworks/esp-idf-v4.4.1:sdkconfig",
-    ],
-)
-
-cc_library(
-    name = "include",
-    hdrs = glob(["**/*.h"]),
-    includes = [
-        "include",
-    ],
-    visibility = ["//visibility:public"],
-)
+legacy_idf_aliases(["esp_common", "include"])

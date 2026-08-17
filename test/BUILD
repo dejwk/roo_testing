@@ -88,6 +88,14 @@ cc_test(
 )
 
 cc_test(
+    name = "arduino_periman_static_initialization_test",
+    size = "small",
+    srcs = ["arduino_periman_static_initialization_test.cpp"],
+    linkstatic = 1,
+    deps = ["//:arduino_gtest_main"],
+)
+
+cc_test(
     name = "host_filesystem_test",
     size = "small",
     srcs = ["host_filesystem_test.cpp"],

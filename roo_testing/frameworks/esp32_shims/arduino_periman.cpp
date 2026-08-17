@@ -16,9 +16,21 @@ struct PinAssignment {
   std::string extra_type;
 };
 
-std::array<PinAssignment, kPinCount> g_pins;
-std::array<peripheral_bus_deinit_cb_t, ESP32_BUS_TYPE_MAX> g_deinit = {};
-std::mutex g_mutex;
+std::array<PinAssignment, kPinCount>& pinAssignments() {
+  static std::array<PinAssignment, kPinCount> pins;
+  return pins;
+}
+
+std::array<peripheral_bus_deinit_cb_t, ESP32_BUS_TYPE_MAX>& deinitCallbacks() {
+  static std::array<peripheral_bus_deinit_cb_t, ESP32_BUS_TYPE_MAX> callbacks =
+      {};
+  return callbacks;
+}
+
+std::mutex& perimanMutex() {
+  static std::mutex mutex;
+  return mutex;
+}
 
 }  // namespace
 
@@ -64,49 +76,51 @@ bool perimanSetPinBus(uint8_t pin, peripheral_bus_type_t type, void* bus,
   peripheral_bus_deinit_cb_t callback = nullptr;
   void* previous_bus = nullptr;
   {
-    std::lock_guard<std::mutex> lock(g_mutex);
-    const auto& previous = g_pins[pin];
+    std::lock_guard<std::mutex> lock(perimanMutex());
+    const auto& previous = pinAssignments()[pin];
     if (previous.type != ESP32_BUS_TYPE_INIT && previous.type != type &&
         previous.type < ESP32_BUS_TYPE_MAX) {
-      callback = g_deinit[previous.type];
+      callback = deinitCallbacks()[previous.type];
       previous_bus = previous.bus;
     }
   }
   if (callback != nullptr && !callback(previous_bus)) return false;
-  std::lock_guard<std::mutex> lock(g_mutex);
-  g_pins[pin] = PinAssignment{type, bus, bus_number, bus_channel, {}};
+  std::lock_guard<std::mutex> lock(perimanMutex());
+  pinAssignments()[pin] =
+      PinAssignment{type, bus, bus_number, bus_channel, {}};
   return true;
 }
 
 void* perimanGetPinBus(uint8_t pin, peripheral_bus_type_t type) {
   if (!perimanPinIsValid(pin)) return nullptr;
-  std::lock_guard<std::mutex> lock(g_mutex);
-  return g_pins[pin].type == type ? g_pins[pin].bus : nullptr;
+  std::lock_guard<std::mutex> lock(perimanMutex());
+  return pinAssignments()[pin].type == type ? pinAssignments()[pin].bus
+                                            : nullptr;
 }
 
 peripheral_bus_type_t perimanGetPinBusType(uint8_t pin) {
   if (!perimanPinIsValid(pin)) return ESP32_BUS_TYPE_MAX;
-  std::lock_guard<std::mutex> lock(g_mutex);
-  return g_pins[pin].type;
+  std::lock_guard<std::mutex> lock(perimanMutex());
+  return pinAssignments()[pin].type;
 }
 
 int8_t perimanGetPinBusNum(uint8_t pin) {
   if (!perimanPinIsValid(pin)) return -1;
-  std::lock_guard<std::mutex> lock(g_mutex);
-  return g_pins[pin].bus_number;
+  std::lock_guard<std::mutex> lock(perimanMutex());
+  return pinAssignments()[pin].bus_number;
 }
 
 int8_t perimanGetPinBusChannel(uint8_t pin) {
   if (!perimanPinIsValid(pin)) return -1;
-  std::lock_guard<std::mutex> lock(g_mutex);
-  return g_pins[pin].bus_channel;
+  std::lock_guard<std::mutex> lock(perimanMutex());
+  return pinAssignments()[pin].bus_channel;
 }
 
 bool perimanSetBusDeinit(peripheral_bus_type_t type,
                          peripheral_bus_deinit_cb_t callback) {
   if (type >= ESP32_BUS_TYPE_MAX) return false;
-  std::lock_guard<std::mutex> lock(g_mutex);
-  g_deinit[type] = callback;
+  std::lock_guard<std::mutex> lock(perimanMutex());
+  deinitCallbacks()[type] = callback;
   return true;
 }
 
@@ -116,22 +130,23 @@ bool perimanClearBusDeinit(peripheral_bus_type_t type) {
 
 peripheral_bus_deinit_cb_t perimanGetBusDeinit(peripheral_bus_type_t type) {
   if (type >= ESP32_BUS_TYPE_MAX) return nullptr;
-  std::lock_guard<std::mutex> lock(g_mutex);
-  return g_deinit[type];
+  std::lock_guard<std::mutex> lock(perimanMutex());
+  return deinitCallbacks()[type];
 }
 
 bool perimanSetPinBusExtraType(uint8_t pin, const char* extra_type) {
   if (!perimanPinIsValid(pin)) return false;
-  std::lock_guard<std::mutex> lock(g_mutex);
-  g_pins[pin].extra_type = extra_type == nullptr ? "" : extra_type;
+  std::lock_guard<std::mutex> lock(perimanMutex());
+  pinAssignments()[pin].extra_type = extra_type == nullptr ? "" : extra_type;
   return true;
 }
 
 const char* perimanGetPinBusExtraType(uint8_t pin) {
   if (!perimanPinIsValid(pin)) return nullptr;
-  std::lock_guard<std::mutex> lock(g_mutex);
-  return g_pins[pin].extra_type.empty() ? nullptr
-                                        : g_pins[pin].extra_type.c_str();
+  std::lock_guard<std::mutex> lock(perimanMutex());
+  return pinAssignments()[pin].extra_type.empty()
+             ? nullptr
+             : pinAssignments()[pin].extra_type.c_str();
 }
 
 }  // extern "C"

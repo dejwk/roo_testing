@@ -30,7 +30,7 @@ index bff384a..21c7720 100644
   * @brief Checks if the current core is in an ISR context
   *
 diff --git a/components/freertos/FreeRTOS-Kernel/portable/linux/port.c b/components/freertos/FreeRTOS-Kernel/portable/linux/port.c
-index d79d423..d68827f 100644
+index 436017b..603c5de 100644
 --- a/components/freertos/FreeRTOS-Kernel/portable/linux/port.c
 +++ b/components/freertos/FreeRTOS-Kernel/portable/linux/port.c
 @@ -277,6 +277,26 @@ void vPortExitCritical( void )
@@ -60,3 +60,21 @@ index d79d423..d68827f 100644
  void vPortYieldFromISR( void )
  {
      Thread_t *xThreadToSuspend;
+@@ -379,5 +399,6 @@ void prvSetupTimerInterrupt( void )
+ static void vPortSystemTickHandler( int sig )
+ {
++    const int iSavedErrno = errno;
+     Thread_t *pxThreadToSuspend;
+     Thread_t *pxThreadToResume;
+     /* uint64_t xExpectedTicks; */
+@@ -412,2 +433,3 @@ static void vPortSystemTickHandler( int sig )
+     uxCriticalNesting--;
++    errno = iSavedErrno;
+ }
+@@ -552,3 +574,5 @@ static void prvSetupSignalsAndSchedulerPolicy( void )
+-    sigtick.sa_flags = 0;
++    /* The scheduler tick is an implementation detail and must not surface as
++     * EINTR from restartable host system calls used by emulated tasks. */
++    sigtick.sa_flags = SA_RESTART;
+     sigtick.sa_handler = vPortSystemTickHandler;
+     sigfillset( &sigtick.sa_mask );

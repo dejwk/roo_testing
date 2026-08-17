@@ -398,6 +398,7 @@ void prvSetupTimerInterrupt( void )
 
 static void vPortSystemTickHandler( int sig )
 {
+    const int iSavedErrno = errno;
     Thread_t *pxThreadToSuspend;
     Thread_t *pxThreadToResume;
     /* uint64_t xExpectedTicks; */
@@ -430,6 +431,7 @@ static void vPortSystemTickHandler( int sig )
 #endif
 
     uxCriticalNesting--;
+    errno = iSavedErrno;
 }
 /*-----------------------------------------------------------*/
 
@@ -569,7 +571,9 @@ static void prvSetupSignalsAndSchedulerPolicy( void )
     sigresume.sa_handler = SIG_IGN;
     sigfillset( &sigresume.sa_mask );
 
-    sigtick.sa_flags = 0;
+    /* The scheduler tick is an implementation detail and must not surface as
+     * EINTR from restartable host system calls used by emulated tasks. */
+    sigtick.sa_flags = SA_RESTART;
     sigtick.sa_handler = vPortSystemTickHandler;
     sigfillset( &sigtick.sa_mask );
 

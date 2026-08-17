@@ -56,6 +56,7 @@ cc_library(
         "components/esp_driver_rmt/include",
         "components/esp_driver_sdm/include",
         "components/esp_driver_sdmmc/include",
+        "components/esp_driver_sdmmc/legacy/include",
         "components/esp_driver_sdspi/include",
         "components/esp_driver_spi/include",
         "components/esp_driver_touch_sens/include",

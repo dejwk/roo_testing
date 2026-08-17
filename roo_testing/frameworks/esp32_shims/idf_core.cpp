@@ -11,7 +11,6 @@
 #include <random>
 #include <vector>
 
-#include "esp_bt.h"
 #include "esp_chip_info.h"
 #include "esp_err.h"
 #include "esp_heap_caps.h"
@@ -328,8 +327,10 @@ esp_err_t esp_task_wdt_reset(void) { return ESP_OK; }
 esp_err_t esp_task_wdt_delete(TaskHandle_t) { return ESP_OK; }
 esp_err_t esp_task_wdt_status(TaskHandle_t) { return ESP_OK; }
 
-esp_err_t esp_bt_controller_mem_release(esp_bt_mode_t) { return ESP_OK; }
-esp_err_t esp_bt_mem_release(esp_bt_mode_t) { return ESP_OK; }
+// esp_bt_mode_t has an int ABI. Avoid pulling the generated controller-private
+// esp_bredr_cfg.h into the host build when Bluetooth is disabled.
+esp_err_t esp_bt_controller_mem_release(int) { return ESP_OK; }
+esp_err_t esp_bt_mem_release(int) { return ESP_OK; }
 
 esp_err_t esp_sleep_enable_timer_wakeup(uint64_t) { return ESP_OK; }
 esp_err_t esp_sleep_disable_wakeup_source(esp_sleep_source_t) { return ESP_OK; }

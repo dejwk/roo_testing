@@ -291,7 +291,7 @@ esp_err_t esp_wifi_scan_get_ap_records(uint16_t* number,
 esp_err_t esp_wifi_scan_get_ap_record(wifi_ap_record_t* record) {
   if (record == nullptr) return ESP_ERR_INVALID_ARG;
   std::lock_guard<std::mutex> lock(g_mutex);
-  if (g_scan_results.empty()) return ESP_ERR_WIFI_NOT_FOUND;
+  if (g_scan_results.empty()) return ESP_ERR_NOT_FOUND;
   *record = g_scan_results.front();
   return ESP_OK;
 }

@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <mutex>
 
 #include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 
@@ -22,6 +23,7 @@ struct spi_struct_t {
   uint8_t enabled_ss;
   bool ss_inverted;
   bool started;
+  std::recursive_mutex *mutex;
 };
 
 namespace {
@@ -36,12 +38,24 @@ std::array<spi_t, 4> buses = [] {
     value[i].device = devices[i];
     value[i].sck = value[i].miso = value[i].mosi = -1;
     value[i].ss.fill(-1);
+    value[i].mutex = new std::recursive_mutex();
   }
   return value;
 }();
 
 uint16_t swap16(uint16_t value) { return value >> 8 | value << 8; }
 uint32_t swap32(uint32_t value) { return __builtin_bswap32(value); }
+uint32_t swap24(uint32_t value) {
+  const auto *bytes = reinterpret_cast<const uint8_t *>(&value);
+  return bytes[2] | static_cast<uint32_t>(bytes[1]) << 8 |
+         static_cast<uint32_t>(bytes[0]) << 16;
+}
+uint32_t swapPixels(uint32_t value) {
+  const auto *bytes = reinterpret_cast<const uint8_t *>(&value);
+  return bytes[1] | static_cast<uint32_t>(bytes[0]) << 8 |
+         static_cast<uint32_t>(bytes[3]) << 16 |
+         static_cast<uint32_t>(bytes[2]) << 24;
+}
 
 void configureDevice(spi_t *spi) {
   spi->device->clock.val = spi->clock_divider;
@@ -151,40 +165,81 @@ void spiSSInvert(spi_t *spi, bool inverted) { if (spi) spi->ss_inverted = invert
 uint32_t spiGetClockDiv(spi_t *spi) { return spi ? spi->clock_divider : 0; }
 uint8_t spiGetDataMode(spi_t *spi) { return spi ? spi->mode : SPI_MODE0; }
 uint8_t spiGetBitOrder(spi_t *spi) { return spi ? spi->bit_order : SPI_MSBFIRST; }
-void spiSetClockDiv(spi_t *spi, uint32_t divider) { if (spi) { spi->clock_divider = divider; configureDevice(spi); } }
-void spiSetDataMode(spi_t *spi, uint8_t mode) { if (spi) { spi->mode = mode; configureDevice(spi); } }
-void spiSetBitOrder(spi_t *spi, uint8_t order) { if (spi) { spi->bit_order = order; configureDevice(spi); } }
+void spiSetClockDiv(spi_t *spi, uint32_t divider) { if (spi) { std::lock_guard<std::recursive_mutex> lock(*spi->mutex); spi->clock_divider = divider; configureDevice(spi); } }
+void spiSetDataMode(spi_t *spi, uint8_t mode) { if (spi) { std::lock_guard<std::recursive_mutex> lock(*spi->mutex); spi->mode = mode; configureDevice(spi); } }
+void spiSetBitOrder(spi_t *spi, uint8_t order) { if (spi) { std::lock_guard<std::recursive_mutex> lock(*spi->mutex); spi->bit_order = order; configureDevice(spi); } }
 
-void spiWrite(spi_t *spi, const uint32_t *data, uint8_t words) { spiWriteNL(spi, data, std::min<uint8_t>(words, 16) * 4); }
-void spiWriteByte(spi_t *spi, uint8_t data) { spiWriteByteNL(spi, data); }
-void spiWriteWord(spi_t *spi, uint16_t data) { spiWriteShortNL(spi, data); }
-void spiWriteLong(spi_t *spi, uint32_t data) { spiWriteLongNL(spi, data); }
-void spiTransfer(spi_t *spi, uint32_t *data, uint8_t words) { spiTransferBytesNL(spi, data, reinterpret_cast<uint8_t *>(data), std::min<uint8_t>(words, 16) * 4); }
-uint8_t spiTransferByte(spi_t *spi, uint8_t data) { return spiTransferByteNL(spi, data); }
-uint16_t spiTransferWord(spi_t *spi, uint16_t data) { return spiTransferShortNL(spi, data); }
-uint32_t spiTransferLong(spi_t *spi, uint32_t data) { return spiTransferLongNL(spi, data); }
-void spiTransferBytes(spi_t *spi, const uint8_t *data, uint8_t *out, uint32_t size) { spiTransferBytesNL(spi, data, out, size); }
-void spiTransferBits(spi_t *spi, uint32_t data, uint32_t *out, uint8_t bits) { spiTransferBitsNL(spi, data, out, bits); }
+void spiWrite(spi_t *spi, const uint32_t *data, uint8_t words) { if (!spi) return; std::lock_guard<std::recursive_mutex> lock(*spi->mutex); spiWriteNL(spi, data, std::min<uint8_t>(words, 16) * 4); }
+void spiWriteByte(spi_t *spi, uint8_t data) { if (!spi) return; std::lock_guard<std::recursive_mutex> lock(*spi->mutex); spiWriteByteNL(spi, data); }
+void spiWriteWord(spi_t *spi, uint16_t data) { if (!spi) return; std::lock_guard<std::recursive_mutex> lock(*spi->mutex); spiWriteShortNL(spi, data); }
+void spiWriteLong(spi_t *spi, uint32_t data) { if (!spi) return; std::lock_guard<std::recursive_mutex> lock(*spi->mutex); spiWriteLongNL(spi, data); }
+void spiTransfer(spi_t *spi, uint32_t *data, uint8_t words) { if (!spi) return; std::lock_guard<std::recursive_mutex> lock(*spi->mutex); spiTransferBytesNL(spi, data, reinterpret_cast<uint8_t *>(data), std::min<uint8_t>(words, 16) * 4); }
+uint8_t spiTransferByte(spi_t *spi, uint8_t data) { if (!spi) return 0; std::lock_guard<std::recursive_mutex> lock(*spi->mutex); return spiTransferByteNL(spi, data); }
+uint16_t spiTransferWord(spi_t *spi, uint16_t data) { if (!spi) return 0; std::lock_guard<std::recursive_mutex> lock(*spi->mutex); return spiTransferShortNL(spi, data); }
+uint32_t spiTransferLong(spi_t *spi, uint32_t data) { if (!spi) return 0; std::lock_guard<std::recursive_mutex> lock(*spi->mutex); return spiTransferLongNL(spi, data); }
+void spiTransferBytes(spi_t *spi, const uint8_t *data, uint8_t *out, uint32_t size) { if (!spi) return; std::lock_guard<std::recursive_mutex> lock(*spi->mutex); spiTransferBytesNL(spi, data, out, size); }
+void spiTransferBits(spi_t *spi, uint32_t data, uint32_t *out, uint8_t bits) { if (!spi) return; std::lock_guard<std::recursive_mutex> lock(*spi->mutex); spiTransferBitsNL(spi, data, out, bits); }
 
-void spiTransaction(spi_t *spi, uint32_t divider, uint8_t mode, uint8_t order) { if (spi) { spi->clock_divider = divider; spi->mode = mode; spi->bit_order = order; configureDevice(spi); } }
-void spiSimpleTransaction(spi_t *) {}
-void spiEndTransaction(spi_t *) {}
+void spiTransaction(spi_t *spi, uint32_t divider, uint8_t mode, uint8_t order) { if (spi) { spi->mutex->lock(); spi->clock_divider = divider; spi->mode = mode; spi->bit_order = order; configureDevice(spi); } }
+void spiSimpleTransaction(spi_t *spi) { if (spi) spi->mutex->lock(); }
+void spiEndTransaction(spi_t *spi) { if (spi) spi->mutex->unlock(); }
 void spiWriteNL(spi_t *spi, const void *data, uint32_t length) { transferBytes(spi, static_cast<const uint8_t *>(data), nullptr, length, false); }
 void spiWriteByteNL(spi_t *spi, uint8_t data) { spiWriteNL(spi, &data, 1); }
 void spiWriteShortNL(spi_t *spi, uint16_t data) { if (spi && spi->bit_order == SPI_MSBFIRST) data = swap16(data); spiWriteNL(spi, &data, 2); }
 void spiWriteLongNL(spi_t *spi, uint32_t data) { if (spi && spi->bit_order == SPI_MSBFIRST) data = swap32(data); spiWriteNL(spi, &data, 4); }
-void spiWritePixelsNL(spi_t *spi, const void *data, uint32_t length) { spiWriteNL(spi, data, length); }
+void spiWritePixelsNL(spi_t *spi, const void *input, uint32_t length) {
+  if (!spi || !input) return;
+  const auto *data = static_cast<const uint32_t *>(input);
+  size_t words_left = (length + 3) / 4;
+  while (length) {
+    const uint32_t chunk = std::min<uint32_t>(64, length);
+    const size_t words = std::min<size_t>(16, words_left);
+    const size_t tail = chunk & 3;
+    spi->device->mosi_dlen.usr_mosi_dbitlen = chunk * 8 - 1;
+    spi->device->miso_dlen.usr_miso_dbitlen = 0;
+    for (size_t i = 0; i < words; ++i) {
+      uint32_t value = data[i];
+      if (spi->bit_order == SPI_MSBFIRST) {
+        if (tail && i + 1 == words) {
+          value = tail == 2 ? swap16(static_cast<uint16_t>(value)) : value & 0xff;
+        } else {
+          value = swapPixels(value);
+        }
+      }
+      spi->device->data_buf[i] = value;
+    }
+    spi->device->cmd.usr = 1;
+    data += words;
+    words_left -= words;
+    length -= chunk;
+  }
+}
 uint8_t spiTransferByteNL(spi_t *spi, uint8_t data) { uint8_t out = 0; transferBytes(spi, &data, &out, 1, true); return out; }
 uint16_t spiTransferShortNL(spi_t *spi, uint16_t data) { if (spi && spi->bit_order == SPI_MSBFIRST) data = swap16(data); uint16_t out = 0; transferBytes(spi, reinterpret_cast<uint8_t *>(&data), reinterpret_cast<uint8_t *>(&out), 2, true); return spi && spi->bit_order == SPI_MSBFIRST ? swap16(out) : out; }
 uint32_t spiTransferLongNL(spi_t *spi, uint32_t data) { if (spi && spi->bit_order == SPI_MSBFIRST) data = swap32(data); uint32_t out = 0; transferBytes(spi, reinterpret_cast<uint8_t *>(&data), reinterpret_cast<uint8_t *>(&out), 4, true); return spi && spi->bit_order == SPI_MSBFIRST ? swap32(out) : out; }
 void spiTransferBytesNL(spi_t *spi, const void *data, uint8_t *out, uint32_t length) { transferBytes(spi, static_cast<const uint8_t *>(data), out, length, true); }
 void spiTransferBitsNL(spi_t *spi, uint32_t data, uint32_t *out, uint8_t bits) {
-  if (!spi || !bits || bits > 32) { if (out) *out = 0; return; }
+  if (!spi || !bits) { if (out) *out = 0; return; }
+  bits = std::min<uint8_t>(bits, 32);
+  const uint32_t bytes = (bits + 7) / 8;
+  const uint32_t mask = bits == 32 ? UINT32_MAX : (uint32_t{1} << bits) - 1;
+  data &= mask;
+  if (spi->bit_order == SPI_MSBFIRST) {
+    data = bytes == 2 ? swap16(static_cast<uint16_t>(data))
+         : bytes == 3 ? swap24(data) : swap32(data);
+  }
   spi->device->mosi_dlen.usr_mosi_dbitlen = bits - 1;
   spi->device->miso_dlen.usr_miso_dbitlen = bits - 1;
   spi->device->data_buf[0] = data;
   spi->device->cmd.usr = 1;
-  if (out) *out = spi->device->data_buf[0];
+  if (out) {
+    data = spi->device->data_buf[0];
+    *out = spi->bit_order == SPI_MSBFIRST
+               ? (bytes == 2 ? swap16(static_cast<uint16_t>(data))
+                  : bytes == 3 ? swap24(data) : swap32(data))
+               : data;
+    *out &= mask;
+  }
 }
 
 uint32_t spiFrequencyToClockDiv(spi_t *, uint32_t frequency) {

@@ -73,6 +73,7 @@ cc_library(
         "esp_additions",
     ],
     linkopts = ["-pthread"],
+    alwayslink = 1,
     visibility = ["//visibility:public"],
     deps = [
         ":freertos_posix_port",

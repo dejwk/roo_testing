@@ -58,8 +58,6 @@ void vApplicationTickHook(void) { esp_vApplicationTickHook(); }
 
 void vPortYieldOtherCore(BaseType_t core_id) { (void)core_id; }
 
-void vPortSetStackWatchpoint(void* stack_start) { (void)stack_start; }
-
 #if configSUPPORT_STATIC_ALLOCATION
 void vApplicationGetIdleTaskMemory(StaticTask_t** tcb, StackType_t** stack,
                                    uint32_t* stack_size) {

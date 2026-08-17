@@ -18,7 +18,15 @@ diff --git a/libraries/Network/src/NetworkClient.cpp b/libraries/Network/src/Net
 +    tv.tv_sec = WIFI_CLIENT_SELECT_TIMEOUT_US / 1000000;
 +    tv.tv_usec = WIFI_CLIENT_SELECT_TIMEOUT_US % 1000000;
      retry--;
-@@ -617,7 +617,7 @@ IPAddress NetworkClient::remoteIP(int fd) const {
+@@ -514,5 +514,6 @@ size_t NetworkClient::readBytes(char *buffer, size_t length) {
+   size_t left = length, sofar = 0;
+-  int r = 0, to = millis() + getTimeout();
++  int r = 0;
++  unsigned long to = millis() + getTimeout();
+   while (left) {
+     r = read((uint8_t *)buffer + sofar, left);
+     if (r < 0) {
+@@ -617,7 +618,7 @@ IPAddress NetworkClient::remoteIP(int fd) const {
    // IPv6, but it might be IPv4 mapped address
    if (((struct sockaddr *)&addr)->sa_family == AF_INET6) {
      struct sockaddr_in6 *saddr6 = (struct sockaddr_in6 *)&addr;
@@ -27,7 +35,7 @@ diff --git a/libraries/Network/src/NetworkClient.cpp b/libraries/Network/src/Net
        return IPAddress(IPv4, (uint8_t *)saddr6->sin6_addr.s6_addr + IPADDRESS_V4_BYTES_INDEX);
      } else {
        return IPAddress(IPv6, (uint8_t *)(saddr6->sin6_addr.s6_addr), saddr6->sin6_scope_id);
-@@ -659,7 +659,7 @@ IPAddress NetworkClient::localIP(int fd) const {
+@@ -659,7 +660,7 @@ IPAddress NetworkClient::localIP(int fd) const {
    // IPv6, but it might be IPv4 mapped address
    if (((struct sockaddr *)&addr)->sa_family == AF_INET6) {
      struct sockaddr_in6 *saddr6 = (struct sockaddr_in6 *)&addr;

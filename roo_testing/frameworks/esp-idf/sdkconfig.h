@@ -66,6 +66,10 @@
 /* Features deliberately disabled in the host emulator. */
 #define CONFIG_FREERTOS_RUN_TIME_COUNTER_TYPE_U32 1
 
+/* The emulator keeps the legacy I2C API for compatibility with existing Roo
+ * libraries while its replacement is introduced incrementally. */
+#define CONFIG_I2C_SUPPRESS_DEPRECATE_WARN 1
+
 /* Generic ESP-IDF/Arduino task defaults used by public headers. */
 #define CONFIG_ESP_MAIN_TASK_STACK_SIZE 8192
 #define CONFIG_ESP_MAIN_TASK_AFFINITY_CPU0 1

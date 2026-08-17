@@ -728,7 +728,7 @@ int String::lastIndexOf(char ch, unsigned int fromIndex) const {
     return -1;
   }
   const int rv = temp - buffer();
-  if (rv >= len()) {
+  if (static_cast<unsigned int>(rv) >= len()) {
     return -1;
   }
   return rv;

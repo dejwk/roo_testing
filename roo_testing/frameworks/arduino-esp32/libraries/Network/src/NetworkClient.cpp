@@ -512,7 +512,8 @@ int NetworkClient::read(uint8_t *buf, size_t size) {
 
 size_t NetworkClient::readBytes(char *buffer, size_t length) {
   size_t left = length, sofar = 0;
-  int r = 0, to = millis() + getTimeout();
+  int r = 0;
+  unsigned long to = millis() + getTimeout();
   while (left) {
     r = read((uint8_t *)buffer + sofar, left);
     if (r < 0) {

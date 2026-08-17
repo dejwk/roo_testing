@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <cstdlib>
 #include <filesystem>
 #include <string>
@@ -70,8 +71,8 @@ TEST(HostFilesystemTest, ProvidesHostLittleFsMountAndDirectorySemantics) {
   EXPECT_TRUE(std::filesystem::is_directory(root.root() + "/littlefs/cache"));
   EXPECT_TRUE(LittleFS.rmdir("/cache"));
   EXPECT_TRUE(LittleFS.format());
-  EXPECT_EQ(0, LittleFS.totalBytes());
-  EXPECT_EQ(0, LittleFS.usedBytes());
+  EXPECT_EQ(std::size_t{0}, LittleFS.totalBytes());
+  EXPECT_EQ(std::size_t{0}, LittleFS.usedBytes());
 
   LittleFS.end();
 }

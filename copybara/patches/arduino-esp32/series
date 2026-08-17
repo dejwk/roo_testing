@@ -2,3 +2,4 @@
 0001-make-dma-alignment-assert-cxx-compatible.patch
 0002-restore-host-itoa-wrappers.patch
 0003-make-network-socket-types-portable.patch
+0004-keep-wstring-index-comparison-portable.patch

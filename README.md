@@ -50,7 +50,7 @@ bazel run :main
 
 The code is based on the Espressif ESP32 Arduino framework, instrumented to intercept hardware- or interface-level events and couple them with simulated implementations.
 
-The code does not does not emulate the Xtensa microprocessors. Your sketch simply compiles and runs on your computer's architecture. This works because the Espressif framework is implemented in a standard, portable C/C++.
+The code does not emulate the Xtensa microprocessors. Your sketch simply compiles and runs on your computer's architecture. This works because the Espressif framework is implemented in standard, portable C/C++.
 
 ## Emulated SoC identity
 
@@ -96,7 +96,7 @@ Another basic example is the VoltageSource, which is a transducer that you can u
 * I2C is modeled at the interface level, bypassing some low-level OS queues and hardware pins. (As long as you use standard libraries, it doesn't matter much).
 * Simulated TFT displays don't model all commands, just the basic set used by common libraries.
 * Interrupts are not currently supported.
-* The emulator does not accurately reflect the microcontroller's performance - it tends to run faster because your computer has a faster CPU. (Notable exception is the SPI emulation, which reflects communication delays accurately). Also, your computer has way more memory, both on the heap and the stack. Finally, the int type is (most likely) 32-bit on your computer, but only 16-bit on the microcontroller. (It may be a good habit to use explicit integer types, like int16_t, in your sketches). Because of all that, your sketch may run great on the simulator, but still fail miserably on the real device.
+* The emulator does not accurately reflect the microcontroller's performance - it tends to run faster because your computer has a faster CPU. (Notable exception is the SPI emulation, which reflects communication delays accurately). Also, your computer has way more memory, both on the heap and the stack. The host ABI remains in effect: on a typical 64-bit Linux host, pointers, `size_t`, and `long` are 64-bit, while they are 32-bit on ESP32. (`int` is 32-bit on both.) Use fixed-width types when the width is part of a protocol or stored representation. Because of these differences, a sketch can work in the emulator and still fail on real hardware.
 
 ## Debugging with VS Code
 

@@ -18,6 +18,7 @@ cc_library(
     deps = [
         "//roo_testing/frameworks/arduino-esp32/variants:esp32",
         "//roo_testing/frameworks/esp-idf:headers",
+        "//roo_testing/microcontrollers/esp32:core",
     ],
 )
 

@@ -87,7 +87,6 @@ ESP_IDF_COMPONENTS = [
     "spiffs",
     "vfs",
     "wear_levelling",
-    "wifi_provisioning",
     "wpa_supplicant",
     "xtensa",
 ]
@@ -194,6 +193,9 @@ def destination_files(destination):
             # remain destination-owned alongside the Bazel overlay.
             destination + "/**/roo_testing_*",
             destination + "/sdkconfig.h",
+            # The Arduino core include root owns this C++ register proxy. C
+            # translation units fall through to ESP-IDF via include_next.
+            destination + "/cores/esp32/soc/gpio_struct.h",
         ],
     )
 
@@ -239,9 +241,7 @@ core.workflow(
         excluded_submodules = [
             "components/bt/controller/lib_esp32",
             "components/bootloader/subproject/components/micro-ecc/micro-ecc",
-            "components/json/cJSON",
             "components/mbedtls/mbedtls",
-            "components/mqtt/esp-mqtt",
             "components/protobuf-c/protobuf-c",
             "components/unity/unity",
             "components/bt/host/nimble/nimble",

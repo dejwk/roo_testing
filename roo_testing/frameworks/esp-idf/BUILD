@@ -28,7 +28,7 @@ cc_library(
     defines = [
         "CONFIG_IDF_TARGET_ESP32=1",
         "CONFIG_IDF_TARGET=\"esp32\"",
-        "IDF_VER=\"v5.5.4\"",
+        "IDF_VER=\"v6.0.2\"",
     ],
     includes = [
         ".",
@@ -39,7 +39,6 @@ cc_library(
         "components/driver/i2c/include",
         "components/efuse/include",
         "components/efuse/esp32/include",
-        "components/esp_adc/deprecated/include",
         "components/esp_adc/include",
         "components/esp_adc/esp32/include",
         "components/esp_app_format/include",
@@ -93,7 +92,6 @@ cc_library(
         "components/spiffs/include",
         "components/vfs/include",
         "components/wear_levelling/include",
-        "components/wifi_provisioning/include",
         "components/wpa_supplicant/include",
         "components/wpa_supplicant/port/include",
         "components/xtensa/include",
@@ -101,9 +99,20 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
+        ":linux_machine_headers",
         ":sdkconfig",
         "//roo_testing/frameworks/esp-idf/components/freertos:include",
     ],
+)
+
+# Only the Linux machine byte-order shim is portable to glibc. Exporting the
+# whole upstream components/linux/include directory would also shadow glibc's
+# sys/cdefs.h with the BSD compatibility version.
+cc_library(
+    name = "linux_machine_headers",
+    hdrs = ["components/linux/include/machine/endian.h"],
+    strip_include_prefix = "components/linux/include",
+    visibility = ["//visibility:public"],
 )
 
 cc_library(

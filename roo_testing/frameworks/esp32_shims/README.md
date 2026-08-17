@@ -15,7 +15,7 @@ a no-op.
 
 The implementation was reconstructed from the custom sources and modified
 framework files in the former `esp-idf-v4.4.1` and `arduino-esp32-2.0.4`
-trees, then adjusted to ESP-IDF 5.5.4 / Arduino-ESP32 3.3.8 declarations.
+trees, then adjusted to ESP-IDF 6.0.2 / Arduino-ESP32 3.3.11 declarations.
 
 | Area | Preserved host behaviour | Historical source |
 | --- | --- | --- |
@@ -33,4 +33,3 @@ trees, then adjusted to ESP-IDF 5.5.4 / Arduino-ESP32 3.3.8 declarations.
 When an upstream declaration changes, prefer adapting this package over
 patching the imported source.  Add a focused host test for any newly emulated
 behaviour; do not add register-accurate hardware code here.
-

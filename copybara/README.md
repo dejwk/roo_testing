@@ -5,10 +5,11 @@ Copybara owns the upstream portions of these stable source trees:
 - `roo_testing/frameworks/arduino-esp32`
 - `roo_testing/frameworks/esp-idf`
 
-The current pins are Arduino-ESP32 3.3.8 at
-`b4f85baa2d4a251eb435e0f78fcdda1fb193791f` and ESP-IDF 5.5.4 at
-`735507283d5b2f9fb363a1901172dbd9e847945d`. Arduino-ESP32 3.3.8 uses the
-ESP-IDF 5.5 release line, so these revisions are updated and tested as a pair.
+The current pins are Arduino-ESP32 3.3.11 at
+`189089bb76e74978dc95abebefdad42b0d421ba9` and ESP-IDF 6.0.2 at
+`7101770dc6db2667b3c477cc31365dd1acd6db4e`. Arduino-ESP32 3.3.11 declares
+compatibility with ESP-IDF versions from 5.3 up to (but not including) 6.2,
+so 6.0.2 is the newest stable ESP-IDF release in its supported range.
 
 ## Ownership boundary
 

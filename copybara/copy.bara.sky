@@ -216,6 +216,7 @@ core.workflow(
     origin = git.origin(
         url = "https://github.com/espressif/arduino-esp32.git",
         ref = ARDUINO_ESP32_REV,
+        partial_fetch = True,
         submodules = "NO",
     ),
     destination = destination(),
@@ -239,6 +240,7 @@ core.workflow(
     origin = git.origin(
         url = "https://github.com/espressif/esp-idf.git",
         ref = ESP_IDF_REV,
+        partial_fetch = True,
         submodules = "YES",
         # Only these two source submodules are used by the Linux emulator. All
         # target-only binary libraries and unrelated third-party stacks stay out.

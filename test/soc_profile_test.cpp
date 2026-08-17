@@ -19,6 +19,10 @@
 #error "Arduino consumers must see the ESP32 architecture"
 #endif
 
+#ifndef ESP32
+#error "Arduino consumers must see the canonical ESP32 platform macro"
+#endif
+
 #ifndef ARDUINO_ESP32_DEV
 #error "The default Arduino board must be the generic ESP32 Dev Module"
 #endif
@@ -36,6 +40,7 @@
 
 static_assert(CONFIG_IDF_TARGET_ESP32 == 1);
 static_assert(CONFIG_IDF_TARGET_ARCH_XTENSA == 1);
+static_assert(ESP32 == 1);
 static_assert(CONFIG_IDF_FIRMWARE_CHIP_ID == 0x0000);
 static_assert(CONFIG_SOC_CPU_CORES_NUM == 2);
 static_assert(SOC_CPU_CORES_NUM == 2);

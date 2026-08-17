@@ -16,6 +16,7 @@ cc_library(
         "CONFIG_IDF_TARGET_ARCH=\\\"xtensa\\\"",
         "CONFIG_IDF_TARGET_ARCH_XTENSA=1",
         "CONFIG_IDF_TARGET_ESP32=1",
+        "ESP32=1",
         "ROO_TESTING_SOC=\\\"esp32\\\"",
         "ROO_TESTING_SOC_ESP32=1",
     ],

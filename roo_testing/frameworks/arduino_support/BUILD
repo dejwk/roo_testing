@@ -6,7 +6,7 @@ cc_library(
     alwayslink = 1,
     visibility = ["//visibility:public"],
     deps = [
-        "//roo_testing/frameworks/arduino-esp32/cores/esp32",
+        "//roo_testing/frameworks/arduino-esp32/cores/esp32:arduino",
         "//roo_testing/frameworks/esp-idf/components/freertos",
     ],
 )
@@ -17,7 +17,7 @@ cc_library(
     alwayslink = 1,
     visibility = ["//visibility:public"],
     deps = [
-        "//roo_testing/frameworks/arduino-esp32/cores/esp32",
+        "//roo_testing/frameworks/arduino-esp32/cores/esp32:arduino",
         "//roo_testing/frameworks/esp-idf/components/freertos",
         "@googletest//:gtest",
     ],

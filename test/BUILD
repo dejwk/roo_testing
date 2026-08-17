@@ -155,6 +155,17 @@ cc_test(
 )
 
 cc_test(
+    name = "idf_ledc_test",
+    size = "small",
+    srcs = ["idf_ledc_test.cpp"],
+    linkstatic = 1,
+    deps = [
+        "//roo_testing/frameworks/esp32_shims:idf",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "arduino_spi_clock_test",
     size = "small",
     srcs = ["arduino_spi_clock_test.cpp"],

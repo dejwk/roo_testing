@@ -31,6 +31,7 @@ cc_library(
         "event.cpp",
         "idf_core.cpp",
         "idf_drivers.cpp",
+        "idf_ledc.cpp",
         "nvs.cpp",
         "ota_partition.cpp",
         "wifi.cpp",

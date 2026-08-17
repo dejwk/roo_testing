@@ -1,5 +1,11 @@
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
+alias(
+    name = "environment",
+    actual = "//roo_testing/frameworks/environment:emulator",
+    visibility = ["//visibility:public"],
+)
+
 cc_library(
     name = "testing",
     visibility = ["//visibility:public"],

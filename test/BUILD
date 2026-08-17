@@ -1,6 +1,73 @@
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
 cc_test(
+    name = "emulator_environment_test",
+    size = "small",
+    srcs = ["emulator_environment_test.cpp"],
+    copts = ["-Werror"],
+    deps = ["//:environment"],
+)
+
+cc_test(
+    name = "idf_environment_test",
+    size = "small",
+    srcs = [
+        "idf_environment_contract.h",
+        "idf_environment_test.cpp",
+    ],
+    copts = ["-Werror"],
+    deps = ["//roo_testing/frameworks/esp-idf:headers"],
+)
+
+cc_test(
+    name = "soc_environment_test",
+    size = "small",
+    srcs = ["soc_environment_test.cpp"],
+    copts = ["-Werror"],
+    deps = ["//roo_testing/soc:target"],
+)
+
+cc_test(
+    name = "arduino_environment_test",
+    size = "small",
+    srcs = [
+        "arduino_environment_contract.h",
+        "arduino_environment_test.cpp",
+        "idf_environment_contract.h",
+    ],
+    copts = ["-Werror"],
+    linkstatic = 1,
+    deps = ["//:arduino"],
+)
+
+cc_test(
+    name = "arduino_main_environment_test",
+    size = "small",
+    timeout = "short",
+    srcs = [
+        "arduino_environment_contract.h",
+        "arduino_main_environment_test.cpp",
+        "idf_environment_contract.h",
+    ],
+    copts = ["-Werror"],
+    linkstatic = 1,
+    deps = ["//:arduino_main"],
+)
+
+cc_test(
+    name = "arduino_gtest_environment_test",
+    size = "small",
+    srcs = [
+        "arduino_environment_contract.h",
+        "arduino_gtest_environment_test.cpp",
+        "idf_environment_contract.h",
+    ],
+    copts = ["-Werror"],
+    linkstatic = 1,
+    deps = ["//:arduino_gtest_main"],
+)
+
+cc_test(
     name = "arduino_preferences_startup_test",
     size = "small",
     srcs = ["arduino_preferences_startup_test.cpp"],

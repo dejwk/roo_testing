@@ -2,7 +2,6 @@ load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
 cc_library(
     name = "esp32",
-    defines = ["CORE_DEBUG_LEVEL=5"],
     includes = [
     ],
     linkstatic = 1,
@@ -16,7 +15,6 @@ cc_library(
     name = "core",
     srcs = glob(["*.cpp"], exclude = ["*_test.cpp"]),
     hdrs = glob(["*.h"]),
-    defines = ["CORE_DEBUG_LEVEL=5"],
     linkstatic = 1,
     visibility = ["//visibility:public"],
     deps = [

@@ -5,4 +5,5 @@ cc_library(
     hdrs = ["esp32/pins_arduino.h"],
     includes = ["esp32"],
     visibility = ["//visibility:public"],
+    deps = ["//roo_testing/frameworks/environment:arduino"],
 )

@@ -1,10 +1,6 @@
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
-COMMON_DEFINES = [
-    "ESP_PLATFORM",
-]
-
 # Architecture-independent sources kept current by the ESP-IDF import.  They
 # live in the existing destination-owned shim package so adding host build
 # metadata does not turn imported component directories into Bazel packages.
@@ -40,8 +36,6 @@ cc_library(
         "wifi.cpp",
     ],
     hdrs = ["shim_internal.h"],
-    defines = [
-    ] + COMMON_DEFINES,
     linkstatic = 1,
     visibility = ["//visibility:public"],
     deps = [
@@ -72,7 +66,6 @@ cc_library(
         "arduino_timer.cpp",
         "arduino_uart.cpp",
     ],
-    defines = COMMON_DEFINES,
     linkstatic = 1,
     visibility = ["//visibility:public"],
     deps = [

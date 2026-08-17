@@ -15,16 +15,8 @@
 #error "Classic ESP32 must select the Xtensa ESP-IDF architecture"
 #endif
 
-#ifndef ARDUINO_ARCH_ESP32
-#error "Arduino consumers must see the ESP32 architecture"
-#endif
-
 #ifndef ESP32
-#error "Arduino consumers must see the canonical ESP32 platform macro"
-#endif
-
-#ifndef ARDUINO_ESP32_DEV
-#error "The default Arduino board must be the generic ESP32 Dev Module"
+#error "Framework consumers must see the canonical ESP32 platform macro"
 #endif
 
 #if defined(CONFIG_IDF_TARGET_ESP32C2) || defined(CONFIG_IDF_TARGET_ESP32C3) || \
@@ -50,13 +42,8 @@ TEST(SocProfileTest, PublishesConsistentFrameworkIdentity) {
   EXPECT_STREQ(ROO_TESTING_SOC, "esp32");
   EXPECT_STREQ(CONFIG_IDF_TARGET, "esp32");
   EXPECT_STREQ(CONFIG_IDF_TARGET_ARCH, "xtensa");
-  EXPECT_STREQ(ARDUINO_BOARD, "ESP32_DEV");
-  EXPECT_STREQ(ARDUINO_VARIANT, "esp32");
-
   EXPECT_STREQ(roo_testing::soc::kName, ROO_TESTING_SOC);
   EXPECT_STREQ(roo_testing::soc::kIdfTarget, CONFIG_IDF_TARGET);
   EXPECT_STREQ(roo_testing::soc::kIdfArchitecture,
                CONFIG_IDF_TARGET_ARCH);
-  EXPECT_STREQ(roo_testing::soc::kArduinoBoard, ARDUINO_BOARD);
-  EXPECT_STREQ(roo_testing::soc::kArduinoVariant, ARDUINO_VARIANT);
 }

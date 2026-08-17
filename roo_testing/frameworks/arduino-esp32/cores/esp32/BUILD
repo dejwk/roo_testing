@@ -3,22 +3,13 @@ load("@rules_cc//cc:cc_library.bzl", "cc_library")
 cc_library(
     name = "headers",
     hdrs = glob(["**/*.h"]),
-    defines = [
-        "ARDUINO=10819",
-        "ARDUINO_USB_CDC_ON_BOOT=0",
-        "ARDUINO_USB_DFU_ON_BOOT=0",
-        "ARDUINO_USB_MSC_ON_BOOT=0",
-        "ARDUINO_USB_MODE=0",
-        "ARDUINO_USB_ON_BOOT=0",
-        "CORE_DEBUG_LEVEL=5",
-    ],
     includes = ["."],
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/arduino-esp32/variants:esp32",
+        "//roo_testing/frameworks/environment:arduino",
         "//roo_testing/frameworks/esp-idf:headers",
         "//roo_testing/microcontrollers/esp32:core",
-        "//roo_testing/soc:target",
     ],
 )
 

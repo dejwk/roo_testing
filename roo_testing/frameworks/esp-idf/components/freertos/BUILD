@@ -1,8 +1,8 @@
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
 # Public headers from ESP-IDF 6.0.2's single-core kernel and Linux port.  The
-# dependency-free support target supplies sdkconfig.h and the handful of common
-# IDF headers included by portmacro_idf.h.
+# small support graph supplies sdkconfig.h and the handful of common IDF
+# headers included by portmacro_idf.h.
 cc_library(
     name = "include",
     hdrs = glob([
@@ -22,7 +22,6 @@ cc_library(
         "config/linux/include",
         "esp_additions/include",
     ],
-    defines = ["ESP_PLATFORM"],
     visibility = ["//visibility:public"],
     deps = ["//roo_testing/frameworks/esp-idf:freertos_support_headers"],
 )

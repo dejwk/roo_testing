@@ -56,16 +56,38 @@ The code does not emulate the Xtensa microprocessors. Your sketch simply compile
 
 Host builds currently identify themselves to ESP-IDF and Arduino code as the
 classic dual-core Xtensa **ESP32**, using Arduino's generic **ESP32 Dev Module**
-variant. The normal framework macros (`CONFIG_IDF_TARGET_ESP32`,
-`CONFIG_IDF_TARGET`, `ARDUINO_ARCH_ESP32`, `ARDUINO_ESP32_DEV`,
-`ARDUINO_BOARD`, and `ARDUINO_VARIANT`) and roo_testing's own
-`ROO_TESTING_SOC` macros all come from the single
-[`//roo_testing/soc:target`](roo_testing/soc/README.md) profile.
+variant. The selected [`//roo_testing/soc:target`](roo_testing/soc/README.md)
+profile owns the ESP-IDF target, architecture, `ESP32`, and
+`ROO_TESTING_SOC` macros. The layered
+[framework environments](roo_testing/frameworks/environment/README.md) add
+`ESP_PLATFORM`, the Arduino frontend and board identity, and
+`ROO_TESTING=1`.
 
 Linux is the execution host, not the target exposed to application code. Other
 Espressif families are not selectable yet: advertising ESP32-C3, ESP32-S3, or
 another SoC must wait for matching headers, Arduino pins, shims, and
 `FakeEsp32` behavior.
+
+### Framework compile context
+
+Normal clients do not define framework identity macros in `.bazelrc`. A sketch
+depending on `@roo_testing//:arduino_main`, a test depending on
+`@roo_testing//:arduino_gtest_main`, or a library depending on
+`@roo_testing//:arduino` receives the complete Arduino, ESP-IDF, SoC, and
+emulator context transitively. The default Arduino frontend compatibility
+level is `ARDUINO=10819`; this is distinct from the Arduino-ESP32 framework
+version reported by `ESP_ARDUINO_VERSION_*`.
+
+A source file is compiled in the context of its own Bazel target. If sketch or
+library sources live in a separate `cc_library`, that library must have its own
+Arduino dependency; an `arduino_main` dependency on a sibling `cc_binary` does
+not propagate sideways. A host-only target that tests `ROO_TESTING` without
+using either framework may depend on `@roo_testing//:environment` (the legacy
+`@roo_testing//roo_testing:environment` label is also available).
+
+Do not add `--copt=-DARDUINO=...`, `-DESP32`, `-DESP_PLATFORM`, or
+`-DROO_TESTING` to client `.bazelrc` files. Such flags are not inherited from a
+dependency workspace and can redefine the authoritative framework values.
 
 ## How to use it
 

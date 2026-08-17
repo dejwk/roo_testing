@@ -10,7 +10,7 @@ exports_files([
 # port, while hardware-facing symbols are provided by //.../esp32_shims.
 cc_library(
     name = "freertos_support_headers",
-    hdrs = ["sdkconfig.h"] + glob([
+    hdrs = glob([
         "components/esp_common/include/**/*.h",
         "components/esp_system/include/**/*.h",
         "components/heap/include/**/*.h",
@@ -22,7 +22,7 @@ cc_library(
         "components/heap/include",
     ],
     visibility = ["//visibility:public"],
-    deps = ["//roo_testing/soc:target"],
+    deps = [":sdkconfig"],
 )
 
 cc_library(
@@ -32,9 +32,6 @@ cc_library(
         "components/**/*.inc",
         "roo_testing_host_include/**/*.h",
     ]),
-    defines = [
-        "IDF_VER=\\\"v6.0.2\\\"",
-    ],
     includes = [
         "roo_testing_host_include",
         ".",
@@ -198,5 +195,5 @@ cc_library(
     hdrs = ["sdkconfig.h"],
     includes = ["."],
     visibility = ["//visibility:public"],
-    deps = ["//roo_testing/soc:target"],
+    deps = ["//roo_testing/frameworks/environment:esp_idf"],
 )

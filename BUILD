@@ -1,5 +1,11 @@
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
+alias(
+    name = "environment",
+    actual = "//roo_testing/frameworks/environment:emulator",
+    visibility = ["//visibility:public"],
+)
+
 cc_library(
     name = "testing",
     visibility = ["//visibility:public"],
@@ -38,20 +44,26 @@ cc_library(
 test_suite(
     name = "all_tests",
     tests = [
+        "//test:arduino_environment_test",
+        "//test:arduino_gtest_environment_test",
+        "//test:arduino_main_environment_test",
         "//test:arduino_preferences_startup_test",
         "//test:arduino_spi_clock_test",
+        "//test:emulator_environment_test",
         "//test:framework_version_test",
         "//test:freertos_posix_thread_join_regression_test",
         "//test:gpio_test",
         "//test:host_event_gateway_test",
         "//test:host_filesystem_test",
         "//test:host_network_test",
-        "//test/legacy_sd_headers:legacy_sd_headers_test",
+        "//test:idf_environment_test",
         "//test:nvs_test",
         "//test:onewire_test",
         "//test:rtc_ds3231_i2c_test",
         "//test:simple_test",
+        "//test:soc_environment_test",
         "//test:soc_profile_test",
+        "//test/legacy_sd_headers:legacy_sd_headers_test",
         "//test/wire_master:wire_master_test",
     ],
 )

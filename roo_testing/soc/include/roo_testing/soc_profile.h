@@ -33,8 +33,6 @@ inline constexpr Model kModel = Model::kEsp32;
 inline constexpr char kName[] = ROO_TESTING_SOC;
 inline constexpr char kIdfTarget[] = CONFIG_IDF_TARGET;
 inline constexpr char kIdfArchitecture[] = CONFIG_IDF_TARGET_ARCH;
-inline constexpr char kArduinoBoard[] = ARDUINO_BOARD;
-inline constexpr char kArduinoVariant[] = ARDUINO_VARIANT;
 
 }  // namespace roo_testing::soc
 #endif

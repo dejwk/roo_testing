@@ -7,10 +7,6 @@ cc_library(
     name = "esp32",
     hdrs = ["include/roo_testing/soc_profile.h"],
     defines = [
-        "ARDUINO_ARCH_ESP32=1",
-        "ARDUINO_BOARD=\\\"ESP32_DEV\\\"",
-        "ARDUINO_ESP32_DEV=1",
-        "ARDUINO_VARIANT=\\\"esp32\\\"",
         "CONFIG_IDF_FIRMWARE_CHIP_ID=0x0000",
         "CONFIG_IDF_TARGET=\\\"esp32\\\"",
         "CONFIG_IDF_TARGET_ARCH=\\\"xtensa\\\"",

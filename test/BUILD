@@ -14,6 +14,18 @@ cc_test(
 )
 
 cc_test(
+    name = "idf_spi_device_test",
+    size = "small",
+    srcs = ["idf_spi_device_test.cpp"],
+    linkstatic = 1,
+    deps = [
+        "//roo_testing/frameworks/esp32_shims:idf",
+        "//roo_testing/microcontrollers/esp32:core",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "framework_version_test",
     size = "small",
     srcs = ["framework_version_test.cpp"],

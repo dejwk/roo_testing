@@ -4,9 +4,11 @@
 #include "driver/uart.h"
 #include "esp_rom_gpio.h"
 
+#include <algorithm>
 #include <array>
 #include <cstring>
 #include <memory>
+#include <vector>
 
 #include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 #include "roo_testing/microcontrollers/esp32/fake_esp32_spi_struct.h"
@@ -27,8 +29,25 @@ struct UartState {
 
 std::array<UartState, UART_NUM_MAX> g_uart;
 
+constexpr size_t kSpiHostCount = 3;
+constexpr std::array<uint8_t, kSpiHostCount> kSpiClockSignals = {0, 8, 63};
+constexpr std::array<uint8_t, kSpiHostCount> kSpiMisoSignals = {1, 9, 64};
+constexpr std::array<uint8_t, kSpiHostCount> kSpiMosiSignals = {2, 10, 65};
+
+struct SpiBusState {
+  bool initialized = false;
+  spi_bus_config_t config{};
+  size_t device_count = 0;
+};
+
+std::array<SpiBusState, kSpiHostCount> g_spi_buses;
+
 bool ValidUart(uart_port_t port) {
   return static_cast<unsigned>(port) < g_uart.size();
+}
+
+bool ValidSpiHost(spi_host_device_t host) {
+  return static_cast<unsigned>(host) < g_spi_buses.size();
 }
 
 }  // namespace
@@ -37,7 +56,187 @@ struct spi_device_t {
   spi_host_device_t host;
   spi_device_interface_config_t config;
   spi_transaction_t* queued = nullptr;
+  bool cs_active = false;
 };
+
+namespace {
+
+class IdfSpiInterface : public FakeSpiInterface {
+ public:
+  IdfSpiInterface(const spi_device_t& device, const spi_transaction_t& trans)
+      : FakeSpiInterface("esp-idf spi master"),
+        frequency_(trans.override_freq_hz != 0
+                       ? trans.override_freq_hz
+                       : device.config.clock_speed_hz),
+        mode_(static_cast<SpiDataMode>(device.config.mode & 0x3)),
+        order_((device.config.flags & SPI_DEVICE_TXBIT_LSBFIRST) != 0
+                   ? kSpiLsbFirst
+                   : kSpiMsbFirst) {}
+
+  uint32_t clkHz() const override { return frequency_; }
+  SpiDataMode dataMode() const override { return mode_; }
+  SpiBitOrder bitOrder() const override { return order_; }
+
+ private:
+  uint32_t frequency_;
+  SpiDataMode mode_;
+  SpiBitOrder order_;
+};
+
+void SetChipSelect(spi_device_t& device, bool active) {
+  if (!ValidGpio(static_cast<gpio_num_t>(device.config.spics_io_num))) return;
+  const bool positive =
+      (device.config.flags & SPI_DEVICE_POSITIVE_CS) != 0;
+  FakeEsp32().gpio.get(device.config.spics_io_num)
+      .digitalWrite(active == positive ? roo_testing_transducers::kDigitalHigh
+                                       : roo_testing_transducers::kDigitalLow);
+  device.cs_active = active;
+}
+
+std::vector<uint8_t> SerializeValue(uint64_t value, size_t bit_count,
+                                    bool lsb_first) {
+  std::vector<uint8_t> result((bit_count + 7) / 8, 0);
+  for (size_t output_bit = 0; output_bit < bit_count; ++output_bit) {
+    const size_t value_bit =
+        lsb_first ? output_bit : bit_count - output_bit - 1;
+    if ((value & (uint64_t{1} << value_bit)) == 0) continue;
+    const size_t byte = output_bit / 8;
+    const size_t bit_in_byte = output_bit % 8;
+    result[byte] |= static_cast<uint8_t>(
+        uint8_t{1} << (lsb_first ? bit_in_byte : 7 - bit_in_byte));
+  }
+  return result;
+}
+
+void TransferPhase(spi_device_t& device, const spi_transaction_t& trans,
+                   const uint8_t* tx, uint8_t* rx, size_t bit_count) {
+  if (bit_count == 0) return;
+  const SpiBusState& bus = g_spi_buses[device.host];
+  const size_t byte_count = (bit_count + 7) / 8;
+  std::vector<uint8_t> outgoing(byte_count, 0xff);
+  if (tx != nullptr) std::memcpy(outgoing.data(), tx, byte_count);
+
+  IdfSpiInterface interface(device, trans);
+  SimpleFakeSpiDevice* input_device = nullptr;
+  std::vector<uint8_t> input;
+  bool input_conflict = false;
+
+  for (const auto& attached : FakeEsp32().spi_devices()) {
+    SimpleFakeSpiDevice* fake_device = attached.first;
+    const SpiPins& pins = attached.second;
+    if (pins.clk != bus.config.sclk_io_num || !fake_device->isSelected()) {
+      continue;
+    }
+
+    std::vector<uint8_t> transferred = outgoing;
+    if (pins.mosi != bus.config.mosi_io_num) {
+      const bool mosi_high =
+          pins.mosi < 0 || FakeEsp32().gpio.get(pins.mosi).isDigitalHigh();
+      std::fill(transferred.begin(), transferred.end(),
+                mosi_high ? 0xff : 0x00);
+    }
+
+    // Fake devices observe bytes in wire order and use bitOrder() for the
+    // within-byte direction, matching the register-backed Arduino SPI path.
+    size_t offset = 0;
+    while (offset < bit_count) {
+      const size_t chunk_bits = std::min<size_t>(bit_count - offset, 512);
+      fake_device->transfer(interface, transferred.data() + offset / 8,
+                            static_cast<uint16_t>(chunk_bits));
+      offset += chunk_bits;
+    }
+
+    if (pins.miso == bus.config.miso_io_num) {
+      if (input_device == nullptr) {
+        input_device = fake_device;
+        input = std::move(transferred);
+      } else {
+        input_conflict = true;
+      }
+    }
+  }
+
+  if (rx == nullptr) return;
+  if (input_device != nullptr && !input_conflict) {
+    std::memcpy(rx, input.data(), byte_count);
+  } else {
+    // An undriven MISO line reads high. Multiple selected input devices are a
+    // bus conflict, for which the legacy fake peripheral also returned 0xff.
+    std::memset(rx, 0xff, byte_count);
+  }
+}
+
+size_t CommandBits(const spi_device_t& device,
+                   const spi_transaction_t& trans) {
+  if ((trans.flags & SPI_TRANS_VARIABLE_CMD) == 0) {
+    return device.config.command_bits;
+  }
+  return reinterpret_cast<const spi_transaction_ext_t&>(trans).command_bits;
+}
+
+size_t AddressBits(const spi_device_t& device,
+                   const spi_transaction_t& trans) {
+  if ((trans.flags & SPI_TRANS_VARIABLE_ADDR) == 0) {
+    return device.config.address_bits;
+  }
+  return reinterpret_cast<const spi_transaction_ext_t&>(trans).address_bits;
+}
+
+size_t DummyBits(const spi_device_t& device, const spi_transaction_t& trans) {
+  if ((trans.flags & SPI_TRANS_VARIABLE_DUMMY) == 0) {
+    return device.config.dummy_bits;
+  }
+  return reinterpret_cast<const spi_transaction_ext_t&>(trans).dummy_bits;
+}
+
+esp_err_t TransferTransaction(spi_device_t& device,
+                              spi_transaction_t& trans,
+                              bool force_keep_cs = false) {
+  const bool lsb_first =
+      (device.config.flags & SPI_DEVICE_TXBIT_LSBFIRST) != 0;
+  if (device.config.pre_cb != nullptr) device.config.pre_cb(&trans);
+  if (!device.cs_active) SetChipSelect(device, true);
+
+  const size_t command_bits = CommandBits(device, trans);
+  if (command_bits != 0) {
+    const std::vector<uint8_t> command =
+        SerializeValue(trans.cmd, command_bits, lsb_first);
+    TransferPhase(device, trans, command.data(), nullptr, command_bits);
+  }
+  const size_t address_bits = AddressBits(device, trans);
+  if (address_bits != 0) {
+    const std::vector<uint8_t> address =
+        SerializeValue(trans.addr, address_bits, lsb_first);
+    TransferPhase(device, trans, address.data(), nullptr, address_bits);
+  }
+  const size_t dummy_bits = DummyBits(device, trans);
+  if (dummy_bits != 0) {
+    TransferPhase(device, trans, nullptr, nullptr, dummy_bits);
+  }
+
+  const uint8_t* tx = (trans.flags & SPI_TRANS_USE_TXDATA) != 0
+                          ? trans.tx_data
+                          : static_cast<const uint8_t*>(trans.tx_buffer);
+  uint8_t* rx = (trans.flags & SPI_TRANS_USE_RXDATA) != 0
+                    ? trans.rx_data
+                    : static_cast<uint8_t*>(trans.rx_buffer);
+  const size_t rx_bits = trans.rxlength == 0 ? trans.length : trans.rxlength;
+  if ((device.config.flags & SPI_DEVICE_HALFDUPLEX) != 0 && tx != nullptr &&
+      rx != nullptr) {
+    TransferPhase(device, trans, tx, nullptr, trans.length);
+    TransferPhase(device, trans, nullptr, rx, rx_bits);
+  } else {
+    TransferPhase(device, trans, tx, rx, std::max(trans.length, rx_bits));
+  }
+
+  const bool keep_cs = force_keep_cs ||
+                       (trans.flags & SPI_TRANS_CS_KEEP_ACTIVE) != 0;
+  if (!keep_cs) SetChipSelect(device, false);
+  if (device.config.post_cb != nullptr) device.config.post_cb(&trans);
+  return ESP_OK;
+}
+
+}  // namespace
 
 extern "C" {
 
@@ -325,32 +524,63 @@ esp_err_t i2c_master_write_read_device(i2c_port_t port, uint8_t address,
              : result;
 }
 
-esp_err_t spi_bus_initialize(spi_host_device_t, const spi_bus_config_t* config,
-                             spi_dma_chan_t) {
-  return config == nullptr ? ESP_ERR_INVALID_ARG : ESP_OK;
+esp_err_t spi_bus_initialize(spi_host_device_t host,
+                             const spi_bus_config_t* config, spi_dma_chan_t) {
+  if (!ValidSpiHost(host) || config == nullptr) return ESP_ERR_INVALID_ARG;
+  SpiBusState& bus = g_spi_buses[host];
+  if (bus.initialized) return ESP_ERR_INVALID_STATE;
+  bus.config = *config;
+  bus.initialized = true;
+
+  if (ValidGpio(static_cast<gpio_num_t>(config->sclk_io_num))) {
+    FakeEsp32().out_matrix.assign(config->sclk_io_num, kSpiClockSignals[host],
+                                  false, false);
+  }
+  if (ValidGpio(static_cast<gpio_num_t>(config->mosi_io_num))) {
+    FakeEsp32().out_matrix.assign(config->mosi_io_num, kSpiMosiSignals[host],
+                                  false, false);
+  }
+  if (ValidGpio(static_cast<gpio_num_t>(config->miso_io_num))) {
+    FakeEsp32().in_matrix.assign(config->miso_io_num, kSpiMisoSignals[host],
+                                 false);
+  }
+  return ESP_OK;
 }
-esp_err_t spi_bus_free(spi_host_device_t) { return ESP_OK; }
+esp_err_t spi_bus_free(spi_host_device_t host) {
+  if (!ValidSpiHost(host)) return ESP_ERR_INVALID_ARG;
+  SpiBusState& bus = g_spi_buses[host];
+  if (!bus.initialized) return ESP_ERR_INVALID_STATE;
+  if (bus.device_count != 0) return ESP_ERR_INVALID_STATE;
+  bus = SpiBusState{};
+  return ESP_OK;
+}
 esp_err_t spi_bus_add_device(spi_host_device_t host,
                              const spi_device_interface_config_t* config,
                              spi_device_handle_t* handle) {
-  if (config == nullptr || handle == nullptr) return ESP_ERR_INVALID_ARG;
-  *handle = new spi_device_t{host, *config, nullptr};
+  if (!ValidSpiHost(host) || config == nullptr || handle == nullptr) {
+    return ESP_ERR_INVALID_ARG;
+  }
+  SpiBusState& bus = g_spi_buses[host];
+  if (!bus.initialized) return ESP_ERR_INVALID_STATE;
+  *handle = new spi_device_t{host, *config, nullptr, false};
+  ++bus.device_count;
+  SetChipSelect(**handle, false);
   return ESP_OK;
 }
 esp_err_t spi_bus_remove_device(spi_device_handle_t handle) {
+  if (handle == nullptr) return ESP_ERR_INVALID_ARG;
+  if (handle->cs_active) SetChipSelect(*handle, false);
+  if (ValidSpiHost(handle->host) &&
+      g_spi_buses[handle->host].device_count != 0) {
+    --g_spi_buses[handle->host].device_count;
+  }
   delete handle;
   return ESP_OK;
 }
 esp_err_t spi_device_polling_transmit(spi_device_handle_t handle,
                                       spi_transaction_t* transaction) {
   if (handle == nullptr || transaction == nullptr) return ESP_ERR_INVALID_ARG;
-  const size_t bytes = (transaction->length + 7) / 8;
-  if (transaction->rx_buffer != nullptr && transaction->tx_buffer != nullptr) {
-    memcpy(transaction->rx_buffer, transaction->tx_buffer, bytes);
-  } else if (transaction->rx_buffer != nullptr) {
-    memset(transaction->rx_buffer, 0xFF, bytes);
-  }
-  return ESP_OK;
+  return TransferTransaction(*handle, *transaction);
 }
 esp_err_t spi_device_transmit(spi_device_handle_t handle,
                               spi_transaction_t* transaction) {
@@ -359,7 +589,8 @@ esp_err_t spi_device_transmit(spi_device_handle_t handle,
 esp_err_t spi_device_queue_trans(spi_device_handle_t handle,
                                  spi_transaction_t* transaction, TickType_t) {
   if (handle == nullptr || transaction == nullptr) return ESP_ERR_INVALID_ARG;
-  const esp_err_t result = spi_device_polling_transmit(handle, transaction);
+  if (handle->queued != nullptr) return ESP_ERR_INVALID_STATE;
+  const esp_err_t result = TransferTransaction(*handle, *transaction);
   handle->queued = transaction;
   return result;
 }
@@ -373,17 +604,27 @@ esp_err_t spi_device_get_trans_result(spi_device_handle_t handle,
 }
 esp_err_t spi_device_polling_start(spi_device_handle_t handle,
                                    spi_transaction_t* transaction, TickType_t) {
-  return spi_device_queue_trans(handle, transaction, 0);
+  if (handle == nullptr || transaction == nullptr) return ESP_ERR_INVALID_ARG;
+  if (handle->queued != nullptr) return ESP_ERR_INVALID_STATE;
+  const esp_err_t result = TransferTransaction(*handle, *transaction, true);
+  if (result == ESP_OK) handle->queued = transaction;
+  return result;
 }
 esp_err_t spi_device_polling_end(spi_device_handle_t handle, TickType_t) {
   if (handle == nullptr) return ESP_ERR_INVALID_ARG;
+  if (handle->queued == nullptr) return ESP_ERR_INVALID_STATE;
+  if ((handle->queued->flags & SPI_TRANS_CS_KEEP_ACTIVE) == 0) {
+    SetChipSelect(*handle, false);
+  }
   handle->queued = nullptr;
   return ESP_OK;
 }
 esp_err_t spi_device_acquire_bus(spi_device_handle_t device, TickType_t) {
   return device == nullptr ? ESP_ERR_INVALID_ARG : ESP_OK;
 }
-void spi_device_release_bus(spi_device_handle_t) {}
+void spi_device_release_bus(spi_device_handle_t device) {
+  if (device != nullptr && device->cs_active) SetChipSelect(*device, false);
+}
 esp_err_t spi_device_get_actual_freq(spi_device_handle_t handle,
                                      int* frequency_khz) {
   if (handle == nullptr || frequency_khz == nullptr) return ESP_ERR_INVALID_ARG;

@@ -66,6 +66,7 @@ run_idf_bazel test \
   //test/profile:idf_select_test \
   //test/profile:esp_idf_main_test \
   //test/profile:esp_idf_gtest_main_test \
+  //test:legacy_i2c_interface_test \
   --config=roo_testing_idf_esp32
 
 run_bazel build //test/profile:user_copt_probe \

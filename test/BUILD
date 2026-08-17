@@ -114,6 +114,16 @@ cc_test(
 )
 
 cc_test(
+    name = "legacy_i2c_interface_test",
+    size = "small",
+    srcs = ["legacy_i2c_interface_test.cpp"],
+    deps = ["//roo_testing/buses/i2c"] + select({
+        "//roo_testing/platforms:is_idf": ["//:esp_idf_gtest_main"],
+        "//conditions:default": ["@googletest//:gtest_main"],
+    }),
+)
+
+cc_test(
     name = "posix_lwip_bare_socket_link_test",
     srcs = ["posix_lwip_bare_socket_link_test.cpp"],
     deps = [

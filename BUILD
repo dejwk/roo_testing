@@ -81,6 +81,7 @@ test_suite(
         "//test:host_filesystem_test",
         "//test:host_network_test",
         "//test:idf_environment_test",
+        "//test:legacy_i2c_interface_test",
         "//test:nvs_test",
         "//test:onewire_test",
         "//test:rtc_ds3231_i2c_test",

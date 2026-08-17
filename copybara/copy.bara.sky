@@ -63,6 +63,7 @@ ESP_IDF_COMPONENTS = [
     "esp_driver_uart",
     "esp_eth",
     "esp_event",
+    "esp_hal_gpio",
     "esp_hw_support",
     "esp_mm",
     "esp_netif",

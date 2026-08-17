@@ -217,7 +217,7 @@ int NetworkClient::connect(IPAddress ip, uint16_t port, int32_t timeout_ms) {
     struct sockaddr_in6 *tmpaddr = (struct sockaddr_in6 *)&serveraddr;
     sockfd = socket(AF_INET6, SOCK_STREAM, 0);
     tmpaddr->sin6_family = AF_INET6;
-    memcpy(tmpaddr->sin6_addr.un.u8_addr, &ip[0], 16);
+    memcpy(tmpaddr->sin6_addr.s6_addr, &ip[0], sizeof(tmpaddr->sin6_addr.s6_addr));
     tmpaddr->sin6_port = htons(port);
     tmpaddr->sin6_scope_id = ip.zone();
   } else {
@@ -400,8 +400,8 @@ size_t NetworkClient::write(const uint8_t *buf, size_t size) {
     struct timeval tv;
     FD_ZERO(&set);                       // empties the set
     FD_SET(socketFileDescriptor, &set);  // adds FD to the set
-    tv.tv_sec = 0;
-    tv.tv_usec = WIFI_CLIENT_SELECT_TIMEOUT_US;
+    tv.tv_sec = WIFI_CLIENT_SELECT_TIMEOUT_US / 1000000;
+    tv.tv_usec = WIFI_CLIENT_SELECT_TIMEOUT_US % 1000000;
     retry--;
 
     if (_lastWriteTimeout != _timeout) {
@@ -617,7 +617,7 @@ IPAddress NetworkClient::remoteIP(int fd) const {
   // IPv6, but it might be IPv4 mapped address
   if (((struct sockaddr *)&addr)->sa_family == AF_INET6) {
     struct sockaddr_in6 *saddr6 = (struct sockaddr_in6 *)&addr;
-    if (IN6_IS_ADDR_V4MAPPED(saddr6->sin6_addr.un.u32_addr)) {
+    if (IN6_IS_ADDR_V4MAPPED(&saddr6->sin6_addr)) {
       return IPAddress(IPv4, (uint8_t *)saddr6->sin6_addr.s6_addr + IPADDRESS_V4_BYTES_INDEX);
     } else {
       return IPAddress(IPv6, (uint8_t *)(saddr6->sin6_addr.s6_addr), saddr6->sin6_scope_id);
@@ -659,7 +659,7 @@ IPAddress NetworkClient::localIP(int fd) const {
   // IPv6, but it might be IPv4 mapped address
   if (((struct sockaddr *)&addr)->sa_family == AF_INET6) {
     struct sockaddr_in6 *saddr6 = (struct sockaddr_in6 *)&addr;
-    if (IN6_IS_ADDR_V4MAPPED(saddr6->sin6_addr.un.u32_addr)) {
+    if (IN6_IS_ADDR_V4MAPPED(&saddr6->sin6_addr)) {
       return IPAddress(IPv4, (uint8_t *)saddr6->sin6_addr.s6_addr + IPADDRESS_V4_BYTES_INDEX);
     } else {
       return IPAddress(IPv6, (uint8_t *)(saddr6->sin6_addr.s6_addr), saddr6->sin6_scope_id);

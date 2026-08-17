@@ -20,9 +20,18 @@ cc_test(
     srcs = ["host_network_test.cpp"],
     linkstatic = 1,
     deps = [
+        "//roo_testing/frameworks/posix_lwip",
         "//:arduino_gtest_main",
         "//roo_testing/frameworks/arduino-esp32/libraries/Network",
+    ],
+)
+
+cc_test(
+    name = "posix_lwip_bare_socket_link_test",
+    srcs = ["posix_lwip_bare_socket_link_test.cpp"],
+    deps = [
         "//roo_testing/frameworks/posix_lwip",
+        "@googletest//:gtest_main",
     ],
 )
 

@@ -7,8 +7,10 @@
 
 #include "sdkconfig.h"
 #include "soc/soc_caps.h"
+#include "esp_bit_defs.h"
 #include "esp_err.h"
 #include "esp_event.h"
+#include "esp_idf_version.h"
 #include "esp_netif_types.h"
 #if CONFIG_ETH_ENABLED
 #include "esp_eth_driver.h"

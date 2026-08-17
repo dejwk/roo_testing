@@ -8,5 +8,6 @@ cc_test(
     deps = [
         "//:arduino_gtest_main",
         "//roo_testing/frameworks/arduino-esp32/libraries/Wire",
+        "//roo_testing/microcontrollers/esp32:core",
     ],
 )

@@ -1,6 +1,7 @@
 #include "esp32-hal-i2c.h"
 #include "esp32-hal-i2c-slave.h"
 #include "esp32-hal-periman.h"
+#include "soc/gpio_sig_map.h"
 
 #include <array>
 
@@ -13,22 +14,74 @@ struct I2cState {
   int8_t scl = -1;
   uint32_t frequency = 100000;
 };
+
+struct I2cSignals {
+  uint8_t sda_out;
+  uint8_t sda_in;
+  uint8_t scl_out;
+  uint8_t scl_in;
+};
+
+constexpr std::array<I2cSignals, SOC_I2C_NUM> kI2cSignals = {{
+    {I2CEXT0_SDA_OUT_IDX, I2CEXT0_SDA_IN_IDX, I2CEXT0_SCL_OUT_IDX,
+     I2CEXT0_SCL_IN_IDX},
+#if SOC_I2C_NUM > 1
+    {I2CEXT1_SDA_OUT_IDX, I2CEXT1_SDA_IN_IDX, I2CEXT1_SCL_OUT_IDX,
+     I2CEXT1_SCL_IN_IDX},
+#endif
+}};
+
+static_assert(SOC_I2C_NUM <= 2,
+              "add the selected SoC's additional I2C signal mappings");
+
 std::array<I2cState, SOC_I2C_NUM> buses;
 bool valid(uint8_t bus) { return bus < buses.size(); }
+bool validPin(int8_t pin) { return pin >= 0 && pin < SOC_GPIO_PIN_COUNT; }
+
+void routePins(uint8_t bus, int8_t sda, int8_t scl) {
+  const I2cSignals &signals = kI2cSignals[bus];
+  FakeEsp32().out_matrix.assign(sda, signals.sda_out, false, false);
+  FakeEsp32().in_matrix.assign(sda, signals.sda_in, false);
+  FakeEsp32().out_matrix.assign(scl, signals.scl_out, false, false);
+  FakeEsp32().in_matrix.assign(scl, signals.scl_in, false);
+}
+
+void unroutePins(uint8_t bus, int8_t sda, int8_t scl) {
+  const I2cSignals &signals = kI2cSignals[bus];
+  FakeEsp32().out_matrix.assign(sda, kMatrixDetachOutSig, false, false);
+  FakeEsp32().in_matrix.assign(kMatrixDetachInUndefPin, signals.sda_in, false);
+  FakeEsp32().out_matrix.assign(scl, kMatrixDetachOutSig, false, false);
+  FakeEsp32().in_matrix.assign(kMatrixDetachInUndefPin, signals.scl_in, false);
+}
 }  // namespace
 
 extern "C" {
 
 esp_err_t i2cInit(uint8_t bus, int8_t sda, int8_t scl, uint32_t frequency) {
-  if (!valid(bus) || sda < 0 || scl < 0) return ESP_ERR_INVALID_ARG;
+  if (!valid(bus) || !validPin(sda) || !validPin(scl)) {
+    return ESP_ERR_INVALID_ARG;
+  }
+  if (frequency == 0) frequency = 100000;
+  if (frequency > 1000000) frequency = 1000000;
+  if (!perimanSetPinBus(sda, ESP32_BUS_TYPE_I2C_MASTER_SDA, &buses[bus],
+                        bus, -1)) {
+    return ESP_ERR_INVALID_STATE;
+  }
+  if (!perimanSetPinBus(scl, ESP32_BUS_TYPE_I2C_MASTER_SCL, &buses[bus],
+                        bus, -1)) {
+    perimanClearPinBus(sda);
+    return ESP_ERR_INVALID_STATE;
+  }
   buses[bus] = {true, sda, scl, frequency};
-  perimanSetPinBus(sda, ESP32_BUS_TYPE_I2C_MASTER_SDA, &buses[bus], bus, -1);
-  perimanSetPinBus(scl, ESP32_BUS_TYPE_I2C_MASTER_SCL, &buses[bus], bus, -1);
+  routePins(bus, sda, scl);
   return ESP_OK;
 }
 
 esp_err_t i2cDeinit(uint8_t bus) {
   if (!valid(bus)) return ESP_ERR_INVALID_ARG;
+  if (buses[bus].initialized) {
+    unroutePins(bus, buses[bus].sda, buses[bus].scl);
+  }
   if (buses[bus].sda >= 0) perimanClearPinBus(buses[bus].sda);
   if (buses[bus].scl >= 0) perimanClearPinBus(buses[bus].scl);
   buses[bus] = {};

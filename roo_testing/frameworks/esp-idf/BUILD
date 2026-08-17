@@ -28,6 +28,7 @@ cc_library(
     defines = [
         "CONFIG_IDF_TARGET_ESP32=1",
         "CONFIG_IDF_TARGET=\"esp32\"",
+        "IDF_VER=\"v5.5.4\"",
     ],
     includes = [
         ".",
@@ -77,7 +78,6 @@ cc_library(
         "components/hal/linux/include",
         "components/hal/platform_port/include",
         "components/heap/include",
-        "components/linux/include",
         "components/log/include",
         "components/lwip/include",
         "components/lwip/lwip/src/include",

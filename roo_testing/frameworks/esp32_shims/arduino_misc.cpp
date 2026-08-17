@@ -20,6 +20,8 @@ arduino_panic_handler_t panic_handler = nullptr;
 void *panic_arg = nullptr;
 uint32_t cpu_frequency_mhz = 240;
 bool bluetooth_started = false;
+bool ble_memory_released = false;
+bool classic_memory_released = false;
 uint32_t analog_frequency[SOC_GPIO_PIN_COUNT] = {};
 uint8_t analog_resolution[SOC_GPIO_PIN_COUNT] = {};
 
@@ -32,6 +34,13 @@ std::vector<ApbCallback> apb_callbacks;
 }  // namespace
 
 extern "C" {
+
+// Arduino 3.3.11 uses these flags to keep Bluetooth memory when a Bluetooth
+// library is linked.  The host does not allocate controller memory, but it
+// still exposes the public bookkeeping API so portable code sees the same
+// lifecycle.
+bool _bleLibraryInUse = false;
+bool _btClassicLibraryInUse = false;
 
 void yield(void) { taskYIELD(); }
 
@@ -124,10 +133,48 @@ void *ps_malloc(size_t size) { return malloc(size); }
 void *ps_calloc(size_t count, size_t size) { return calloc(count, size); }
 void *ps_realloc(void *ptr, size_t size) { return realloc(ptr, size); }
 
+bool _btInUse_default(void) { return false; }
 bool btInUse(void) { return bluetooth_started; }
+bool btClassicInUse(void) { return _btClassicLibraryInUse; }
+bool bleInUse(void) { return _bleLibraryInUse; }
 bool btStarted() { return bluetooth_started; }
 bool btStart() { bluetooth_started = true; return true; }
 bool btStartMode(bt_mode) { bluetooth_started = true; return true; }
 bool btStop() { bluetooth_started = false; return true; }
+
+bool btMemReleased(bt_mode mode) {
+  switch (mode) {
+    case BT_MODE_BLE:
+      return ble_memory_released;
+    case BT_MODE_CLASSIC_BT:
+      return classic_memory_released;
+    case BT_MODE_DEFAULT:
+    case BT_MODE_BTDM:
+    default:
+      return ble_memory_released && classic_memory_released;
+  }
+}
+
+void btMarkMemReleased(bt_mode mode) {
+  switch (mode) {
+    case BT_MODE_BLE:
+      ble_memory_released = true;
+      break;
+    case BT_MODE_CLASSIC_BT:
+      classic_memory_released = true;
+      break;
+    case BT_MODE_DEFAULT:
+    case BT_MODE_BTDM:
+    default:
+      ble_memory_released = true;
+      classic_memory_released = true;
+      break;
+  }
+}
+
+bool btMemRelease(bt_mode mode) {
+  btMarkMemReleased(mode);
+  return true;
+}
 
 }  // extern "C"

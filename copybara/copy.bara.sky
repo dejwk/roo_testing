@@ -98,6 +98,7 @@ ESP_IDF_COMPONENTS = [
     "esp_system",
     "esp_timer",
     "esp_wifi",
+    "fatfs",
     "freertos",
     "hal",
     "heap",

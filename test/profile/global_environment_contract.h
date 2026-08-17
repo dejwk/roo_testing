@@ -1,7 +1,7 @@
 #pragma once
 
 // Canonical Arduino additions to the shared classic ESP32/ESP-IDF environment.
-// Keep this synchronized with bazelrc/esp32/arduino.bazelrc.
+// Keep this synchronized with .roo_testing/bazelrc/esp32/arduino.bazelrc.
 
 #include "test/profile/esp32_idf_environment_contract.h"
 

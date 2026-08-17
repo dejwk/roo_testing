@@ -16,6 +16,14 @@ checks with:
 ./test/profile/verify_profile.sh
 ```
 
+This also runs `verify_bazel_tools.sh`, whose fake-Bazel checks cover nested
+Bazelisk wrapper discovery settings, argument forwarding, startup-option and
+`--` parsing, explicit and future frontend configs, disabled rc loading,
+mixed-profile rejection, and the two-profile helper's fail-fast behavior.
+The profile matrix also runs the public `roo_arduino_example` fixture, verifies
+that its public target is a native `cc_binary`, and requires it to be
+incompatible under the IDF-only frontend.
+
 The runner uses `$HOME/.cache/roo_testing/profile-integration` by default and
 rejects `/tmp` for every configurable Bazel storage path. It verifies expected
 failures for a plain host platform, an unsupported SoC, and a selected
@@ -24,3 +32,5 @@ user-`--copt` and ASAN probes and checks with `aquery` that every canonical
 definition occurs exactly once in unrelated C and C++ compile actions.
 It preserves the user's home rc (and its disk cache), suppressing only the
 roo_testing workspace rc when exercising the mutually exclusive IDF profile.
+Real interactive defaulting requires Bazelisk 1.21.0 or newer; direct Bazel
+invocations select a frontend explicitly.

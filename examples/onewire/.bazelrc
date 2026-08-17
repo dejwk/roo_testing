@@ -1,4 +1,3 @@
 build --registry="https://raw.githubusercontent.com/dejwk/roo-registry/main/" --registry="https://bcr.bazel.build"
-import %workspace%/bazelrc/esp32/base.bazelrc
-import %workspace%/bazelrc/esp32/arduino.bazelrc
-build --config=roo_testing_arduino_esp32
+import %workspace%/.roo_testing/bazelrc/esp32/base.bazelrc
+import %workspace%/.roo_testing/bazelrc/esp32/arduino.bazelrc

@@ -36,24 +36,32 @@ configuration.
 ## Root-workspace setup
 
 Dependency `.bazelrc` files are not inherited. Vendor the canonical shared base
-and the frontend fragment(s) supported by the root workspace. Activate exactly
-one frontend per invocation. Arduino-only clients use:
+and the frontend fragment(s) supported by the root workspace under
+`.roo_testing/bazelrc`. Arduino-only clients import:
 
 ```bazelrc
-import %workspace%/bazelrc/esp32/base.bazelrc
-import %workspace%/bazelrc/esp32/arduino.bazelrc
-build --config=roo_testing_arduino_esp32
+import %workspace%/.roo_testing/bazelrc/esp32/base.bazelrc
+import %workspace%/.roo_testing/bazelrc/esp32/arduino.bazelrc
 ```
 
 ESP-IDF-only clients replace the Arduino fragment and config with
-`bazelrc/esp32/idf.bazelrc` and `roo_testing_idf_esp32`. Mixed clients may
-import both frontend fragments and select one explicitly on each Bazel command;
-they must never expand both configs together. The source of truth is the
-[`bazelrc/esp32`](../../../bazelrc/esp32) hierarchy; source URLs are embedded in
-its files so vendored copies can be audited and refreshed. The filesystem
-import is required because Bazel cannot resolve an `@roo_testing//...` label
-while reading rc files. Dependency rc files are never inherited, including
-with a local module override.
+`.roo_testing/bazelrc/esp32/idf.bazelrc` and `roo_testing_idf_esp32`. Mixed
+clients import both frontend fragments. The source of truth is the
+[`.roo_testing/bazelrc/esp32`](../../../.roo_testing/bazelrc/esp32) hierarchy;
+source URLs are embedded in its files so vendored copies can be audited and
+refreshed. The filesystem import is required because Bazel cannot resolve an
+`@roo_testing//...` label while reading rc files. Dependency rc files are never
+inherited, including with a local module override.
+
+For a conditional Arduino default, vendor `.roo_testing/bin/bazel`, set
+`BAZELISK_WRAPPER_DIRECTORY=.roo_testing/bin` in the root `.bazeliskrc`, and
+use Bazelisk 1.21.0 or newer. Plain configured commands then announce and use
+Arduino, while an explicit `--config=roo_testing_idf_esp32` remains IDF-only.
+This cannot be expressed as an unconditional rc default because named configs
+and their repeatable compiler options accumulate. The wrapper also recognizes
+future `roo_testing_arduino_*` and `roo_testing_idf_*` profile names.
+An Arduino-only root may instead set its Arduino config unconditionally in
+`.bazelrc`; mixed roots must use conditional wrapper or explicit selection.
 
 `base.bazelrc` is the single source for emulator, ESP-IDF, and classic ESP32
 macros. The frontend fragments add only their platform and frontend-specific
@@ -65,9 +73,10 @@ platform-supplied values for a repeatable option replace earlier values and
 would discard those user flags.
 
 The profiles are explicit and mutually exclusive. A client workspace should
-activate exactly one. roo_testing's own root defaults to Arduino solely to
-preserve `bazel test :all`; its IDF integration runner suppresses that workspace
-rc and loads only the base and IDF fragments.
+activate exactly one. The wrapper preserves roo_testing's historical
+`bazel test :all` command without placing an additive default in `.bazelrc`.
+Mixed clients can run `.roo_testing/bin/test_all_profiles`; it invokes native
+tests once per frontend and stops on the first failure.
 
 Do not add a second definition of a canonical identity macro. The profile
 integration tests use `aquery` to ensure each one occurs exactly once.

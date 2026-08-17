@@ -17,20 +17,21 @@ done
 mkdir -p "${test_root}" "${repository_cache}"
 cd "${workspace}"
 
+./test/profile/verify_bazel_tools.sh
+
 run_bazel() {
   "${bazel_bin}" --output_user_root="${test_root}/configured" "$@"
 }
 
-# roo_testing's own workspace defaults to Arduino for backward compatibility.
-# IDF integration deliberately suppresses that workspace rc and loads only the
-# shared base plus the IDF frontend; the user's home rc (including disk cache)
-# remains active.
+# IDF integration deliberately suppresses the workspace rc and loads only the
+# shared base plus the IDF frontend. The wrapper sees the explicit IDF config
+# and does not add its Arduino default. The user's home rc remains active.
 run_idf_bazel() {
   "${bazel_bin}" \
     --output_user_root="${test_root}/idf-configured" \
     --noworkspace_rc \
-    --bazelrc="${workspace}/bazelrc/esp32/base.bazelrc" \
-    --bazelrc="${workspace}/bazelrc/esp32/idf.bazelrc" \
+    --bazelrc="${workspace}/.roo_testing/bazelrc/esp32/base.bazelrc" \
+    --bazelrc="${workspace}/.roo_testing/bazelrc/esp32/idf.bazelrc" \
     "$@" \
     --repository_cache="${repository_cache}" \
     --registry=https://raw.githubusercontent.com/dejwk/roo-registry/main/ \
@@ -73,6 +74,17 @@ run_bazel build //test/profile:user_copt_probe \
   --copt=-DROO_TESTING_USER_COPT_PROBE=73
 run_bazel build //test/profile:asan_profile_probe \
   --config=asan
+run_bazel run //test/arduino_emulator_binary:runnable_sketch
+
+macro_target_kind="$(
+  run_bazel query //test/arduino_emulator_binary:runnable_sketch \
+    --output=label_kind
+)"
+if [[ "${macro_target_kind}" != \
+      "cc_binary rule //test/arduino_emulator_binary:runnable_sketch" ]]; then
+  echo "roo_arduino_example did not create a native cc_binary" >&2
+  exit 1
+fi
 
 expect_failure "Arduino framework without a selected frontend profile" \
   run_without_profile build //:arduino
@@ -89,9 +101,14 @@ expect_failure "Arduino framework under the IDF-only frontend" \
   run_idf_bazel build //:arduino --config=roo_testing_idf_esp32
 expect_failure "IDF-only test entry point under the Arduino frontend" \
   run_bazel build //:esp_idf_gtest_main
-expect_failure "simultaneously selected Arduino and IDF frontends" \
+expect_failure "wrapper rejects simultaneously selected frontends" \
   run_bazel build //test/profile:idf_unrelated_cpp \
+  --config=roo_testing_arduino_esp32 \
   --config=roo_testing_idf_esp32
+expect_failure "Arduino example binary under the IDF-only frontend" \
+  run_idf_bazel build //test/arduino_emulator_binary:runnable_sketch \
+  --config=roo_testing_idf_esp32 \
+  --noskip_incompatible_explicit_targets
 
 # Ignoring rc files retains the target platform but omits its compiler profile.
 # The environment guard must reject that partially configured build.
@@ -173,10 +190,14 @@ for target in idf_unrelated_c idf_unrelated_cpp; do
 done
 
 for example in gpio onewire rtc_ds3231_i2c simple tft_display tft_touch; do
-  cmp bazelrc/esp32/base.bazelrc \
-    "examples/${example}/bazelrc/esp32/base.bazelrc"
-  cmp bazelrc/esp32/arduino.bazelrc \
-    "examples/${example}/bazelrc/esp32/arduino.bazelrc"
+  cmp .bazeliskrc "examples/${example}/.bazeliskrc"
+  cmp .roo_testing/bin/bazel \
+    "examples/${example}/.roo_testing/bin/bazel"
+  test -x "examples/${example}/.roo_testing/bin/bazel"
+  cmp .roo_testing/bazelrc/esp32/base.bazelrc \
+    "examples/${example}/.roo_testing/bazelrc/esp32/base.bazelrc"
+  cmp .roo_testing/bazelrc/esp32/arduino.bazelrc \
+    "examples/${example}/.roo_testing/bazelrc/esp32/arduino.bazelrc"
 done
 
 echo "roo_testing global compiler profile verified"

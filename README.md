@@ -70,39 +70,78 @@ another SoC must wait for matching headers, Arduino pins, shims, and
 ### Enable the build profile in the root workspace
 
 Bazel reads rc files only from the root workspace; it does not inherit the
-`.bazelrc` of a Bzlmod dependency or local override. Vendor the shared ESP32
-base fragment and the frontend fragment(s) the workspace supports from
-`bazelrc/esp32/`, then import them in the root `.bazelrc`. Activate exactly one
-frontend per invocation. For an Arduino-only workspace:
+`.bazelrc` of a Bzlmod dependency or local override. Vendor the support files
+from [`.roo_testing`](.roo_testing) into the same nested directory in the root
+workspace. The SoC-first layout keeps future profiles incremental:
 
-```bazelrc
-import %workspace%/bazelrc/esp32/base.bazelrc
-import %workspace%/bazelrc/esp32/arduino.bazelrc
-build --config=roo_testing_arduino_esp32
+```text
+.roo_testing/
+  bin/bazel
+  bin/test_all_profiles
+  bazelrc/esp32/{base,arduino,idf}.bazelrc
 ```
 
-For ESP-IDF only, import `base.bazelrc` and `idf.bazelrc`, then activate
-`roo_testing_idf_esp32`. A mixed workspace may import both frontend fragments
-and choose one with `--config` on each command. The fragments include their
-canonical source URLs so vendored copies can be audited and refreshed. Do not
-activate both frontends in one invocation: their platform values are mutually
-exclusive, and accumulating repeatable compiler options would be
-contradictory.
+Import the shared base and every frontend that the workspace supports. For an
+Arduino-only workspace:
 
-For backward compatibility, roo_testing's own root rc imports all three
-fragment definitions and defaults to Arduino, so its original smoke command
-continues to work:
+```bazelrc
+import %workspace%/.roo_testing/bazelrc/esp32/base.bazelrc
+import %workspace%/.roo_testing/bazelrc/esp32/arduino.bazelrc
+```
+
+For ESP-IDF only, import `base.bazelrc` and `idf.bazelrc`. Mixed workspaces
+import all three. The fragments include canonical source URLs so vendored
+copies can be audited and refreshed.
+
+An Arduino-only root may safely keep
+`build --config=roo_testing_arduino_esp32` in `.bazelrc`, because it has no
+alternative frontend to select. It may instead use the wrapper below for the
+same notification and layout as mixed roots. A mixed root must use the wrapper
+or select a profile explicitly; it must not install an unconditional rc
+default.
+
+To make Arduino the interactive default without contaminating an explicit IDF
+invocation, use **Bazelisk 1.21.0 or newer** and vendor these root settings:
+
+```text
+# .bazeliskrc
+BAZELISK_WRAPPER_DIRECTORY=.roo_testing/bin
+```
+
+Bazelisk then discovers `.roo_testing/bin/bazel`. For configured commands such
+as `build`, `test`, `run`, `info`, `cquery`, and `aquery`, the wrapper inserts
+the Arduino ESP32 config only when no `roo_testing_arduino_*` or
+`roo_testing_idf_*` config was supplied, and prints a concise notice. Thus both
+of these are clean, single-profile invocations:
 
 ```sh
 bazel test :all
+bazel test ... --config=roo_testing_idf_esp32
 ```
 
-Its IDF regression tests run in a clean rc context through
-`test/profile/verify_profile.sh`; adding the IDF config to the default Arduino
-context would intentionally fail as a mixed profile. The standalone Arduino
-examples vendor and activate their own copies. An rc file cannot import an
-`@roo_testing//...` label because repository resolution happens after rc
-parsing.
+An unconditional `build --config=roo_testing_arduino_esp32` in `.bazelrc`
+cannot provide this behavior. Bazel expands a command-line IDF config in
+addition to the rc default, and repeatable `--copt` values have no reset
+operation, leaving both macro sets on the compiler command line. The wrapper
+chooses the default before rc expansion instead. It leaves explicit profiles
+untouched, rejects two explicit frontend profiles, and does not inject a
+default when workspace rc loading is disabled. Invoking the Bazel binary
+directly or setting `BAZELISK_SKIP_WRAPPER=true` bypasses this convenience and
+therefore requires an explicit profile.
+
+Mixed workspaces can exercise their native test targets under both profiles
+without Starlark transitions:
+
+```sh
+.roo_testing/bin/test_all_profiles ... --test_output=errors
+```
+
+With no arguments, the helper tests `...`. It runs Arduino first and IDF
+second, forwards the same target patterns and options to both, and stops on the
+first failure. The standalone Arduino examples vendor the base and Arduino
+fragments plus the nested wrapper, so their plain Bazel commands use the same
+announced default. An rc file cannot import an `@roo_testing//...` label because
+repository resolution happens after rc parsing.
 
 This one root configuration gives every source in the emulated build the same
 selected frontend, ESP-IDF capability, emulator, and SoC identity, including
@@ -117,7 +156,31 @@ headers. ESP-IDF tests use the stable
 FreeRTOS scheduler without initializing Arduino. An ESP-IDF application that
 defines `extern "C" void app_main()` links `@roo_testing//:esp_idf_main`.
 
-The profile uses ordinary `--copt` entries, so user copts and
+### Runnable Arduino sketches
+
+Use the public macro for a package-local `.ino` that should become a native
+host executable:
+
+```starlark
+load("@roo_testing//roo_testing/emulation:arduino.bzl", "roo_arduino_example")
+
+roo_arduino_example(
+    name = "demo",
+    sketch = "examples/demo/demo.ino",
+    deps = ["//:application"],
+)
+```
+
+`//:demo` is a normal `cc_binary`, so it works with `bazel build` and
+`bazel run`. The macro generates a C++ wrapper for the sketch, forwards caller
+dependencies and ordinary binary attributes, links the stable
+`@roo_testing//:arduino_main`, and becomes incompatible under an IDF-only
+profile so wildcard builds skip it cleanly. It does not implement Arduino's
+automatic prototype generation: the sketch must be valid C++, include
+`Arduino.h` when needed, and declare functions before use. See the
+[build-helper reference](roo_testing/emulation/README.md) for the complete API.
+
+Each profile uses ordinary `--copt` entries, so user copts and
 `--config=asan` compose with it. Do not redefine `ARDUINO`, `ESP32`,
 `ESP_PLATFORM`, `ROO_TESTING`, or `CONFIG_IDF_TARGET_*` in another rc file;
 that creates contradictory command lines and is rejected by the profile

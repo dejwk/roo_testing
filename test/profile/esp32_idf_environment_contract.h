@@ -2,7 +2,7 @@
 
 // Canonical macros shared by ESP-IDF-only and Arduino builds on the classic
 // ESP32 emulator profile. Keep this synchronized with
-// bazelrc/esp32/base.bazelrc.
+// .roo_testing/bazelrc/esp32/base.bazelrc.
 
 #ifndef ROO_TESTING
 #error "ROO_TESTING is absent from an unrelated target"

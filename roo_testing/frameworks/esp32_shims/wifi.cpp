@@ -46,7 +46,7 @@ wifi_config_t g_station_config = {};
 wifi_config_t g_ap_config = {};
 wifi_ps_type_t g_power_save = WIFI_PS_NONE;
 uint8_t g_protocol = WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N;
-wifi_bandwidth_t g_bandwidth = WIFI_BW_HT20;
+wifi_bandwidth_t g_bandwidth = WIFI_BW20;
 uint8_t g_channel = 1;
 int8_t g_max_tx_power = 84;
 wifi_country_t g_country = {
@@ -94,7 +94,7 @@ wifi_ap_record_t ToRecord(const AccessPoint& ap) {
   record.phy_11g = 1;
   record.phy_11n = 1;
   record.country = g_country;
-  record.bandwidth = WIFI_BW_HT20;
+  record.bandwidth = WIFI_BW20;
   return record;
 }
 

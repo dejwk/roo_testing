@@ -317,7 +317,7 @@ esp_err_t gpio_pulldown_dis(gpio_num_t gpio) {
   return ValidGpio(gpio) ? ESP_OK : ESP_ERR_INVALID_ARG;
 }
 esp_err_t gpio_install_isr_service(int) { return ESP_OK; }
-void gpio_uninstall_isr_service(void) {}
+esp_err_t gpio_uninstall_isr_service(void) { return ESP_OK; }
 esp_err_t gpio_isr_handler_add(gpio_num_t gpio, gpio_isr_t, void*) {
   return ValidGpio(gpio) ? ESP_OK : ESP_ERR_INVALID_ARG;
 }
@@ -385,7 +385,7 @@ esp_err_t uart_param_config(uart_port_t port, const uart_config_t* config) {
   g_uart[port].parity = config->parity;
   return ESP_OK;
 }
-esp_err_t uart_set_pin(uart_port_t port, int, int, int, int) {
+esp_err_t _uart_set_pin6(uart_port_t port, int, int, int, int, int, int) {
   return ValidUart(port) ? ESP_OK : ESP_ERR_INVALID_ARG;
 }
 esp_err_t uart_set_baudrate(uart_port_t port, uint32_t baud) {
@@ -443,7 +443,7 @@ esp_err_t uart_set_hw_flow_ctrl(uart_port_t port, uart_hw_flowcontrol_t,
 esp_err_t uart_set_sw_flow_ctrl(uart_port_t port, bool, uint8_t, uint8_t) {
   return ValidUart(port) ? ESP_OK : ESP_ERR_INVALID_ARG;
 }
-esp_err_t uart_wait_tx_done(uart_port_t port, TickType_t) {
+esp_err_t uart_wait_tx_done(uart_port_t port, uint32_t) {
   return ValidUart(port) ? ESP_OK : ESP_ERR_INVALID_ARG;
 }
 int uart_write_bytes(uart_port_t port, const void* source, size_t size) {
@@ -456,7 +456,7 @@ int uart_write_bytes_with_break(uart_port_t port, const void* source,
   return uart_write_bytes(port, source, size);
 }
 int uart_read_bytes(uart_port_t port, void* destination, uint32_t length,
-                    TickType_t) {
+                    uint32_t) {
   if (!ValidUart(port) || (destination == nullptr && length != 0)) return -1;
   return static_cast<int>(FakeEsp32().uart(port).read(
       static_cast<uint8_t*>(destination), length));
@@ -497,7 +497,8 @@ esp_err_t i2c_reset_tx_fifo(i2c_port_t port) {
 esp_err_t i2c_reset_rx_fifo(i2c_port_t port) {
   return static_cast<unsigned>(port) < 2 ? ESP_OK : ESP_ERR_INVALID_ARG;
 }
-esp_err_t i2c_set_pin(i2c_port_t port, int, int, bool, bool, i2c_mode_t) {
+esp_err_t i2c_set_pin(i2c_port_t port, gpio_num_t, gpio_num_t, bool, bool,
+                      i2c_mode_t) {
   return static_cast<unsigned>(port) < 2 ? ESP_OK : ESP_ERR_INVALID_ARG;
 }
 esp_err_t i2c_master_write_to_device(i2c_port_t port, uint8_t address,
@@ -587,7 +588,7 @@ esp_err_t spi_device_transmit(spi_device_handle_t handle,
   return spi_device_polling_transmit(handle, transaction);
 }
 esp_err_t spi_device_queue_trans(spi_device_handle_t handle,
-                                 spi_transaction_t* transaction, TickType_t) {
+                                 spi_transaction_t* transaction, uint32_t) {
   if (handle == nullptr || transaction == nullptr) return ESP_ERR_INVALID_ARG;
   if (handle->queued != nullptr) return ESP_ERR_INVALID_STATE;
   const esp_err_t result = TransferTransaction(*handle, *transaction);
@@ -596,21 +597,21 @@ esp_err_t spi_device_queue_trans(spi_device_handle_t handle,
 }
 esp_err_t spi_device_get_trans_result(spi_device_handle_t handle,
                                       spi_transaction_t** transaction,
-                                      TickType_t) {
+                                      uint32_t) {
   if (handle == nullptr || transaction == nullptr) return ESP_ERR_INVALID_ARG;
   *transaction = handle->queued;
   handle->queued = nullptr;
   return *transaction == nullptr ? ESP_ERR_TIMEOUT : ESP_OK;
 }
 esp_err_t spi_device_polling_start(spi_device_handle_t handle,
-                                   spi_transaction_t* transaction, TickType_t) {
+                                   spi_transaction_t* transaction, uint32_t) {
   if (handle == nullptr || transaction == nullptr) return ESP_ERR_INVALID_ARG;
   if (handle->queued != nullptr) return ESP_ERR_INVALID_STATE;
   const esp_err_t result = TransferTransaction(*handle, *transaction, true);
   if (result == ESP_OK) handle->queued = transaction;
   return result;
 }
-esp_err_t spi_device_polling_end(spi_device_handle_t handle, TickType_t) {
+esp_err_t spi_device_polling_end(spi_device_handle_t handle, uint32_t) {
   if (handle == nullptr) return ESP_ERR_INVALID_ARG;
   if (handle->queued == nullptr) return ESP_ERR_INVALID_STATE;
   if ((handle->queued->flags & SPI_TRANS_CS_KEEP_ACTIVE) == 0) {
@@ -619,7 +620,7 @@ esp_err_t spi_device_polling_end(spi_device_handle_t handle, TickType_t) {
   handle->queued = nullptr;
   return ESP_OK;
 }
-esp_err_t spi_device_acquire_bus(spi_device_handle_t device, TickType_t) {
+esp_err_t spi_device_acquire_bus(spi_device_handle_t device, uint32_t) {
   return device == nullptr ? ESP_ERR_INVALID_ARG : ESP_OK;
 }
 void spi_device_release_bus(spi_device_handle_t device) {

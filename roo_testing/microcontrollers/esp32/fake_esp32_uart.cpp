@@ -56,9 +56,9 @@ size_t Esp32UartInterface::availableForRead() {
   return 0;
 }
 
-extern "C" {
-void uart_notify_data_available(uint8_t uart_num);
-}
+// HardwareSerial usage selects the Arduino UART shim object, whose strong hook
+// replaces this one. The fallback keeps IDF-only FakeEsp32 users self-contained.
+extern "C" __attribute__((weak)) void uart_notify_data_available(uint8_t) {}
 
 void Esp32UartInterface::notifyDataAvailable() {
   uart_notify_data_available(idx_);

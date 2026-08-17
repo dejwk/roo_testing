@@ -20,7 +20,9 @@ struct uart_struct_t {
   uint32_t inversion_mask;
   uart_hw_flowcontrol_t flow_control;
   uart_mode_t mode;
+  esp32_uart_irda_direction_t irda_direction;
   uart_sclk_t clock_source;
+  bool rx_internal_pull;
   uint8_t rx_timeout;
   uint8_t fifo_threshold;
   QueueHandle_t event_queue;
@@ -181,7 +183,26 @@ int8_t uart_get_RxPin(uint8_t number) { return valid(number) ? buses[number].rx_
 int8_t uart_get_TxPin(uint8_t number) { return valid(number) ? buses[number].tx_pin : -1; }
 bool uartSetHwFlowCtrlMode(uart_t *uart, uart_hw_flowcontrol_t mode, uint8_t) { if (!uart) return false; uart->flow_control = mode; return true; }
 bool uartSetMode(uart_t *uart, uart_mode_t mode) { if (!uart) return false; uart->mode = mode; return true; }
+bool uartSetIrdaDirection(uart_t *uart,
+                          esp32_uart_irda_direction_t direction) {
+  if (!uart || !valid(uart->number) || uart->mode != UART_MODE_IRDA ||
+      (direction != ESP32_UART_IRDA_RX &&
+       direction != ESP32_UART_IRDA_TX)) {
+    return false;
+  }
+  // Pulse encoding is not emulated, but retain the selected direction and the
+  // same validation/return contract as the hardware implementation.
+  uart->irda_direction = direction;
+  return true;
+}
 bool uartSetClockSource(uint8_t number, uart_sclk_t source) { if (!valid(number)) return false; buses[number].clock_source = source; return true; }
+bool uartEnableRxInternalPull(uint8_t number, bool enable) {
+  if (!valid(number) || buses[number].installed) return false;
+  // The host GPIO model does not need an electrical pull before pins are
+  // assigned, but preserve this pre-begin setting for API fidelity.
+  buses[number].rx_internal_pull = enable;
+  return true;
+}
 void uartStartDetectBaudrate(uart_t *) {}
 unsigned long uartDetectBaudrate(uart_t *uart) { return uart ? uart->baud_rate : 0; }
 void uart_internal_loopback(uint8_t number, int8_t rx_pin) { if (valid(number)) uartSetPins(number, rx_pin, buses[number].tx_pin, -1, -1); }

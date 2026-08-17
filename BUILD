@@ -72,6 +72,7 @@ test_suite(
         "//test:arduino_main_environment_test",
         "//test:arduino_preferences_startup_test",
         "//test:arduino_spi_clock_test",
+        "//test:arduino_uart_api_test",
         "//test:emulator_environment_test",
         "//test:framework_version_test",
         "//test:freertos_posix_thread_join_regression_test",

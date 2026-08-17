@@ -147,6 +147,14 @@ cc_test(
 )
 
 cc_test(
+    name = "arduino_uart_api_test",
+    size = "small",
+    srcs = ["arduino_uart_api_test.cpp"],
+    linkstatic = 1,
+    deps = ["//:arduino_gtest_main"],
+)
+
+cc_test(
     name = "framework_version_test",
     size = "small",
     srcs = ["framework_version_test.cpp"],

@@ -59,6 +59,7 @@ ESP_IDF_COMPONENTS = [
     "esp_driver_sdmmc",
     "esp_driver_sdspi",
     "esp_driver_spi",
+    "esp_driver_touch_sens",
     "esp_driver_uart",
     "esp_eth",
     "esp_event",

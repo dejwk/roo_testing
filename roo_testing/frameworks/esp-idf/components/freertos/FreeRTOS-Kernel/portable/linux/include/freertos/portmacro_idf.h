@@ -18,7 +18,7 @@
 #include "sdkconfig.h"
 #include "esp_attr.h"
 #include "esp_task.h"
-#include "spinlock.h"
+#include "../spinlock.h"
 
 #ifdef __cplusplus
 extern "C" {

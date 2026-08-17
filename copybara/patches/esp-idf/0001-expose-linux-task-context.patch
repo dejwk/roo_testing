@@ -2,7 +2,7 @@ diff --git a/components/freertos/FreeRTOS-Kernel/portable/linux/include/freertos
 index bff384a..21c7720 100644
 --- a/components/freertos/FreeRTOS-Kernel/portable/linux/include/freertos/portmacro_idf.h
 +++ b/components/freertos/FreeRTOS-Kernel/portable/linux/include/freertos/portmacro_idf.h
-@@ -13,6 +13,7 @@
+@@ -13,11 +13,12 @@
  #pragma once
  
  #include <stdint.h>
@@ -10,6 +10,12 @@ index bff384a..21c7720 100644
  #include <stdlib.h> // This is for malloc(), used by portmacro.h
  #include "sdkconfig.h"
  #include "esp_attr.h"
+ #include "esp_task.h"
+-#include "spinlock.h"
++#include "../spinlock.h"
+ 
+ #ifdef __cplusplus
+ extern "C" {
 @@ -87,6 +88,12 @@ bool xPortcheckValidStackMem(const void *ptr);
  
  BaseType_t xPortCheckIfInISR(void);

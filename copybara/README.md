@@ -20,12 +20,13 @@ tests, bulk documentation trees, precompiled target artifacts, and source
 dedicated to other Espressif chips are excluded in `copy.bara.sky`.
 
 Bazel `BUILD`, `BUILD.bazel`, and `.bzl` files under the imported trees are
-destination-owned overlays. The host `sdkconfig.h` and deliberately named
-`roo_testing_*` bridge files are protected the same way. Copybara's
-`destination_files` filters preserve them across updates. Host implementations
-should otherwise live in `roo_testing/frameworks/esp32_shims`; if an upstream
-source file must change, record that delta in the applicable patch series
-instead of editing an imported file without a patch.
+destination-owned overlays. The host `sdkconfig.h`, deliberately named
+`roo_testing_*` bridge files, and IDF's `roo_testing_host_include` CPU overlay
+are protected the same way. Copybara's `destination_files` filters preserve
+them across updates. Host implementations should otherwise live in
+`roo_testing/frameworks/esp32_shims`; if an upstream source file must change,
+record that delta in the applicable patch series instead of editing an
+imported file without a patch.
 
 ESP-IDF embeds many Git submodules. The workflow fetches only the lwIP and
 SPIFFS source submodules and explicitly excludes target binary libraries and

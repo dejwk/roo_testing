@@ -220,6 +220,7 @@ def destination_files(destination):
             # Generated host configuration and narrowly scoped bridge files
             # remain destination-owned alongside the Bazel overlay.
             destination + "/**/roo_testing_*",
+            destination + "/roo_testing_host_include/**",
             destination + "/sdkconfig.h",
             # The Arduino core include root owns this C++ register proxy. C
             # translation units fall through to ESP-IDF via include_next.

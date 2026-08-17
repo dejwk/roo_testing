@@ -1,6 +1,6 @@
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
-# Public headers from ESP-IDF 5.5.4's single-core kernel and Linux port.  The
+# Public headers from ESP-IDF 6.0.2's single-core kernel and Linux port.  The
 # dependency-free support target supplies sdkconfig.h and the handful of common
 # IDF headers included by portmacro_idf.h.
 cc_library(
@@ -28,7 +28,7 @@ cc_library(
 )
 
 # Keep the pthread-backed port separate so its cancellation/unwind flags match
-# the long-standing roo_testing port.  ESP-IDF 5.5.4's upstream port.c includes
+# the long-standing roo_testing port.  ESP-IDF 6.0.2's upstream port.c includes
 # the important pthread_cancel()+pthread_join() task cleanup fix.
 cc_library(
     name = "freertos_posix_port",

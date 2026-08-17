@@ -1,6 +1,17 @@
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
 cc_test(
+    name = "arduino_preferences_startup_test",
+    size = "small",
+    srcs = ["arduino_preferences_startup_test.cpp"],
+    linkstatic = 1,
+    deps = [
+        "//:arduino_gtest_main",
+        "//roo_testing/frameworks/arduino-esp32/libraries/Preferences",
+    ],
+)
+
+cc_test(
     name = "host_filesystem_test",
     size = "small",
     srcs = ["host_filesystem_test.cpp"],

@@ -13,6 +13,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "nvs_flash.h"
 #include "roo_testing/system/timer.h"
 
 namespace {
@@ -86,7 +87,12 @@ BaseType_t xTaskCreateUniversal(TaskFunction_t task, const char *const name,
 }
 
 void arduino_phy_init() {}
-void initArduino() {}
+void initArduino() {
+  // Arduino-ESP32 initializes the default NVS partition before invoking the
+  // sketch.  Preferences relies on that startup contract: unlike explicitly
+  // named partitions, its default partition is not initialized by begin().
+  (void)nvs_flash_init();
+}
 
 void set_arduino_panic_handler(arduino_panic_handler_t handler, void *arg) {
   panic_handler = handler;

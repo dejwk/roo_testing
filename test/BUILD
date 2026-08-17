@@ -108,6 +108,17 @@ cc_test(
 )
 
 cc_test(
+    name = "soc_profile_test",
+    size = "small",
+    srcs = ["soc_profile_test.cpp"],
+    linkstatic = 1,
+    deps = [
+        "//roo_testing/frameworks/esp-idf:headers",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "nvs_test",
     size = "small",
     srcs = ["nvs_test.cpp"],

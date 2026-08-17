@@ -48,5 +48,6 @@ test_suite(
         "//test:onewire_test",
         "//test:rtc_ds3231_i2c_test",
         "//test:simple_test",
+        "//test:soc_profile_test",
     ],
 )

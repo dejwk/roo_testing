@@ -17,6 +17,7 @@ cc_library(
         "components/heap/include",
     ],
     visibility = ["//visibility:public"],
+    deps = ["//roo_testing/soc:target"],
 )
 
 cc_library(
@@ -26,8 +27,6 @@ cc_library(
         "components/**/*.inc",
     ]),
     defines = [
-        "CONFIG_IDF_TARGET_ESP32=1",
-        "CONFIG_IDF_TARGET=\"esp32\"",
         "IDF_VER=\\\"v6.0.2\\\"",
     ],
     includes = [
@@ -59,6 +58,8 @@ cc_library(
         "components/esp_driver_uart/include",
         "components/esp_eth/include",
         "components/esp_event/include",
+        "components/esp_hal_gpio/include",
+        "components/esp_hal_gpio/esp32/include",
         "components/esp_hw_support/include",
         "components/esp_mm/include",
         "components/esp_netif/include",
@@ -141,4 +142,5 @@ cc_library(
     hdrs = ["sdkconfig.h"],
     includes = ["."],
     visibility = ["//visibility:public"],
+    deps = ["//roo_testing/soc:target"],
 )

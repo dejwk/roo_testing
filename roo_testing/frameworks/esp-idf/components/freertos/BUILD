@@ -49,6 +49,10 @@ cc_library(
         "FreeRTOS-Kernel/portable/linux/utils",
     ],
     linkopts = ["-pthread"],
+    local_defines = [
+        "CONFIG_IDF_TARGET_LINUX=1",
+        "ROO_TESTING_FREERTOS_POSIX_BACKEND=1",
+    ],
     visibility = ["//visibility:private"],
     deps = [
         ":include",
@@ -65,7 +69,6 @@ cc_library(
         "FreeRTOS-Kernel/stream_buffer.c",
         "FreeRTOS-Kernel/tasks.c",
         "FreeRTOS-Kernel/timers.c",
-        "esp_additions/freertos_compatibility.c",
         "esp_additions/freertos_tasks_c_additions.h",
     ],
     includes = [
@@ -73,6 +76,10 @@ cc_library(
         "esp_additions",
     ],
     linkopts = ["-pthread"],
+    local_defines = [
+        "CONFIG_IDF_TARGET_LINUX=1",
+        "ROO_TESTING_FREERTOS_POSIX_BACKEND=1",
+    ],
     alwayslink = 1,
     visibility = ["//visibility:public"],
     deps = [

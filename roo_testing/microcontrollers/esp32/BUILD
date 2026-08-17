@@ -26,6 +26,7 @@ cc_library(
         "//roo_testing/buses/onewire",
         "//roo_testing/buses/spi",
         "//roo_testing/buses/uart",
+        "//roo_testing/soc:target",
         "//roo_testing/sys",
         "//roo_testing/system:timer",
         "//roo_testing/transducers/time",

@@ -52,6 +52,21 @@ The code is based on the Espressif ESP32 Arduino framework, instrumented to inte
 
 The code does not does not emulate the Xtensa microprocessors. Your sketch simply compiles and runs on your computer's architecture. This works because the Espressif framework is implemented in a standard, portable C/C++.
 
+## Emulated SoC identity
+
+Host builds currently identify themselves to ESP-IDF and Arduino code as the
+classic dual-core Xtensa **ESP32**, using Arduino's generic **ESP32 Dev Module**
+variant. The normal framework macros (`CONFIG_IDF_TARGET_ESP32`,
+`CONFIG_IDF_TARGET`, `ARDUINO_ARCH_ESP32`, `ARDUINO_ESP32_DEV`,
+`ARDUINO_BOARD`, and `ARDUINO_VARIANT`) and roo_testing's own
+`ROO_TESTING_SOC` macros all come from the single
+[`//roo_testing/soc:target`](roo_testing/soc/README.md) profile.
+
+Linux is the execution host, not the target exposed to application code. Other
+Espressif families are not selectable yet: advertising ESP32-C3, ESP32-S3, or
+another SoC must wait for matching headers, Arduino pins, shims, and
+`FakeEsp32` behavior.
+
 ## How to use it
 
 The behavior of the physical world is modeled in _transducers_, sensing or indicating physical quantities. Transducers are represented by abstract virtual classes. A simple example is the Thermometer class, with a virtual method to report the temperature. By implementing an arbitrary logic in your own subclasses, you can simulate various real-life scenarios.

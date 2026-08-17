@@ -3,18 +3,20 @@
  *
  * ESP-IDF normally generates this header with kconfig.  roo_testing does not
  * use IDF's target build, so keep the small set of host-facing options here.
- * The values follow the ESP-IDF 5.5 Linux defaults, with a 1 kHz tick and the
- * tick hook enabled for delivery of roo_testing host events.
+ * The runtime settings follow the ESP-IDF Linux port, with a 1 kHz tick and
+ * the tick hook enabled for delivery of roo_testing host events. Target
+ * identity comes from //roo_testing/soc:target so public code sees the SoC
+ * being emulated, rather than the machine that executes the test.
  */
 #pragma once
 
-/* Build and target identity. */
+/* Build and execution configuration. */
 #define CONFIG_IDF_CMAKE 1
-#ifndef CONFIG_IDF_TARGET
-#define CONFIG_IDF_TARGET "linux"
-#endif
-#define CONFIG_IDF_TARGET_LINUX 1
-#define CONFIG_SOC_CPU_CORES_NUM 1
+#include "roo_testing/soc_profile.h"
+
+/* Classic ESP32 has two physical cores. The host scheduler remains
+ * intentionally single-core through CONFIG_FREERTOS_NUMBER_OF_CORES below. */
+#define CONFIG_SOC_CPU_CORES_NUM 2
 #define CONFIG_ESP_SYSTEM_SINGLE_CORE_MODE 1
 
 /* Compiler settings consumed by common ESP-IDF headers. */
@@ -33,7 +35,7 @@
 #define CONFIG_FREERTOS_NO_AFFINITY 0x7fffffff
 #define CONFIG_FREERTOS_HZ 1000
 #define CONFIG_FREERTOS_TICK_RATE_HZ CONFIG_FREERTOS_HZ
-#define CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ 160
+#define CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ 240
 #define CONFIG_FREERTOS_MAX_TASK_NAME_LEN 16
 #define CONFIG_FREERTOS_IDLE_TASK_STACKSIZE 4096
 #define CONFIG_FREERTOS_ISR_STACKSIZE 1536

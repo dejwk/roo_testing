@@ -1,8 +1,6 @@
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
 COMMON_DEFINES = [
-    "ARDUINO_ARCH_ESP32",
-    "CONFIG_IDF_TARGET_ESP32=1",
     "ESP_PLATFORM",
 ]
 

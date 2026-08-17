@@ -5,7 +5,6 @@ cc_library(
     hdrs = glob(["**/*.h"]),
     defines = [
         "ARDUINO=10819",
-        "ARDUINO_ARCH_ESP32",
         "ARDUINO_USB_CDC_ON_BOOT=0",
         "ARDUINO_USB_DFU_ON_BOOT=0",
         "ARDUINO_USB_MSC_ON_BOOT=0",
@@ -19,6 +18,7 @@ cc_library(
         "//roo_testing/frameworks/arduino-esp32/variants:esp32",
         "//roo_testing/frameworks/esp-idf:headers",
         "//roo_testing/microcontrollers/esp32:core",
+        "//roo_testing/soc:target",
     ],
 )
 

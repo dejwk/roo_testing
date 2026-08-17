@@ -1,10 +1,11 @@
 #pragma once
 
-// The macros in this header are supplied by //roo_testing/soc:target.  Fail
-// loudly when the header is used outside that Bazel target's compile context;
-// silently guessing a SoC would make framework feature selection unreliable.
+// The macros in this header are supplied globally by the compiler profile that
+// selects //roo_testing/platforms:idf_esp32 or :arduino_esp32. Fail loudly if
+// either platform is selected without its matching root-workspace bazelrc
+// configuration.
 #ifndef ROO_TESTING_SOC
-#error "Depend on //roo_testing/soc:target to select the emulated SoC"
+#error "Enable roo_testing_idf_esp32 or roo_testing_arduino_esp32"
 #endif
 
 #if !defined(ROO_TESTING_SOC_ESP32) || !defined(CONFIG_IDF_TARGET_ESP32)

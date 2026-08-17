@@ -41,6 +41,29 @@ cc_library(
     ],
 )
 
+# Stable public test entry point for ESP-IDF-only host tests. It starts the
+# pthread-backed FreeRTOS scheduler without initializing Arduino.
+cc_library(
+    name = "esp_idf_gtest_main",
+    linkstatic = 1,
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "//roo_testing/frameworks/environment:idf",
+    ],
+)
+
+# Stable public process entry point for an ESP-IDF application that defines
+# extern "C" void app_main().
+cc_library(
+    name = "esp_idf_main",
+    linkstatic = 1,
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+    deps = ["//roo_testing/frameworks/esp_idf_support:main"],
+)
+
 test_suite(
     name = "all_tests",
     tests = [
@@ -64,6 +87,8 @@ test_suite(
         "//test:soc_environment_test",
         "//test:soc_profile_test",
         "//test/legacy_sd_headers:legacy_sd_headers_test",
+        "//test/profile:arduino_select_test",
+        "//test/profile:global_environment_test",
         "//test/wire_master:wire_master_test",
     ],
 )

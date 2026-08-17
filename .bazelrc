@@ -1,5 +1,14 @@
 common --registry="https://raw.githubusercontent.com/dejwk/roo-registry/main/" --registry="https://bcr.bazel.build"
 
+import %workspace%/bazelrc/esp32/base.bazelrc
+import %workspace%/bazelrc/esp32/idf.bazelrc
+import %workspace%/bazelrc/esp32/arduino.bazelrc
+
+# Preserve the historical roo_testing smoke command (`bazel test :all`) by
+# selecting Arduino in this repository only. Client roots select one frontend
+# explicitly; IDF checks use a clean rc context so the profiles never combine.
+build --config=roo_testing_arduino_esp32
+
 build:asan --strip=never
 build:asan --copt -fsanitize=address
 build:asan --copt -DADDRESS_SANITIZER

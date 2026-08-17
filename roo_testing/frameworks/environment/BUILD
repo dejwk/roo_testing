@@ -1,21 +1,37 @@
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("//roo_testing/platforms:profile_guard.bzl", "profile_guard")
 
-# Build identities are exported as normal C++ providers instead of workspace
-# --copt flags. This makes the compile context follow the Bazel dependency that
-# actually provides the framework, including when roo_testing is an external
-# module.
+# These targets validate and constrain the globally selected build profile.
+# They intentionally do not export defines: build identity must be identical in
+# every target-configuration compile action, including dependency sublibraries.
+profile_guard(
+    name = "emulator_platform_guard",
+    environment = "The roo_testing emulator",
+    required_constraints = ["//roo_testing/platforms:roo_testing"],
+)
+
 cc_library(
     name = "emulator",
-    defines = ["ROO_TESTING=1"],
+    srcs = ["emulator_profile_contract.c"],
+    copts = ["-Werror"],
+    data = [":emulator_platform_guard"],
     visibility = ["//visibility:public"],
+)
+
+profile_guard(
+    name = "esp_idf_platform_guard",
+    environment = "The roo_testing ESP-IDF environment",
+    required_constraints = [
+        "//roo_testing/platforms:esp_idf",
+        "//roo_testing/platforms:roo_testing",
+    ],
 )
 
 cc_library(
     name = "esp_idf",
-    defines = [
-        "ESP_PLATFORM=1",
-        "IDF_VER=\\\"v6.0.2\\\"",
-    ],
+    srcs = ["esp_idf_profile_contract.cc"],
+    copts = ["-Werror"],
+    data = [":esp_idf_platform_guard"],
     visibility = ["//visibility:public"],
     deps = [
         ":emulator",
@@ -23,21 +39,42 @@ cc_library(
     ],
 )
 
+# IDF-only entry points depend on this target so they cannot silently build
+# under the Arduino frontend, even though both frontends expose ESP-IDF APIs.
+profile_guard(
+    name = "idf_platform_guard",
+    environment = "The roo_testing IDF-only ESP32 environment",
+    required_constraints = [
+        "//roo_testing/platforms:esp32",
+        "//roo_testing/platforms:esp_idf",
+        "//roo_testing/platforms:idf",
+        "//roo_testing/platforms:roo_testing",
+    ],
+)
+
+cc_library(
+    name = "idf",
+    data = [":idf_platform_guard"],
+    visibility = ["//visibility:public"],
+    deps = [":esp_idf"],
+)
+
+profile_guard(
+    name = "arduino_platform_guard",
+    environment = "The roo_testing Arduino ESP32 environment",
+    required_constraints = [
+        "//roo_testing/platforms:arduino",
+        "//roo_testing/platforms:esp32",
+        "//roo_testing/platforms:esp_idf",
+        "//roo_testing/platforms:roo_testing",
+    ],
+)
+
 cc_library(
     name = "arduino",
-    defines = [
-        "ARDUINO=10819",
-        "ARDUINO_ARCH_ESP32=1",
-        "ARDUINO_BOARD=\\\"ESP32_DEV\\\"",
-        "ARDUINO_ESP32_DEV=1",
-        "ARDUINO_USB_CDC_ON_BOOT=0",
-        "ARDUINO_USB_DFU_ON_BOOT=0",
-        "ARDUINO_USB_MSC_ON_BOOT=0",
-        "ARDUINO_USB_MODE=0",
-        "ARDUINO_USB_ON_BOOT=0",
-        "ARDUINO_VARIANT=\\\"esp32\\\"",
-        "CORE_DEBUG_LEVEL=5",
-    ],
+    srcs = ["arduino_profile_contract.cc"],
+    copts = ["-Werror"],
+    data = [":arduino_platform_guard"],
     visibility = ["//visibility:public"],
     deps = [":esp_idf"],
 )

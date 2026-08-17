@@ -1,28 +1,28 @@
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("//roo_testing/platforms:profile_guard.bzl", "profile_guard")
 
-# This is the one source of compile-time SoC identity for host builds.  Keep
-# each supported SoC in its own concrete target, then point :target at the
-# profile whose behavior roo_testing actually implements.
+# Keep each supported SoC in its own concrete target. Build-wide identity is
+# owned by the matching platform/bazelrc profile; this target supplies the
+# typed header and rejects a contradictory target platform.
+profile_guard(
+    name = "esp32_platform_guard",
+    environment = "The roo_testing classic ESP32 SoC profile",
+    required_constraints = ["//roo_testing/platforms:esp32"],
+)
+
 cc_library(
     name = "esp32",
+    srcs = ["esp32_profile_contract.cc"],
     hdrs = ["include/roo_testing/soc_profile.h"],
-    defines = [
-        "CONFIG_IDF_FIRMWARE_CHIP_ID=0x0000",
-        "CONFIG_IDF_TARGET=\\\"esp32\\\"",
-        "CONFIG_IDF_TARGET_ARCH=\\\"xtensa\\\"",
-        "CONFIG_IDF_TARGET_ARCH_XTENSA=1",
-        "CONFIG_IDF_TARGET_ESP32=1",
-        "ESP32=1",
-        "ROO_TESTING_SOC=\\\"esp32\\\"",
-        "ROO_TESTING_SOC_ESP32=1",
-    ],
+    copts = ["-Werror"],
+    data = [":esp32_platform_guard"],
     strip_include_prefix = "include",
     visibility = ["//visibility:public"],
 )
 
 # Framework and emulator targets depend on this stable label.  A future SoC
-# implementation gets a new concrete profile; :target must not be changed
-# until its headers, Arduino variant, shims, and FakeEsp32 behavior agree.
+# implementation gets a new concrete target and platform; :target must not be
+# changed until its headers, Arduino variant, shims, and behavior agree.
 alias(
     name = "target",
     actual = ":esp32",

@@ -54,40 +54,90 @@ The code does not emulate the Xtensa microprocessors. Your sketch simply compile
 
 ## Emulated SoC identity
 
-Host builds currently identify themselves to ESP-IDF and Arduino code as the
-classic dual-core Xtensa **ESP32**, using Arduino's generic **ESP32 Dev Module**
-variant. The selected [`//roo_testing/soc:target`](roo_testing/soc/README.md)
-profile owns the ESP-IDF target, architecture, `ESP32`, and
-`ROO_TESTING_SOC` macros. The layered
-[framework environments](roo_testing/frameworks/environment/README.md) add
-`ESP_PLATFORM`, the Arduino frontend and board identity, and
-`ROO_TESTING=1`.
+Host builds currently emulate the classic dual-core Xtensa **ESP32** through
+either an ESP-IDF-only frontend or Arduino's generic **ESP32 Dev Module**
+frontend. The
+[`//roo_testing/platforms`](roo_testing/platforms/README.md) package records the
+emulator, ESP-IDF capability, mutually exclusive frontend, and concrete SoC as
+independent constraints. A matching named Bazel profile supplies its canonical
+macro set to every C and C++ compile action.
 
 Linux is the execution host, not the target exposed to application code. Other
 Espressif families are not selectable yet: advertising ESP32-C3, ESP32-S3, or
 another SoC must wait for matching headers, Arduino pins, shims, and
 `FakeEsp32` behavior.
 
-### Framework compile context
+### Enable the build profile in the root workspace
 
-Normal clients do not define framework identity macros in `.bazelrc`. A sketch
-depending on `@roo_testing//:arduino_main`, a test depending on
-`@roo_testing//:arduino_gtest_main`, or a library depending on
-`@roo_testing//:arduino` receives the complete Arduino, ESP-IDF, SoC, and
-emulator context transitively. The default Arduino frontend compatibility
-level is `ARDUINO=10819`; this is distinct from the Arduino-ESP32 framework
-version reported by `ESP_ARDUINO_VERSION_*`.
+Bazel reads rc files only from the root workspace; it does not inherit the
+`.bazelrc` of a Bzlmod dependency or local override. Vendor the shared ESP32
+base fragment and exactly one frontend fragment from `bazelrc/esp32/`, then
+import and activate them in the root `.bazelrc`. For Arduino:
 
-A source file is compiled in the context of its own Bazel target. If sketch or
-library sources live in a separate `cc_library`, that library must have its own
-Arduino dependency; an `arduino_main` dependency on a sibling `cc_binary` does
-not propagate sideways. A host-only target that tests `ROO_TESTING` without
-using either framework may depend on `@roo_testing//:environment` (the legacy
-`@roo_testing//roo_testing:environment` label is also available).
+```bazelrc
+import %workspace%/bazelrc/esp32/base.bazelrc
+import %workspace%/bazelrc/esp32/arduino.bazelrc
+build --config=roo_testing_arduino_esp32
+```
 
-Do not add `--copt=-DARDUINO=...`, `-DESP32`, `-DESP_PLATFORM`, or
-`-DROO_TESTING` to client `.bazelrc` files. Such flags are not inherited from a
-dependency workspace and can redefine the authoritative framework values.
+For ESP-IDF only, import `base.bazelrc` and `idf.bazelrc`, then activate
+`roo_testing_idf_esp32`. The fragments include their canonical source URLs so
+vendored copies can be audited and refreshed. Do not activate both frontends:
+their platform values are mutually exclusive, and accumulating repeatable
+compiler options would be contradictory.
+
+For backward compatibility, roo_testing's own root rc imports all three
+fragment definitions and defaults to Arduino, so its original smoke command
+continues to work:
+
+```sh
+bazel test :all
+```
+
+Its IDF regression tests run in a clean rc context through
+`test/profile/verify_profile.sh`; adding the IDF config to the default Arduino
+context would intentionally fail as a mixed profile. The standalone Arduino
+examples vendor and activate their own copies. An rc file cannot import an
+`@roo_testing//...` label because repository resolution happens after rc
+parsing.
+
+This one root configuration gives every source in the emulated build the same
+selected frontend, ESP-IDF capability, emulator, and SoC identity, including
+sublibraries with no roo_testing dependency. A sketch target does not add
+`@roo_testing//:arduino`
+merely to receive macros. It still needs the appropriate API and link
+dependencies: normally `@roo_testing//:arduino_main` for an Arduino sketch,
+`@roo_testing//:arduino_gtest_main` for a test, and
+`@roo_testing//:arduino` for a library that directly uses Arduino symbols or
+headers. ESP-IDF tests use the stable
+`@roo_testing//:esp_idf_gtest_main` entry point, which starts the emulated
+FreeRTOS scheduler without initializing Arduino. An ESP-IDF application that
+defines `extern "C" void app_main()` links `@roo_testing//:esp_idf_main`.
+
+The profile uses ordinary `--copt` entries, so user copts and
+`--config=asan` compose with it. Do not redefine `ARDUINO`, `ESP32`,
+`ESP_PLATFORM`, `ROO_TESTING`, or `CONFIG_IDF_TARGET_*` in another rc file;
+that creates contradictory command lines and is rejected by the profile
+guards. The default compatibility value is `ARDUINO=10819`; it is distinct
+from the Arduino-ESP32 framework version reported by
+`ESP_ARDUINO_VERSION_*`.
+
+Client BUILD files can branch on public platform settings instead of inspecting
+macros:
+
+```starlark
+deps = select({
+    "@roo_testing//roo_testing/platforms:is_arduino": [":arduino_only_dep"],
+    "//conditions:default": [],
+})
+```
+
+Use `:is_idf` for an IDF-only frontend branch. `:is_esp_idf` means that ESP-IDF
+APIs are available, so it intentionally matches both IDF-only and Arduino
+profiles.
+
+See the [framework environment contract](roo_testing/frameworks/environment/README.md)
+for the failure modes and the complete profile location.
 
 ## How to use it
 
@@ -112,7 +162,8 @@ Another basic example is the VoltageSource, which is a transducer that you can u
 
 ## Limitations (call for contributors!)
 
-* Only the Arduino framework is supported for now.
+* Arduino and ESP-IDF-only frontends are supported for the classic ESP32; other
+  Espressif SoCs are not yet selectable.
 * WiFi is incomplete; only the station mode is reasonably emulated. Some functions are no-op. The network bridges to your native connection. As long as your computer is connected to the network, the emulated microcontroller will also have network access.
 * SD is also very rudimentary; it redirects file system operations to a local directory, without emulating any of the SPI protocol. (The consequence is, for example, that performance is unrealistically fast).
 * I2C is modeled at the interface level, bypassing some low-level OS queues and hardware pins. (As long as you use standard libraries, it doesn't matter much).

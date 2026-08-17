@@ -5,8 +5,8 @@
  * use IDF's target build, so keep the small set of host-facing options here.
  * The runtime settings follow the ESP-IDF Linux port, with a 1 kHz tick and
  * the tick hook enabled for delivery of roo_testing host events. Target
- * identity comes from //roo_testing/soc:target so public code sees the SoC
- * being emulated, rather than the machine that executes the test.
+ * identity comes from the root-selected roo_testing target platform/compiler
+ * profile so every source sees the emulated SoC rather than the host machine.
  */
 #pragma once
 
@@ -160,18 +160,6 @@
 #define CONFIG_LWIP_SNTP_MAX_SERVERS 3
 #define CONFIG_LWIP_ESP_GRATUITOUS_ARP 1
 #define CONFIG_LWIP_GARP_TMR_INTERVAL 60
-
-/* Arduino-as-a-component defaults; its custom main remains responsible for
- * starting the scheduler in roo_testing. */
-#define CONFIG_AUTOSTART_ARDUINO 1
-#define CONFIG_ARDUINO_LOOP_STACK_SIZE 8192
-#define CONFIG_ARDUINO_RUNNING_CORE 0
-#define CONFIG_ARDUINO_EVENT_RUNNING_CORE 0
-#define CONFIG_ARDUINO_SERIAL_EVENT_TASK_RUNNING_CORE -1
-#define CONFIG_ARDUINO_SERIAL_EVENT_TASK_STACK_SIZE 2048
-#define CONFIG_ARDUINO_SERIAL_EVENT_TASK_PRIORITY 24
-#define CONFIG_ARDUHAL_LOG_DEFAULT_LEVEL 1
-#define CONFIG_ARDUHAL_ESP_LOG 1
 
 /* Compatibility names retained by ESP-IDF public APIs. */
 #define CONFIG_MAIN_TASK_STACK_SIZE CONFIG_ESP_MAIN_TASK_STACK_SIZE

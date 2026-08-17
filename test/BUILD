@@ -3,7 +3,11 @@ load("@rules_cc//cc:cc_test.bzl", "cc_test")
 cc_test(
     name = "emulator_environment_test",
     size = "small",
-    srcs = ["emulator_environment_test.cpp"],
+    srcs = [
+        "arduino_environment_contract.h",
+        "emulator_environment_test.cpp",
+        "idf_environment_contract.h",
+    ],
     copts = ["-Werror"],
     deps = ["//:environment"],
 )
@@ -12,6 +16,7 @@ cc_test(
     name = "idf_environment_test",
     size = "small",
     srcs = [
+        "arduino_environment_contract.h",
         "idf_environment_contract.h",
         "idf_environment_test.cpp",
     ],
@@ -22,7 +27,11 @@ cc_test(
 cc_test(
     name = "soc_environment_test",
     size = "small",
-    srcs = ["soc_environment_test.cpp"],
+    srcs = [
+        "arduino_environment_contract.h",
+        "idf_environment_contract.h",
+        "soc_environment_test.cpp",
+    ],
     copts = ["-Werror"],
     deps = ["//roo_testing/soc:target"],
 )
@@ -98,9 +107,9 @@ cc_test(
     srcs = ["host_network_test.cpp"],
     linkstatic = 1,
     deps = [
-        "//roo_testing/frameworks/posix_lwip",
         "//:arduino_gtest_main",
         "//roo_testing/frameworks/arduino-esp32/libraries/Network",
+        "//roo_testing/frameworks/posix_lwip",
     ],
 )
 

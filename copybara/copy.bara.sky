@@ -1,0 +1,276 @@
+"""Imports the supported ESP32 framework surface into roo_testing.
+
+The imported trees remain at stable, unversioned paths. Bazel BUILD files and
+roo_testing shims are destination-owned; upstream-only source changes belong in
+the patch series declared below.
+"""
+
+load(
+    "versions",
+    "ARDUINO_ESP32_REV",
+    "ARDUINO_ESP32_VERSION",
+    "ESP_IDF_REV",
+    "ESP_IDF_VERSION",
+)
+
+DESTINATION_URL = "https://github.com/dejwk/roo_testing.git"
+DESTINATION_BRANCH = "main"
+
+ARDUINO_DESTINATION = "roo_testing/frameworks/arduino-esp32"
+ESP_IDF_DESTINATION = "roo_testing/frameworks/esp-idf"
+
+# These are the Arduino libraries currently exposed by the emulator. Keep the
+# list explicit so an upstream release cannot silently add unsupported APIs or
+# a large amount of unrelated source.
+ARDUINO_LIBRARIES = [
+    "FS",
+    "LittleFS",
+    "Network",
+    "Preferences",
+    "SD",
+    "SD_MMC",
+    "SPI",
+    "SPIFFS",
+    "WiFi",
+    "Wire",
+]
+
+# Components needed by the Arduino core and roo_testing's existing shims. The
+# emulator compiles for Linux, but imports ESP32-specific public headers so
+# applications see the same APIs as an ESP32 build.
+ESP_IDF_COMPONENTS = [
+    "app_update",
+    "bootloader_support",
+    "bt",
+    "driver",
+    "efuse",
+    "esp_adc",
+    "esp_app_format",
+    "esp_bootloader_format",
+    "esp_coex",
+    "esp_common",
+    "esp_driver_gpio",
+    "esp_driver_gptimer",
+    "esp_driver_i2c",
+    "esp_driver_i2s",
+    "esp_driver_ledc",
+    "esp_driver_rmt",
+    "esp_driver_sdm",
+    "esp_driver_sdmmc",
+    "esp_driver_sdspi",
+    "esp_driver_spi",
+    "esp_driver_uart",
+    "esp_eth",
+    "esp_event",
+    "esp_hw_support",
+    "esp_mm",
+    "esp_netif",
+    "esp_partition",
+    "esp_phy",
+    "esp_psram",
+    "esp_ringbuf",
+    "esp_rom",
+    "esp_system",
+    "esp_timer",
+    "esp_wifi",
+    "freertos",
+    "hal",
+    "heap",
+    "linux",
+    "log",
+    "lwip",
+    "nvs_flash",
+    "pthread",
+    "sdmmc",
+    "soc",
+    "spi_flash",
+    "spiffs",
+    "vfs",
+    "wear_levelling",
+    "wifi_provisioning",
+    "wpa_supplicant",
+    "xtensa",
+]
+
+COMMON_EXCLUDES = [
+    # Bazel metadata is a roo_testing-owned destination overlay.
+    "BUILD",
+    "BUILD.bazel",
+    "*.bzl",
+    "**/BUILD",
+    "**/BUILD.bazel",
+    "**/*.bzl",
+    # Development-only upstream material.
+    "**/.github/**",
+    "**/.gitlab/**",
+    "**/benchmark/**",
+    "**/benchmarks/**",
+    "**/doc/**",
+    "**/docs/**",
+    "**/example/**",
+    "**/examples/**",
+    "**/host_test/**",
+    "**/mock/**",
+    "**/test/**",
+    "**/test_*/**",
+    "**/testdata/**",
+    "**/tests/**",
+    "**/test_apps/**",
+    # Prebuilt target artifacts are neither portable nor used by the emulator.
+    "**/*.7z",
+    "**/*.a",
+    "**/*.bin",
+    "**/*.bz2",
+    "**/*.dll",
+    "**/*.dylib",
+    "**/*.elf",
+    "**/*.hex",
+    "**/*.gz",
+    "**/*.jar",
+    "**/*.o",
+    "**/*.so",
+    "**/*.tar",
+    "**/*.tar.*",
+    "**/*.tgz",
+    "**/*.xz",
+    "**/*.zip",
+]
+
+# ESP32 is the emulated target. Generic code and the Xtensa/Linux ports remain
+# eligible, while source dedicated to another Espressif chip is omitted.
+NON_ESP32_TARGET_EXCLUDES = [
+    "**/esp32c2/**",
+    "**/esp32c3/**",
+    "**/esp32c5/**",
+    "**/esp32c6/**",
+    "**/esp32c61/**",
+    "**/esp32h2/**",
+    "**/esp32p4/**",
+    "**/esp32s2/**",
+    "**/esp32s3/**",
+]
+
+ARDUINO_ORIGIN_FILES = glob(
+    [
+        "CMakeLists.txt",
+        "Kconfig.projbuild",
+        "LICENSE.md",
+        "README.md",
+        "boards.txt",
+        "cores/esp32/**",
+        "idf_component.yml",
+        "package.json",
+        "platform.txt",
+        "programmers.txt",
+        "variants/esp32/**",
+    ] + ["libraries/%s/**" % library for library in ARDUINO_LIBRARIES],
+    exclude = COMMON_EXCLUDES + NON_ESP32_TARGET_EXCLUDES,
+)
+
+ESP_IDF_ORIGIN_FILES = glob(
+    [
+        "CMakeLists.txt",
+        "Kconfig",
+        "LICENSE",
+        "README.md",
+        "sdkconfig.rename",
+    ] + ["components/%s/**" % component for component in ESP_IDF_COMPONENTS],
+    exclude = COMMON_EXCLUDES + NON_ESP32_TARGET_EXCLUDES,
+)
+
+# BUILD files are maintained as a destination overlay. Copybara must neither
+# replace them with an upstream file nor delete them during a scoped import.
+def destination_files(destination):
+    return glob(
+        [destination + "/**"],
+        exclude = [
+            destination + "/BUILD",
+            destination + "/BUILD.bazel",
+            destination + "/*.bzl",
+            destination + "/**/BUILD",
+            destination + "/**/BUILD.bazel",
+            destination + "/**/*.bzl",
+            # Generated host configuration and narrowly scoped bridge files
+            # remain destination-owned alongside the Bazel overlay.
+            destination + "/**/roo_testing_*",
+            destination + "/sdkconfig.h",
+        ],
+    )
+
+def destination():
+    return git.destination(
+        url = DESTINATION_URL,
+        fetch = DESTINATION_BRANCH,
+        push = DESTINATION_BRANCH,
+    )
+
+core.workflow(
+    name = "arduino_esp32",
+    description = "Import Arduino-ESP32 %s at its pinned revision" % ARDUINO_ESP32_VERSION,
+    origin = git.origin(
+        url = "https://github.com/espressif/arduino-esp32.git",
+        ref = ARDUINO_ESP32_REV,
+        submodules = "NO",
+    ),
+    destination = destination(),
+    authoring = authoring.pass_thru("Copybara <copybara@localhost>"),
+    origin_files = ARDUINO_ORIGIN_FILES,
+    destination_files = destination_files(ARDUINO_DESTINATION),
+    transformations = [
+        patch.apply(
+            series = "patches/arduino-esp32/series",
+            validation_level = "OPTIONAL_SERIES",
+        ),
+        core.move("", ARDUINO_DESTINATION),
+    ],
+    mode = "SQUASH",
+    custom_rev_id = "ArduinoEsp32-Origin-RevId",
+)
+
+core.workflow(
+    name = "esp_idf",
+    description = "Import ESP-IDF %s at its pinned revision" % ESP_IDF_VERSION,
+    origin = git.origin(
+        url = "https://github.com/espressif/esp-idf.git",
+        ref = ESP_IDF_REV,
+        submodules = "YES",
+        # Only these two source submodules are used by the Linux emulator. All
+        # target-only binary libraries and unrelated third-party stacks stay out.
+        excluded_submodules = [
+            "components/bt/controller/lib_esp32",
+            "components/bootloader/subproject/components/micro-ecc/micro-ecc",
+            "components/json/cJSON",
+            "components/mbedtls/mbedtls",
+            "components/mqtt/esp-mqtt",
+            "components/protobuf-c/protobuf-c",
+            "components/unity/unity",
+            "components/bt/host/nimble/nimble",
+            "components/esp_wifi/lib",
+            "components/cmock/CMock",
+            "components/openthread/openthread",
+            "components/bt/controller/lib_esp32c3_family",
+            "components/esp_phy/lib",
+            "components/openthread/lib",
+            "components/bt/controller/lib_esp32h2/esp32h2-bt-lib",
+            "components/bt/controller/lib_esp32c2/esp32c2-bt-lib",
+            "components/bt/controller/lib_esp32c6/esp32c6-bt-lib",
+            "components/bt/controller/lib_esp32c5/esp32c5-bt-lib",
+            "components/heap/tlsf",
+            "components/esp_coex/lib",
+            "components/bt/esp_ble_mesh/lib/lib",
+        ],
+    ),
+    destination = destination(),
+    authoring = authoring.pass_thru("Copybara <copybara@localhost>"),
+    origin_files = ESP_IDF_ORIGIN_FILES,
+    destination_files = destination_files(ESP_IDF_DESTINATION),
+    transformations = [
+        patch.apply(
+            series = "patches/esp-idf/series",
+            validation_level = "OPTIONAL_SERIES",
+        ),
+        core.move("", ESP_IDF_DESTINATION),
+    ],
+    mode = "SQUASH",
+    custom_rev_id = "EspIdf-Origin-RevId",
+)

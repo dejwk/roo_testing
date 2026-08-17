@@ -4,7 +4,10 @@ Experimental ESP32 emulator that can be used to test Arduino sketches on Linux, 
 
 I built it to test my sketches that tend to use a variety of external devices, from TFT displays to temperature sensors, networking, SD cards, and real-time clock modules. It is not 100% accurate, but it gets the job done.
 
-The current version is based on ESP-IDF 4.4.1 and Arduino 2.0.4.
+The current version imports Arduino-ESP32 3.3.8 and ESP-IDF 5.5.4 into stable,
+unversioned framework paths. The upstream source trees are maintained with
+[Copybara](copybara/README.md), while Linux host shims and Bazel BUILD overlays
+remain owned by roo_testing.
 
 ## TL;DR:
 

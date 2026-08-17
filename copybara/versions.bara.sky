@@ -1,0 +1,13 @@
+"""Pinned upstream revisions used by the framework import workflows.
+
+Use immutable commit IDs here. The human-readable versions document why the
+pair was selected, while the commit IDs make imports reproducible even if an
+upstream tag is moved.
+"""
+
+ARDUINO_ESP32_VERSION = "3.3.8"
+ARDUINO_ESP32_REV = "b4f85baa2d4a251eb435e0f78fcdda1fb193791f"
+
+# Arduino-ESP32 3.3.8 is built against the ESP-IDF 5.5 release line.
+ESP_IDF_VERSION = "5.5.4"
+ESP_IDF_REV = "735507283d5b2f9fb363a1901172dbd9e847945d"

@@ -30,6 +30,12 @@ TEST(ArduinoSpiClockTest, MatchesUpstreamDividedClockEncoding) {
   EXPECT_EQ(divider, 0x00041001U);
   EXPECT_EQ(spiClockDivToFrequency(nullptr, divider), kFrequency);
 
+  constexpr uint32_t kNonDivisibleFrequency = 26'000'000;
+  const uint32_t non_divisible_divider =
+      spiFrequencyToClockDiv(nullptr, kNonDivisibleFrequency);
+  EXPECT_LE(spiClockDivToFrequency(nullptr, non_divisible_divider),
+            kNonDivisibleFrequency);
+
   constexpr int kClock = 18;
   constexpr int kMiso = 19;
   constexpr int kMosi = 23;

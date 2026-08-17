@@ -243,25 +243,67 @@ void spiTransferBitsNL(spi_t *spi, uint32_t data, uint32_t *out, uint8_t bits) {
 }
 
 uint32_t spiFrequencyToClockDiv(spi_t *, uint32_t frequency) {
-  const uint32_t apb = getApbFrequency();
-  if (!frequency || frequency >= apb) return 1u << 31;
-  uint32_t best = 0;
-  uint64_t best_error = UINT64_MAX;
-  // Arduino's clock calculator starts at clkcnt_n register value 1, which is
-  // an actual divider of two. It does not emit the nreg == 0 divided-clock
-  // encoding; full APB speed uses clk_equ_sysclk instead.
-  for (uint32_t n = 2; n <= 64; ++n) {
-    uint32_t pre = std::clamp<uint32_t>(apb / (frequency * n), 1, 8192);
-    const uint32_t actual = apb / (pre * n);
-    const uint64_t error = actual > frequency ? actual - frequency : frequency - actual;
-    if (error < best_error) {
-      best_error = error;
-      const uint32_t nreg = n - 1;
-      const uint32_t hreg = n / 2 - 1;
-      best = ((pre - 1) << 18) | (nreg << 12) | (hreg << 6) | nreg;
+  union ClockDivider {
+    uint32_t value;
+    struct {
+      uint32_t clkcnt_l : 6;
+      uint32_t clkcnt_h : 6;
+      uint32_t clkcnt_n : 6;
+      uint32_t clkdiv_pre : 13;
+      uint32_t clk_equ_sysclk : 1;
+    };
+  };
+
+  const uint32_t source_frequency = getApbFrequency();
+  if (frequency >= source_frequency) return 1U << 31;
+
+  ClockDivider minimum{};
+  minimum.value = 0x7ffff000;
+  const uint32_t minimum_frequency =
+      source_frequency /
+      ((minimum.clkdiv_pre + 1) * (minimum.clkcnt_n + 1));
+  if (frequency < minimum_frequency) return minimum.value;
+
+  uint8_t clock_count = 1;
+  ClockDivider best{};
+  uint32_t best_frequency = 0;
+  while (clock_count <= 0x3f) {
+    ClockDivider candidate{};
+    candidate.clkcnt_n = clock_count;
+    uint32_t candidate_frequency = 0;
+    int8_t pre_variation = -2;
+    while (pre_variation++ <= 1) {
+      int32_t pre =
+          static_cast<int32_t>((source_frequency /
+                                (candidate.clkcnt_n + 1)) /
+                               frequency) -
+          1 + pre_variation;
+      if (pre > 0x1fff) {
+        candidate.clkdiv_pre = 0x1fff;
+      } else if (pre <= 0) {
+        candidate.clkdiv_pre = 0;
+      } else {
+        candidate.clkdiv_pre = pre;
+      }
+      candidate.clkcnt_l = (candidate.clkcnt_n + 1) / 2;
+      candidate_frequency =
+          source_frequency /
+          ((candidate.clkdiv_pre + 1) * (candidate.clkcnt_n + 1));
+      if (candidate_frequency == frequency) {
+        best = candidate;
+        break;
+      }
+      if (candidate_frequency < frequency &&
+          (best_frequency == 0 ||
+           frequency - candidate_frequency < frequency - best_frequency)) {
+        best_frequency = candidate_frequency;
+        best = candidate;
+      }
     }
+    if (candidate_frequency == frequency) break;
+    ++clock_count;
   }
-  return best;
+  return best.value;
 }
 uint32_t spiClockDivToFrequency(spi_t *, uint32_t divider) {
   if (divider & (1u << 31)) return getApbFrequency();

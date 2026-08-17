@@ -1,1 +1,3 @@
 # Arduino-ESP32 source patches, in application order.
+0001-make-dma-alignment-assert-cxx-compatible.patch
+0002-restore-host-itoa-wrappers.patch

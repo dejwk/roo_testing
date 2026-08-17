@@ -61,7 +61,11 @@
 #define ESP_ARDUINO_DMA_IS_SIZE_ALIGNED(sz) (((sz) & ((ESP_ARDUINO_DMA_BUF_ALIGN) - 1)) == 0)
 
 /* Compile-time check: the alignment value must be a power of two. */
+#ifdef __cplusplus
+static_assert(((ESP_ARDUINO_DMA_BUF_ALIGN) & ((ESP_ARDUINO_DMA_BUF_ALIGN)-1)) == 0, "ESP_ARDUINO_DMA_BUF_ALIGN must be a power of two");
+#else
 _Static_assert(((ESP_ARDUINO_DMA_BUF_ALIGN) & ((ESP_ARDUINO_DMA_BUF_ALIGN)-1)) == 0, "ESP_ARDUINO_DMA_BUF_ALIGN must be a power of two");
+#endif
 
 #ifdef __cplusplus
 extern "C" {

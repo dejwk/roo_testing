@@ -1,0 +1,25 @@
+diff --git a/cores/esp32/stdlib_noniso.c b/cores/esp32/stdlib_noniso.c
+--- a/cores/esp32/stdlib_noniso.c
++++ b/cores/esp32/stdlib_noniso.c
+@@ -39,6 +39,10 @@ static void reverse(char *begin, char *end) {
+   }
+ }
+ 
++char *itoa(int value, char *result, int base) {
++  return ltoa(value, result, base);
++}
++
+ char *ltoa(long value, char *result, int base) {
+   if (base < 2 || base > 16) {
+     *result = 0;
+@@ -91,6 +95,10 @@ char *lltoa(long long val, char *result, int base) {
+   return result;
+ }
+ 
++char *utoa(unsigned int value, char *result, int base) {
++  return ultoa(value, result, base);
++}
++
+ char *ultoa(unsigned long value, char *result, int base) {
+   if (base < 2 || base > 16) {
+     *result = 0;

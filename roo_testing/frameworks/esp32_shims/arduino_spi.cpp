@@ -247,18 +247,17 @@ uint32_t spiFrequencyToClockDiv(spi_t *, uint32_t frequency) {
   if (!frequency || frequency >= apb) return 1u << 31;
   uint32_t best = 0;
   uint64_t best_error = UINT64_MAX;
-  for (uint32_t n = 1; n <= 64; ++n) {
+  // Arduino's clock calculator starts at clkcnt_n register value 1, which is
+  // an actual divider of two. It does not emit the nreg == 0 divided-clock
+  // encoding; full APB speed uses clk_equ_sysclk instead.
+  for (uint32_t n = 2; n <= 64; ++n) {
     uint32_t pre = std::clamp<uint32_t>(apb / (frequency * n), 1, 8192);
     const uint32_t actual = apb / (pre * n);
     const uint64_t error = actual > frequency ? actual - frequency : frequency - actual;
     if (error < best_error) {
       best_error = error;
       const uint32_t nreg = n - 1;
-      // clkcnt_h is floor(n / 2) - 1, except that a one-cycle divider
-      // encodes both high and low counts as zero. Keep the subtraction from
-      // wrapping: an unsigned underflow here turns every divider field into
-      // all ones and makes a requested 20 MHz clock run at roughly 152 Hz.
-      const uint32_t hreg = n > 1 ? n / 2 - 1 : 0;
+      const uint32_t hreg = n / 2 - 1;
       best = ((pre - 1) << 18) | (nreg << 12) | (hreg << 6) | nreg;
     }
   }

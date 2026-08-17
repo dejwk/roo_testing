@@ -24,9 +24,10 @@ class ClockRecordingSpiDevice : public SimpleFakeSpiDevice {
   uint16_t bits = 0;
 };
 
-TEST(ArduinoSpiClockTest, EncodesOneCycleClockCountWithoutUnderflow) {
+TEST(ArduinoSpiClockTest, MatchesUpstreamDividedClockEncoding) {
   constexpr uint32_t kFrequency = 20'000'000;
   const uint32_t divider = spiFrequencyToClockDiv(nullptr, kFrequency);
+  EXPECT_EQ(divider, 0x00041001U);
   EXPECT_EQ(spiClockDivToFrequency(nullptr, divider), kFrequency);
 
   constexpr int kClock = 18;

@@ -93,6 +93,16 @@
 #define CONFIG_LOG_TAG_LEVEL_IMPL_NONE 1
 #define CONFIG_LOG_TAG_LEVEL_IMPL 0
 
+/* Wi-Fi buffer choices required by IDF 6's public initialization macro.
+ * These are the Kconfig defaults for the classic ESP32 profile. */
+#define CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM 10
+#define CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM 32
+#define CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER 1
+#define CONFIG_ESP_WIFI_TX_BUFFER_TYPE 1
+#define CONFIG_ESP_WIFI_STATIC_RX_MGMT_BUFFER 1
+#define CONFIG_ESP_WIFI_DYNAMIC_RX_MGMT_BUF 0
+#define CONFIG_ESP_WIFI_ESPNOW_MAX_ENCRYPT_NUM 7
+
 /* lwIP settings.  These retain the networking shape of the previous host
  * configuration while supplying the explicit choices required by IDF 6. */
 #define CONFIG_LWIP_IPV4 1

@@ -1,5 +1,10 @@
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
+exports_files([
+    "components/esp_common/src/esp_err_to_name.c",
+    "components/esp_ringbuf/ringbuf.c",
+])
+
 # ESP-IDF's target-oriented component build graph is intentionally not mirrored.
 # Host builds consume current public headers and the upstream Linux FreeRTOS
 # port, while hardware-facing symbols are provided by //.../esp32_shims.
@@ -147,6 +152,7 @@ cc_library(
         "components/spiffs/include",
         "components/vfs/include",
         "components/wear_levelling/include",
+        "components/wpa_supplicant/esp_supplicant/include",
         "components/wpa_supplicant/include",
         "components/wpa_supplicant/port/include",
         "components/xtensa/include",

@@ -87,6 +87,7 @@ cc_library(
         "components/esp_hal_i2c/esp32/include",
         "components/esp_hal_i2s/include",
         "components/esp_hal_i2s/esp32/include",
+        "components/esp_hal_lcd/include",
         "components/esp_hal_ledc/include",
         "components/esp_hal_ledc/esp32/include",
         "components/esp_hal_mspi/include",

@@ -254,7 +254,12 @@ uint32_t spiFrequencyToClockDiv(spi_t *, uint32_t frequency) {
     if (error < best_error) {
       best_error = error;
       const uint32_t nreg = n - 1;
-      best = ((pre - 1) << 18) | (nreg << 12) | ((n / 2 - 1) << 6) | nreg;
+      // clkcnt_h is floor(n / 2) - 1, except that a one-cycle divider
+      // encodes both high and low counts as zero. Keep the subtraction from
+      // wrapping: an unsigned underflow here turns every divider field into
+      // all ones and makes a requested 20 MHz clock run at roughly 152 Hz.
+      const uint32_t hreg = n > 1 ? n / 2 - 1 : 0;
+      best = ((pre - 1) << 18) | (nreg << 12) | (hreg << 6) | nreg;
     }
   }
   return best;

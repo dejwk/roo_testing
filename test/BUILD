@@ -48,6 +48,18 @@ cc_test(
 )
 
 cc_test(
+    name = "arduino_spi_clock_test",
+    size = "small",
+    srcs = ["arduino_spi_clock_test.cpp"],
+    linkstatic = 1,
+    deps = [
+        "//:arduino_gtest_main",
+        "//roo_testing/frameworks/arduino-esp32/libraries/SPI",
+        "//roo_testing/microcontrollers/esp32:core",
+    ],
+)
+
+cc_test(
     name = "framework_version_test",
     size = "small",
     srcs = ["framework_version_test.cpp"],

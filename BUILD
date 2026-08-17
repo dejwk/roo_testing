@@ -38,6 +38,7 @@ cc_library(
 test_suite(
     name = "all_tests",
     tests = [
+        "//test:arduino_spi_clock_test",
         "//test:framework_version_test",
         "//test:freertos_posix_thread_join_regression_test",
         "//test:gpio_test",

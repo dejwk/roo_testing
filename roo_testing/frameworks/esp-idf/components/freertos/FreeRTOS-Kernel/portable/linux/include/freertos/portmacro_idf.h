@@ -13,6 +13,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <stdlib.h> // This is for malloc(), used by portmacro.h
 #include "sdkconfig.h"
 #include "esp_attr.h"
@@ -86,6 +87,12 @@ bool xPortcheckValidStackMem(const void *ptr);
 #define portVALID_STACK_MEM(ptr)    xPortcheckValidStackMem(ptr)
 
 BaseType_t xPortCheckIfInISR(void);
+
+/** Return whether the caller is the pthread backing a FreeRTOS task. */
+BaseType_t xPortIsFreeRtosTask(void);
+
+/** Return whether the caller can yield without leaving a critical section. */
+bool xPortCanYield(void);
 
 /**
  * @brief Checks if the current core is in an ISR context

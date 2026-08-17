@@ -74,6 +74,7 @@ ESP_IDF_COMPONENTS = [
     "esp_hal_gpspi",
     "esp_hal_i2c",
     "esp_hal_i2s",
+    "esp_hal_lcd",
     "esp_hal_ledc",
     "esp_hal_mspi",
     "esp_hal_pmu",

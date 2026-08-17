@@ -43,6 +43,7 @@ test_suite(
         "//test:gpio_test",
         "//test:host_event_gateway_test",
         "//test:host_filesystem_test",
+        "//test:host_network_test",
         "//test:nvs_test",
         "//test:onewire_test",
         "//test:rtc_ds3231_i2c_test",

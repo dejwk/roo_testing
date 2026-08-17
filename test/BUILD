@@ -14,6 +14,19 @@ cc_test(
 )
 
 cc_test(
+    name = "host_network_test",
+    size = "small",
+    timeout = "short",
+    srcs = ["host_network_test.cpp"],
+    linkstatic = 1,
+    deps = [
+        "//:arduino_gtest_main",
+        "//roo_testing/frameworks/arduino-esp32/libraries/Network",
+        "//roo_testing/frameworks/posix_lwip",
+    ],
+)
+
+cc_test(
     name = "idf_spi_device_test",
     size = "small",
     srcs = ["idf_spi_device_test.cpp"],

@@ -6,6 +6,7 @@
 #include <string>
 #include <thread>
 
+#include "Network.h"
 #include "NetworkClient.h"
 #include "NetworkServer.h"
 #include "NetworkUdp.h"
@@ -52,8 +53,9 @@ struct BoundSocket {
   int error;
 };
 
-BoundSocket BindLoopback(int type) {
-  Socket descriptor(::socket(AF_INET, type, 0));
+BoundSocket BindLoopback(int type, IPType address_type = IPv4) {
+  const int address_family = address_type == IPv6 ? AF_INET6 : AF_INET;
+  Socket descriptor(::socket(address_family, type, 0));
   if (descriptor.get() < 0) {
     return {Socket(), 0, errno};
   }
@@ -64,21 +66,38 @@ BoundSocket BindLoopback(int type) {
     return {Socket(), 0, errno};
   }
 
-  sockaddr_in address = {};
-  address.sin_family = AF_INET;
-  address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-  address.sin_port = 0;
+  sockaddr_storage address = {};
+  socklen_t address_size;
+  if (address_type == IPv6) {
+    auto *ipv6 = reinterpret_cast<sockaddr_in6 *>(&address);
+    ipv6->sin6_family = AF_INET6;
+    ipv6->sin6_addr = in6addr_loopback;
+    ipv6->sin6_port = 0;
+    address_size = sizeof(*ipv6);
+  } else {
+    auto *ipv4 = reinterpret_cast<sockaddr_in *>(&address);
+    ipv4->sin_family = AF_INET;
+    ipv4->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    ipv4->sin_port = 0;
+    address_size = sizeof(*ipv4);
+  }
   if (bind(descriptor.get(), reinterpret_cast<sockaddr *>(&address),
-           sizeof(address)) != 0) {
+           address_size) != 0) {
     return {Socket(), 0, errno};
   }
 
-  socklen_t address_size = sizeof(address);
+  address_size = sizeof(address);
   if (getsockname(descriptor.get(), reinterpret_cast<sockaddr *>(&address),
                   &address_size) != 0) {
     return {Socket(), 0, errno};
   }
-  return {Socket(descriptor.release()), ntohs(address.sin_port), 0};
+  uint16_t port;
+  if (address_type == IPv6) {
+    port = ntohs(reinterpret_cast<sockaddr_in6 *>(&address)->sin6_port);
+  } else {
+    port = ntohs(reinterpret_cast<sockaddr_in *>(&address)->sin_port);
+  }
+  return {Socket(descriptor.release()), port, 0};
 }
 
 #define ASSERT_BOUND_SOCKET(bound_socket)                                  \
@@ -93,7 +112,14 @@ bool WaitForReadable(int descriptor, std::chrono::milliseconds timeout) {
 }
 
 TEST(HostNetworkTest, NetworkClientUsesLinuxTcpAndResolver) {
-  BoundSocket listener = BindLoopback(SOCK_STREAM);
+  constexpr char kLoopbackHost[] = "localhost";
+  IPAddress localhost;
+  ASSERT_EQ(Network.hostByName(kLoopbackHost, localhost), 1);
+
+  // Linux resolver order is environment-dependent. In particular, GitHub's
+  // runners return ::1 before 127.0.0.1. Bind the listener in the family the
+  // emulated Arduino resolver selected, then exercise the hostname overload.
+  BoundSocket listener = BindLoopback(SOCK_STREAM, localhost.type());
   ASSERT_BOUND_SOCKET(listener);
   ASSERT_NE(listener.port, 0);
   ASSERT_EQ(listen(listener.socket.get(), 1), 0);
@@ -118,7 +144,7 @@ TEST(HostNetworkTest, NetworkClientUsesLinuxTcpAndResolver) {
   });
 
   NetworkClient client;
-  ASSERT_EQ(client.connect("localhost", listener.port, 2000), 1);
+  ASSERT_EQ(client.connect(kLoopbackHost, listener.port, 2000), 1);
   constexpr char request[] = "ping";
   ASSERT_EQ(client.write(reinterpret_cast<const uint8_t *>(request),
                          sizeof(request) - 1),

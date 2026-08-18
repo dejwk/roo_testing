@@ -67,6 +67,7 @@ cc_library(
 test_suite(
     name = "all_tests",
     tests = [
+        "//fltk-1.3.5:image_link_test",
         "//test:arduino_environment_test",
         "//test:arduino_gtest_environment_test",
         "//test:arduino_main_environment_test",
@@ -82,8 +83,8 @@ test_suite(
         "//test:host_event_gateway_test",
         "//test:host_filesystem_test",
         "//test:host_network_test",
-        "//test:idf_ledc_test",
         "//test:idf_environment_test",
+        "//test:idf_ledc_test",
         "//test:legacy_i2c_interface_test",
         "//test:nvs_test",
         "//test:onewire_test",

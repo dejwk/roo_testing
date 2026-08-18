@@ -38,7 +38,7 @@ Now let's simulate a SPI-based TFT display. This example requires an FLTK librar
 
 ```
 sudo apt-get install bazel
-sudo apt-get install libfltk1.3-dev
+sudo apt-get install libfltk1.3-dev libjpeg-dev libpng-dev zlib1g-dev
 mkdir foo; cd foo
 git clone https://github.com/dejwk/roo_testing.git
 cp -rT roo_testing/examples/tft_display/ .

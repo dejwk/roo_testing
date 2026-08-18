@@ -4,7 +4,7 @@ on:
   push: {}
 
 env:
-  SYMBOLIZE_DEPS: libunwind-dev binutils-dev
+  SYSTEM_DEPS: libunwind-dev binutils-dev libjpeg-dev libpng-dev zlib1g-dev
   BAZEL_SYMBOLIZE_FLAGS: >-
     --copt=-DHAVE_SYMBOLIZE
     --copt=-DHAVE_UNWIND

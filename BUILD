@@ -67,7 +67,7 @@ cc_library(
 test_suite(
     name = "all_tests",
     tests = [
-        "//fltk-1.3.5:image_link_test",
+        "//fltk-1.3.5:core_link_test",
         "//test:arduino_environment_test",
         "//test:arduino_gtest_environment_test",
         "//test:arduino_main_environment_test",

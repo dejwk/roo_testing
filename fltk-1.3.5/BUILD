@@ -3,13 +3,7 @@ load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
 cc_library(
     name = "fltk",
-    srcs = [
-        # Static linker order: image codecs first, then the FLTK core symbols
-        # that they reference. This matches `fltk-config --use-images`.
-        # do not sort
-        "lib/libfltk_images.a",
-        "lib/libfltk.a",
-    ],
+    srcs = ["lib/libfltk.a"],
     hdrs = glob(["include/FL/*.h"]) + glob(["include/FL/*.H"]),
     includes = ["include"],
     linkopts = [
@@ -17,9 +11,6 @@ cc_library(
         "-ldl",
         "-lm",
         "-lpthread",
-        "-ljpeg",
-        "-lpng",
-        "-lz",
     ],
     linkstatic = 1,
     visibility = ["//visibility:public"],
@@ -28,8 +19,8 @@ cc_library(
 )
 
 cc_test(
-    name = "image_link_test",
+    name = "core_link_test",
     size = "small",
-    srcs = ["image_link_test.cpp"],
+    srcs = ["core_link_test.cpp"],
     deps = [":fltk"],
 )

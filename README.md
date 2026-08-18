@@ -205,6 +205,37 @@ profiles.
 See the [framework environment contract](roo_testing/frameworks/environment/README.md)
 for the failure modes and the complete profile location.
 
+## GitHub Actions for Roo clients
+
+Roo repositories can call the reusable workflow in
+[`.github/workflows/client-ci.yml`](.github/workflows/client-ci.yml). Pin the
+call to a full roo_testing commit SHA, rather than `main` or a movable tag:
+
+```yaml
+jobs:
+  ci:
+    uses: dejwk/roo_testing/.github/workflows/client-ci.yml@FULL_COMMIT_SHA
+    with:
+      profiles: '["arduino", "idf"]'
+      build_targets: '//...'
+      test_targets: '//...'
+```
+
+`profiles` is a JSON array containing any of `host`, `arduino`, and `idf`.
+Arduino and IDF select their frontend configs explicitly; `host` bypasses the
+interactive Arduino default. Each matrix entry builds and tests normally and
+with ASAN. `run_tests` and `run_asan` can disable the corresponding phases for
+build-only repositories, while `system_packages` and `extra_bazel_args` accept
+space-separated additions. All callers use their checked-in `.bazelversion`;
+Roo clients pin Bazel 9.2.0. Pull requests may restore trusted Bazel caches but
+cannot save new cache entries.
+
+For the 2.0 release, push and tag roo_testing first, register that release in
+the Roo Bazel registry, and only then push clients whose `MODULE.bazel` requests
+`roo_testing` 2.0.0. The reusable workflow does not add a local path override,
+so reversing that order makes client dependency resolution fail even when the
+workflow itself is already reachable at its pinned commit.
+
 ## How to use it
 
 The behavior of the physical world is modeled in _transducers_, sensing or indicating physical quantities. Transducers are represented by abstract virtual classes. A simple example is the Thermometer class, with a virtual method to report the temperature. By implementing an arbitrary logic in your own subclasses, you can simulate various real-life scenarios.

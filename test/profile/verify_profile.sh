@@ -61,14 +61,7 @@ run_bazel test \
   //test/profile:global_environment_test \
   //test/profile:arduino_select_test
 
-run_idf_bazel test \
-  //test/profile:idf_global_environment_test \
-  //test/profile:idf_sdkconfig_purity_test \
-  //test/profile:idf_select_test \
-  //test/profile:esp_idf_main_test \
-  //test/profile:esp_idf_gtest_main_test \
-  //test:legacy_i2c_interface_test \
-  --config=roo_testing_idf_esp32
+run_idf_bazel test //:idf_tests --config=roo_testing_idf_esp32
 
 run_bazel build //test/profile:user_copt_probe \
   --copt=-DROO_TESTING_USER_COPT_PROBE=73

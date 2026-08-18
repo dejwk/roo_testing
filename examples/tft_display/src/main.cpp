@@ -179,7 +179,7 @@ class StringPrinter : public Print {
  public:
   const std::string& get() { return s_; }
   size_t write(uint8_t c) override {
-    s_.append((const char*)c);
+    s_.push_back(static_cast<char>(c));
     return 1;
   }
   size_t write(const uint8_t* buffer, size_t size) override {

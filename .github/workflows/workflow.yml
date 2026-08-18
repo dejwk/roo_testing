@@ -2,9 +2,17 @@ name: CI
 
 on:
   push: {}
+  pull_request: {}
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
-  SYSTEM_DEPS: libunwind-dev binutils-dev libjpeg-dev libpng-dev zlib1g-dev
   BAZEL_SYMBOLIZE_FLAGS: >-
     --copt=-DHAVE_SYMBOLIZE
     --copt=-DHAVE_UNWIND
@@ -13,36 +21,97 @@ env:
     --linkopt=-ldl
 
 jobs:
-  build_and_test:
+  arduino:
+    name: Arduino ESP32
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        persist-credentials: false
     - uses: ./.github/actions/ci-setup
 
     - name: Build
       run: |
         bazel build :all \
+          --config=roo_testing_arduino_esp32 \
           ${{ env.BAZEL_SYMBOLIZE_FLAGS }}
 
     - name: Test
       run: |
-        bazel test :all --test_output=errors \
+        bazel test :all \
+          --config=roo_testing_arduino_esp32 \
+          --test_output=errors \
           ${{ env.BAZEL_SYMBOLIZE_FLAGS }}
 
-  build_and_test_asan:
+  profile_contract:
+    name: Frontend and wrapper contract
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        persist-credentials: false
+    - uses: ./.github/actions/ci-setup
+
+    - name: Verify Arduino, ESP-IDF, wrapper, and vendored profiles
+      run: ./test/profile/verify_profile.sh
+
+    - name: Build representative standalone examples
+      env:
+        ROO_TESTING_CHECKOUT: ${{ github.workspace }}
+      run: |
+        for example in simple gpio; do
+          (
+            cd "examples/${example}"
+            bazel build :main \
+              --override_module="roo_testing=${ROO_TESTING_CHECKOUT}"
+          )
+        done
+
+  arduino_asan:
+    name: Arduino ESP32 (ASAN)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        persist-credentials: false
     - uses: ./.github/actions/ci-setup
 
     - name: Build with address sanitizer
       run: |
-        bazel build --config=asan :all \
+        bazel build :all \
+          --config=roo_testing_arduino_esp32 \
+          --config=asan \
           ${{ env.BAZEL_SYMBOLIZE_FLAGS }}
 
     - name: Test with address sanitizer
       run: |
-        bazel test --config=asan :all --test_output=errors \
+        bazel test :all \
+          --config=roo_testing_arduino_esp32 \
+          --config=asan \
+          --test_output=errors \
+          ${{ env.BAZEL_SYMBOLIZE_FLAGS }}
+
+  idf_asan:
+    name: ESP-IDF (ASAN)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        persist-credentials: false
+    - uses: ./.github/actions/ci-setup
+
+    - name: Test ESP-IDF entry points with address sanitizer
+      run: |
+        bazel test :idf_tests \
+          --config=roo_testing_idf_esp32 \
+          --config=asan \
+          --test_output=errors \
           ${{ env.BAZEL_SYMBOLIZE_FLAGS }}

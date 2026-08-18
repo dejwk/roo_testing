@@ -7,8 +7,8 @@ cc_binary(
     ]),
     deps = [
         "@roo_display",
+        "@roo_testing//:arduino_main",
         "@roo_testing//roo_testing/devices/display/ili9486:spi",
-        "@roo_testing//roo_testing/frameworks/arduino-esp32/cores/esp32:main",
         "@roo_testing//roo_testing/transducers/ui/viewport:flex",
         "@roo_testing//roo_testing/transducers/ui/viewport/fltk",
     ],

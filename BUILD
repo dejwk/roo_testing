@@ -98,3 +98,18 @@ test_suite(
         "//test/wire_master:wire_master_test",
     ],
 )
+
+# Kept separate because these targets intentionally opt out of the Arduino
+# default and are selected explicitly under the ESP-IDF-only profile.
+test_suite(
+    name = "idf_tests",
+    tags = ["manual"],
+    tests = [
+        "//test:legacy_i2c_interface_test",
+        "//test/profile:esp_idf_gtest_main_test",
+        "//test/profile:esp_idf_main_test",
+        "//test/profile:idf_global_environment_test",
+        "//test/profile:idf_sdkconfig_purity_test",
+        "//test/profile:idf_select_test",
+    ],
+)

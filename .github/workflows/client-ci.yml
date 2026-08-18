@@ -1,0 +1,152 @@
+name: Roo client CI
+
+on:
+  workflow_call:
+    inputs:
+      profiles:
+        description: JSON array containing host, arduino, and/or idf.
+        required: false
+        type: string
+        default: '["arduino"]'
+      run_tests:
+        description: Run the configured test targets in normal and ASAN builds.
+        required: false
+        type: boolean
+        default: true
+      run_asan:
+        description: Build and, when enabled, test with the ASAN config.
+        required: false
+        type: boolean
+        default: true
+      system_packages:
+        description: Space-separated Ubuntu packages required by the client.
+        required: false
+        type: string
+        default: ''
+      build_targets:
+        description: Space-separated Bazel target patterns to build.
+        required: false
+        type: string
+        default: '//...'
+      test_targets:
+        description: Space-separated Bazel target patterns to test.
+        required: false
+        type: string
+        default: '//...'
+      extra_bazel_args:
+        description: Space-separated options forwarded to every Bazel command.
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  build_and_test:
+    name: ${{ matrix.profile }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: ${{ fromJSON(inputs.profiles) }}
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          sudo apt-get clean
+
+      - name: Install client system dependencies
+        if: inputs.system_packages != ''
+        env:
+          SYSTEM_PACKAGES: ${{ inputs.system_packages }}
+        run: |
+          read -r -a packages <<<"${SYSTEM_PACKAGES}"
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends "${packages[@]}"
+
+      # The release tag is annotated, so this pins its peeled commit.
+      - uses: bazel-contrib/setup-bazel@c5acdfb288317d0b5c0bbd7a396a3dc868bb0f86 # v0.19.0
+        with:
+          bazelisk-version: 1.29.0
+          bazelisk-cache: true
+          disk-cache: >-
+            ${{ github.workflow }}-${{ github.job }}-${{ matrix.profile }}
+          repository-cache: true
+          cache-save: ${{ github.event_name != 'pull_request' }}
+
+      - name: Build and test (${{ matrix.profile }})
+        env:
+          BUILD_TARGETS: ${{ inputs.build_targets }}
+          TEST_TARGETS: ${{ inputs.test_targets }}
+          EXTRA_BAZEL_ARGS: ${{ inputs.extra_bazel_args }}
+          PROFILE: ${{ matrix.profile }}
+          RUN_ASAN: ${{ inputs.run_asan }}
+          RUN_TESTS: ${{ inputs.run_tests }}
+        run: |
+          set -euo pipefail
+
+          read -r -a build_targets <<<"${BUILD_TARGETS}"
+          read -r -a test_targets <<<"${TEST_TARGETS}"
+          read -r -a extra_bazel_args <<<"${EXTRA_BAZEL_ARGS}"
+
+          profile_args=()
+          skip_wrapper=false
+          case "${PROFILE}" in
+            host)
+              # A plain host build must bypass the interactive Arduino default.
+              skip_wrapper=true
+              ;;
+            arduino)
+              profile_args=(--config=roo_testing_arduino_esp32)
+              ;;
+            idf)
+              profile_args=(--config=roo_testing_idf_esp32)
+              ;;
+            *)
+              echo "Unsupported roo_testing profile: ${PROFILE}" >&2
+              exit 2
+              ;;
+          esac
+
+          run_bazel() {
+            if ${skip_wrapper}; then
+              BAZELISK_SKIP_WRAPPER=true bazel "$@"
+            else
+              bazel "$@"
+            fi
+          }
+
+          run_bazel build \
+            "${profile_args[@]}" \
+            "${extra_bazel_args[@]}" \
+            "${build_targets[@]}"
+          if [[ "${RUN_TESTS}" == true ]]; then
+            run_bazel test \
+              "${profile_args[@]}" \
+              "${extra_bazel_args[@]}" \
+              --test_output=errors \
+              "${test_targets[@]}"
+          fi
+
+          if [[ "${RUN_ASAN}" == true ]]; then
+            run_bazel build \
+              "${profile_args[@]}" \
+              --config=asan \
+              "${extra_bazel_args[@]}" \
+              "${build_targets[@]}"
+            if [[ "${RUN_TESTS}" == true ]]; then
+              run_bazel test \
+                "${profile_args[@]}" \
+                --config=asan \
+                "${extra_bazel_args[@]}" \
+                --test_output=errors \
+                "${test_targets[@]}"
+            fi
+          fi

@@ -236,6 +236,24 @@ the Roo Bazel registry, and only then push clients whose `MODULE.bazel` requests
 so reversing that order makes client dependency resolution fail even when the
 workflow itself is already reachable at its pinned commit.
 
+Use this coordinated release order. Complete each group—push and tag its
+commits, register every version, and verify that the registry serves them—before
+pushing repositories in the next group. Repositories within one group may be
+released in parallel.
+
+1. `roo_testing`
+2. `roo_time`
+3. `roo_threads`
+4. `roo_logging`
+5. `roo_quantity`, `roo_scheduler`, `roo_io`
+6. `roo_prefs`, `roo_display`, `roo_transport`, `roo_io_arduino`,
+   `roo_monitoring`, `roo_time_ds3231`, `roo_powersafefs`
+7. `roo_blink`, `roo_control`, `roo_onewire`, `roo_fonts_basic`,
+   `roo_fonts_material`, `roo_icons`, `roo_display_lvgl`, `roo_wifi`
+8. `roo_transceivers`, `roo_windows`
+9. `roo_dashboard`, `roo_comms`, `roo_windows_transceivers`,
+   `roo_windows_wifi`
+
 ## How to use it
 
 The behavior of the physical world is modeled in _transducers_, sensing or indicating physical quantities. Transducers are represented by abstract virtual classes. A simple example is the Thermometer class, with a virtual method to report the temperature. By implementing an arbitrary logic in your own subclasses, you can simulate various real-life scenarios.

@@ -34,11 +34,12 @@ bazel run :main
 
 ## Even more interesting example
 
-Now let's simulate a SPI-based TFT display. This example requires an FLTK library.
+Now let's simulate a SPI-based TFT display. This example uses the bundled FLTK
+core library and requires the X11 development files.
 
 ```
 sudo apt-get install bazel
-sudo apt-get install libfltk1.3-dev libjpeg-dev libpng-dev zlib1g-dev
+sudo apt-get install libx11-dev
 mkdir foo; cd foo
 git clone https://github.com/dejwk/roo_testing.git
 cp -rT roo_testing/examples/tft_display/ .

@@ -1,6 +1,9 @@
 #include "esp_event.h"
 #include "esp_mac.h"
 #include "esp_netif.h"
+#include "esp_phy.h"
+#include "esp_private/wifi_os_adapter.h"
+#include "esp_smartconfig.h"
 #include "esp_wifi.h"
 #include "esp_wifi_default.h"
 #include "lwip/ip6_addr.h"
@@ -47,6 +50,10 @@ std::mutex g_mutex;
 wifi_mode_t g_mode = WIFI_MODE_NULL;
 wifi_config_t g_station_config = {};
 wifi_config_t g_ap_config = {};
+bool g_smartconfig_started = false;
+smartconfig_type_t g_smartconfig_type = SC_TYPE_ESPTOUCH;
+esp_phy_ant_gpio_config_t g_ant_gpio_config = {};
+esp_phy_ant_config_t g_ant_config = {};
 wifi_ps_type_t g_power_save = WIFI_PS_NONE;
 uint8_t g_protocol = WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N;
 wifi_bandwidth_t g_bandwidth = WIFI_BW20;
@@ -64,6 +71,20 @@ std::vector<wifi_ap_record_t> g_scan_results;
 std::unique_ptr<Connection> g_connection;
 esp_netif_t* g_default_netif = nullptr;
 std::vector<esp_netif_t*> g_netifs;
+
+constexpr wifi_osi_funcs_t MakeHostWifiOsiFuncs() {
+  wifi_osi_funcs_t funcs = {};
+  funcs._version = ESP_WIFI_OS_ADAPTER_VERSION;
+  funcs._magic = ESP_WIFI_OS_ADAPTER_MAGIC;
+  return funcs;
+}
+
+constexpr wpa_crypto_funcs_t MakeHostWpaCryptoFuncs() {
+  wpa_crypto_funcs_t funcs = {};
+  funcs.size = sizeof(wpa_crypto_funcs_t);
+  funcs.version = ESP_WIFI_CRYPTO_VERSION;
+  return funcs;
+}
 
 void CopyMac(const MacAddress& source, uint8_t* destination) {
   for (size_t i = 0; i < 6; ++i) destination[i] = source.get(i);
@@ -146,6 +167,14 @@ esp_netif_t* NewNetif(const char* key, const char* description,
 }  // namespace
 
 extern "C" {
+
+// WIFI_INIT_CONFIG_DEFAULT() embeds these ESP-IDF-owned adapter tables. The
+// emulator handles Wi-Fi above that adapter boundary, so callbacks stay null;
+// retaining the exact version, size, and magic fields keeps the public config
+// contract valid without exposing target-only RTOS or crypto implementations.
+wifi_osi_funcs_t g_wifi_osi_funcs = MakeHostWifiOsiFuncs();
+const wpa_crypto_funcs_t g_wifi_default_wpa_crypto_funcs =
+    MakeHostWpaCryptoFuncs();
 
 esp_err_t esp_wifi_init(const wifi_init_config_t*) { return ESP_OK; }
 esp_err_t esp_wifi_deinit(void) { return ESP_OK; }
@@ -458,6 +487,62 @@ esp_err_t esp_wifi_set_band_mode(wifi_band_mode_t mode) {
 esp_err_t esp_wifi_get_band_mode(wifi_band_mode_t* mode) {
   if (mode == nullptr) return ESP_ERR_INVALID_ARG;
   *mode = WIFI_BAND_MODE_2G_ONLY;
+  return ESP_OK;
+}
+
+esp_err_t esp_smartconfig_set_type(smartconfig_type_t type) {
+  if (type < SC_TYPE_ESPTOUCH || type > SC_TYPE_ESPTOUCH_V2) {
+    return ESP_ERR_INVALID_ARG;
+  }
+  std::lock_guard<std::mutex> lock(g_mutex);
+  if (g_smartconfig_started) return ESP_ERR_INVALID_STATE;
+  g_smartconfig_type = type;
+  return ESP_OK;
+}
+
+esp_err_t esp_smartconfig_start(const smartconfig_start_config_t* config) {
+  if (config == nullptr ||
+      (config->esp_touch_v2_enable_crypt &&
+       config->esp_touch_v2_key == nullptr)) {
+    return ESP_ERR_INVALID_ARG;
+  }
+  std::lock_guard<std::mutex> lock(g_mutex);
+  if (g_smartconfig_started) return ESP_ERR_INVALID_STATE;
+  g_smartconfig_started = true;
+  return ESP_OK;
+}
+
+esp_err_t esp_smartconfig_stop(void) {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  g_smartconfig_started = false;
+  return ESP_OK;
+}
+
+esp_err_t esp_phy_set_ant_gpio(esp_phy_ant_gpio_config_t* config) {
+  if (config == nullptr) return ESP_ERR_INVALID_ARG;
+  std::lock_guard<std::mutex> lock(g_mutex);
+  g_ant_gpio_config = *config;
+  return ESP_OK;
+}
+
+esp_err_t esp_phy_get_ant_gpio(esp_phy_ant_gpio_config_t* config) {
+  if (config == nullptr) return ESP_ERR_INVALID_ARG;
+  std::lock_guard<std::mutex> lock(g_mutex);
+  *config = g_ant_gpio_config;
+  return ESP_OK;
+}
+
+esp_err_t esp_phy_set_ant(esp_phy_ant_config_t* config) {
+  if (config == nullptr) return ESP_ERR_INVALID_ARG;
+  std::lock_guard<std::mutex> lock(g_mutex);
+  g_ant_config = *config;
+  return ESP_OK;
+}
+
+esp_err_t esp_phy_get_ant(esp_phy_ant_config_t* config) {
+  if (config == nullptr) return ESP_ERR_INVALID_ARG;
+  std::lock_guard<std::mutex> lock(g_mutex);
+  *config = g_ant_config;
   return ESP_OK;
 }
 

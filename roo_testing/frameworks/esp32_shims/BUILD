@@ -99,3 +99,15 @@ cc_test(
         "@googletest//:gtest",
     ],
 )
+
+cc_test(
+    name = "wifi_compat_test",
+    size = "small",
+    srcs = ["wifi_compat_test.cpp"],
+    linkstatic = 1,
+    deps = [
+        ":idf",
+        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "@googletest//:gtest",
+    ],
+)

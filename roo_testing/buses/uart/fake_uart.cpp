@@ -4,6 +4,8 @@
 
 size_t ConsoleUartDevice::write(const uint8_t* buf, uint16_t size) {
   std::cout.write((const char*)buf, size);
+  // Emulate raw, unbuffered UART output.
+  std::cout.flush();
   return size;
 }
 

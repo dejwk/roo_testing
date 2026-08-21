@@ -177,15 +177,13 @@ cc_library(
     tags = ["manual"],
 )
 
-# Built explicitly by verify_profile.sh with --config=asan.
+# Built explicitly by verify_profile.sh and reusable client CI with
+# --config=asan.
 cc_library(
     name = "asan_profile_probe",
-    srcs = [
-        "asan_profile_probe.cc",
-        "esp32_idf_environment_contract.h",
-        "global_environment_contract.h",
-    ],
+    srcs = ["asan_profile_probe.cc"],
     tags = ["manual"],
+    visibility = ["//visibility:public"],
 )
 
 # Used by the negative integration check. It deliberately advertises Arduino

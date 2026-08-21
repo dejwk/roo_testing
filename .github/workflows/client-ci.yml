@@ -136,11 +136,33 @@ jobs:
           fi
 
           if [[ "${RUN_ASAN}" == true ]]; then
+            asan_fragment='.roo_testing/bazelrc/common/asan.bazelrc'
+            asan_import='import %workspace%/.roo_testing/bazelrc/common/asan.bazelrc'
+            if [[ ! -f "${asan_fragment}" ]]; then
+              echo "Missing canonical ASAN config: ${asan_fragment}" >&2
+              echo "Vendor it from roo_testing before enabling run_asan." >&2
+              exit 2
+            fi
+            if [[ ! -f .bazelrc ]] || ! grep -Fxq "${asan_import}" .bazelrc; then
+              echo "The root .bazelrc must contain: ${asan_import}" >&2
+              exit 2
+            fi
+
+            # Emulator clients have a public compile-time probe that turns an
+            # undefined or incomplete ASAN config into a hard failure. Host-only
+            # clients need not depend on roo_testing, so their own build targets
+            # remain the sanitizer coverage for that profile.
+            asan_probe_targets=()
+            if [[ "${PROFILE}" != host ]]; then
+              asan_probe_targets=("@roo_testing//test/profile:asan_profile_probe")
+            fi
+
             run_bazel build \
               "${profile_args[@]}" \
               --config=asan \
               "${extra_bazel_args[@]}" \
-              "${build_targets[@]}"
+              "${build_targets[@]}" \
+              "${asan_probe_targets[@]}"
             if [[ "${RUN_TESTS}" == true ]]; then
               run_bazel test \
                 "${profile_args[@]}" \

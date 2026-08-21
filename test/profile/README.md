@@ -30,6 +30,10 @@ failures for a plain host platform, an unsupported SoC, and a selected
 roo_testing platform whose compiler profile is absent. It also builds explicit
 user-`--copt` and ASAN probes and checks with `aquery` that every canonical
 definition occurs exactly once in unrelated C and C++ compile actions.
+The ASAN probe is public at
+`@roo_testing//test/profile:asan_profile_probe` so reusable client CI can prove
+that the root workspace's `--config=asan` actually enables compiler
+instrumentation.
 It preserves the user's home rc (and its disk cache), suppressing only the
 roo_testing workspace rc when exercising the mutually exclusive IDF profile.
 Real interactive defaulting requires Bazelisk 1.21.0 or newer; direct Bazel

@@ -184,9 +184,14 @@ done
 
 for example in gpio onewire rtc_ds3231_i2c simple tft_display tft_touch; do
   cmp .bazeliskrc "examples/${example}/.bazeliskrc"
+  grep -Fxq \
+    'import %workspace%/.roo_testing/bazelrc/common/asan.bazelrc' \
+    "examples/${example}/.bazelrc"
   cmp .roo_testing/bin/bazel \
     "examples/${example}/.roo_testing/bin/bazel"
   test -x "examples/${example}/.roo_testing/bin/bazel"
+  cmp .roo_testing/bazelrc/common/asan.bazelrc \
+    "examples/${example}/.roo_testing/bazelrc/common/asan.bazelrc"
   cmp .roo_testing/bazelrc/esp32/base.bazelrc \
     "examples/${example}/.roo_testing/bazelrc/esp32/base.bazelrc"
   cmp .roo_testing/bazelrc/esp32/arduino.bazelrc \

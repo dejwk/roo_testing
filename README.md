@@ -79,20 +79,22 @@ workspace. The SoC-first layout keeps future profiles incremental:
 .roo_testing/
   bin/bazel
   bin/test_all_profiles
+  bazelrc/common/asan.bazelrc
   bazelrc/esp32/{base,arduino,idf}.bazelrc
 ```
 
-Import the shared base and every frontend that the workspace supports. For an
-Arduino-only workspace:
+Import the common ASAN fragment, the shared base, and every frontend that the
+workspace supports. For an Arduino-only workspace:
 
 ```bazelrc
+import %workspace%/.roo_testing/bazelrc/common/asan.bazelrc
 import %workspace%/.roo_testing/bazelrc/esp32/base.bazelrc
 import %workspace%/.roo_testing/bazelrc/esp32/arduino.bazelrc
 ```
 
-For ESP-IDF only, import `base.bazelrc` and `idf.bazelrc`. Mixed workspaces
-import all three. The fragments include canonical source URLs so vendored
-copies can be audited and refreshed.
+For ESP-IDF only, import `asan.bazelrc`, `base.bazelrc`, and `idf.bazelrc`.
+Mixed workspaces import all four fragments. They include canonical source URLs
+so vendored copies can be audited and refreshed.
 
 An Arduino-only root may safely keep
 `build --config=roo_testing_arduino_esp32` in `.bazelrc`, because it has no
@@ -143,6 +145,38 @@ first failure. The standalone Arduino examples vendor the base and Arduino
 fragments plus the nested wrapper, so their plain Bazel commands use the same
 announced default. An rc file cannot import an `@roo_testing//...` label because
 repository resolution happens after rc parsing.
+
+### AddressSanitizer builds and tests
+
+The vendored `bazelrc/common/asan.bazelrc` fragment defines a frontend-neutral
+AddressSanitizer mode. Append `--config=asan` to the same command you normally
+use. With the wrapper's Arduino default, the short form remains:
+
+```sh
+bazel build ... --config=asan
+bazel test ... --config=asan --test_output=errors
+bazel run //path/to/package:example --config=asan
+```
+
+Select ESP-IDF explicitly and compose it with the same ASAN config:
+
+```sh
+bazel build ... --config=roo_testing_idf_esp32 --config=asan
+bazel test ... --config=roo_testing_idf_esp32 --config=asan \
+  --test_output=errors
+```
+
+To test both emulated frontends under ASAN, pass the config through the existing
+two-profile helper:
+
+```sh
+.roo_testing/bin/test_all_profiles ... --config=asan --test_output=errors
+```
+
+These commands require the common ASAN fragment to be imported by the root
+workspace; dependency rc files are never inherited. Repository-specific ASAN
+workarounds may remain as additional `build:asan` entries in the root
+`.bazelrc`, where Bazel composes them with the shared flags.
 
 This one root configuration gives every source in the emulated build the same
 selected frontend, ESP-IDF capability, emulator, and SoC identity, including
@@ -225,8 +259,13 @@ jobs:
 `profiles` is a JSON array containing any of `host`, `arduino`, and `idf`.
 Arduino and IDF select their frontend configs explicitly; `host` bypasses the
 interactive Arduino default. Each matrix entry builds and tests normally and
-with ASAN. `run_tests` and `run_asan` can disable the corresponding phases for
-build-only repositories, while `system_packages` and `extra_bazel_args` accept
+with ASAN. For emulator profiles, the ASAN phase also compiles the public
+`@roo_testing//test/profile:asan_profile_probe`, so an undefined or incomplete
+ASAN config cannot silently produce an unsanitized build. Every ASAN matrix
+entry also checks that the canonical fragment is present and imported by the
+root `.bazelrc`, including host-only clients that do not depend on roo_testing.
+`run_tests` and `run_asan` can disable the corresponding phases for build-only
+repositories, while `system_packages` and `extra_bazel_args` accept
 space-separated additions. All callers use their checked-in `.bazelversion`;
 Roo clients pin Bazel 9.2.0. Pull requests may restore trusted Bazel caches but
 cannot save new cache entries.

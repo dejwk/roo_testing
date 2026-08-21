@@ -1,5 +1,7 @@
 common --registry="https://raw.githubusercontent.com/dejwk/roo-registry/main/" --registry="https://bcr.bazel.build"
 
+# AddressSanitizer: bazel test ... --config=asan
+import %workspace%/.roo_testing/bazelrc/common/asan.bazelrc
 import %workspace%/.roo_testing/bazelrc/esp32/base.bazelrc
 import %workspace%/.roo_testing/bazelrc/esp32/idf.bazelrc
 import %workspace%/.roo_testing/bazelrc/esp32/arduino.bazelrc
@@ -8,12 +10,5 @@ import %workspace%/.roo_testing/bazelrc/esp32/arduino.bazelrc
 # Arduino only when the caller did not select a frontend. Keeping the default
 # out of rc options lets explicit IDF replace it instead of accumulating copts.
 
-build:asan --strip=never
-build:asan --copt -fsanitize=address
-build:asan --copt -DADDRESS_SANITIZER
-build:asan --copt -O1
-build:asan --copt -g
-build:asan --copt -fno-omit-frame-pointer
-build:asan --linkopt -fsanitize=address
 # GCC 14 can emit spurious maybe-uninitialized warnings in std::regex with ASAN.
 build:asan --per_file_copt=.*glog\+.*logging\.cc@-Wno-maybe-uninitialized

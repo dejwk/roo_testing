@@ -82,6 +82,22 @@ for command in \
     fail "${command} did not announce the Arduino default"
 done
 
+# ASAN is an orthogonal build mode: the wrapper adds the Arduino frontend while
+# preserving the sanitizer config exactly as the caller supplied it.
+invoke_wrapper test --config=asan //... --test_output=errors
+assert_lines \
+  call skip= arg=test "arg=${default_config}" arg=--config=asan arg=//... \
+  arg=--test_output=errors end
+grep -Fq 'defaulting to --config=roo_testing_arduino_esp32' "${stderr_log}" ||
+  fail "ASAN invocation did not announce the Arduino default"
+
+# An explicit IDF frontend composes with ASAN without adding Arduino.
+invoke_wrapper build --config=roo_testing_idf_esp32 --config=asan //...
+assert_lines \
+  call skip= arg=build arg=--config=roo_testing_idf_esp32 \
+  arg=--config=asan arg=//... end
+[[ ! -s "${stderr_log}" ]] || fail "explicit IDF ASAN build printed a default notice"
+
 invoke_wrapper build --config=roo_testing_idf_esp32s3 //:target
 assert_lines \
   call skip= arg=build arg=--config=roo_testing_idf_esp32s3 arg=//:target end
@@ -223,12 +239,12 @@ assert_lines call skip=true arg=version end
 ROO_TESTING_BAZEL="${self}" \
 ROO_TESTING_FAKE_BAZEL=1 \
 ROO_TESTING_FAKE_CAPTURE="${capture}" \
-  "${profile_helper}" //... --test_output=errors 2>"${stderr_log}"
+  "${profile_helper}" //... --config=asan --test_output=errors 2>"${stderr_log}"
 assert_lines \
   call skip= arg=test arg=--config=roo_testing_arduino_esp32 arg=//... \
-  arg=--test_output=errors end \
+  arg=--config=asan arg=--test_output=errors end \
   call skip= arg=test arg=--config=roo_testing_idf_esp32 arg=//... \
-  arg=--test_output=errors end
+  arg=--config=asan arg=--test_output=errors end
 grep -Fq 'testing the Arduino ESP32 profile' "${stderr_log}" ||
   fail "helper omitted Arduino notice"
 grep -Fq 'testing the ESP-IDF ESP32 profile' "${stderr_log}" ||

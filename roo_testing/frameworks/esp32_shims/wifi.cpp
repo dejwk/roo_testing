@@ -70,6 +70,7 @@ bool g_started = false;
 std::vector<wifi_ap_record_t> g_scan_results;
 std::unique_ptr<Connection> g_connection;
 esp_netif_t* g_default_netif = nullptr;
+esp_netif_t* g_station_netif = nullptr;
 std::vector<esp_netif_t*> g_netifs;
 
 constexpr wifi_osi_funcs_t MakeHostWifiOsiFuncs() {
@@ -257,8 +258,10 @@ esp_err_t esp_wifi_connect(void) {
                  sizeof(connected), portMAX_DELAY);
 
   ip_event_got_ip_t got_ip = {};
-  got_ip.esp_netif = g_default_netif;
-  if (g_default_netif != nullptr) got_ip.ip_info = g_default_netif->ip_info;
+  // The default netif may be the access point: Arduino creates it before the
+  // station netif. Deliver the IP event to the station that just connected.
+  got_ip.esp_netif = g_station_netif;
+  if (g_station_netif != nullptr) got_ip.ip_info = g_station_netif->ip_info;
   esp_event_post(IP_EVENT, IP_EVENT_STA_GOT_IP, &got_ip, sizeof(got_ip),
                  portMAX_DELAY);
   return ESP_OK;
@@ -567,12 +570,14 @@ void esp_netif_destroy(esp_netif_t* netif) {
   if (g_default_netif == netif) {
     g_default_netif = g_netifs.empty() ? nullptr : g_netifs.front();
   }
+  if (g_station_netif == netif) g_station_netif = nullptr;
   delete netif;
 }
 esp_netif_t* esp_netif_create_default_wifi_sta(void) {
-  return NewNetif("WIFI_STA_DEF", "sta", static_cast<esp_netif_flags_t>(
+  g_station_netif = NewNetif("WIFI_STA_DEF", "sta", static_cast<esp_netif_flags_t>(
       ESP_NETIF_DHCP_CLIENT | ESP_NETIF_FLAG_AUTOUP),
       IP_EVENT_STA_GOT_IP, IP_EVENT_STA_LOST_IP);
+  return g_station_netif;
 }
 esp_netif_t* esp_netif_create_default_wifi_ap(void) {
   return NewNetif("WIFI_AP_DEF", "ap", static_cast<esp_netif_flags_t>(

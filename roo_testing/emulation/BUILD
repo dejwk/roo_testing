@@ -1,4 +1,7 @@
 exports_files(
-    ["arduino.bzl"],
+    [
+        "arduino.bzl",
+        "esp_idf.bzl",
+    ],
     visibility = ["//visibility:public"],
 )

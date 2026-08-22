@@ -115,7 +115,9 @@ class FakeEsp32Board {
 
   const std::string& fs_root() const { return fs_root_; }
 
-  void set_fs_root(std::string fs_root) { fs_root_ = std::move(fs_root); }
+  // Relative paths resolve from BUILD_WORKSPACE_DIRECTORY during `bazel run`,
+  // and from the process working directory when run another way.
+  void set_fs_root(std::string fs_root);
 
   Esp32UartInterface& uart(int idx) { return uart_[idx]; }
 

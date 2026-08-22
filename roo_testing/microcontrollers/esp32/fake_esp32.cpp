@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <cstdlib>
 #include <cstring>
 #include <random>
 #include <set>
@@ -28,6 +29,17 @@ std::string default_fs_root_path() {
     LOG(ERROR) << "getcwd() failed";
     return "";
   }
+}
+
+std::string resolve_fs_root_path(std::string path) {
+  if (path.empty() || path.front() == '/') {
+    return path;
+  }
+  const char* workspace = std::getenv("BUILD_WORKSPACE_DIRECTORY");
+  if (workspace == nullptr || workspace[0] == '\0') {
+    return path;
+  }
+  return std::string(workspace) + "/" + path;
 }
 
 std::string default_nvs_file() {
@@ -163,6 +175,10 @@ void FakeEsp32Board::flush() {
   for (auto& dev : spi_devices_to_pins_) {
     dev.first->flush();
   }
+}
+
+void FakeEsp32Board::set_fs_root(std::string fs_root) {
+  fs_root_ = resolve_fs_root_path(std::move(fs_root));
 }
 
 void Esp32InMatrix::assign(uint32_t gpio, uint32_t signal_idx, bool inv) {

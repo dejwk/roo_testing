@@ -37,3 +37,26 @@ class ConsoleUartDevice : public FakeUartDevice {
   size_t read(uint8_t* buf, uint16_t size) override;
   size_t availableForRead() override;
 };
+
+// A bidirectional cable connecting two UART endpoints.
+//
+// Bytes written by one endpoint become immediately available for reading from
+// the other endpoint. Attach each endpoint to a different UART device to
+// emulate crossed TX/RX jumper wires.
+class FakeUartCable {
+ public:
+  FakeUartCable();
+  ~FakeUartCable();
+
+  FakeUartCable(const FakeUartCable&) = delete;
+  FakeUartCable& operator=(const FakeUartCable&) = delete;
+
+  FakeUartDevice& end_a();
+  FakeUartDevice& end_b();
+
+ private:
+  class Endpoint;
+
+  std::unique_ptr<Endpoint> end_a_;
+  std::unique_ptr<Endpoint> end_b_;
+};

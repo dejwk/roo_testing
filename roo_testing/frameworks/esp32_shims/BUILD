@@ -32,6 +32,7 @@ cc_library(
         "idf_core.cpp",
         "idf_drivers.cpp",
         "idf_ledc.cpp",
+        "idf_sd.cpp",
         "nvs.cpp",
         "ota_partition.cpp",
         "wifi.cpp",
@@ -85,6 +86,18 @@ cc_library(
     deps = [
         ":arduino",
         ":idf",
+    ],
+)
+
+cc_test(
+    name = "idf_sd_compat_test",
+    size = "small",
+    srcs = ["idf_sd_compat_test.cpp"],
+    linkstatic = 1,
+    deps = [
+        ":idf",
+        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "@googletest//:gtest",
     ],
 )
 

@@ -19,6 +19,7 @@ Esp32UartInterface::Esp32UartInterface(int idx, const std::string& name,
 size_t Esp32UartInterface::write(const uint8_t* buf, size_t size) {
   // Find the device to communicate with.
   for (const auto& i : esp32_->uart_devices()) {
+    if (i.second.tx < 0) continue;
     if (esp32_->out_matrix.signal_for_pin(i.second.tx) != tx_signal_) continue;
     FakeUartDevice* dev = i.first;
     return dev->write(buf, size);
@@ -29,6 +30,7 @@ size_t Esp32UartInterface::write(const uint8_t* buf, size_t size) {
 size_t Esp32UartInterface::availableForWrite() {
   // Find the device to communicate with.
   for (const auto& i : esp32_->uart_devices()) {
+    if (i.second.tx < 0) continue;
     if (esp32_->out_matrix.signal_for_pin(i.second.tx) != tx_signal_) continue;
     FakeUartDevice* dev = i.first;
     return dev->availableForWrite();
@@ -39,6 +41,7 @@ size_t Esp32UartInterface::availableForWrite() {
 size_t Esp32UartInterface::read(uint8_t* buf, size_t size) {
   // Find the device to communicate with.
   for (const auto& i : esp32_->uart_devices()) {
+    if (i.second.rx < 0) continue;
     if (esp32_->in_matrix.pin_for_signal(rx_signal_) != i.second.rx) continue;
     FakeUartDevice* dev = i.first;
     return dev->read(buf, size);
@@ -49,6 +52,7 @@ size_t Esp32UartInterface::read(uint8_t* buf, size_t size) {
 size_t Esp32UartInterface::availableForRead() {
   // Find the device to communicate with.
   for (const auto& i : esp32_->uart_devices()) {
+    if (i.second.rx < 0) continue;
     if (esp32_->in_matrix.pin_for_signal(rx_signal_) != i.second.rx) continue;
     FakeUartDevice* dev = i.first;
     return dev->availableForRead();
@@ -57,7 +61,8 @@ size_t Esp32UartInterface::availableForRead() {
 }
 
 // HardwareSerial usage selects the Arduino UART shim object, whose strong hook
-// replaces this one. The fallback keeps IDF-only FakeEsp32 users self-contained.
+// replaces this one. The fallback keeps IDF-only FakeEsp32 users
+// self-contained.
 extern "C" __attribute__((weak)) void uart_notify_data_available(uint8_t) {}
 
 void Esp32UartInterface::notifyDataAvailable() {

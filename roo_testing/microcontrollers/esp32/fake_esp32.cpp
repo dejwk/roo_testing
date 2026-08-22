@@ -130,14 +130,16 @@ void FakeEsp32Board::notifyUartDataAvailable(const FakeUartDevice* source) {
   if (itr == uart_devices_to_pins_.end()) {
     return;
   }
-  int tx_pin = itr->second.tx;
-  uint16_t signal = out_matrix.signal_for_pin(tx_pin);
+  int rx_pin = itr->second.rx;
+  if (rx_pin < 0) {
+    return;
+  }
   int idx = -1;
-  if (signal == uart_[0].tx_signal()) {
+  if (in_matrix.pin_for_signal(uart_[0].rx_signal()) == rx_pin) {
     idx = 0;
-  } else if (signal == uart_[1].tx_signal()) {
+  } else if (in_matrix.pin_for_signal(uart_[1].rx_signal()) == rx_pin) {
     idx = 1;
-  } else if (signal == uart_[2].tx_signal()) {
+  } else if (in_matrix.pin_for_signal(uart_[2].rx_signal()) == rx_pin) {
     idx = 2;
   }
   if (idx < 0) {

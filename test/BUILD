@@ -197,6 +197,18 @@ cc_test(
 )
 
 cc_test(
+    name = "fake_uart_test",
+    size = "small",
+    srcs = ["fake_uart_test.cpp"],
+    linkstatic = 1,
+    deps = [
+        "//roo_testing/buses/uart",
+        "//roo_testing/microcontrollers/esp32:core",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "framework_version_test",
     size = "small",
     srcs = ["framework_version_test.cpp"],

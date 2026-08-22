@@ -73,6 +73,7 @@ invoke_wrapper() {
 }
 
 default_config="--config=roo_testing_arduino_esp32"
+idf_config="--config=roo_testing_idf_esp32"
 for command in \
     aquery build coverage cquery fetch info mobile-install print_action run test vendor; do
   invoke_wrapper "${command}" //:target
@@ -81,6 +82,19 @@ for command in \
   grep -Fq 'defaulting to --config=roo_testing_arduino_esp32' "${stderr_log}" ||
     fail "${command} did not announce the Arduino default"
 done
+
+invoke_wrapper run //examples/espidf/SDMMC
+assert_lines \
+  call skip= arg=run "arg=${idf_config}" arg=//examples/espidf/SDMMC end
+grep -Fq 'inferred an ESP-IDF example target; selecting --config=roo_testing_idf_esp32' \
+  "${stderr_log}" || fail "ESP-IDF example run did not infer the IDF profile"
+
+invoke_wrapper run //examples/esp-idf/UART -- --payload
+assert_lines \
+  call skip= arg=run "arg=${idf_config}" arg=//examples/esp-idf/UART arg=-- \
+  arg=--payload end
+grep -Fq 'inferred an ESP-IDF example target' "${stderr_log}" ||
+  fail "hyphenated ESP-IDF example path did not infer the IDF profile"
 
 # ASAN is an orthogonal build mode: the wrapper adds the Arduino frontend while
 # preserving the sanitizer config exactly as the caller supplied it.

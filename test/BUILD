@@ -155,6 +155,19 @@ cc_test(
 )
 
 cc_test(
+    name = "idf_uart_device_test",
+    size = "small",
+    srcs = ["idf_uart_device_test.cpp"],
+    linkstatic = 1,
+    deps = [
+        "//roo_testing/buses/uart",
+        "//roo_testing/frameworks/esp32_shims:idf",
+        "//roo_testing/microcontrollers/esp32:core",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "idf_ledc_test",
     size = "small",
     srcs = ["idf_ledc_test.cpp"],
@@ -194,6 +207,20 @@ cc_test(
     srcs = ["arduino_uart_api_test.cpp"],
     linkstatic = 1,
     deps = ["//:arduino_gtest_main"],
+)
+
+cc_test(
+    name = "arduino_wifi_scan_test",
+    size = "small",
+    timeout = "short",
+    srcs = ["arduino_wifi_scan_test.cpp"],
+    linkstatic = 1,
+    deps = [
+        "//:arduino_gtest_main",
+        "//roo_testing/frameworks/arduino-esp32/libraries/WiFi",
+        "//roo_testing/microcontrollers/esp32:core",
+        "//roo_testing/transducers/wifi",
+    ],
 )
 
 cc_test(

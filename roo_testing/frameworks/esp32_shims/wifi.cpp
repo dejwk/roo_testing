@@ -13,6 +13,7 @@
 #include <cstring>
 #include <memory>
 #include <mutex>
+#include <new>
 #include <string>
 #include <vector>
 
@@ -68,6 +69,7 @@ wifi_country_t g_country = {
 };
 bool g_started = false;
 std::vector<wifi_ap_record_t> g_scan_results;
+uint64_t g_scan_generation = 0;
 std::unique_ptr<Connection> g_connection;
 esp_netif_t* g_default_netif = nullptr;
 esp_netif_t* g_station_netif = nullptr;
@@ -163,6 +165,34 @@ esp_netif_t* NewNetif(const char* key, const char* description,
   g_netifs.push_back(netif);
   if (g_default_netif == nullptr) g_default_netif = netif;
   return netif;
+}
+
+struct PendingScanCompletion {
+  uint64_t generation;
+  uint16_t result_count;
+};
+
+void PostScanDone(uint64_t generation, uint16_t result_count) {
+  {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (generation != g_scan_generation) return;
+  }
+  wifi_event_sta_scan_done_t event = {};
+  event.status = 0;
+  event.number = result_count;
+  esp_event_post(WIFI_EVENT, WIFI_EVENT_SCAN_DONE, &event, sizeof(event),
+                 portMAX_DELAY);
+}
+
+void CompleteScan(void* arg) {
+  std::unique_ptr<PendingScanCompletion> completion(
+      static_cast<PendingScanCompletion*>(arg));
+  // Real asynchronous scans complete after esp_wifi_scan_start() returns.
+  // Keep that ordering so Arduino can publish its scanning state first.
+  vTaskDelay(pdMS_TO_TICKS(10));
+  PostScanDone(completion->generation, completion->result_count);
+  completion.reset();
+  vTaskDelete(nullptr);
 }
 
 }  // namespace
@@ -272,11 +302,11 @@ esp_err_t esp_wifi_disconnect(void) {
     std::lock_guard<std::mutex> lock(g_mutex);
     g_connection.reset();
   }
-  PostDisconnect(WIFI_REASON_UNSPECIFIED);
+  PostDisconnect(WIFI_REASON_ASSOC_LEAVE);
   return ESP_OK;
 }
 
-esp_err_t esp_wifi_scan_start(const wifi_scan_config_t* config, bool) {
+esp_err_t esp_wifi_scan_start(const wifi_scan_config_t* config, bool block) {
   std::vector<wifi_ap_record_t> results;
   const auto& environment = FakeEsp32().getWifiEnvironment();
   for (const auto& entry : environment.access_points()) {
@@ -296,19 +326,34 @@ esp_err_t esp_wifi_scan_start(const wifi_scan_config_t* config, bool) {
     }
     results.push_back(ToRecord(ap));
   }
+  uint64_t generation;
+  uint16_t result_count;
   {
     std::lock_guard<std::mutex> lock(g_mutex);
     g_scan_results = std::move(results);
+    generation = ++g_scan_generation;
+    result_count = static_cast<uint16_t>(g_scan_results.size());
   }
-  wifi_event_sta_scan_done_t event = {};
-  event.status = 0;
-  event.number = static_cast<uint16_t>(g_scan_results.size());
-  esp_event_post(WIFI_EVENT, WIFI_EVENT_SCAN_DONE, &event, sizeof(event),
-                 portMAX_DELAY);
+  if (block) {
+    PostScanDone(generation, result_count);
+  } else {
+    auto completion = std::unique_ptr<PendingScanCompletion>(
+        new (std::nothrow) PendingScanCompletion{generation, result_count});
+    if (completion == nullptr) return ESP_ERR_NO_MEM;
+    if (xTaskCreate(CompleteScan, "wifi_scan", 4096, completion.get(),
+                    tskIDLE_PRIORITY + 2, nullptr) != pdPASS) {
+      return ESP_ERR_NO_MEM;
+    }
+    completion.release();
+  }
   return ESP_OK;
 }
 
-esp_err_t esp_wifi_scan_stop(void) { return ESP_OK; }
+esp_err_t esp_wifi_scan_stop(void) {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  ++g_scan_generation;
+  return ESP_OK;
+}
 esp_err_t esp_wifi_scan_get_ap_num(uint16_t* number) {
   if (number == nullptr) return ESP_ERR_INVALID_ARG;
   std::lock_guard<std::mutex> lock(g_mutex);

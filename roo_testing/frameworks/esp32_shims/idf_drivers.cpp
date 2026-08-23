@@ -29,6 +29,9 @@ struct UartState {
 
 std::array<UartState, UART_NUM_MAX> g_uart;
 
+constexpr std::array<uint8_t, UART_NUM_MAX> kUartTxSignals = {14, 17, 198};
+constexpr std::array<uint8_t, UART_NUM_MAX> kUartRxSignals = {14, 17, 198};
+
 constexpr size_t kSpiHostCount = 3;
 constexpr std::array<uint8_t, kSpiHostCount> kSpiClockSignals = {0, 8, 63};
 constexpr std::array<uint8_t, kSpiHostCount> kSpiMisoSignals = {1, 9, 64};
@@ -385,8 +388,22 @@ esp_err_t uart_param_config(uart_port_t port, const uart_config_t* config) {
   g_uart[port].parity = config->parity;
   return ESP_OK;
 }
-esp_err_t _uart_set_pin6(uart_port_t port, int, int, int, int, int, int) {
-  return ValidUart(port) ? ESP_OK : ESP_ERR_INVALID_ARG;
+esp_err_t _uart_set_pin6(uart_port_t port, int tx_pin, int rx_pin, int, int,
+                         int, int) {
+  if (!ValidUart(port)) return ESP_ERR_INVALID_ARG;
+  if (tx_pin != UART_PIN_NO_CHANGE) {
+    if (!ValidGpio(static_cast<gpio_num_t>(tx_pin))) {
+      return ESP_ERR_INVALID_ARG;
+    }
+    FakeEsp32().out_matrix.assign(tx_pin, kUartTxSignals[port], false, false);
+  }
+  if (rx_pin != UART_PIN_NO_CHANGE) {
+    if (!ValidGpio(static_cast<gpio_num_t>(rx_pin))) {
+      return ESP_ERR_INVALID_ARG;
+    }
+    FakeEsp32().in_matrix.assign(rx_pin, kUartRxSignals[port], false);
+  }
+  return ESP_OK;
 }
 esp_err_t uart_set_baudrate(uart_port_t port, uint32_t baud) {
   if (!ValidUart(port)) return ESP_ERR_INVALID_ARG;

@@ -75,6 +75,8 @@ esp_netif_t* g_default_netif = nullptr;
 esp_netif_t* g_station_netif = nullptr;
 std::vector<esp_netif_t*> g_netifs;
 
+constexpr int kEmulatedScanDurationMs = 1000;
+
 constexpr wifi_osi_funcs_t MakeHostWifiOsiFuncs() {
   wifi_osi_funcs_t funcs = {};
   funcs._version = ESP_WIFI_OS_ADAPTER_VERSION;
@@ -188,8 +190,8 @@ void CompleteScan(void* arg) {
   std::unique_ptr<PendingScanCompletion> completion(
       static_cast<PendingScanCompletion*>(arg));
   // Real asynchronous scans complete after esp_wifi_scan_start() returns.
-  // Keep that ordering so Arduino can publish its scanning state first.
-  vTaskDelay(pdMS_TO_TICKS(10));
+  // Keep the scanning state visible long enough for UI examples to render it.
+  vTaskDelay(pdMS_TO_TICKS(kEmulatedScanDurationMs));
   PostScanDone(completion->generation, completion->result_count);
   completion.reset();
   vTaskDelete(nullptr);

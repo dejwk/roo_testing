@@ -229,11 +229,9 @@ static Fl_Thread device_thread;
 
 class MyWindow : public Fl_Window {
  public:
-  MyWindow(int width, int height, EventQueue* queue,
-           std::function<void()> on_escape)
+  MyWindow(int width, int height, EventQueue* queue)
       : Fl_Window(width, height, "roo_display emulator"),
         queue_(queue),
-        on_escape_(std::move(on_escape)),
         logical_width_(width),
         logical_height_(height),
         magnification_(1),
@@ -356,8 +354,8 @@ class MyWindow : public Fl_Window {
       case FL_KEYDOWN: {
         if (Fl::event_key() != FL_Escape) return Fl_Window::handle(event);
         // FLTK otherwise treats Escape as a request to close this top-level
-        // window. Consume it and forward the semantic request to the caller.
-        if (on_escape_ != nullptr) on_escape_();
+        // window. Roo Windows' FltkKeySource consumes and routes it when a
+        // keyboard source is installed; otherwise it is deliberately ignored.
         return 1;
       }
       case FL_SHOW: {
@@ -371,7 +369,6 @@ class MyWindow : public Fl_Window {
   }
 
   EventQueue* queue_;
-  std::function<void()> on_escape_;
   const int logical_width_;
   const int logical_height_;
   int magnification_;
@@ -422,7 +419,7 @@ class Device {
         pixels_in_window_(0) {}
 
   void show(int width, int height) {
-    window_.reset(new MyWindow(width, height, queue_, options_.on_escape));
+    window_.reset(new MyWindow(width, height, queue_));
     int screen_x = 0;
     int screen_y = 0;
     int screen_w = 0;

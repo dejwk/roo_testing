@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <functional>
 
 #include "roo_testing/transducers/ui/viewport/viewport.h"
 
@@ -20,9 +19,6 @@ class EventQueue;
 struct FltkViewportOptions {
   uint8_t noise_bits = FLTK_DEVICE_NOISE_BITS;
   int max_pixels_per_ms = FLTK_MAX_PIXELS_PER_MS;
-  // Runs on FLTK's event thread when Escape is pressed. The callback must
-  // marshal any application work to its owning thread.
-  std::function<void()> on_escape;
 };
 
 class FltkViewport : public Viewport {

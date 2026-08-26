@@ -26,6 +26,8 @@ policy on top of this baseline.
   naturally and matches their fields.
 - Favor readability. Avoid redundant branches, repeated explanations, and
   unnecessary line count.
+- Keep `CHECK` and related assertion macros at their point of use so failures
+  report the source line that expresses the violated contract.
 - Avoid `const_cast` as a way to bridge const/non-const mismatches; fix the
   interface unless the target is provably non-mutating on that path.
 - Avoid RTTI-dependent constructs such as `dynamic_cast` and `typeid` in
@@ -34,7 +36,13 @@ policy on top of this baseline.
 - Avoid `auto` unless its type is obvious or spelling it is excessively complex.
 - Be conservative about RAM. Prefer shared data, existing ownership points, and
   zero-cost hooks over per-instance state.
+- Use `///` for Doxygen comments; do not use block-form Doxygen comments.
 - All public classes and public methods have Doxygen comments at declaration.
+- Leave one empty separator line between public methods or functions that have
+  Doxygen comments, including one-line declarations. Adjacent undocumented
+  one-line declarations may omit the separator.
+- Always leave one empty separator line between adjacent `struct` or `class`
+  declarations.
 - Doxygen describes implemented behavior, or the contract for pure virtual and
   otherwise contract-defining declarations.
 - Every code change ships with focused unit tests.
@@ -68,7 +76,10 @@ policy on top of this baseline.
 
 ## Checklist
 
-- Public API declarations have Doxygen comments.
+- Public API declarations have `///` Doxygen comments.
+- Documented public methods and functions have empty separator lines between
+  their declarations.
+- Adjacent `struct` and `class` declarations have empty separator lines.
 - The code change includes focused unit tests with `Verifies ...` comments.
 - Validation starts with the narrowest relevant target.
 - `clang-format` has run on every changed C++ source and header.

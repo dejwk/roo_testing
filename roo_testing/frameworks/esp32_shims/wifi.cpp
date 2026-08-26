@@ -145,6 +145,10 @@ AccessPoint* FindConfiguredAccessPoint() {
 
 void PostDisconnect(wifi_err_reason_t reason) {
   wifi_event_sta_disconnected_t event = {};
+  CopyString(reinterpret_cast<const char*>(g_station_config.sta.ssid),
+             event.ssid, sizeof(event.ssid));
+  event.ssid_len = static_cast<uint8_t>(
+      strnlen(reinterpret_cast<const char*>(event.ssid), sizeof(event.ssid)));
   event.reason = reason;
   esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &event,
                  sizeof(event), portMAX_DELAY);

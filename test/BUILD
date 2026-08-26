@@ -258,6 +258,16 @@ cc_test(
 )
 
 cc_test(
+    name = "voltage_signal_test",
+    size = "small",
+    srcs = ["voltage_signal_test.cpp"],
+    deps = [
+        "//roo_testing/transducers/voltage",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "gpio_test",
     size = "small",
     srcs = ["gpio_test.cpp"],

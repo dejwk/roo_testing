@@ -66,12 +66,14 @@
 
 /* Scheduler includes. */
 #include "FreeRTOS.h"
+#include "roo_testing_port.h"
 #include "task.h"
 #include "timers.h"
 #include "utils/wait_for_event.h"
 /*-----------------------------------------------------------*/
 
 #define SIG_RESUME SIGUSR1
+#define SIG_SIMULATED_INTERRUPT SIGUSR2
 
 typedef struct THREAD
 {
@@ -99,8 +101,23 @@ static pthread_once_t hSigSetupThread = PTHREAD_ONCE_INIT;
 static sigset_t xAllSignals;
 static sigset_t xSchedulerOriginalSignalMask;
 static pthread_t hMainThread = ( pthread_t )NULL;
+static pthread_t hRunningThread = ( pthread_t )NULL;
+/* Logical critical-section/ISR exclusion depth for the active FreeRTOS
+ * context. Direct interrupt masking does not change this bookkeeping. */
 static volatile BaseType_t uxCriticalNesting;
+/* Active ISR-frame depth for the active FreeRTOS context. An ordinary task
+ * critical section changes uxCriticalNesting but does not change this value. */
 static volatile UBaseType_t uxInterruptNesting;
+static volatile BaseType_t xYieldPending;
+static volatile sig_atomic_t xSimulatedInterruptPending;
+static RooTestingInterruptDispatcher pxSimulatedInterruptDispatcher;
+
+_Static_assert( __atomic_always_lock_free( sizeof( hRunningThread ), 0 ),
+                "simulated interrupt pthread publication must be lock-free" );
+_Static_assert( __atomic_always_lock_free( sizeof( xSimulatedInterruptPending ), 0 ),
+                "simulated interrupt pending state must be lock-free" );
+_Static_assert( __atomic_always_lock_free( sizeof( pxSimulatedInterruptDispatcher ), 0 ),
+                "simulated interrupt dispatcher publication must be lock-free" );
 /*-----------------------------------------------------------*/
 
 static BaseType_t xSchedulerEnd = pdFALSE;
@@ -114,9 +131,12 @@ static void prvSwitchThread( Thread_t * xThreadToResume,
 static void prvSuspendSelf( Thread_t * thread);
 static void prvResumeThread( Thread_t * xThreadId );
 static void vPortSystemTickHandler( int sig );
+static void vPortSimulatedInterruptHandler( int sig );
 static void vPortStartFirstTask( void );
 static void prvEnterInterruptContext( void );
 static void prvExitInterruptContext( void );
+static void prvYieldPendingFromInterruptExit( void );
+static void prvKickSimulatedInterrupt( void );
 /*-----------------------------------------------------------*/
 
 static void prvFatalError( const char *pcCall, int iErrno )
@@ -226,7 +246,7 @@ BaseType_t xPortStartScheduler( void )
 void vPortEndScheduler( void )
 {
     struct itimerval itimer;
-    struct sigaction sigtick;
+    struct sigaction sigignore;
     Thread_t *xCurrentThread;
 
     /* Stop the timer and ignore any pending SIGALRMs that would end
@@ -238,10 +258,14 @@ void vPortEndScheduler( void )
     itimer.it_interval.tv_usec = 0;
     (void)setitimer( ITIMER_REAL, &itimer, NULL );
 
-    sigtick.sa_flags = 0;
-    sigtick.sa_handler = SIG_IGN;
-    sigemptyset( &sigtick.sa_mask );
-    sigaction( SIGALRM, &sigtick, NULL );
+    sigignore.sa_flags = 0;
+    sigignore.sa_handler = SIG_IGN;
+    sigemptyset( &sigignore.sa_mask );
+    sigaction( SIGALRM, &sigignore, NULL );
+
+    __atomic_store_n( &xSimulatedInterruptPending, 0, __ATOMIC_RELEASE );
+    __atomic_store_n( &hRunningThread, ( pthread_t )NULL, __ATOMIC_RELEASE );
+    sigaction( SIG_SIMULATED_INTERRUPT, &sigignore, NULL );
 
     /* Signal the scheduler to exit its loop. */
     xSchedulerEnd = pdTRUE;
@@ -310,6 +334,12 @@ void vPortYieldFromISR( void )
 {
     Thread_t *xThreadToSuspend;
     Thread_t *xThreadToResume;
+
+    if( uxInterruptNesting > 0 )
+    {
+        xYieldPending = pdTRUE;
+        return;
+    }
 
     xThreadToSuspend = prvGetThreadFromTask( xTaskGetCurrentTaskHandle() );
 
@@ -388,6 +418,61 @@ static void prvExitInterruptContext( void )
 }
 /*-----------------------------------------------------------*/
 
+static void prvYieldPendingFromInterruptExit( void )
+{
+    if( ( uxInterruptNesting == 0 ) && ( xYieldPending != pdFALSE ) )
+    {
+        xYieldPending = pdFALSE;
+        vPortYieldFromISR();
+    }
+}
+/*-----------------------------------------------------------*/
+
+static void prvKickSimulatedInterrupt( void )
+{
+    pthread_t hThread;
+
+    if( __atomic_load_n( &xSimulatedInterruptPending, __ATOMIC_ACQUIRE ) == 0 )
+    {
+        return;
+    }
+
+    hThread = __atomic_load_n( &hRunningThread, __ATOMIC_ACQUIRE );
+    if( hThread != ( pthread_t )NULL )
+    {
+        ( void ) pthread_kill( hThread, SIG_SIMULATED_INTERRUPT );
+    }
+}
+/*-----------------------------------------------------------*/
+
+bool xPortInstallSimulatedInterruptDispatcher( RooTestingInterruptDispatcher dispatcher )
+{
+    RooTestingInterruptDispatcher expected = NULL;
+
+    if( dispatcher == NULL )
+    {
+        return false;
+    }
+
+    if( __atomic_compare_exchange_n( &pxSimulatedInterruptDispatcher, &expected,
+                                     dispatcher, false, __ATOMIC_RELEASE,
+                                     __ATOMIC_ACQUIRE ) )
+    {
+        prvKickSimulatedInterrupt();
+        return true;
+    }
+
+    return expected == dispatcher;
+}
+/*-----------------------------------------------------------*/
+
+void vPortRequestSimulatedInterrupt( void )
+{
+    __atomic_store_n( &xSimulatedInterruptPending, 1, __ATOMIC_RELEASE );
+    prvKickSimulatedInterrupt();
+}
+/*-----------------------------------------------------------*/
+
 /*
  * Setup the systick timer to generate the tick interrupts at the required
  * frequency.
@@ -450,6 +535,7 @@ static void vPortSystemTickHandler( int sig )
 
 #if ( configUSE_PREEMPTION == 1 )
     /* Select Next Task. */
+    xYieldPending = pdFALSE;
     vTaskSwitchContext();
 
     pxThreadToResume = prvGetThreadFromTask( xTaskGetCurrentTaskHandle() );
@@ -458,6 +544,40 @@ static void vPortSystemTickHandler( int sig )
 #endif
 
     prvExitInterruptContext();
+    prvYieldPendingFromInterruptExit();
+    errno = iSavedErrno;
+}
+/*-----------------------------------------------------------*/
+
+static void vPortSimulatedInterruptHandler( int sig )
+{
+    const int iSavedErrno = errno;
+    RooTestingInterruptDispatcher dispatcher;
+
+    ( void ) sig;
+    dispatcher = __atomic_load_n( &pxSimulatedInterruptDispatcher,
+                                  __ATOMIC_ACQUIRE );
+    if( dispatcher == NULL )
+    {
+        errno = iSavedErrno;
+        return;
+    }
+
+    if( __atomic_exchange_n( &xSimulatedInterruptPending, 0,
+                             __ATOMIC_ACQ_REL ) == 0 )
+    {
+        errno = iSavedErrno;
+        return;
+    }
+
+    prvEnterInterruptContext();
+    do
+    {
+        dispatcher();
+    } while( __atomic_exchange_n( &xSimulatedInterruptPending, 0,
+                                  __ATOMIC_ACQ_REL ) != 0 );
+    prvExitInterruptContext();
+    prvYieldPendingFromInterruptExit();
     errno = iSavedErrno;
 }
 /*-----------------------------------------------------------*/
@@ -497,6 +617,7 @@ static void *prvWaitForStart( void * pvParams )
     /* Resumed for the first time, unblocks all signals. */
     uxCriticalNesting = 0;
     uxInterruptNesting = 0;
+    xYieldPending = pdFALSE;
     vPortEnableInterrupts();
 
     /* Call the task's entry point. */
@@ -566,16 +687,18 @@ static void prvSuspendSelf( Thread_t *thread )
 
 static void prvResumeThread( Thread_t *xThreadId )
 {
+    __atomic_store_n( &hRunningThread, xThreadId->pthread, __ATOMIC_RELEASE );
     if ( pthread_self() != xThreadId->pthread )
     {
         event_signal(xThreadId->ev);
     }
+    prvKickSimulatedInterrupt();
 }
 /*-----------------------------------------------------------*/
 
 static void prvSetupSignalsAndSchedulerPolicy( void )
 {
-    struct sigaction sigresume, sigtick;
+    struct sigaction sigresume, sigtick, siginterrupt;
     int iRet;
 
     hMainThread = pthread_self();
@@ -608,6 +731,12 @@ static void prvSetupSignalsAndSchedulerPolicy( void )
     sigtick.sa_handler = vPortSystemTickHandler;
     sigfillset( &sigtick.sa_mask );
 
+    /* Peripheral interrupts share the tick's restart and masking behavior but
+     * drain source state through the installed roo_testing dispatcher. */
+    siginterrupt.sa_flags = SA_RESTART;
+    siginterrupt.sa_handler = vPortSimulatedInterruptHandler;
+    sigfillset( &siginterrupt.sa_mask );
+
     iRet = sigaction( SIG_RESUME, &sigresume, NULL );
     if ( iRet )
     {
@@ -615,6 +744,12 @@ static void prvSetupSignalsAndSchedulerPolicy( void )
     }
 
     iRet = sigaction( SIGALRM, &sigtick, NULL );
+    if ( iRet )
+    {
+        prvFatalError( "sigaction", errno );
+    }
+
+    iRet = sigaction( SIG_SIMULATED_INTERRUPT, &siginterrupt, NULL );
     if ( iRet )
     {
         prvFatalError( "sigaction", errno );

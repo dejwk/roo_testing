@@ -79,6 +79,8 @@ test_suite(
         "//test:emulator_environment_test",
         "//test:framework_version_test",
         "//test:freertos_posix_isr_context_test",
+        "//test:freertos_posix_simulated_interrupt_install_test",
+        "//test:freertos_posix_simulated_interrupt_test",
         "//test:freertos_posix_thread_join_regression_test",
         "//test:gpio_test",
         "//test:host_event_gateway_test",

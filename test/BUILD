@@ -354,6 +354,34 @@ cc_test(
 )
 
 cc_test(
+    name = "freertos_posix_simulated_interrupt_install_test",
+    size = "small",
+    srcs = ["freertos_posix_simulated_interrupt_install_test.cpp"],
+    copts = ["-Werror"],
+    linkstatic = 1,
+    deps = [
+        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "//roo_testing/frameworks/esp-idf/components/freertos",
+        "//roo_testing/frameworks/esp-idf/components/freertos:roo_testing_port_api",
+        "@googletest//:gtest",
+    ],
+)
+
+cc_test(
+    name = "freertos_posix_simulated_interrupt_test",
+    size = "small",
+    srcs = ["freertos_posix_simulated_interrupt_test.cpp"],
+    copts = ["-Werror"],
+    linkstatic = 1,
+    deps = [
+        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "//roo_testing/frameworks/esp-idf/components/freertos",
+        "//roo_testing/frameworks/esp-idf/components/freertos:roo_testing_port_api",
+        "@googletest//:gtest",
+    ],
+)
+
+cc_test(
     name = "freertos_posix_thread_join_regression_test",
     size = "small",
     srcs = ["freertos_posix_thread_join_regression_test.cpp"],

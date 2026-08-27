@@ -41,18 +41,22 @@ index 583c568d..9863d793 100644
  
  /* Critical section management. */
 diff --git a/components/freertos/FreeRTOS-Kernel/portable/linux/port.c b/components/freertos/FreeRTOS-Kernel/portable/linux/port.c
-index 603c5de8..37ec4c27 100644
+index 603c5de8..3c3bb2b3 100644
 --- a/components/freertos/FreeRTOS-Kernel/portable/linux/port.c
 +++ b/components/freertos/FreeRTOS-Kernel/portable/linux/port.c
-@@ -100,6 +100,7 @@ static sigset_t xAllSignals;
+@@ -100,6 +100,11 @@ static sigset_t xAllSignals;
  static sigset_t xSchedulerOriginalSignalMask;
  static pthread_t hMainThread = ( pthread_t )NULL;
++/* Logical critical-section/ISR exclusion depth for the active FreeRTOS
++ * context. Direct interrupt masking does not change this bookkeeping. */
  static volatile BaseType_t uxCriticalNesting;
++/* Active ISR-frame depth for the active FreeRTOS context. An ordinary task
++ * critical section changes uxCriticalNesting but does not change this value. */
 +static volatile UBaseType_t uxInterruptNesting;
  /*-----------------------------------------------------------*/
  
  static BaseType_t xSchedulerEnd = pdFALSE;
-@@ -114,6 +115,8 @@ static void prvSuspendSelf( Thread_t * thread);
+@@ -114,6 +119,8 @@ static void prvSuspendSelf( Thread_t * thread);
  static void prvResumeThread( Thread_t * xThreadId );
  static void vPortSystemTickHandler( int sig );
  static void vPortStartFirstTask( void );

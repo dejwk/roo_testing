@@ -1,3 +1,4 @@
 # ESP-IDF source patches, in application order.
 0001-expose-linux-task-context.patch
 0002-emulate-linux-isr-context.patch
+0003-deliver-simulated-linux-interrupts.patch

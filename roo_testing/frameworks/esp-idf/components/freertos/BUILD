@@ -30,6 +30,16 @@ cc_library(
 # the long-standing roo_testing port.  ESP-IDF 6.0.2's upstream port.c includes
 # the important pthread_cancel()+pthread_join() task cleanup fix.
 cc_library(
+    name = "roo_testing_port_api",
+    hdrs = ["roo_testing_port.h"],
+    includes = ["."],
+    visibility = [
+        "//roo_testing/interrupts:__pkg__",
+        "//test:__pkg__",
+    ],
+)
+
+cc_library(
     name = "freertos_posix_port",
     srcs = [
         "FreeRTOS-Kernel/portable/linux/port.c",
@@ -55,6 +65,7 @@ cc_library(
     visibility = ["//visibility:private"],
     deps = [
         ":include",
+        ":roo_testing_port_api",
         "//roo_testing/host_event",
     ],
 )

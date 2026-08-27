@@ -17,12 +17,6 @@
 
 extern "C" {
 
-BaseType_t xPortCheckIfInISR(void) {
-  // The POSIX port represents interrupts as signals. roo_testing does not
-  // currently emulate an interrupt context exposed to application code.
-  return pdFALSE;
-}
-
 void* pvPortMalloc(size_t size) { return std::malloc(size); }
 
 void vPortFree(void* ptr) { std::free(ptr); }

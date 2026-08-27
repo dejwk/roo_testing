@@ -78,6 +78,7 @@ test_suite(
         "//test:arduino_uart_api_test",
         "//test:emulator_environment_test",
         "//test:framework_version_test",
+        "//test:freertos_posix_isr_context_test",
         "//test:freertos_posix_thread_join_regression_test",
         "//test:gpio_test",
         "//test:host_event_gateway_test",

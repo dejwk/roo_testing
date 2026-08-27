@@ -337,6 +337,23 @@ cc_test(
 )
 
 cc_test(
+    name = "freertos_posix_isr_context_test",
+    size = "small",
+    srcs = [
+        "freertos_portyield_compile_test.c",
+        "freertos_posix_isr_context_test.cpp",
+    ],
+    copts = ["-Werror"],
+    linkopts = ["-Wl,--wrap=vApplicationTickHook"],
+    linkstatic = 1,
+    deps = [
+        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "//roo_testing/frameworks/esp-idf/components/freertos",
+        "@googletest//:gtest",
+    ],
+)
+
+cc_test(
     name = "freertos_posix_thread_join_regression_test",
     size = "small",
     srcs = ["freertos_posix_thread_join_regression_test.cpp"],

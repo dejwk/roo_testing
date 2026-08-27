@@ -32,6 +32,7 @@
 #define PORTMACRO_H
 
 #include <limits.h>
+#include "esp_macros.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -78,11 +79,27 @@ typedef unsigned long TickType_t;
 
 /* Scheduler utilities. */
 extern void vPortYield( void );
+extern void vPortYieldFromISR( void );
 
 #define portYIELD() vPortYield()
 
-#define portEND_SWITCHING_ISR( xSwitchRequired ) if( (xSwitchRequired) != pdFALSE ) vPortYield()
-#define portYIELD_FROM_ISR( x ) portEND_SWITCHING_ISR( x )
+#define portYIELD_FROM_ISR_NO_ARG() vPortYieldFromISR()
+#define portYIELD_FROM_ISR_ARG( xSwitchRequired ) do { \
+    if( ( xSwitchRequired ) != pdFALSE ) { \
+        vPortYieldFromISR(); \
+    } \
+} while( 0 )
+#define portEND_SWITCHING_ISR( xSwitchRequired ) portYIELD_FROM_ISR_ARG( xSwitchRequired )
+
+#ifdef __cplusplus
+    static inline void prvPortYieldFromISR( BaseType_t xSwitchRequired = pdTRUE )
+    {
+        portYIELD_FROM_ISR_ARG( xSwitchRequired );
+    }
+    #define portYIELD_FROM_ISR( ... ) prvPortYieldFromISR( __VA_ARGS__ )
+#else
+    #define portYIELD_FROM_ISR( ... ) CHOOSE_MACRO_VA_ARG( portYIELD_FROM_ISR_ARG, portYIELD_FROM_ISR_NO_ARG, ##__VA_ARGS__ )( __VA_ARGS__ )
+#endif
 /*-----------------------------------------------------------*/
 
 /* Critical section management. */

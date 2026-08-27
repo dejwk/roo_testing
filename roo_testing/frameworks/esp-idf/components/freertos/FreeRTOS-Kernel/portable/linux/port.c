@@ -100,6 +100,7 @@ static sigset_t xAllSignals;
 static sigset_t xSchedulerOriginalSignalMask;
 static pthread_t hMainThread = ( pthread_t )NULL;
 static volatile BaseType_t uxCriticalNesting;
+static volatile UBaseType_t uxInterruptNesting;
 /*-----------------------------------------------------------*/
 
 static BaseType_t xSchedulerEnd = pdFALSE;
@@ -114,6 +115,8 @@ static void prvSuspendSelf( Thread_t * thread);
 static void prvResumeThread( Thread_t * xThreadId );
 static void vPortSystemTickHandler( int sig );
 static void vPortStartFirstTask( void );
+static void prvEnterInterruptContext( void );
+static void prvExitInterruptContext( void );
 /*-----------------------------------------------------------*/
 
 static void prvFatalError( const char *pcCall, int iErrno )
@@ -297,6 +300,12 @@ bool xPortCanYield( void )
 }
 /*-----------------------------------------------------------*/
 
+BaseType_t xPortCheckIfInISR( void )
+{
+    return ( uxInterruptNesting == 0 ) ? pdFALSE : pdTRUE;
+}
+/*-----------------------------------------------------------*/
+
 void vPortYieldFromISR( void )
 {
     Thread_t *xThreadToSuspend;
@@ -361,6 +370,24 @@ static uint64_t prvStartTimeNs;
  * to adjust timing according to full demo requirements */
 /* static uint64_t prvTickCount; */
 
+static void prvEnterInterruptContext( void )
+{
+    /* Signals are masked while their handler runs. Keep the existing
+     * critical-nesting accounting separate from the ISR-context query. */
+    uxCriticalNesting++;
+    uxInterruptNesting++;
+}
+/*-----------------------------------------------------------*/
+
+static void prvExitInterruptContext( void )
+{
+    configASSERT( uxInterruptNesting > 0 );
+    configASSERT( uxCriticalNesting > 0 );
+    uxInterruptNesting--;
+    uxCriticalNesting--;
+}
+/*-----------------------------------------------------------*/
+
 /*
  * Setup the systick timer to generate the tick interrupts at the required
  * frequency.
@@ -403,7 +430,7 @@ static void vPortSystemTickHandler( int sig )
     Thread_t *pxThreadToResume;
     /* uint64_t xExpectedTicks; */
 
-    uxCriticalNesting++; /* Signals are blocked in this signal handler. */
+    prvEnterInterruptContext();
 
 #if ( configUSE_PREEMPTION == 1 )
     pxThreadToSuspend = prvGetThreadFromTask( xTaskGetCurrentTaskHandle() );
@@ -430,7 +457,7 @@ static void vPortSystemTickHandler( int sig )
     prvSwitchThread(pxThreadToResume, pxThreadToSuspend);
 #endif
 
-    uxCriticalNesting--;
+    prvExitInterruptContext();
     errno = iSavedErrno;
 }
 /*-----------------------------------------------------------*/
@@ -469,6 +496,7 @@ static void *prvWaitForStart( void * pvParams )
 
     /* Resumed for the first time, unblocks all signals. */
     uxCriticalNesting = 0;
+    uxInterruptNesting = 0;
     vPortEnableInterrupts();
 
     /* Call the task's entry point. */
@@ -489,6 +517,7 @@ static void prvSwitchThread( Thread_t *pxThreadToResume,
                              Thread_t *pxThreadToSuspend )
 {
     BaseType_t uxSavedCriticalNesting;
+    UBaseType_t uxSavedInterruptNesting;
 
     if ( pxThreadToSuspend != pxThreadToResume )
     {
@@ -500,6 +529,7 @@ static void prvSwitchThread( Thread_t *pxThreadToResume,
          * we switch back to this task.
          */
         uxSavedCriticalNesting = uxCriticalNesting;
+        uxSavedInterruptNesting = uxInterruptNesting;
 
         prvResumeThread( pxThreadToResume );
         if ( pxThreadToSuspend->xDying )
@@ -509,6 +539,7 @@ static void prvSwitchThread( Thread_t *pxThreadToResume,
         prvSuspendSelf( pxThreadToSuspend );
 
         uxCriticalNesting = uxSavedCriticalNesting;
+        uxInterruptNesting = uxSavedInterruptNesting;
     }
 }
 /*-----------------------------------------------------------*/

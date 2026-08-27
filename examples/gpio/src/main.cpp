@@ -3,9 +3,7 @@
 #ifdef ROO_TESTING
 
 #include "roo_testing/microcontrollers/esp32/fake_esp32.h"
-
 #include "roo_testing/transducers/voltage/voltage.h"
-#include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 
 using namespace roo_testing_transducers;
 
@@ -16,10 +14,13 @@ SimpleVoltageSource sawtooth([]() -> float {
   return ((millis() / 10 % 1000) / 500.0);
 });
 
-SimpleDigitalSink trigger("trigger", [](DigitalLevel level) {
-  Serial.printf("Trigger detected; value: %d\n", level);
-  digital_input.set(level);
-});
+SimpleDigitalSink trigger = SimpleDigitalSink::WithSignalCallback(
+    "trigger", [](const VoltageSignal& signal) {
+      const DigitalLevel level =
+          DigitalLevelFromVoltage(AverageDcVoltage(signal));
+      Serial.printf("Trigger detected; value: %d\n", level);
+      digital_input.set(level);
+    });
 
 // Here we attach signals to ESP32 pins.
 struct Emulator {

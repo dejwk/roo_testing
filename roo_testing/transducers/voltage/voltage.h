@@ -2,9 +2,13 @@
 
 #include <cmath>
 #include <functional>
+#include <mutex>
+#include <optional>
 #include <string>
+#include <utility>
 
 #include "roo_testing/transducers/transducer.h"
+#include "roo_testing/transducers/voltage/voltage_signal.h"
 
 namespace roo_testing_transducers {
 
@@ -38,7 +42,11 @@ class VoltageSink : public Transducer {
  public:
   VoltageSink() {}
 
-  virtual void write(float voltage) = 0;
+  /// Writes a constant voltage signal.
+  void write(float voltage) { write(VoltageSignal::Constant(voltage)); }
+
+  /// Writes a complete voltage signal.
+  virtual void write(const VoltageSignal& signal) = 0;
 };
 
 class SimpleVoltageSource : public VoltageSource {
@@ -103,28 +111,38 @@ class ConstVoltage : public VoltageSource {
 
 class SimpleVoltageSink : public VoltageSink {
  public:
-  SimpleVoltageSink() : SimpleVoltageSink("<unnamed>", nullptr) {}
+  /// Creates an unnamed sink with no assignment callback.
+  SimpleVoltageSink() : SimpleVoltageSink("<unnamed>") {}
 
-  SimpleVoltageSink(std::function<void(float)> write)
-      : SimpleVoltageSink("<unnamed>", write) {}
+  /// Creates a named sink with no assignment callback.
+  SimpleVoltageSink(std::string name)
+      : VoltageSink(), name_(std::move(name)), signal_(std::nullopt) {}
 
-  SimpleVoltageSink(std::string name) : SimpleVoltageSink(name, nullptr) {}
-
-  SimpleVoltageSink(std::string name, std::function<void(float)> write)
-      : VoltageSink(),
-        name_(std::move(name)),
-        write_fn_(std::move(write)),
-        last_written_(std::nanf("")) {}
+  SimpleVoltageSink(const SimpleVoltageSink&) = delete;
+  SimpleVoltageSink& operator=(const SimpleVoltageSink&) = delete;
+  SimpleVoltageSink(SimpleVoltageSink&&) = delete;
+  SimpleVoltageSink& operator=(SimpleVoltageSink&&) = delete;
 
   const std::string& name() const override { return name_; }
 
-  void write(float voltage) override {
-    if (write_fn_ != nullptr) write_fn_(voltage);
-    last_written_ = voltage;
-    has_been_written_ = true;
-  }
+  using VoltageSink::write;
 
-  float voltage() const { return last_written_; }
+  /// Retains and notifies one complete voltage signal.
+  void write(const VoltageSignal& signal) override;
+
+  /// Returns the last assigned signal, if any.
+  std::optional<VoltageSignal> signal() const;
+
+  /// Returns an instantaneous sample at an explicit uptime.
+  float sampleAtUptimeMicros(int64_t uptime_us) const;
+
+  /// Returns an instantaneous sample at current emulator uptime.
+  float sample() const;
+
+  /// Returns local DC voltage at an explicit uptime.
+  float averageDcVoltageAtUptimeMicros(int64_t uptime_us) const;
+
+  float voltage() const;
 
   DigitalLevel digitalValue() const {
     return DigitalLevelFromVoltage(voltage());
@@ -136,52 +154,83 @@ class SimpleVoltageSink : public VoltageSink {
 
   void warnIfUnwrittenTo() const;
 
- private:
-  std::string name_;
-  std::function<void(float)> write_fn_;
+  /// Creates a sink with a waveform-aware assignment callback.
+  static SimpleVoltageSink WithSignalCallback(
+      std::string name, std::function<void(const VoltageSignal&)> callback);
 
-  float last_written_;
-  bool has_been_written_;
+ private:
+  struct SignalCallbackTag {};
+
+  SimpleVoltageSink(std::string name,
+                    std::function<void(const VoltageSignal&)> callback,
+                    SignalCallbackTag)
+      : VoltageSink(),
+        name_(std::move(name)),
+        signal_write_fn_(std::move(callback)),
+        signal_(std::nullopt) {}
+
+  std::string name_;
+  std::function<void(const VoltageSignal&)> signal_write_fn_;
+  mutable std::mutex mutex_;
+  std::optional<VoltageSignal> signal_;
 };
 
 class SimpleDigitalSink : public VoltageSink {
  public:
-  SimpleDigitalSink() : SimpleDigitalSink("<unnamed>", nullptr) {}
+  /// Creates an unnamed sink with no assignment callback.
+  SimpleDigitalSink() : SimpleDigitalSink("<unnamed>") {}
 
-  SimpleDigitalSink(std::function<void(DigitalLevel)> write)
-      : SimpleDigitalSink("<unnamed>", write) {}
+  /// Creates a named sink with no assignment callback.
+  SimpleDigitalSink(std::string name)
+      : VoltageSink(), name_(std::move(name)), signal_(std::nullopt) {}
 
-  SimpleDigitalSink(std::string name) : SimpleDigitalSink(name, nullptr) {}
-
-  SimpleDigitalSink(std::string name, std::function<void(DigitalLevel)> write)
-      : VoltageSink(),
-        name_(std::move(name)),
-        write_fn_(std::move(write)),
-        last_written_(kDigitalUndef),
-        has_been_written_(false) {}
+  SimpleDigitalSink(const SimpleDigitalSink&) = delete;
+  SimpleDigitalSink& operator=(const SimpleDigitalSink&) = delete;
+  SimpleDigitalSink(SimpleDigitalSink&&) = delete;
+  SimpleDigitalSink& operator=(SimpleDigitalSink&&) = delete;
 
   const std::string& name() const override { return name_; }
 
-  void write(float voltage) override {
-    auto val = DigitalLevelFromVoltage(voltage);
-    if (write_fn_ != nullptr) write_fn_(val);
-    last_written_ = val;
-    has_been_written_ = true;
-  }
+  using VoltageSink::write;
 
-  DigitalLevel value() const { return last_written_; }
+  /// Retains and notifies one complete voltage signal.
+  void write(const VoltageSignal& signal) override;
+
+  /// Returns the last assigned signal, if any.
+  std::optional<VoltageSignal> signal() const;
+
+  /// Returns the digital classification of an explicit instantaneous sample.
+  DigitalLevel instantaneousValueAtUptimeMicros(int64_t uptime_us) const;
+
+  /// Returns the digital classification of the current instantaneous sample.
+  DigitalLevel instantaneousValue() const;
+
+  DigitalLevel value() const;
 
   bool isLow() const { return value() == kDigitalLow; }
   bool isHigh() const { return value() == kDigitalHigh; }
 
   void warnIfUndef() const;
 
- private:
-  std::string name_;
-  std::function<void(DigitalLevel)> write_fn_;
+  /// Creates a sink with a waveform-aware assignment callback.
+  static SimpleDigitalSink WithSignalCallback(
+      std::string name, std::function<void(const VoltageSignal&)> callback);
 
-  DigitalLevel last_written_;
-  bool has_been_written_;
+ private:
+  struct SignalCallbackTag {};
+
+  SimpleDigitalSink(std::string name,
+                    std::function<void(const VoltageSignal&)> callback,
+                    SignalCallbackTag)
+      : VoltageSink(),
+        name_(std::move(name)),
+        signal_write_fn_(std::move(callback)),
+        signal_(std::nullopt) {}
+
+  std::string name_;
+  std::function<void(const VoltageSignal&)> signal_write_fn_;
+  mutable std::mutex mutex_;
+  std::optional<VoltageSignal> signal_;
 };
 
 class VoltageIO : public VoltageSource, public VoltageSink {

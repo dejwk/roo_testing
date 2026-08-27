@@ -232,12 +232,11 @@ scalar overload add `using VoltageSink::write`.
 
 `SimpleVoltageSink` retains the last complete signal. `voltage()` is the
 current local DC value, while `sample()` and `sampleAtUptimeMicros()` explicitly
-mean instantaneous voltage. Its existing float callback receives local DC at
-assignment time. `WithSignalCallback` provides a separately named signal
-callback so `nullptr` and generic lambdas are not ambiguous.
+mean instantaneous voltage. Its only callback form, `WithSignalCallback`,
+receives the complete descriptor at assignment time.
 
-`SimpleDigitalSink` also retains the signal. Its legacy `value()` and callback
-classify current local DC with `DigitalLevelFromVoltage`. Explicit
+`SimpleDigitalSink` also retains the signal. Its legacy `value()` classifies
+current local DC with `DigitalLevelFromVoltage`. Explicit
 `instantaneousValue...()` operations classify a carrier sample. No edge
 callbacks are generated.
 
@@ -427,10 +426,10 @@ time/frequency cases.
 
 ### Phase 2: Signal-aware sinks and roo migration
 
-Change the sink virtual contract, implement retained signal state and callbacks
-in both simple sinks, and migrate every roo-owned derived class and scalar call
-site. Include compile coverage for all affected libraries and tests for
-pre-write and re-entrant callback behavior.
+Change the sink virtual contract, implement retained signal state and a
+waveform-aware callback in both simple sinks, and migrate every roo-owned
+derived class and scalar call site. Include compile coverage for all affected
+libraries and tests for pre-write and re-entrant callback behavior.
 
 Proposed commit: `Make voltage sinks preserve signal metadata`
 

@@ -1,17 +1,18 @@
 #include <gtest/gtest.h>
 
-#include "soc/gpio_struct.h"
-
 #include "roo_testing/buses/gpio/fake_gpio.h"
 #include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 #include "roo_testing/transducers/voltage/voltage.h"
+#include "soc/gpio_struct.h"
 
 using namespace roo_testing_transducers;
 
 TEST(GpioExampleTest, MirrorsOutputToInput) {
   ConstVoltage digital_input(0.0f);
-  SimpleDigitalSink trigger(
-      "trigger", [&](DigitalLevel level) { digital_input.set(level); });
+  SimpleDigitalSink trigger = SimpleDigitalSink::WithSignalCallback(
+      "trigger", [&](const VoltageSignal& signal) {
+        digital_input.set(DigitalLevelFromVoltage(AverageDcVoltage(signal)));
+      });
 
   FakeGpioInterface gpio(40);
   gpio.attachInput(33, digital_input);

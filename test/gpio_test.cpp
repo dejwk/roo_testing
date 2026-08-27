@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <optional>
+#include <string>
+
 #include "roo_testing/buses/gpio/fake_gpio.h"
 #include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 #include "roo_testing/transducers/voltage/voltage.h"
@@ -7,6 +10,33 @@
 
 using namespace roo_testing_transducers;
 
+namespace {
+
+class RecordingVoltageIo : public VoltageIO {
+ public:
+  /// Returns the device name.
+  const std::string& name() const override { return name_; }
+
+  /// Returns the configured input voltage.
+  float read() const override { return input_voltage_; }
+
+  /// Retains a signal written through the GPIO adapter.
+  void write(const VoltageSignal& signal) override { written_signal_ = signal; }
+
+  /// Returns the signal most recently written to the device.
+  const std::optional<VoltageSignal>& writtenSignal() const {
+    return written_signal_;
+  }
+
+ private:
+  std::string name_ = "recording_voltage_io";
+  float input_voltage_ = 1.2f;
+  std::optional<VoltageSignal> written_signal_;
+};
+
+}  // namespace
+
+// Verifies scalar GPIO writes still mirror an output to an attached input.
 TEST(GpioExampleTest, MirrorsOutputToInput) {
   ConstVoltage digital_input(0.0f);
   SimpleDigitalSink trigger = SimpleDigitalSink::WithSignalCallback(
@@ -26,6 +56,40 @@ TEST(GpioExampleTest, MirrorsOutputToInput) {
 
   gpio.detach(33);
   gpio.detach(4);
+}
+
+// Verifies GPIO preserves signal descriptors while sampling their carrier.
+TEST(FakeGpioPinTest, RetainsAndForwardsCompleteSignal) {
+  const VoltageSignal pwm =
+      VoltageSignal::Square(0, 3.3f, 1000, ConstantDuty{0.5}, 0);
+  SimpleVoltageSink sink;
+  FakeGpioInterface gpio(1);
+  gpio.attachOutput(0, sink);
+
+  gpio.get(0).write(pwm);
+
+  ASSERT_TRUE(gpio.get(0).lastSignal().has_value());
+  EXPECT_EQ(pwm, *gpio.get(0).lastSignal());
+  ASSERT_TRUE(sink.signal().has_value());
+  EXPECT_EQ(pwm, *sink.signal());
+  EXPECT_FLOAT_EQ(3.3f, gpio.get(0).readAtUptimeMicros(0));
+  EXPECT_FLOAT_EQ(0, gpio.get(0).readAtUptimeMicros(500));
+  EXPECT_NEAR(1.65f, gpio.get(0).last_written(), 1e-6);
+}
+
+// Verifies GPIO routes input and output through a bidirectional voltage device.
+TEST(FakeGpioInterfaceTest, RoutesVoltageIoAsInputAndOutput) {
+  const VoltageSignal pwm =
+      VoltageSignal::Square(0, 3.3f, 1000, ConstantDuty{0.25}, 0);
+  RecordingVoltageIo io;
+  FakeGpioInterface gpio(1);
+  gpio.attach(0, io);
+
+  EXPECT_FLOAT_EQ(1.2f, gpio.get(0).readAtUptimeMicros(999));
+  gpio.get(0).write(pwm);
+
+  ASSERT_TRUE(io.writtenSignal().has_value());
+  EXPECT_EQ(pwm, *io.writtenSignal());
 }
 
 TEST(GpioRegisterInterceptTest, OutputSetClearAreInterceptedForLowBank) {

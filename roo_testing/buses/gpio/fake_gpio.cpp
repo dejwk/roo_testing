@@ -1,8 +1,10 @@
 #include "fake_gpio.h"
 
+#include <cmath>
 #include <cstdlib>
 
 #include "glog/logging.h"
+#include "roo_testing/system/timer.h"
 
 using namespace roo_testing_transducers;
 
@@ -20,7 +22,7 @@ class Output : public FakeGpioPin {
 
   const std::string& name() const override { return output_->name(); }
 
-  void onWrite(float voltage) override { output_->write(voltage); }
+  void onWrite(const VoltageSignal& signal) override { output_->write(signal); }
 
  private:
   VoltageSink* output_;
@@ -39,9 +41,9 @@ class Input : public FakeGpioPin {
 
   const std::string& name() const override { return input_->name(); }
 
-  float read() const override { return input_->read(); }
+  float readAtUptimeMicros(int64_t) const override { return input_->read(); }
 
-  void onWrite(float voltage) override {
+  void onWrite(const VoltageSignal&) override {
     LOG(ERROR) << "Writing to a voltage source " << name()
                << " is no-op and probably a bug";
   }
@@ -63,9 +65,9 @@ class InputOutput : public FakeGpioPin {
 
   const std::string& name() const override { return io_->name(); }
 
-  float read() const override { return io_->read(); }
+  float readAtUptimeMicros(int64_t) const override { return io_->read(); }
 
-  void onWrite(float voltage) override { io_->write(voltage); }
+  void onWrite(const VoltageSignal& signal) override { io_->write(signal); }
 
  private:
   VoltageIO* io_;
@@ -75,11 +77,11 @@ class InputOutput : public FakeGpioPin {
 }  // namespace
 
 void FakeGpioInterface::attach(int pin, VoltageIO& io) {
-  attachInternal(pin, new Output(&io, false));
+  attachInternal(pin, new InputOutput(&io, false));
 }
 
 void FakeGpioInterface::attach(int pin, std::unique_ptr<VoltageIO> io) {
-  attachInternal(pin, new Output(io.release(), true));
+  attachInternal(pin, new InputOutput(io.release(), true));
 }
 
 void FakeGpioInterface::attachOutput(int pin, VoltageSink& output) {
@@ -126,4 +128,57 @@ FakeGpioPin& FakeGpioInterface::get(int pin) const {
     result.reset(new Output(new SimpleVoltageSink(), true));
   }
   return *result;
+}
+
+float FakeGpioPin::read() const {
+  return readAtUptimeMicros(system_time_get_micros());
+}
+
+float FakeGpioPin::readAtUptimeMicros(int64_t uptime_us) const {
+  const std::optional<VoltageSignal> signal = lastSignal();
+  if (!signal.has_value()) {
+    // An unwritten output pin remains floating, as before signal support.
+    return static_cast<float>(rand()) * 5.0f / RAND_MAX;
+  }
+  return signal->voltageAtUptimeMicros(uptime_us);
+}
+
+DigitalLevel FakeGpioPin::digitalRead() const {
+  return DigitalLevelFromVoltage(read());
+}
+
+bool FakeGpioPin::isDigitalLow() const { return digitalRead() == kDigitalLow; }
+
+bool FakeGpioPin::isDigitalHigh() const {
+  return digitalRead() == kDigitalHigh;
+}
+
+void FakeGpioPin::write(const VoltageSignal& signal) {
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    last_signal_ = signal;
+  }
+  onWrite(signal);
+}
+
+void FakeGpioPin::write(float voltage) {
+  write(VoltageSignal::Constant(voltage));
+}
+
+void FakeGpioPin::digitalWrite(DigitalLevel level) {
+  write(VoltageFromDigitalLevel(level));
+}
+
+void FakeGpioPin::digitalWriteHigh() { digitalWrite(kDigitalHigh); }
+
+void FakeGpioPin::digitalWriteLow() { digitalWrite(kDigitalLow); }
+
+std::optional<VoltageSignal> FakeGpioPin::lastSignal() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return last_signal_;
+}
+
+float FakeGpioPin::last_written() const {
+  const std::optional<VoltageSignal> signal = lastSignal();
+  return signal.has_value() ? AverageDcVoltage(*signal) : std::nanf("");
 }

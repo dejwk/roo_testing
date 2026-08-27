@@ -6,6 +6,7 @@ cc_library(
     hdrs = ["fake_gpio.h"],
     visibility = ["//visibility:public"],
     deps = [
+        "//roo_testing/system:timer",
         "//roo_testing/transducers/voltage",
         "@glog",
     ],

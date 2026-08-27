@@ -1,6 +1,6 @@
 # Periodic voltage signals
 
-Status: Proposed
+Status: Implemented
 
 ## Objective
 

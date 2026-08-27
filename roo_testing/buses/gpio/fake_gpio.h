@@ -2,99 +2,104 @@
 
 #include <stdint.h>
 
-#include <cmath>
-#include <cstdlib>
-#include <functional>
 #include <memory>
+#include <mutex>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include "roo_testing/transducers/voltage/voltage.h"
 
+/// Emulates one GPIO pin and retains the most recently written signal.
 class FakeGpioPin {
  public:
-  FakeGpioPin() : last_written_(std::nanf("")) {}
+  /// Creates an unwritten GPIO pin.
+  FakeGpioPin() = default;
 
-  virtual ~FakeGpioPin() {}
+  /// Destroys the GPIO pin.
+  virtual ~FakeGpioPin() = default;
 
+  /// Returns the pin's descriptive name.
   virtual const std::string& name() const = 0;
 
-  virtual float read() const {
-    if (std::isnan(last_written_)) {
-      // The value has never been written; assume floating.
-      return (float)rand() * 5.0 / RAND_MAX;
-    }
-    // Otherwise, default to returning last written value. This is normal
-    // behavior for microcontroller pins in the output mode.
-    return last_written_;
-  }
+  /// Returns the instantaneous voltage at current emulator uptime.
+  virtual float read() const;
 
-  roo_testing_transducers::DigitalLevel digitalRead() const {
-    return roo_testing_transducers::DigitalLevelFromVoltage(read());
-  }
+  /// Returns the instantaneous voltage at an explicit emulator uptime.
+  virtual float readAtUptimeMicros(int64_t uptime_us) const;
 
-  bool isDigitalLow() const {
-    return digitalRead() == roo_testing_transducers::kDigitalLow;
-  }
+  /// Returns the digital classification of the current instantaneous voltage.
+  roo_testing_transducers::DigitalLevel digitalRead() const;
 
-  bool isDigitalHigh() const {
-    return digitalRead() == roo_testing_transducers::kDigitalHigh;
-  }
+  /// Returns whether the current instantaneous voltage is digital low.
+  bool isDigitalLow() const;
 
-  void write(float voltage) {
-    last_written_ = voltage;
-    onWrite(voltage);
-  }
+  /// Returns whether the current instantaneous voltage is digital high.
+  bool isDigitalHigh() const;
 
-  void digitalWrite(roo_testing_transducers::DigitalLevel level) {
-    write(level == roo_testing_transducers::kDigitalLow    ? 0.0
-          : level == roo_testing_transducers::kDigitalHigh ? 3.3
-                                                           : 1.5);
-  }
+  /// Retains and forwards a complete voltage signal.
+  void write(const roo_testing_transducers::VoltageSignal& signal);
 
-  void digitalWriteHigh() {
-    digitalWrite(roo_testing_transducers::kDigitalHigh);
-  }
+  /// Retains and forwards a constant voltage signal.
+  void write(float voltage);
 
-  void digitalWriteLow() { digitalWrite(roo_testing_transducers::kDigitalLow); }
+  /// Retains and forwards a constant digital voltage.
+  void digitalWrite(roo_testing_transducers::DigitalLevel level);
 
-  virtual void onWrite(float voltage) {}
+  /// Retains and forwards a digital-high voltage.
+  void digitalWriteHigh();
 
-  float last_written() { return last_written_; }
+  /// Retains and forwards a digital-low voltage.
+  void digitalWriteLow();
+
+  /// Returns a copy of the last written signal, if any.
+  std::optional<roo_testing_transducers::VoltageSignal> lastSignal() const;
+
+  /// Returns the current local DC voltage of the last signal, or NaN.
+  float last_written() const;
+
+ protected:
+  /// Forwards a newly committed signal to an attached device.
+  virtual void onWrite(const roo_testing_transducers::VoltageSignal& signal) {}
 
  private:
-  float last_written_;
+  mutable std::mutex mutex_;
+  std::optional<roo_testing_transducers::VoltageSignal> last_signal_;
 };
 
+/// Owns the GPIO-pin topology for one fake microcontroller.
 class FakeGpioInterface {
  public:
+  /// Creates an interface with the supplied number of addressable pins.
   FakeGpioInterface(int size) : size_(size) {}
 
-  // Attaches a voltage sink. Does not take ownership.
+  /// Attaches a voltage sink without taking ownership.
   void attachOutput(int pin, roo_testing_transducers::VoltageSink& voltage);
 
-  // Attaches a voltage sink. Takes ownership.
+  /// Attaches a voltage sink and takes ownership.
   void attachOutput(
       int pin, std::unique_ptr<roo_testing_transducers::VoltageSink> voltage);
 
-  // Attaches a voltage source. Does not take ownership.
+  /// Attaches a voltage source without taking ownership.
   void attachInput(int pin,
                    const roo_testing_transducers::VoltageSource& voltage);
 
-  // Attaches a voltage source. Takes ownership.
+  /// Attaches a voltage source and takes ownership.
   void attachInput(
       int pin,
       std::unique_ptr<const roo_testing_transducers::VoltageSource> voltage);
 
+  /// Returns the emulated pin, creating an unattached output when necessary.
   FakeGpioPin& get(int pin) const;
 
-  // Attaches a bi-directional voltage device. Does not take ownership.
+  /// Attaches a bi-directional voltage device without taking ownership.
   void attach(int pin, roo_testing_transducers::VoltageIO& fake);
 
-  // Attaches a bi-directional voltage device. Takes ownership.
+  /// Attaches a bi-directional voltage device and takes ownership.
   void attach(int pin,
               std::unique_ptr<roo_testing_transducers::VoltageIO> fake);
 
+  /// Detaches the device currently assigned to a pin.
   void detach(int pin);
 
  private:

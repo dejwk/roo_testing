@@ -2,7 +2,9 @@
 
 Status: Proposed
 
-Depends on: [Periodic voltage signals](periodic_voltage_signals.md)
+Depends on: [Periodic voltage signals](periodic_voltage_signals.md),
+[Emulated-time alarms](emulated_time_alarms.md),
+[Emulated interrupts](emulated_interrupts.md)
 
 ## Objective
 
@@ -55,7 +57,12 @@ not treat that unsafe implementation detail as a supported blocking contract.
 
 The dependent [periodic-signal design](periodic_voltage_signals.md) supplies
 value-owned square signals, linear duty envelopes, fake-GPIO propagation, and
-local DC/RMS analysis. This document does not redefine those facilities.
+local DC/RMS analysis. The [emulated-time alarm
+design](emulated_time_alarms.md) supplies deterministic one-shot deadline
+callbacks, cancellation, ordering, and event-pump semantics. The [emulated
+interrupt design](emulated_interrupts.md) supplies signal-based ISR delivery,
+ESP-IDF interrupt allocation, and ISR-exit yields. This document does not
+redefine those facilities.
 
 ## Requirements
 
@@ -74,15 +81,18 @@ local DC/RMS analysis. This document does not redefine those facilities.
 7. Same-channel operations block or reject as the supported classic
    ESP32/Arduino facade does; other channels remain independent.
 8. A supported blocking call suspends only its calling FreeRTOS task. It never
-   advances fake uptime; other runnable tasks and explicit time drivers remain
-   able to run.
-9. Fade completion commits exactly once, publishes steady target output before
-   a still-valid callback, and suppresses stale callbacks after cancellation or
-   re-registration.
-10. Time and driver callbacks run outside timer, driver, GPIO, and sink locks;
-    callback re-entry cannot deadlock on those locks or create nested delivery
-    stacks.
-11. Invalid API calls are atomic and do not advance fake time.
+   explicitly writes or advances fake uptime; configured auto-sync or another
+   task/test driver remains responsible for observed time progress, and other
+   runnable tasks remain able to run.
+9. Fade completion commits exactly once, publishes steady target output, then
+   raises the LEDC source. A still-valid callback runs in emulated ISR context
+   after the channel semaphore is given; its task-wakeup result participates in
+   the ISR-exit yield.
+10. LEDC never pumps time or invokes GPIO or sink code while holding driver or
+    delivery locks. ISR-side state, callback pointers, and completion mailboxes
+    use signal-safe storage; the ISR never takes an ordinary host mutex.
+11. Invalid API calls are atomic and do not explicitly write or delay fake
+    time; ordinary clock observation may still apply configured auto-sync.
 12. No retained signal or scheduled closure refers into mutable channel/timer
     storage.
 13. The first downstream milestone provides deterministic emulation tests and
@@ -99,6 +109,8 @@ local DC/RMS analysis. This document does not redefine those facilities.
   blocked callback blocks its FreeRTOS runner, not other FreeRTOS tasks.
 - Reproducing the undocumented CPU/core starvation or interrupt-watchdog
   effects of classic ESP32's low-level `duty_start` spin.
+- Generic system-time alarm storage, ordering, pumping, and concurrency, which
+  belong to the dependent alarm design.
 
 ## Design Overview
 
@@ -107,24 +119,38 @@ origin, and active-fade state. Each publication is an immutable square
 `VoltageSignal`; later state changes create a new value rather than mutating a
 signal already retained by a sink.
 
-A generic one-shot alarm queue on the existing system timer marks fade
-deadlines. Alarms are dispatched only at explicit event-pump points. A
-per-channel binary semaphore mirrors ESP-IDF's fade semaphore. Supported
-blocking LEDC calls wait on that gate in bounded FreeRTOS waits and retry after
-waking; they do not write or advance the system clock.
+The dependent alarm queue marks fade deadlines and dispatches them only at its
+documented event-pump points. A valid deadline handler commits target state and
+atomically appends an ordered delivery pair: final GPIO publication, then an
+internal completion finalizer. After the GPIO write and sink calls return, the
+finalizer publishes a generation-tagged fade-end mailbox and raises
+`ETS_LEDC_INTR_SOURCE` with no alarm, driver, delivery, GPIO, or sink lock held.
+The registered emulated LEDC ISR claims that mailbox, gives the channel
+semaphore, invokes the framework callback, and requests any required yield.
 
-Two generations protect asynchronous work: `fade_generation` invalidates stale
-completion alarms, while `callback_generation` invalidates queued callbacks
-when registration or ownership changes. A FIFO delivery queue serializes GPIO
-publication and user callbacks outside driver locks and prevents callback
-re-entry from recursively delivering another batch.
+LEDC adds a per-channel binary semaphore mirroring ESP-IDF's fade semaphore.
+Supported blocking calls wait on that gate in bounded FreeRTOS waits and retry
+after waking; they neither write the system clock nor call an explicit
+time-advance function.
+
+Three tokens protect asynchronous work. `fade_generation` identifies the
+active fade and lets exactly one alarm or lazy path claim its completion;
+claiming does not increment it. A lock-free `completion_generation` remains
+valid through the queued publication/finalizer pair and is invalidated only by
+a cancellation path that also resolves the gate. `callback_generation`
+suppresses only borrowed callbacks when registration or ownership changes. A
+FIFO delivery queue serializes GPIO publication and internal completion
+finalizers outside driver locks. User callbacks are not host-queue items; the
+emulated ISR loads only lock-free callback state and invokes them with
+ISR-facing semantics.
 
 | Requirements | Design element |
 | --- | --- |
 | 1-3 | One state-to-signal publication path for both frontends |
 | 4-5 | `LinearDutyFade` publication plus integer duty materialization |
-| 6-8, 11 | Task-blocking channel gate and validation retries |
-| 9-10 | Generation tokens and ordered non-nesting delivery queue |
+| 6-8 | Emulated-time alarm plus task-blocking channel gate |
+| 9-10 | Generation-tagged completion mailbox plus emulated LEDC ISR |
+| 11 | Validation before waiting plus transactional mutation |
 | 12 | Value snapshots and stable channel identifiers in closures |
 | 13 | roo_blink level fixes, scheduler-driven tests, and VoltageTrace example |
 
@@ -191,21 +217,23 @@ fresh zero-duty channel and origin.
 As a deterministic host lifecycle policy, IDF timer deconfiguration
 materializes each active channel's current integer duty into pending and
 committed state, cancels fades without completion callbacks, clears configured
-fades, and publishes low. It retains channel binding and persistent callback
-registration. Reconfiguring the timer later publishes steady PWM. This is not
-presented as a supported way to cancel a fade on hardware.
+fades, resolves each retained channel gate exactly once in task context, and
+publishes low. It retains channel binding and persistent callback registration.
+Reconfiguring the timer later publishes steady PWM. This is not presented as a
+supported way to cancel a fade on hardware.
 
 Detach/channel deconfiguration cancels asynchronous work and publishes constant
 0 V. This is a deterministic host policy because high impedance is outside the
 signal model. For safe host teardown, `ledc_fade_func_uninstall()` materializes
 active duties, cancels fades without completion callbacks, publishes steady
-PWM, invalidates queued callbacks, clears IDF callback registrations, and marks
-the service uninstalled. ESP-IDF's uninstall routine simply frees its fade
-records and is not a supported active-fade cancellation API.
+PWM, resolves retained gates, invalidates callback generations, clears IDF
+callback registrations, and marks the service uninstalled. ESP-IDF's uninstall
+routine simply frees its fade records and is not a supported active-fade
+cancellation API.
 
 Every failed call preserves prior driver/GPIO state. Validation independent of
 channel ownership is performed before a wait, so an already-invalid call does
-not block. No failure path advances uptime.
+not block. No failure path writes uptime or calls a delay function.
 
 ### Fade state and integer readback
 
@@ -217,11 +245,12 @@ generation, register its non-dispatching alarm, and publish a square signal
 with `LinearDutyFade`. Alarm registration precedes GPIO publication because a
 re-entrant sink can advance time across the deadline.
 
-Zero-duration and equal-endpoint fades commit synchronously, enqueue steady
-publication followed by a completion callback, and create no alarm. Positive
-durations use checked microsecond conversion and checked signed deadline
-addition. An unrepresentable deadline returns `ESP_ERR_INVALID_ARG` or Arduino
-`false` without changing active output.
+Zero-duration and equal-endpoint fades commit synchronously, enqueue the same
+steady-publication/completion-finalizer pair, and create no alarm. They do not
+special-case callback or gate delivery. Positive durations use checked
+microsecond conversion and checked signed deadline addition. An
+unrepresentable deadline returns `ESP_ERR_INVALID_ARG` or Arduino `false`
+without changing active output.
 
 Driver readback uses integer interpolation for positive durations:
 
@@ -235,33 +264,42 @@ The product uses a sufficiently wide intermediate. At the deadline, commit the
 exact target to both pending and committed duty. The published signal remains
 the ideal continuous envelope described by the periodic-signal design.
 
-### System-time alarms
+### Alarm-service integration
 
-Add a generic C++ one-shot alarm queue to
-[`timer.h`](../roo_testing/system/timer.h) and
-[`timer.cpp`](../roo_testing/system/timer.cpp). `timer.h` remains usable from C:
-the new `<functional>` include and declarations are guarded by `__cplusplus`
-and placed outside `extern "C"`.
+The [emulated-time alarm service](emulated_time_alarms.md) owns deadline
+storage, cancellation, chronological dispatch, auto-sync interaction, and
+non-nesting pump behavior. Ordinary LEDC entry does not pump the global alarm
+queue; it reads uptime and lazily materializes only its own due fade.
 
-The complete `EmulatedTime` state—uptime, real-time origin, auto-sync flag,
-alarms, IDs, and drain state—is protected by one mutex. Wall-clock sleeping
-never holds it; after sleeping, auto-sync reacquires the lock and re-evaluates
-state.
+A fade alarm captures only stable mode/channel identity and its
+`fade_generation`. Under the LEDC lock, its handler verifies that generation,
+atomically transitions the fade from active to completion-queued without
+changing the generation, commits the exact target, and appends a value-owned
+pair consisting of steady GPIO publication and a completion finalizer. A raced
+alarm or lazy path sees that the generation is no longer active and does
+nothing. The alarm handler never gives the channel gate and never enqueues or
+invokes the public callback.
 
-Plain get-time, sync, and lag functions never dispatch callbacks.
-`system_time_delay_micros()`, explicit `ProcessSystemTimeAlarms()`, and LEDC API
-entry are event-pump points. There is no background alarm thread. A long delay
-walks deadlines chronologically; same-deadline alarms run in registration
-order. Scheduling never invokes inline, including an already-due alarm. The
-outer active drain also processes due work scheduled by one of its callbacks.
+The LEDC delivery owner calls GPIO and sink code outside locks. Only after the
+final GPIO call returns does the paired finalizer revalidate its completion
+generation against the lock-free `completion_generation`, publish the ISR
+mailbox/fade-end status with release semantics, and raise the LEDC source. The
+ISR then gives the gate and conditionally invokes the callback. In ordinary
+single-threaded use, an alarm drain that also owns LEDC delivery completes the
+final GPIO write and source request before it returns; POSIX-signal delivery
+and callback completion remain asynchronous. If another LEDC drainer is
+active, the pair stays FIFO-ordered for that owner.
 
-The pump removes an alarm and marks it executing before releasing the timer
-mutex and invoking it. Cancellation of an executing, completed, or unknown ID
-is a no-op. A callback can cancel later work at the same deadline. Recursive
-pumping never dispatches nested callbacks; the outer drain processes newly due
-work after the current callback returns. LEDC waits do not depend on recursive
-alarm dispatch: every retry can lazily complete its own due fade under the LEDC
-lock and invalidate the later alarm by generation.
+LEDC does not rely solely on alarm-handler dispatch. A channel wait or other
+LEDC entry lazily completes a due fade under the LEDC lock and invalidates its
+later handler by claiming the active-to-completion-queued transition, not by
+incrementing `fade_generation`. It retains the claimed generation in the same
+publication/finalizer pair and cancels the alarm ID after releasing the LEDC
+lock; cancellation of an already-claimed alarm is harmless. Before taking or
+waiting on the still-held channel gate, the lazy-completion winner attempts to
+drain LEDC delivery. If another owner exists, that owner will reach the
+finalizer. This lets an LEDC operation called re-entrantly from an alarm
+handler observe completion without requiring nested alarm delivery.
 
 ### Channel blocking
 
@@ -270,28 +308,36 @@ ownership rule as ESP-IDF's `ledc_fade_sem`: it is available while the channel
 is idle, and a started fade retains it until completion. Calls corresponding
 to ESP-IDF paths that acquire that semaphore use this retry algorithm:
 
-1. Process due alarms, capture uptime, and validate arguments and immutable
-   bounds before attempting the gate.
+1. Capture uptime, validate arguments and immutable bounds, and lazily claim
+   any due fade on the addressed channel. After releasing the LEDC lock, cancel
+   that fade's alarm ID and attempt to drain the queued publication/finalizer
+   pair before taking or waiting on the gate. If another drainer owns delivery,
+   it is responsible for the pair.
 2. Try to take the channel semaphore without waiting. On success, lock LEDC
    state, revalidate mutable configuration, and apply the operation. Ordinary
    operations give the gate before returning; a started fade retains it.
-3. If the gate is unavailable, lock LEDC state and lazily complete any due
-   fade. Otherwise capture the owning fade generation/deadline, if any, then
-   release all locks. An unavailable gate without an active fade is transient
-   contention with another ordinary channel operation.
+3. If the gate is unavailable, lock LEDC state and lazily claim any due fade.
+   Otherwise capture the owning fade generation/deadline, if any, then release
+   all locks. A lazy-completion winner again cancels its alarm and attempts
+   LEDC delivery before waiting. An unavailable gate without an active fade or
+   completion is transient contention with another ordinary channel operation.
 4. Wait for at most one FreeRTOS tick on the channel semaphore. This places the
    calling task in the Blocked state, so other FreeRTOS tasks can run. On
-   success, retain the gate and continue through step 2's locked revalidation
-   path; on timeout, process due alarms and retry from current state. No
-   pre-wait snapshot is reused; another task may have completed, cancelled, or
-   reconfigured the channel.
-5. Retain a generation-keyed terminal result while waiters reference it. On
-   completion retry acquisition; on cancellation revalidate and return the
-   API's applicable invalid-state result.
-6. Drain completion publication/callback before applying the newly unblocked
-   mutation in ordinary single-task execution.
+   success, retain the already-acquired gate and enter step 2's locked
+   revalidation/application path without taking it again. On timeout, call
+   `ProcessSystemTimeAlarms()` as an explicit global pump point, then retry from
+   current state. This may dispatch unrelated due alarm handlers on the waiting
+   task. No pre-wait snapshot is reused; another task may have completed,
+   cancelled, or reconfigured the channel.
+5. Retain a generation-keyed terminal result while waiters reference it. After
+   taking the gate, inspect that result before mutation. `completed` means the
+   ordered finalizer ran: final GPIO publication returned, the ISR gave the
+   gate, and any valid ISR callback finished before the resumed task can run.
+   Revalidate state and apply the operation. `cancelled` returns the API's
+   applicable invalid-state result without mutation and releases or retires the
+   acquired gate according to the lifecycle transition.
 
-The bounded wait is also the fallback that lets a re-entrant alarm callback
+The bounded wait is also the fallback that lets a re-entrant alarm handler
 notice a due fade without nested alarm delivery. It never calls
 `system_time_delay_micros()` and never writes uptime. With auto-sync enabled,
 ordinary time reads bring uptime forward from wall time and a retry completes
@@ -299,6 +345,15 @@ the fade at or after its deadline. With auto-sync disabled, the wait remains
 blocked in fake-time terms until another FreeRTOS task explicitly advances or
 pumps time. Deterministic blocking tests therefore use separate worker and
 time-driver tasks.
+
+LEDC tracks whether the current host call stack is inside its GPIO/sink
+delivery. A call from that context must not wait for a channel gate: doing so
+would block the only drainer before it can reach the gate-giving completion
+finalizer. `LEDC_FADE_WAIT_DONE` therefore fails before starting a fade, and a
+setter or other gate-taking API whose nonblocking take fails returns
+`ESP_ERR_INVALID_STATE` or the Arduino failure value without mutation.
+Gate-free reads and operations whose gate is immediately available may still
+commit and append work behind the active owner.
 
 A blocking path requires the FreeRTOS scheduler to be running, as it is for
 ESP-IDF `app_main`, Arduino `setup`/`loop`, and the framework's FreeRTOS test
@@ -331,47 +386,88 @@ that target's compiled behavior rather than inheriting the classic rule.
 
 ### Completion and callback delivery
 
-Completion commits target duty, clears the active fade, and enqueues steady
-publication immediately followed by the user callback. The callback event
-contains the completed target, but re-entry or another thread can change
-current driver state before the callback reads it.
+The deadline or lazy-completion path first validates the active
+`fade_generation`, claims the active-to-completion-queued transition without
+incrementing it, commits target duty, and atomically appends two value-owned
+items to the non-nesting LEDC FIFO. The first publishes the steady signal. The
+second is an internal finalizer that runs only after `FakeGpioPin::write()` and
+all sink calls for that publication have returned. It revalidates
+`completion_generation` against lock-free cancellation state,
+release-publishes a fade-end mailbox and status, then raises
+`ETS_LEDC_INTR_SOURCE` through the ESP-IDF interrupt adapter with the
+corresponding status-address/value snapshot.
+
+The mailbox is deliberately invisible before the finalizer. All LEDC channels
+share one source, so an unrelated channel's earlier assertion must not let the
+ISR claim this completion before its final GPIO publication. The finalizer
+runs with no alarm, LEDC, FIFO, GPIO, or sink mutex held.
+
+The emulated LEDC ISR atomically claims every pending channel completion. For
+each valid generation it gives the channel semaphore with
+`xSemaphoreGiveFromISR()`, builds `LEDC_FADE_END_EVT`, and invokes the currently
+valid callback. It ORs the callback's task-wakeup result with the semaphore's
+higher-priority-task result and calls `portYIELD_FROM_ISR()` when either asks
+for a switch. The port performs that switch only after the ISR returns.
 
 IDF callback registration persists until replaced, uninstalled, or channel
-deconfiguration. Arduino callbacks belong to one fade. A callback queue item
-stores stable channel identity, callback generation, and event values—not a raw
-callback/user-argument snapshot. At claim time it briefly locks driver state,
-verifies generation and registration, copies the callable and argument, marks
-the item executing, and unlocks before invocation. Replacing/clearing a
-registration, uninstalling, deconfiguring, detaching, or superseding an Arduino
-fade increments `callback_generation` and invalidates unclaimed items.
+deconfiguration. Arduino callbacks belong to one fade. Lock-free ISR-facing
+records publish callback pointer, argument, callback generation, stable channel
+identity, completion/cancellation generation, and event values. Replacing or
+clearing a registration increments `callback_generation` and suppresses only
+the borrowed callback; a valid completion mailbox still reaches the ISR and
+gives the channel gate.
+Uninstall, deconfiguration, detach, or cancellation may invalidate an entire
+completion pair only when its task-context cancellation path also resolves the
+retained gate exactly once before retiring callback state.
 
 An IDF callback receives `LEDC_FADE_END_EVT`, speed mode, channel, and completed
-target duty. Its task-wakeup return value is ignored by the host. Arduino
-argument and no-argument callback variants are claimed by the same mechanism.
+target duty. Its task-wakeup return value contributes to the ISR-exit yield.
+Arduino argument and no-argument callback variants use the same ISR mailbox.
 
 Callback pointers and user arguments remain borrowed as in the public driver
-API. Once claimed, concurrent unregister does not cancel or wait for execution;
-the owner must externally synchronize argument lifetime.
+API. Once claimed, callback execution has begun in ISR context. A task cannot
+concurrently unregister it on the single-core backend; external native owners
+must still synchronize borrowed argument lifetime.
 
 ### Concurrency and delivery ordering
 
-Signals and alarm closures contain values, stable mode/channel identifiers,
-and generations only. They never retain `ChannelState*` or timer references.
-LEDC entry processes alarms before taking its state mutex, and no event pump or
-delay runs while that mutex is held.
+Voltage signals and alarm closures contain values, stable mode/channel
+identifiers, and generations only. They never retain `ChannelState*` or timer
+references. The interrupt mailbox similarly contains only atomically published
+values, callback pointers, and borrowed arguments with the documented lifetime.
+Ordinary LEDC entry samples uptime and lazily completes only its addressed
+channel before taking the channel gate. A channel-wait retry releases all LEDC
+locks before explicitly pumping alarms. LEDC never invokes an event pump or
+delay while an LEDC mutex or channel gate is held.
 
-State transitions enqueue value-owned work with monotonically increasing
-per-pin revisions. One FIFO can hold publication items and callback items. A
-single active drainer pops work under the queue mutex, releases it, then calls
-GPIO or user code. A publication is discarded only when that same pin already
-delivered a newer revision. Relinquishing drainer ownership and observing an
-empty queue are one locked operation, so concurrent work is not stranded.
+State transitions enqueue value-owned publication work with monotonically
+increasing per-pin revisions. Completion appends its final publication and
+finalizer atomically so no other LEDC item can split the pair. A single active
+drainer pops work under the queue mutex, releases it, then calls GPIO or sink
+code or runs an internal finalizer. Ordinary superseded publications may be
+discarded by revision, but a live completion publication is an ordering barrier
+and is delivered before its finalizer; lifecycle cancellation invalidates the
+whole pair and resolves its gate instead. Relinquishing drainer ownership and
+observing an empty queue are one locked operation, so concurrent work is not
+stranded. Framework callbacks bypass this host queue and run from the LEDC ISR
+after their completion finalizer raises the source.
 
-Delivery never nests and never waits for another drainer. Re-entrant or
-concurrent LEDC calls commit and enqueue, then return when a drainer is already
-active; the active drainer delivers their work afterward. In ordinary
-single-threaded use, a mutating API drains its entire batch before returning.
-No timer, LEDC, delivery, pin, or sink mutex is held across external code.
+To preserve commit order, a driver transition may briefly take the FIFO mutex
+after the LEDC state lock solely to append value-owned items. The drainer never
+holds the FIFO mutex while acquiring LEDC state or executing an item, and a
+finalizer consults only lock-free completion/callback records, so that lock
+order cannot cycle through external code.
+
+GPIO delivery never nests and never waits for another drainer. Alarm-drain
+ownership and LEDC-delivery ownership are independent. If a sink advances time
+past a fade deadline, the alarm handler appends the completion pair and
+returns; it neither recursively drains, raises inline, nor waits for the LEDC
+owner. That owner finishes the current sink call, publishes the fade endpoint,
+then runs the finalizer. Concurrent callers follow the same append-and-return
+rule. In ordinary single-threaded use, a mutating API that owns delivery drains
+its entire batch before returning. No timer, LEDC, delivery, pin, or sink mutex
+is held across external code. ISR callbacks may call only ISR-safe APIs; they do
+not enter this host delivery path.
 
 ### roo_blink milestone
 
@@ -420,16 +516,11 @@ than one period. It cleans up and exits instead of entering Arduino's infinite
 
 ## Proposed API
 
-The generic timer extension is:
-
-```cpp
-using SystemTimeAlarmId = uint64_t;
-
-SystemTimeAlarmId ScheduleSystemTimeAlarm(
-    int64_t deadline_uptime_us, std::function<void()> callback);
-void CancelSystemTimeAlarm(SystemTimeAlarmId id);
-void ProcessSystemTimeAlarms();
-```
+LEDC uses the internal C++ API defined by the dependent
+[emulated-time alarm design](emulated_time_alarms.md#proposed-api) and raises
+its source through the dependent [interrupt
+adapter](emulated_interrupts.md#proposed-api). It adds no generic timer or
+interrupt API of its own.
 
 No new public Arduino LEDC API is introduced. The implementation updates the
 existing attach/write/channel-write, tone/note, inversion,
@@ -452,26 +543,17 @@ fade remain outside this proposal.
 
 ## Implementation Plan
 
-Authoring reference: follow this repository's
-[design-authoring guidance](../.github/instructions/embedded-design-doc-authoring.instructions.md)
-and adjacent ESP32-shim/test conventions; roo_testing has no separate
-code-authoring guide at the time of this proposal. Complete the
+Authoring references: follow this repository's
+[design-authoring guidance](../.github/instructions/embedded-design-doc-authoring.instructions.md),
+[C++ code-authoring guidance](../.github/instructions/embedded-cpp-code-authoring.instructions.md),
+and adjacent ESP32-shim/test conventions. Complete the
 [periodic-signal implementation](periodic_voltage_signals.md#implementation-plan)
-first.
+before Phase 1 and the [emulated-time alarm
+implementation](emulated_time_alarms.md#implementation-plan) plus [emulated
+interrupt phases 1-3](emulated_interrupts.md#implementation-plan) before Phase
+3.
 
-### Phase 1: One-shot uptime alarms
-
-Add the C++ alarm API and synchronized timer state in `system/timer.h/.cpp`,
-update BUILD dependencies, and add isolated ordering, cancellation, large-delay,
-auto-sync, and re-entry tests.
-
-Proposed commit: `Add deterministic system-time alarms`
-
-Validation: run the system timer/alarm tests under auto-sync disabled and
-enabled cases. Verify that alarm scheduling and pumping never explicitly
-increment uptime, with global state restored at teardown.
-
-### Phase 2: Steady ESP-IDF LEDC publication
+### Phase 1: Steady ESP-IDF LEDC publication
 
 Add timer origins, pending/committed state, validation, lifecycle policies,
 one state-to-signal builder, and GPIO publication to `idf_ledc.cpp`. Implement
@@ -482,7 +564,7 @@ Proposed commit: `Publish ESP-IDF LEDC PWM through fake GPIO`
 Validation: run IDF LEDC tests for configuration, commit, reconfiguration,
 phase, inversion, invalid calls, and old-pin-low behavior.
 
-### Phase 3: Steady Arduino LEDC publication
+### Phase 2: Steady Arduino LEDC publication
 
 Add per-channel origins, Arduino full-on conversion, output lifecycle, tone,
 analog-write integration, and publication to `arduino_ledc.cpp`; update tests
@@ -493,24 +575,30 @@ Proposed commit: `Publish Arduino LEDC PWM through fake GPIO`
 Validation: run Arduino LEDC tests for attach/write/read, 255-to-256 full-on,
 tone/note, frequency/resolution, inversion, channel reuse, and detach.
 
-### Phase 4: LEDC fade state machine
+### Phase 3: LEDC fade state machine
 
 Add fade configuration, continuous signal publication, integer materialization,
-generation-checked alarms, FreeRTOS channel gates, callback
-registration/claiming, the ordered delivery queue, cancellation/uninstall, and
-all supported combined helpers to both shims. Move blocking IDF tests to the
-FreeRTOS test main and document the classic target behavior.
+generation-checked completion-alarm integration, FreeRTOS channel gates,
+signal-safe fade-end mailboxes, LEDC interrupt registration/source assertion,
+ISR callback delivery, the ordered GPIO delivery queue,
+cancellation/uninstall, and all supported combined helpers to both shims. Move
+blocking IDF tests to the FreeRTOS test main and document the classic target
+behavior.
 
 Proposed commit: `Emulate LEDC fades and channel blocking`
 
 Validation: run IDF and Arduino fade suites covering start/midpoint/deadline,
 wait/no-wait, zero duration, task-local setter waits, active-fade bare-update
 rejection, cancellation, reconfiguration, callback invalidation/re-entry,
-cross-channel task progress, and concurrent delivery. Run blocking cases with
-auto-sync both enabled and disabled; disabled cases use a separate time-driver
-task.
+cross-channel task progress, strict final-GPIO-before-ISR ordering, unrelated
+shared-source assertions, zero/equal-duration ordering, callback unregister
+without lost gate release, lazy-completion drain-before-wait, cancellation-woken
+waiter failure without mutation, delivery-context blocking rejection, callback
+ISR context, callback-requested yields, and concurrent/re-entrant delivery.
+Run blocking cases with auto-sync both enabled and disabled; disabled cases use
+a separate time-driver task.
 
-### Phase 5: roo_blink emulation milestone
+### Phase 4: roo_blink emulation milestone
 
 In roo_blink, correct endpoint/polarity initialization, add deterministic
 `GpioLed` and `Blinker` tests, add the finite VoltageTrace example, document its
@@ -524,16 +612,20 @@ roo_blink aggregate tests and existing example builds.
 
 ## Testing Plan
 
-Timer tests validate chronological and same-deadline ordering, cancellation,
-callback-created alarms, non-dispatching clock reads, large delays, recursive
-pumps, and lock-free callback execution.
+The alarm dependency owns isolated deadline ordering, cancellation, pumping,
+and timer-lock tests. LEDC tests cover only its generation-checked use of that
+service and its driver-visible effects.
 
 IDF tests cover pending/committed state, timer sharing, lifecycle and atomic
 validation, exact duty/phase/inversion mapping, every fade transition, integer
 readback, task-local blocking setters, active-fade bare-update rejection,
-persistent callbacks, cancellation, re-entry, and cross-channel/task progress.
-Arduino tests cover its distinct full-on, per-channel origin, tone,
-reconfiguration, concurrent-fade rejection, callback, and detach behavior.
+persistent callbacks, callback replacement without lost gate release,
+cancellation, re-entry, final-publication/ISR ordering, unrelated-channel
+source assertions, active-drainer delay, lazy completion without a drainer,
+cancellation terminal results, delivery-context wait rejection, and
+cross-channel/task progress. Arduino tests cover its distinct full-on,
+per-channel origin, tone, reconfiguration, concurrent-fade rejection, callback,
+and detach behavior.
 
 Integration tests verify that GPIO sinks receive the correct immutable signal
 and local analysis throughout a fade. The downstream roo_blink suite verifies
@@ -551,14 +643,21 @@ The fade envelope follows requested duration exactly and does not reproduce
 hardware divider/step rounding. Integer readback preserves monotonic count
 semantics, which is sufficient for current roo consumers.
 
-Callbacks execute on whichever thread drains fake time/delivery, not genuine
-ISR context. Code that depends on ISR scheduling or task wakeup must use a more
-specialized emulator. IDF callback task-wakeup return values are ignored.
+The fade-completion alarm handler runs on the thread or task pumping time. It
+commits state and enqueues the ordered completion pair. The LEDC delivery owner
+publishes the hardware-visible endpoint, and the paired finalizer raises the
+source afterward. The framework callback then runs in emulated ISR context,
+possibly on a different selected FreeRTOS task than the alarm pump, and its
+wakeup result can switch tasks at ISR exit. The ISR is a POSIX signal handler,
+so callback and shim code must stay within the supported ISR-safe and
+signal-safe subset.
 
 The active delivery-drainer exception means a re-entrant or concurrent caller
-can return after committing state but before its external publication/callback
-is delivered. Ordinary single-threaded calls drain their complete batch before
-returning.
+can return after committing state but before external publication or the
+subsequent source assertion and ISR callback. The owning drainer still preserves
+the final-publication/finalizer order. When the caller itself owns LEDC
+delivery, it completes the final write and source request before returning, but
+asynchronous POSIX-signal callback execution is not a before-return guarantee.
 
 ### Rejected Alternatives
 
@@ -579,14 +678,9 @@ is responsible for time progress.
 #### Complete fades only when LEDC is queried
 
 Pure lazy completion cannot deliver callbacks when a normal fake-time delay
-crosses the deadline. One-shot alarms provide the required completion event;
-lazy materialization remains a deadlock-safe companion for recursive pumps.
-
-#### Run a background timer thread
-
-A background worker makes deterministic fake-time tests dependent on host
-scheduling and complicates global-time synchronization. Explicit pump points
-preserve deterministic execution.
+crosses the deadline. The dependent alarm service provides the required
+completion event; lazy materialization remains a deadlock-safe companion for
+recursive pumps.
 
 #### Cancel a fade on ordinary duty writes
 

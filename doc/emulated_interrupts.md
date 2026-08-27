@@ -321,13 +321,24 @@ source assertion racing reuse, and invalid flags.
 
 ### Phase 4: Alarm-backed peripheral interrupts
 
-Have alarm consumers materialize status and raise a logical source. Integrate
+After all [emulated-time alarm phases](emulated_time_alarms.md#implementation-plan),
+have alarm consumers materialize status and raise a logical source. Integrate
 LEDC fade completion first, including ISR semaphore release, callback context,
-and task-local blocking. Follow with Arduino hardware timers or GPTimer.
+and task-local blocking. This is the same integration milestone as [LEDC fade
+Phase 3](ledc_voltage_emulation.md#phase-3-ledc-fade-state-machine), not a
+second sequential implementation. Follow with the separate `esp_timer_impl_*`
+milestone: its fixed compare source raises the profile-selected timer interrupt,
+whose lower ISR invokes the vendored common handler and wakes the dedicated
+timer task for `ESP_TIMER_TASK` callbacks. Add direct ISR callbacks when that
+dispatch method is enabled. Follow with Arduino hardware timers or GPTimer.
 
 Proposed commit: `Route LEDC fade completion through emulated interrupts`
 
-Validation: a CPU-busy task is interrupted at a fake-time completion; blocked
+Validation: an auto-synchronized deadline interrupts a CPU-busy task without
+an explicit pump. In manual mode a separate native host time-driver thread (or
+a FreeRTOS driver task that can actually preempt the busy task) advances and
+pumps the deadline before the source interrupts that busy task; a lower-priority
+FreeRTOS driver would never be scheduled and is not a valid test setup. Blocked
 same-channel tasks resume while unrelated tasks continue; callbacks see ISR
 context and can request a yield.
 
@@ -429,5 +440,5 @@ explicit.
   introduced.
 - Add priority and nested interrupt modeling only after defining its interaction
   with POSIX signal masks and FreeRTOS critical sections.
-- Route GPIO, hardware timer, GPTimer, and other peripheral shims through the
-  same controller.
+- Add the host `esp_timer_impl_*` backend, then route GPIO, Arduino hardware
+  timer, GPTimer, and other peripheral shims through the same controller.

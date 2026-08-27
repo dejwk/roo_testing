@@ -45,6 +45,7 @@ cc_library(
         ":esp_err_to_name",
         ":esp_ringbuf",
         "//roo_testing/frameworks/esp-idf/components/freertos:freertos",
+        "//roo_testing/frameworks/esp_idf_support:interrupts",
         "//roo_testing/microcontrollers/esp32:core",
         "//roo_testing/sys",
         "//roo_testing/system:timer",

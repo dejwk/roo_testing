@@ -391,3 +391,42 @@ cc_test(
         "//roo_testing/frameworks/esp-idf/components/freertos",
     ],
 )
+
+cc_test(
+    name = "interrupt_controller_test",
+    size = "small",
+    srcs = ["interrupt_controller_test.cpp"],
+    copts = ["-Werror"],
+    linkstatic = 1,
+    deps = [
+        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "//roo_testing/interrupts:interrupt_controller",
+        "@googletest//:gtest",
+    ],
+)
+
+cc_test(
+    name = "esp_intr_alloc_test",
+    size = "small",
+    srcs = ["esp_intr_alloc_test.cpp"],
+    copts = ["-Werror"],
+    linkstatic = 1,
+    deps = [
+        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "//roo_testing/frameworks/esp_idf_support:interrupts",
+        "@googletest//:gtest",
+    ],
+)
+
+cc_test(
+    name = "esp_intr_alloc_anonymous_test",
+    size = "small",
+    srcs = ["esp_intr_alloc_anonymous_test.cpp"],
+    copts = ["-Werror"],
+    linkstatic = 1,
+    deps = [
+        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "//roo_testing/frameworks/esp_idf_support:interrupts",
+        "@googletest//:gtest",
+    ],
+)

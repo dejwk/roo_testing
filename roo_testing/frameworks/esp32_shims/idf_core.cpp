@@ -15,7 +15,6 @@
 #include "esp_err.h"
 #include "esp_heap_caps.h"
 #include "esp_idf_version.h"
-#include "esp_intr_alloc.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_random.h"
@@ -345,19 +344,5 @@ void esp_deep_sleep(uint64_t time_us) {
 }
 
 uint8_t temprature_sens_read(void) { return 75; }
-
-esp_err_t esp_intr_alloc(int, int, intr_handler_t, void*,
-                         intr_handle_t* return_handle) {
-  if (return_handle != nullptr) *return_handle = nullptr;
-  return ESP_OK;
-}
-esp_err_t esp_intr_alloc_intrstatus(int source, int flags, uint32_t, uint32_t,
-                                    intr_handler_t handler, void* arg,
-                                    intr_handle_t* return_handle) {
-  return esp_intr_alloc(source, flags, handler, arg, return_handle);
-}
-esp_err_t esp_intr_free(intr_handle_t) { return ESP_OK; }
-esp_err_t esp_intr_enable(intr_handle_t) { return ESP_OK; }
-esp_err_t esp_intr_disable(intr_handle_t) { return ESP_OK; }
 
 }  // extern "C"

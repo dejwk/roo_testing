@@ -1,6 +1,6 @@
 # Emulated-time clock
 
-Status: Proposed
+Status: Implemented
 
 ## Objective
 

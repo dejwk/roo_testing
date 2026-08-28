@@ -22,11 +22,6 @@ bool system_time_is_auto_sync_enabled();
 /// Advances emulated uptime by the supplied microseconds.
 void system_time_delay_micros(uint64_t us);
 
-/// Changes the emulated-time mode. Deprecated; select manual mode at link time.
-void system_time_set_auto_sync(bool auto_sync)
-    __attribute__((deprecated("Select //roo_testing/system:manual_time_mode "
-                              "instead.")));
-
 #ifdef __cplusplus
 }
 #endif

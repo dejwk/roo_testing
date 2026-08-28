@@ -5,6 +5,10 @@ cc_library(
     srcs = glob(["*.cpp"]),
     hdrs = glob(["*.h"]),
     visibility = ["//visibility:public"],
+    deps = [
+        "//roo_testing/host:synchronization",
+        "@glog",
+    ],
 )
 
 cc_library(

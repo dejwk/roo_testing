@@ -349,6 +349,18 @@ cc_test(
 )
 
 cc_test(
+    name = "time_publication_test",
+    size = "small",
+    linkstatic = 1,
+    srcs = ["time_publication_test.cpp"],
+    deps = [
+        "//roo_testing/system:manual_time_mode",
+        "//roo_testing/system:timer",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "soc_profile_test",
     size = "small",
     srcs = ["soc_profile_test.cpp"],

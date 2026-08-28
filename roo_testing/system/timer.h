@@ -4,6 +4,20 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
+#include <functional>
+
+using SystemTimeAlarmId = uint64_t;
+
+/// Schedules `callback` to run at the absolute emulated uptime deadline.
+SystemTimeAlarmId ScheduleSystemTimeAlarm(int64_t deadline_uptime_us,
+                                          std::function<void()> callback);
+
+/// Cancels an unclaimed system-time alarm, if it is still pending.
+void CancelSystemTimeAlarm(SystemTimeAlarmId id);
+
+/// Delivers all alarms due at the current emulated uptime.
+void ProcessSystemTimeAlarms();
+
 extern "C" {
 #endif
 

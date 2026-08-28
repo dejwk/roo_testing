@@ -105,6 +105,7 @@ test_suite(
         "//test:time_mode_auto_static_initialization_test",
         "//test:time_mode_manual_static_initialization_test",
         "//test:time_publication_test",
+        "//test:system_time_alarms_test",
         "//test/legacy_sd_headers:legacy_sd_headers_test",
         "//test/profile:arduino_select_test",
         "//test/profile:global_environment_test",

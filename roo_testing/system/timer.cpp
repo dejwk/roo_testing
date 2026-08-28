@@ -2,13 +2,17 @@
 
 #include <time.h>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <csignal>
 #include <cstdint>
 #include <limits>
+#include <map>
 #include <mutex>
 #include <thread>
+#include <unordered_map>
+#include <utility>
 
 #include "glog/logging.h"
 #include "roo_testing/host/scheduler_safe_host_lock.h"
@@ -21,6 +25,10 @@ namespace {
 
 constexpr int64_t kNanosPerMicrosecond = 1000;
 constexpr int64_t kMaxTimeAheadNs = 100000;
+constexpr int64_t kMinAlarmUptimeMicros =
+    std::numeric_limits<int64_t>::min() / kNanosPerMicrosecond;
+constexpr int64_t kMaxAlarmUptimeMicros =
+    std::numeric_limits<int64_t>::max() / kNanosPerMicrosecond;
 
 enum class InitializationState : uint8_t {
   kUninitialized,
@@ -73,6 +81,11 @@ class AtomicUptimePublication {
         return;
       }
     }
+  }
+
+  /// Raises the published uptime floor to `candidate_ns`.
+  void publishAtLeastForMutation(int64_t candidate_ns) {
+    publishAtLeast(candidate_ns);
   }
 
   /// Returns the host-derived uptime under the immutable auto-sync mapping.
@@ -132,6 +145,19 @@ static_assert(std::atomic<InitializationState>::is_always_lock_free);
 // constant-initialized under the repository's C++17 toolchain.
 AtomicUptimePublication kPublication;
 std::mutex kMutationMutex;
+int64_t kReservedUptimeNs = 0;
+
+struct AlarmRecord {
+  SystemTimeAlarmId id;
+  std::function<void()> callback;
+};
+
+using AlarmQueue = std::multimap<int64_t, AlarmRecord>;
+
+AlarmQueue kAlarms;
+std::unordered_map<SystemTimeAlarmId, AlarmQueue::iterator> kAlarmIndex;
+SystemTimeAlarmId kNextAlarmId = 1;
+bool kDeliveryActive = false;
 
 /// Converts microseconds to nanoseconds without overflowing the signed uptime.
 int64_t microsToNanos(uint64_t micros) {
@@ -145,6 +171,92 @@ int64_t microsToNanos(uint64_t micros) {
 void addUptimeNs(int64_t delta_ns) {
   roo_testing::SchedulerSafeHostLock lock(kMutationMutex);
   kPublication.add(delta_ns);
+  kReservedUptimeNs = std::max(kReservedUptimeNs, kPublication.read());
+}
+
+/// Reserves a monotonic target for an explicit delay before it can be pumped.
+int64_t reserveDelayedUptimeNs(int64_t duration_ns) {
+  roo_testing::SchedulerSafeHostLock lock(kMutationMutex);
+  const int64_t current_ns = kPublication.read();
+  const int64_t base_ns = std::max(current_ns, kReservedUptimeNs);
+  CHECK_LE(duration_ns, std::numeric_limits<int64_t>::max() - base_ns);
+  kReservedUptimeNs = base_ns + duration_ns;
+  return kReservedUptimeNs;
+}
+
+/// Converts an exactly representable alarm uptime to nanoseconds.
+int64_t alarmMicrosToNanos(int64_t micros) {
+  CHECK_GE(micros, kMinAlarmUptimeMicros);
+  CHECK_LE(micros, kMaxAlarmUptimeMicros);
+  return micros * kNanosPerMicrosecond;
+}
+
+/// Clears delivery ownership after a callback violates its non-throwing
+/// contract.
+void releaseDeliveryOwnership() {
+  roo_testing::SchedulerSafeHostLock lock(kMutationMutex);
+  kDeliveryActive = false;
+}
+
+/// Releases delivery ownership if a callback unwinds past the delivery loop.
+class DeliveryOwnershipGuard {
+ public:
+  ~DeliveryOwnershipGuard() {
+    if (active_) releaseDeliveryOwnership();
+  }
+
+  void dismiss() { active_ = false; }
+
+ private:
+  bool active_ = true;
+};
+
+/// Claims and invokes work due while advancing no later than `limit_ns`.
+void deliverAlarmsThrough(int64_t limit_ns, bool advance_time) {
+  {
+    roo_testing::SchedulerSafeHostLock lock(kMutationMutex);
+    if (kDeliveryActive) {
+      if (advance_time) kPublication.publishAtLeastForMutation(limit_ns);
+      return;
+    }
+    kDeliveryActive = true;
+  }
+  DeliveryOwnershipGuard ownership;
+
+  while (true) {
+    std::function<void()> callback;
+    {
+      roo_testing::SchedulerSafeHostLock lock(kMutationMutex);
+      int64_t current_ns = kPublication.read();
+      if (advance_time && current_ns < limit_ns) {
+        const AlarmQueue::iterator first = kAlarms.begin();
+        if (first != kAlarms.end()) {
+          const int64_t deadline_ns = alarmMicrosToNanos(first->first);
+          if (deadline_ns > current_ns && deadline_ns <= limit_ns) {
+            kPublication.publishAtLeastForMutation(deadline_ns);
+          } else {
+            kPublication.publishAtLeastForMutation(limit_ns);
+          }
+        } else {
+          kPublication.publishAtLeastForMutation(limit_ns);
+        }
+        current_ns = kPublication.read();
+      }
+
+      const AlarmQueue::iterator first = kAlarms.begin();
+      if (first == kAlarms.end() ||
+          alarmMicrosToNanos(first->first) > current_ns) {
+        kDeliveryActive = false;
+        ownership.dismiss();
+        return;
+      }
+      callback = std::move(first->second.callback);
+      kAlarmIndex.erase(first->second.id);
+      kAlarms.erase(first);
+    }
+
+    callback();
+  }
 }
 
 /// Paces a task/native caller when explicit progression is ahead of host time.
@@ -161,6 +273,42 @@ void paceAutoSync() {
 }
 
 }  // namespace
+
+SystemTimeAlarmId ScheduleSystemTimeAlarm(int64_t deadline_uptime_us,
+                                          std::function<void()> callback) {
+  CHECK(callback);
+  alarmMicrosToNanos(deadline_uptime_us);
+
+  SystemTimeAlarmId id;
+  {
+    roo_testing::SchedulerSafeHostLock lock(kMutationMutex);
+    CHECK_NE(kNextAlarmId, static_cast<SystemTimeAlarmId>(0));
+    id = kNextAlarmId++;
+    AlarmQueue::iterator record = kAlarms.emplace(
+        deadline_uptime_us, AlarmRecord{id, std::move(callback)});
+    kAlarmIndex.emplace(id, record);
+  }
+  return id;
+}
+
+void CancelSystemTimeAlarm(SystemTimeAlarmId id) {
+  if (id == 0) return;
+
+  std::function<void()> discarded_callback;
+  {
+    roo_testing::SchedulerSafeHostLock lock(kMutationMutex);
+    const std::unordered_map<SystemTimeAlarmId, AlarmQueue::iterator>::iterator
+        found = kAlarmIndex.find(id);
+    if (found == kAlarmIndex.end()) return;
+    discarded_callback = std::move(found->second->second.callback);
+    kAlarms.erase(found->second);
+    kAlarmIndex.erase(found);
+  }
+}
+
+void ProcessSystemTimeAlarms() {
+  deliverAlarmsThrough(kPublication.read(), false);
+}
 
 extern "C" {
 
@@ -182,7 +330,7 @@ bool system_time_is_auto_sync_enabled() {
 
 void system_time_delay_micros(uint64_t micros) {
   kPublication.isAutoSyncEnabled();
-  addUptimeNs(microsToNanos(micros));
+  deliverAlarmsThrough(reserveDelayedUptimeNs(microsToNanos(micros)), true);
   paceAutoSync();
 }
 

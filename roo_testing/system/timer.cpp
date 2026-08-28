@@ -1,20 +1,24 @@
 #include "timer.h"
 
 #include <chrono>
+#include <csignal>
 #include <functional>
 #include <thread>
 
 static constexpr auto kMaxTimeAhead = std::chrono::nanoseconds(100000);
 static constexpr auto kMaxTimeLag = std::chrono::nanoseconds(50);
 
+extern "C" volatile sig_atomic_t system_time_auto_sync_mode
+    __attribute__((weak));
+volatile sig_atomic_t system_time_auto_sync_mode = 1;
+
 class EmulatedTime {
  public:
   EmulatedTime()
       : rt_clock_(), rt_start_time_(rt_clock_.now()), emu_uptime_(0) {
-    set_auto_sync(true);
+    set_auto_sync(system_time_auto_sync_mode != 0);
   }
 
- public:
   void set_auto_sync(bool auto_sync) {
     auto_sync_ = auto_sync;
     if (auto_sync_) {
@@ -36,6 +40,8 @@ class EmulatedTime {
   void lag(std::chrono::nanoseconds lag);
 
   int64_t getTimeMicros() const;
+
+  bool isAutoSyncEnabled() const { return auto_sync_; }
 
   void delayMicros(uint64_t delay);
 
@@ -89,6 +95,10 @@ void system_time_lag_ns(uint64_t ns) {
 }
 
 int64_t system_time_get_micros() { return SystemTimer().getTimeMicros(); }
+
+bool system_time_is_auto_sync_enabled() {
+  return SystemTimer().isAutoSyncEnabled();
+}
 
 void system_time_delay_micros(uint64_t us) { SystemTimer().delayMicros(us); }
 

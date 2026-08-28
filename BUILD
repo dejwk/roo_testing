@@ -102,6 +102,8 @@ test_suite(
         "//test:simple_test",
         "//test:soc_environment_test",
         "//test:soc_profile_test",
+        "//test:time_mode_auto_static_initialization_test",
+        "//test:time_mode_manual_static_initialization_test",
         "//test/legacy_sd_headers:legacy_sd_headers_test",
         "//test/profile:arduino_select_test",
         "//test/profile:global_environment_test",

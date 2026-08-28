@@ -320,7 +320,31 @@ cc_test(
     linkstatic = 1,
     deps = [
         "//:arduino_gtest_main",
+        "//roo_testing/system:manual_time_mode",
         "//roo_testing/system:timer",
+    ],
+)
+
+cc_test(
+    name = "time_mode_auto_static_initialization_test",
+    size = "small",
+    linkstatic = 1,
+    srcs = ["time_mode_auto_static_initialization_test.cpp"],
+    deps = [
+        "//roo_testing/system:timer",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "time_mode_manual_static_initialization_test",
+    size = "small",
+    linkstatic = 1,
+    srcs = ["time_mode_manual_static_initialization_test.cpp"],
+    deps = [
+        "//roo_testing/system:manual_time_mode",
+        "//roo_testing/system:timer",
+        "@googletest//:gtest_main",
     ],
 )
 

@@ -22,6 +22,9 @@ bool system_time_is_auto_sync_enabled();
 /// Advances emulated uptime by the supplied microseconds.
 void system_time_delay_micros(uint64_t us);
 
+/// Occupies host time without advancing emulated uptime or dispatching work.
+void system_time_busy_wait_micros(uint64_t us);
+
 #ifdef __cplusplus
 }
 #endif

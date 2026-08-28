@@ -100,6 +100,7 @@ class AtomicUptimePublication {
                  std::memory_order_release);
   }
 
+ public:
   /// Samples the host's steady monotonic clock as signed nanoseconds.
   static int64_t monotonicNowNs() {
     timespec now;
@@ -108,6 +109,7 @@ class AtomicUptimePublication {
     return static_cast<int64_t>(now.tv_sec) * 1000000000LL + now.tv_nsec;
   }
 
+ private:
   /// Atomically raises the uptime floor to `candidate_ns`.
   void publishAtLeast(int64_t candidate_ns) {
     int64_t current = uptime_ns_.load(std::memory_order_relaxed);
@@ -182,6 +184,15 @@ void system_time_delay_micros(uint64_t micros) {
   kPublication.isAutoSyncEnabled();
   addUptimeNs(microsToNanos(micros));
   paceAutoSync();
+}
+
+void system_time_busy_wait_micros(uint64_t micros) {
+  const int64_t duration_ns = microsToNanos(micros);
+  const int64_t start_ns = AtomicUptimePublication::monotonicNowNs();
+  CHECK_LE(duration_ns, std::numeric_limits<int64_t>::max() - start_ns);
+  const int64_t deadline_ns = start_ns + duration_ns;
+  while (AtomicUptimePublication::monotonicNowNs() < deadline_ns) {
+  }
 }
 
 }  // extern "C"

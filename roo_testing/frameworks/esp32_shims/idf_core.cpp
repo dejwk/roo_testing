@@ -79,7 +79,13 @@ int64_t esp_timer_get_next_alarm(void) { return INT64_MAX; }
 int64_t esp_timer_get_next_alarm_for_wake_up(void) { return INT64_MAX; }
 void esp_timer_isr_dispatch_need_yield(void) {}
 
-void esp_rom_delay_us(uint32_t us) { system_time_delay_micros(us); }
+void esp_rom_delay_us(uint32_t us) {
+  if (xPortInIsrContext()) {
+    system_time_busy_wait_micros(us);
+    return;
+  }
+  system_time_delay_micros(us);
+}
 void ets_delay_us(uint32_t us) { esp_rom_delay_us(us); }
 
 int esp_rom_vprintf(const char* format, va_list args) {

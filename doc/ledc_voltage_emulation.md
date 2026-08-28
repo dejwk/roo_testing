@@ -687,10 +687,11 @@ Authoring reference: follow this repository's
 
 Dependencies: complete the
 [periodic-signal implementation](periodic_voltage_signals.md#implementation-plan)
-and alarm [Phase 1 host locking](emulated_time_alarms.md#phase-1-scheduler-safe-host-locking)
-before Phase 1. Complete alarm [Phase 2 link-selected
-mode](emulated_time_alarms.md#phase-2-link-selected-process-time-mode) before
-Phase 2. Complete the remaining [emulated-time alarm
+and emulated-time clock [Phase 1 host
+locking](emulated_time_clock.md#phase-1-scheduler-safe-host-locking) before Phase
+1. Complete clock [Phase 2 link-selected
+mode](emulated_time_clock.md#phase-2-link-selected-time-mode) before Phase 2.
+Complete the [emulated-time alarm
 implementation](emulated_time_alarms.md#implementation-plan) before Phase 3,
 and complete [emulated interrupt phases 1-4](emulated_interrupts.md#implementation-plan)
 before Phase 5.

@@ -1,6 +1,16 @@
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
 cc_test(
+    name = "scheduler_safe_host_lock_test",
+    size = "small",
+    srcs = ["scheduler_safe_host_lock_test.cpp"],
+    deps = [
+        "//roo_testing/host:synchronization",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "emulator_environment_test",
     size = "small",
     srcs = [

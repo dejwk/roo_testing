@@ -1,6 +1,7 @@
 #include "roo_testing/transducers/voltage/voltage.h"
 
 #include "glog/logging.h"
+#include "roo_testing/host/scheduler_safe_host_lock.h"
 #include "roo_testing/system/timer.h"
 
 namespace roo_testing_transducers {
@@ -14,7 +15,7 @@ SimpleVoltageSink SimpleVoltageSink::WithSignalCallback(
 void SimpleVoltageSink::write(const VoltageSignal& signal) {
   std::function<void(const VoltageSignal&)> signal_write_fn;
   {
-    std::lock_guard<std::mutex> lock(mutex_);
+    roo_testing::SchedulerSafeHostLock lock(mutex_);
     signal_ = signal;
     signal_write_fn = signal_write_fn_;
   }
@@ -22,7 +23,7 @@ void SimpleVoltageSink::write(const VoltageSignal& signal) {
 }
 
 std::optional<VoltageSignal> SimpleVoltageSink::signal() const {
-  std::lock_guard<std::mutex> lock(mutex_);
+  roo_testing::SchedulerSafeHostLock lock(mutex_);
   return signal_;
 }
 
@@ -60,7 +61,7 @@ SimpleDigitalSink SimpleDigitalSink::WithSignalCallback(
 void SimpleDigitalSink::write(const VoltageSignal& signal) {
   std::function<void(const VoltageSignal&)> signal_write_fn;
   {
-    std::lock_guard<std::mutex> lock(mutex_);
+    roo_testing::SchedulerSafeHostLock lock(mutex_);
     signal_ = signal;
     signal_write_fn = signal_write_fn_;
   }
@@ -68,7 +69,7 @@ void SimpleDigitalSink::write(const VoltageSignal& signal) {
 }
 
 std::optional<VoltageSignal> SimpleDigitalSink::signal() const {
-  std::lock_guard<std::mutex> lock(mutex_);
+  roo_testing::SchedulerSafeHostLock lock(mutex_);
   return signal_;
 }
 

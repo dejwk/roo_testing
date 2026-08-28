@@ -98,6 +98,7 @@ test_suite(
         "//test:nvs_test",
         "//test:onewire_test",
         "//test:rtc_ds3231_i2c_test",
+        "//test:scheduler_safe_host_lock_test",
         "//test:simple_test",
         "//test:soc_environment_test",
         "//test:soc_profile_test",

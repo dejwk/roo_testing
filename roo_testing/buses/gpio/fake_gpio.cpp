@@ -4,6 +4,7 @@
 #include <cstdlib>
 
 #include "glog/logging.h"
+#include "roo_testing/host/scheduler_safe_host_lock.h"
 #include "roo_testing/system/timer.h"
 
 using namespace roo_testing_transducers;
@@ -155,7 +156,7 @@ bool FakeGpioPin::isDigitalHigh() const {
 
 void FakeGpioPin::write(const VoltageSignal& signal) {
   {
-    std::lock_guard<std::mutex> lock(mutex_);
+    roo_testing::SchedulerSafeHostLock lock(mutex_);
     last_signal_ = signal;
   }
   onWrite(signal);
@@ -174,7 +175,7 @@ void FakeGpioPin::digitalWriteHigh() { digitalWrite(kDigitalHigh); }
 void FakeGpioPin::digitalWriteLow() { digitalWrite(kDigitalLow); }
 
 std::optional<VoltageSignal> FakeGpioPin::lastSignal() const {
-  std::lock_guard<std::mutex> lock(mutex_);
+  roo_testing::SchedulerSafeHostLock lock(mutex_);
   return last_signal_;
 }
 

@@ -407,13 +407,16 @@ second sequential implementation.
 
 Proposed commit: `Emulate ESP-IDF LEDC fades through interrupts`
 
-Validation: an auto-synchronized deadline interrupts a CPU-busy task without
-an explicit pump. In manual mode a separate native host time-driver thread
-advances and pumps the deadline before the source interrupts that busy task; a
-lower-priority FreeRTOS driver is not used because it cannot preempt the busy
-task. Blocked same-channel tasks resume while unrelated tasks continue;
-callbacks see ISR context and can request a yield. Update the LEDC design status
-and its fade example in the same commit.
+Validation uses two isolated Bazel binaries whose immutable mode is selected by
+linkage before execution. `//test:idf_ledc_freertos_autosync_test` proves that
+an auto-synchronized deadline interrupts a CPU-busy task without an explicit
+pump. `//test:idf_ledc_freertos_manual_test` links
+`//roo_testing/system:manual_time_mode` and uses a separate native host
+time-driver thread to advance and pump the deadline before the source interrupts
+that busy task; a lower-priority FreeRTOS driver is not used because it cannot
+preempt the busy task. Blocked same-channel tasks resume while unrelated tasks
+continue; callbacks see ISR context and can request a yield. Update the LEDC
+design status and its fade example in the same commit.
 
 ## Testing Plan
 
@@ -428,8 +431,8 @@ by `//test:esp_intr_alloc_test`, `//test:esp_intr_alloc_anonymous_test`, and
 
 Run the controller and allocator suites with Bazel `--runs_per_test` and the
 GTest `--gtest_shuffle` argument to expose process-global installation and
-stale-state dependencies. Phase 5 adds its integration target in the same
-commit; that target combines emulated deadlines with task and ISR
+stale-state dependencies. Phase 5 adds its two integration targets in the same
+commit; those targets combine emulated deadlines with task and ISR
 observations rather than duplicating the layer-focused suites.
 
 ## Caveats
@@ -475,8 +478,9 @@ depend on unrelated API calls.
 
 #### Advance emulated time from a blocking driver call
 
-Global time advancement affects every task and conflicts with auto-sync. A
-blocking peripheral call must suspend only its FreeRTOS task.
+Global time advancement affects every task and conflicts with a process
+configured for host-clock synchronization. A blocking peripheral call must
+suspend only its FreeRTOS task.
 
 #### Run handlers on a dedicated dispatcher task
 

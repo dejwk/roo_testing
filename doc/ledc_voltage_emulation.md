@@ -82,9 +82,10 @@ redefine those facilities.
 7. Same-channel operations block or reject as the supported classic
    ESP32/Arduino facade does; other channels remain independent.
 8. A supported blocking call suspends only its calling FreeRTOS task. It never
-   explicitly writes or advances fake uptime; the configured auto-sync waiter
-   or another task/test driver remains responsible for observed time progress,
-   and other runnable tasks remain able to run.
+   explicitly writes or advances fake uptime. In an auto-synchronized process,
+   the native waiter observes progress; in a manual-time process, another
+   task/test driver advances and pumps time. Other runnable tasks remain able
+   to run in either mode.
 9. Fade completion becomes observable exactly once. The steady target output
    is visible before completion notification, a blocked same-channel caller is
    released before its completion callback, and a valid callback observes
@@ -94,7 +95,8 @@ redefine those facilities.
     committed state, and no external GPIO, sink, or callback code runs while
     driver serialization is held.
 11. Invalid API calls are atomic and do not explicitly write or delay fake
-    time; ordinary clock observation may still apply configured auto-sync.
+    time; ordinary clock observation still follows the process's selected time
+    mode.
 12. Retained signals and asynchronous fade work remain valid after the driver
     state that created them is reconfigured or destroyed.
 13. The first downstream milestone provides deterministic emulation tests and
@@ -126,8 +128,9 @@ origin, and active-fade state. Each publication is an immutable square
 signal already retained by a sink.
 
 The dependent alarm queue marks fade deadlines and dispatches them from an
-explicit manual-time drainer or its auto-sync native waiter. A valid deadline
-handler commits target state and atomically appends an ordered delivery pair:
+explicit drainer in a manual-time process or the native waiter in an
+auto-synchronized process. A valid deadline handler commits target state and
+atomically appends an ordered delivery pair:
 final GPIO publication, then an internal completion finalizer. After the GPIO
 write and sink calls return, the finalizer publishes a generation-tagged
 fade-end mailbox and raises `ETS_LEDC_INTR_SOURCE` with no alarm, driver,
@@ -313,7 +316,7 @@ the ideal continuous envelope described by the periodic-signal design.
 ### Alarm-service integration
 
 The [emulated-time alarm service](emulated_time_alarms.md) owns deadline
-storage, cancellation, chronological dispatch, auto-sync interaction, and
+storage, cancellation, chronological dispatch, process-mode delivery, and
 non-nesting pump behavior. Nonblocking LEDC entry does not pump the global alarm
 queue; it reads uptime and lazily materializes only its own due fade. Blocking
 LEDC entry likewise never pumps the global queue: after the one lazy check it
@@ -391,11 +394,12 @@ to ESP-IDF paths that acquire that semaphore use this retry algorithm:
    acquired gate according to the lifecycle transition.
 
 The wait never polls, calls `ProcessSystemTimeAlarms()`, invokes
-`system_time_delay_micros()`, or writes uptime. With auto-sync enabled, the
-native deadline waiter completes the fade. With auto-sync disabled, a separate
-test driver or runnable FreeRTOS task must advance and pump time; the blocked
-caller does not help itself. This preserves the hardware distinction between a
-blocked task and the independently progressing timer/interrupt machinery.
+`system_time_delay_micros()`, or writes uptime. In an auto-synchronized process,
+the native deadline waiter completes the fade. In a manual-time process, a
+separate test driver or runnable FreeRTOS task must advance and pump time; the
+blocked caller does not help itself. This preserves the hardware distinction
+between a blocked task and the independently progressing timer/interrupt
+machinery.
 
 LEDC tracks whether the current host call stack is inside its GPIO/sink
 delivery. A call from that context must not wait for a channel gate: doing so
@@ -612,14 +616,15 @@ This maps both logical endpoints exactly. Also make the signature default
 to reverse duty rather than use LEDC output inversion; the published signal
 always describes physical pin voltage.
 
-Add injected-scheduler host tests using the framework's FreeRTOS test main.
-Disable timer auto-sync and capture a starting uptime instead of assuming zero.
-A worker FreeRTOS task executes eligible scheduler callbacks; the test task is
-the explicit time driver, walking to the earlier of each requested sample or
-scheduler deadline and pumping system-time alarms. Test semaphores establish
-when the worker has entered or left a blocking LEDC call before state is
-sampled. Tests never call `Scheduler::run()` and never execute scheduler
-callbacks on the time-driver task.
+Add injected-scheduler host tests using the framework's FreeRTOS test main and
+link their final Bazel target with
+`@roo_testing//roo_testing/system:manual_time_mode`. Capture a starting uptime
+instead of assuming zero. A worker FreeRTOS task executes eligible scheduler
+callbacks; the test task is the explicit time driver, walking to the earlier of
+each requested sample or scheduler deadline and pumping system-time alarms.
+Test semaphores establish when the worker has entered or left a blocking LEDC
+call before state is sampled. Tests never call `Scheduler::run()` and never
+execute scheduler callbacks on the time-driver task.
 
 Coverage includes direct `GpioLed` levels/polarities/fades and
 `Blink(Millis(1000), 30, 30, 90)`: fade on from 0-90 ms, steady on to 300 ms,
@@ -629,12 +634,12 @@ scheduler worker until the test task advances fake time to old fade completion.
 An independent probe task remains runnable, and overdue scheduler work begins
 only after the runner resumes.
 
-Add a finite host-only `examples/monochrome/VoltageTrace` target. It attaches a
-`SimpleVoltageSink` before constructing `GpioLed`, runs the Smooth sequence
-with an injected scheduler and disabled auto-sync, and prints relative uptime,
-physical DC, total RMS, AC RMS, and logical brightness as CSV for slightly more
-than one period. It cleans up and exits instead of entering Arduino's infinite
-`loop()` runner.
+Add a finite host-only `examples/monochrome/VoltageTrace` target. Its final
+binary links `@roo_testing//roo_testing/system:manual_time_mode`. It attaches a
+`SimpleVoltageSink` before constructing `GpioLed`, runs the Smooth sequence with
+an injected scheduler, and prints relative uptime, physical DC, total RMS, AC
+RMS, and logical brightness as CSV for slightly more than one period. It cleans
+up and exits instead of entering Arduino's infinite `loop()` runner.
 
 ## Proposed API
 
@@ -683,10 +688,12 @@ Authoring reference: follow this repository's
 Dependencies: complete the
 [periodic-signal implementation](periodic_voltage_signals.md#implementation-plan)
 and alarm [Phase 1 host locking](emulated_time_alarms.md#phase-1-scheduler-safe-host-locking)
-before Phase 1. Complete the remaining [emulated-time alarm
+before Phase 1. Complete alarm [Phase 2 link-selected
+mode](emulated_time_alarms.md#phase-2-link-selected-process-time-mode) before
+Phase 2. Complete the remaining [emulated-time alarm
 implementation](emulated_time_alarms.md#implementation-plan) before Phase 3,
-and complete [emulated interrupt phases
-1-4](emulated_interrupts.md#implementation-plan) before Phase 5.
+and complete [emulated interrupt phases 1-4](emulated_interrupts.md#implementation-plan)
+before Phase 5.
 
 The incremental public contract is fail-closed. Phase 1 replaces the existing
 placeholder immediate-success fade behavior: `ledc_fade_func_install`,
@@ -720,7 +727,11 @@ false-returning gamma calls and both warning/no-op void calls.
 
 Add per-channel origins, Arduino full-on conversion, output lifecycle, tone,
 analog-write integration, and publication to `arduino_ledc.cpp`; update tests
-and shim docs.
+and shim docs. Compile the shared steady-state cases into
+`//test:arduino_ledc_manual_test` and
+`//test:arduino_ledc_autosync_test`, with only the manual child linking
+`//roo_testing/system:manual_time_mode`, and expose
+`//test:arduino_ledc_test` as their aggregate `test_suite`.
 
 Proposed commit: `Publish Arduino LEDC PWM through fake GPIO`
 
@@ -741,7 +752,10 @@ Proposed commit: `Add the internal LEDC fade completion engine`
 Validation: run private engine tests for interpolation and exact endpoints,
 zero/equal-duration completion, alarm-versus-lazy claims, FIFO re-entry,
 final-GPIO-before-mailbox ordering, and generation-safe gate state in manual and
-auto-sync time.
+auto-synchronized time. Compile the shared cases into isolated
+`//test:ledc_fade_engine_manual_test` and
+`//test:ledc_fade_engine_autosync_test` binaries; only the manual target links
+`//roo_testing/system:manual_time_mode`.
 
 ### Phase 4: Cancellation and lifecycle quiescence
 
@@ -775,8 +789,12 @@ Proposed commit: `Emulate ESP-IDF LEDC fades through interrupts`
 Validation: run the IDF fade suite for configuration/start, integer readback,
 task-local waits, cancellation/reconfiguration, persistent callback replacement,
 lazy completion, delivery-context rejection, and cross-channel progress. Run
-blocking cases with auto-sync enabled and disabled; disabled cases use a
-separate native host time-driver thread. Cover shared-source assertions,
+blocking cases in two isolated binaries whose immutable mode is selected by
+linkage before execution. `//test:idf_ledc_freertos_autosync_test` covers
+wall-driven and CPU-busy completion;
+`//test:idf_ledc_freertos_manual_test` links
+`//roo_testing/system:manual_time_mode` and uses a separate native host
+time-driver thread. Cover shared-source assertions,
 final-GPIO-before-ISR ordering, gate release, callback ISR context, and
 callback-requested yields. Race interrupt delivery between mailbox publication
 and gate give, and callback replacement between ISR claim and release.
@@ -786,13 +804,19 @@ and gate give, and callback replacement between ISR claim and release.
 Wire `ledcFade`, `ledcFadeWithInterrupt`, and
 `ledcFadeWithInterruptArg` into the completed engine, including explicit start
 duty, one-fade callback lifetime, concurrent-fade rejection, detach, and
-channel-reuse behavior. Update Arduino shim documentation in the same commit.
+channel-reuse behavior. Compile the facade tests into isolated manual and
+auto-synchronized binaries, extending the Phase 2
+`//test:arduino_ledc_manual_test` and
+`//test:arduino_ledc_autosync_test` children under the existing
+`//test:arduino_ledc_test` aggregate. Update Arduino shim documentation in the
+same commit.
 
 Proposed commit: `Emulate Arduino LEDC fades and callbacks`
 
 Validation: run Arduino fade tests for start/midpoint/deadline, endpoint mapping,
 callback/no-callback variants, re-entry, concurrent-fade rejection, detach,
-reassignment, and channel reuse.
+reassignment, and channel reuse. Exact timeline cases run in the manual binary;
+the auto-synchronized binary covers autonomous completion and callbacks.
 
 ### Phase 7: roo_blink emulation milestone
 
@@ -810,19 +834,23 @@ roo_blink aggregate tests and existing example builds.
 
 The alarm and interrupt dependencies retain isolated coverage of their queues,
 transport, and host-lock primitives. Phase 1 extends `//test:idf_ledc_test`;
-Phase 2 adds `//test:arduino_ledc_test`; Phase 3 adds and Phase 4 extends
-`//test:ledc_fade_engine_test`; Phase 5 adds
-`//test:idf_ledc_freertos_test`; and Phase 6 extends the Arduino target with
-fade cases. Together these cover completion ordering, arbitration, teardown,
-facade validation, lifecycle, readback, task-local blocking, ISR callbacks,
-fake-GPIO publication, and manual/auto-sync behavior.
+Phase 2 adds `//test:arduino_ledc_manual_test` and
+`//test:arduino_ledc_autosync_test` under `//test:arduino_ledc_test`; Phase 3
+adds and Phase 4 extends
+`//test:ledc_fade_engine_manual_test` and
+`//test:ledc_fade_engine_autosync_test`; Phase 5 adds
+`//test:idf_ledc_freertos_manual_test` and
+`//test:idf_ledc_freertos_autosync_test`; and Phase 6 extends both Arduino child
+binaries with fade cases. Together these cover completion ordering, arbitration,
+teardown, facade validation, lifecycle, readback, task-local blocking, ISR
+callbacks, fake-GPIO publication, and behavior in isolated process modes.
 
 The downstream roo_blink suite covers physical waveform metadata, logical
 endpoint polarity, the documented blink timeline, and sequence replacement.
 The VoltageTrace example must terminate and emit its expected finite CSV without
 a wall-clock dependency. Every suite performs the documented LEDC quiescence
-barrier before destroying topology or borrowed state and restores global timer
-and alarm configuration during cleanup.
+barrier before destroying topology or borrowed state and cancels its own alarm
+registrations during cleanup. Clock mode is immutable and requires no cleanup.
 
 ## Caveats
 
@@ -830,20 +858,21 @@ The fade envelope follows requested duration exactly and does not reproduce
 hardware divider/step rounding. Integer readback preserves monotonic count
 semantics, which is sufficient for current roo consumers.
 
-The fade-completion alarm handler runs on the auto-sync native waiter or the
-thread/task explicitly pumping manual time. It commits state and enqueues the
-ordered completion pair. The LEDC delivery owner publishes the hardware-visible
-endpoint, and the paired finalizer raises the source afterward. The framework
-callback then runs in emulated ISR context on whichever FreeRTOS task is
-selected when the source is asserted, and its wakeup result can switch tasks at
-ISR exit. The ISR is a POSIX signal handler, so callback and shim code must stay
-within the supported ISR-safe and signal-safe subset. GPIO sinks reached from
-the native waiter must also remain short and non-throwing, must not call
-any FreeRTOS API, and must not wait for FreeRTOS, ISR, or external
-completion. The one waiter serializes autonomous work, so a slow sink delays
-unrelated system alarms as well as LEDC completion. Built-in sinks use the
-signal-masked host-lock guard; a custom sink must use the same discipline or
-lock-free state anywhere it can contend with a selected FreeRTOS task.
+In an auto-synchronized process, the fade-completion alarm handler runs on the
+native waiter; in a manual-time process, it runs on the thread or task that
+explicitly pumps time. It commits state and enqueues the ordered completion
+pair. The LEDC delivery owner publishes the hardware-visible endpoint, and the
+paired finalizer raises the source afterward. The framework callback then runs
+in emulated ISR context on whichever FreeRTOS task is selected when the source
+is asserted, and its wakeup result can switch tasks at ISR exit. The ISR is a
+POSIX signal handler, so callback and shim code must stay within the supported
+ISR-safe and signal-safe subset. GPIO sinks reached from the native waiter must
+also remain short and non-throwing, must not call any FreeRTOS API, and must not
+wait for FreeRTOS, ISR, or external completion. The one waiter serializes
+autonomous work, so a slow sink delays unrelated system alarms as well as LEDC
+completion. Built-in sinks use the signal-masked host-lock guard; a custom sink
+must use the same discipline or lock-free state anywhere it can contend with a
+selected FreeRTOS task.
 
 The active delivery-drainer exception means a re-entrant or concurrent caller
 can return after committing state but before external publication or the
@@ -863,16 +892,17 @@ contract.
 #### Advance fake uptime when a fade starts
 
 This would make `NO_WAIT` synchronous and skip observable intermediate duty.
-Time advances only when the application explicitly drives it or wall-clock
-auto-sync observes progress.
+Time advances when a manual-time driver explicitly moves it or, in an
+auto-synchronized process, when the clock observes host progress.
 
 #### Advance fake uptime from a blocked LEDC call
 
-Moving the global clock makes a task-local wait affect every task and can force
-the timer's auto-sync logic to sleep until wall time catches up. It also skips
-the scheduling opportunity that a real FreeRTOS semaphore wait creates. The
-channel gate therefore blocks only its caller; another task/test driver or the
-auto-sync native waiter is responsible for time progress.
+Moving the global clock makes a task-local wait affect every task and, in an
+auto-synchronized process, can force clock pacing until host time catches up.
+It also skips the scheduling opportunity that a real FreeRTOS semaphore wait
+creates. The channel gate therefore blocks only its caller; the manual driver
+or, in an auto-synchronized process, the native waiter is responsible for time
+progress.
 
 #### Complete fades only when LEDC is queried
 

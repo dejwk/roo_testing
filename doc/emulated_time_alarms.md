@@ -6,7 +6,8 @@ Status: Proposed
 
 Provide cancellable one-shot callbacks at absolute roo_testing uptimes, with
 deterministic explicit delivery in manually driven time and autonomous
-best-effort delivery while uptime follows the host monotonic clock.
+best-effort delivery while uptime follows the host monotonic clock. Peripheral
+completion waits remain task-local and never advance global uptime themselves.
 
 ## Motivation
 
@@ -21,6 +22,12 @@ leaving time progress under the existing system clock and test driver. In
 wall-synchronized mode it must also observe an otherwise CPU-busy system and
 initiate delivery; the interrupt controller cannot preempt a task until some
 deadline source actually asserts an interrupt.
+
+A peripheral API that waits for such completion still blocks only its calling
+FreeRTOS task. It waits on a framework semaphore or notification; it does not
+advance global uptime to manufacture completion. Other runnable tasks continue,
+and time progresses either from wall-clock auto-sync or from a separate test
+driver in manual mode.
 
 ## Background
 
@@ -88,50 +95,62 @@ timers, but its Linux tick is driven by wall-clock `ITIMER_REAL`; it is not a
 deterministic substitute for an alarm tied to manually driven roo_testing
 uptime.
 
-In this design, an *alarm* is an internal C++ one-shot record associated with
-an absolute system uptime and an *alarm handler*. The handler is infrastructure
-for driver adapters, not a public peripheral callback. A consumer that models
-hardware delivery can materialize peripheral status and use the separate
-[emulated interrupt controller](emulated_interrupts.md) to run the registered
-framework handler in ISR context.
+The current implementation boundaries are:
+
+| Area | Current behavior |
+| --- | --- |
+| [`system/timer.cpp`](../roo_testing/system/timer.cpp) | Unsynchronized clock state; no alarms or native waiter |
+| [FreeRTOS Linux port](../roo_testing/frameworks/esp-idf/components/freertos/FreeRTOS-Kernel/portable/linux/port.c) | Implemented scheduler tick and simulated-interrupt signals; no alarm queue |
+| [`roo_testing::mutex`](../roo_testing/sys/mutex.h) and vendored framework code | FreeRTOS task synchronization; not usable by a non-FreeRTOS native waiter |
+| Host shims, fake GPIO, and built-in sinks | Some roo_testing-owned state currently uses ordinary C++ host mutexes |
+
+This proposal changes roo_testing host infrastructure and selected host-owned
+state. It does not replace ESP-IDF or Arduino framework semaphores, critical
+sections, or `FromISR` APIs.
 
 ## Requirements
 
-1. A caller can schedule a one-shot callback at any signed 64-bit system
-   uptime and cancel it by opaque identifier.
+1. A caller can schedule and cancel a one-shot callback at any absolute
+   microsecond deadline in the inclusive range
+   `[-9,223,372,036,854,775, +9,223,372,036,854,775]`; values outside that
+   range fail before changing service state.
 2. Scheduling, cancellation, clock mutation, and dispatch are safe from
    multiple native host threads and FreeRTOS tasks. These management operations
-   are explicitly not POSIX-signal- or ISR-safe. A FreeRTOS task cannot be
-   preempted while it owns a host mutex shared with the native waiter.
-3. A passive uptime read is monotonic, lock-free, nonblocking, and safe from an
+   are explicitly not POSIX-signal- or ISR-safe.
+3. A passive uptime read is monotonic, bounded, nonblocking, and safe from an
    emulated ISR; it never allocates or sleeps.
 4. An alarm never runs inline from scheduling, including when its deadline is
    already due.
 5. Due alarms run in deadline order; alarms at one deadline run in registration
    order.
-6. An owning explicit fake-time delay crosses deadlines chronologically before
-   returning. If another drain owns delivery, advancement does not nest or move
-   uptime backward, and the owner later dispatches the due handlers.
+6. An explicit fake-time delay crosses deadlines chronologically before
+   returning when that caller owns delivery. Concurrent delivery never nests or
+   moves uptime backward; already-owned due work completes through its owner.
 7. With auto-sync disabled, alarms run only at documented explicit pump points
    and the service never advances uptime on its own.
 8. With auto-sync enabled, a due alarm becomes eligible without application
    polling, even when the selected FreeRTOS task is CPU-busy. Wall-synchronized
    delivery is best-effort and never promises a hard latency bound.
 9. Alarm handlers are short and non-throwing by contract and never wait for a
-   task, interrupt, or external completion. Handler invocation and destruction
-   of captured state occur outside the timer mutex, handler re-entry does not
-   create a nested dispatch stack, and an escaping host exception cannot strand
-   drain ownership.
+   task, interrupt, or external completion. Handler invocation and capture
+   destruction do not block alarm management, and handler re-entry does not
+   create a nested callback stack. In an exception-enabled explicit pump, a
+   contract-violating exception leaves later alarms queued and propagates to
+   that pump's caller; the same violation on the autonomous waiter is fatal
+   because there is no caller to receive it.
 10. Cancellation prevents an unclaimed callback. Cancelling executing,
    completed, or unknown work is a no-op.
-11. An alarm scheduled or made due by a callback is not stranded after the
-   active drain relinquishes ownership.
+11. Work scheduled or made due by a callback is reconsidered before the active
+    delivery cycle becomes idle.
 12. The core primitive imposes no ESP-IDF ISR, task affinity, priority, or
     periodic-timer semantics on its consumers.
-13. Tests can cancel their own pending alarms and restore auto-sync without a
-    global reset that invalidates unrelated registrations.
+13. A consumer can tear down its own pending alarms without a global reset that
+    invalidates unrelated registrations.
 14. Host-time observation and explicit clock mutation preserve monotonic uptime;
     numeric conversions and additions fail before overflow.
+15. A peripheral completion wait suspends only its calling FreeRTOS task. It
+    does not advance uptime; other runnable tasks and the configured time driver
+    continue independently.
 
 ### Out of scope
 
@@ -150,128 +169,316 @@ framework handler in ISR context.
 
 ## Design Overview
 
-Split `EmulatedTime` into a lock-free clock-read path and coordinated alarm
-state. A lock-free atomic publishes monotonic uptime. An atomically versioned
-auto-sync mapping lets an ISR derive a candidate uptime from
-`CLOCK_MONOTONIC` and publish only a larger value, without taking a mutex or
-spinning on an interrupted writer. Explicit mutation, alarm records, ID
-allocation, and drain ownership remain mutex-protected.
+Everything from this section through Caveats describes proposed behavior unless
+it is explicitly marked implemented. The design introduces five internal
+concepts:
 
-The alarm state contains an ordered collection of value-owned records and an
-ID index for cancellation. Scheduling inserts work but never invokes it. In
-manual mode, `system_time_delay_micros()` and
-`ProcessSystemTimeAlarms()` are the dispatch points. In auto-sync mode, one
-process-wide native waiter sleeps until the earliest mapped host deadline and
-then competes for the same non-nesting drain ownership. It observes wall time;
-it never advances manually driven time.
+| Term | Meaning and lifetime |
+| --- | --- |
+| Published uptime | The process-wide monotonic time floor. It is atomic and remains valid for the process lifetime. |
+| Auto-sync mapping | A versioned snapshot that maps `CLOCK_MONOTONIC` onto published uptime. Callers interact with it only through the clock helper. |
+| Dynamic alarm | A value-owned one-shot record with an absolute deadline, callback, and nonreused ID. It exists until cancellation or claim. |
+| Drainer | The one caller currently allowed to claim and invoke due alarms. Ownership lasts only across one non-nesting delivery loop. |
+| Native deadline waiter | One process-wide pthread that observes wall-clock deadlines in auto-sync mode and asks the same drainer path to deliver them. |
 
-A drainer claims one due alarm, releases the mutex, invokes it, and then
-rescans. The explicit callers and native waiter share this path, making
-callback re-entry and cancellation safe without nested delivery.
+`AtomicUptimePublication` encapsulates both the atomic uptime floor and the
+versioned auto-sync snapshot. Its `nowNanos()` method is the entire ISR-visible
+clock path. Slow clock mutation, alarm records, ID allocation, and drainer
+ownership live in `SystemTimeService` behind a scheduler-safe host lock.
 
-Consumers adapt this neutral deadline mechanism to their own behavior. The
-[LEDC adapter](ledc_voltage_emulation.md#alarm-service-integration) uses it to
-materialize fade completion and enqueue final GPIO publication followed by a
-post-publication interrupt continuation. That continuation publishes ISR state
-and raises the LEDC source; the LEDC ISR releases the channel gate and invokes
-the registered callback. A future host `esp_timer_impl` backend uses one alarm
-as its emulated hardware compare and raises a profile-selected timer source;
-the vendored common `esp_timer` layer retains ownership of public handles,
-ordering, periodic policy, and TASK/ISR dispatch. Arduino timer or GPTimer
-adapters can translate counter values and raise their own logical sources.
+The two delivery flows differ only in who notices that time reached a deadline:
+
+```text
+manual mode
+external test driver -> advance/pump -> drainer -> internal alarm handler
+
+auto-sync mode
+timerfd -> native waiter -> drainer -> internal alarm handler
+
+hardware-like consumer (both modes)
+internal alarm handler -> publish peripheral state -> interrupt controller
+                       -> framework ISR -> unblock only the waiting task
+```
+
+Scheduling never invokes a callback inline. In manual mode, explicit delay and
+`ProcessSystemTimeAlarms()` are the only pumps. In auto-sync mode, the native
+waiter sleeps until the earliest mapped host deadline. It observes the mapping;
+it never advances manually controlled uptime.
+
+For example, deterministic manual-time code can prove that a due callback is
+not delivered early or inline:
+
+```cpp
+system_time_set_auto_sync(false);
+bool fired = false;
+const int64_t start = system_time_get_micros();
+ScheduleSystemTimeAlarm(start + 1000, [&] { fired = true; });
+
+system_time_delay_micros(999);
+CHECK(!fired);
+system_time_delay_micros(1);  // This call owns the pump and delivers the alarm.
+CHECK(fired);
+system_time_set_auto_sync(true);
+```
+
+A peripheral adapter uses the callback only to commit hardware-visible state
+and request the appropriate interrupt. The public framework callback still runs
+in its promised context:
+
+```cpp
+// Runs on the explicit pump owner or native waiter, never in ISR context.
+void CompleteFade(ChannelState& channel, uint64_t generation) {
+  if (!channel.commitCompletion(generation)) return;
+  channel.publishFinalOutput();
+  raiseInterruptSource(kLedcInterruptSource);
+}
+
+// Runs later in the emulated interrupt frame on the selected FreeRTOS pthread.
+void LedcIsr(void* argument) {
+  ChannelState& channel = *static_cast<ChannelState*>(argument);
+  BaseType_t task_woken = pdFALSE;
+  xSemaphoreGiveFromISR(channel.done(), &task_woken);
+  portYIELD_FROM_ISR(task_woken);
+}
+
+// WAIT_DONE uses xSemaphoreTake(...); it never advances roo_testing uptime.
+```
+
+The generic alarm handler therefore has neutral execution context. Planned
+consumers adapt it as follows:
+
+| Code | Execution context | ISR context? |
+| --- | --- | --- |
+| Internal alarm handler | Explicit pump owner or native waiter pthread | No |
+| Peripheral ISR | Selected FreeRTOS pthread's signal frame | Yes |
+| `ESP_TIMER_TASK` callback | Dedicated ESP-IDF timer task | No |
+| Future `ESP_TIMER_ISR` callback | Timer interrupt frame | Yes |
+
+The implementation ownership is equally explicit:
+
+| Component | Change in this proposal |
+| --- | --- |
+| `roo_testing/system` | Add `AtomicUptimePublication`, alarm storage, drainer, waiter, and the public internal alarm API |
+| New `//roo_testing/host:synchronization` utility | Add the scheduler-safe host lock used where native pthreads share state with FreeRTOS task pthreads |
+| FreeRTOS Linux port and generic interrupt controller | No alarm-specific change; reuse their implemented signal deferral and interrupt ingress |
+| Vendored ESP-IDF/Arduino framework | No locking change; framework code continues to use FreeRTOS primitives |
+| Peripheral shims | Later adapter phases schedule alarms, publish peripheral state, and raise logical interrupt sources |
 
 | Requirements | Design element |
 | --- | --- |
 | 1, 4-5, 10 | Ordered alarm records plus an ID index |
-| 2 | Signal-masked host locking for management and alarm state |
+| 2 | Scheduler-safe host locking for task/native management state |
 | 3, 14 | Atomic monotonic uptime and versioned auto-sync mapping |
 | 6-8 | Explicit manual pumps plus one auto-sync deadline waiter |
 | 9, 11 | Scope-guarded, invoke-outside-lock non-nesting drain |
 | 12 | Neutral one-shot callback contract with consumer adapters |
 | 13 | Per-alarm teardown without a global alarm reset |
+| 15 | Consumer-owned FreeRTOS wait primitive; alarms never advance time for it |
 
 ## Design Details
 
-### Lock-free clock-read path
+### Encapsulated lock-free clock publication
 
-Represent uptime internally as signed nanoseconds in a lock-free atomic and
-convert to microseconds at the API boundary. The implementation statically
-asserts that the chosen atomic representation is always lock-free on the host.
-`system_time_get_micros()` loads this published uptime and, when auto-sync is
-enabled, samples `CLOCK_MONOTONIC`, applies the published host-to-emulated
-offset, and uses a compare/exchange maximum to publish only forward progress.
-It does not take the alarm mutex, allocate, dispatch, or sleep.
+`AtomicUptimePublication` is an internal helper owned by
+`SystemTimeService`. It is the only class allowed to access the auto-sync
+publication or mapping fields. Callers see this narrow interface:
 
-Publish the auto-sync mapping as lock-free scalar fields bracketed by an atomic
-publication epoch. A writer holds the timer mutex, publishes an odd epoch,
-updates the enabled flag and host-to-emulated offset, and publishes the next
-even epoch. A reader makes exactly one bounded snapshot attempt: load an even
-epoch, sample `CLOCK_MONOTONIC` and the mapping fields, and reload the epoch. It
-uses the wall-derived candidate only when the two equal even samples match;
-otherwise it returns the already published uptime without retrying. This is a
-nonblocking published snapshot, not a conventional spinning seqlock: an ISR
-may have interrupted the writer while the epoch is odd.
+```cpp
+class AtomicUptimePublication {
+ public:
+  /// Returns monotonic uptime without locking, waiting, or allocating.
+  int64_t nowNanos() noexcept;
 
-Enabling auto-sync maps the current published uptime to the current host
-monotonic instant without moving uptime. Disabling it first publishes any
-wall-derived progress and then changes the configuration generation. A read
-that linearized before that change may complete afterward, but its sampled
-candidate cannot be later than the disable operation. Explicit mutations also
-use compare/exchange loops so they cannot overwrite concurrent forward
-progress with an older value. The atomic uptime is the only authoritative
-current-time value; the mutex side must reconcile it rather than retaining a
-second stale `emu_uptime_`.
+  /// Returns the already-published monotonic floor without observing wall time.
+  int64_t publishedFloorNanos() const noexcept;
 
-All fast-path atomics are constant-initialized and individually asserted
-lock-free. The ISR path does not enter a function-local static initialization
-guard or start the waiter. A constant-initialized atomic state establishes the
-default auto-sync mapping with a bounded `uninitialized -> initializing ->
-ready` transition. The first reader that wins one compare/exchange samples
-`CLOCK_MONOTONIC`, publishes the mapping, and release-publishes `ready`; a
-concurrent or nested ISR that observes `initializing` returns the published
-uptime floor without waiting. Slow paths ensure initialization has completed
-before mutating the mapping.
+  /// Completes first-use setup before a task/native slow-path operation.
+  void ensureInitializedForSlowPath() noexcept;
 
-Use sequentially consistent operations for the publication epoch and mapping
-fields. The writer publishes an odd epoch, then the fields, then the next even
-epoch. The reader loads the epoch, fields, and epoch again in that order and
-accepts only matching even samples. This deliberately conservative ordering
-makes it impossible for a reader that validates the old epoch to accept fields
-from a later mapping. Publishing a wall-derived uptime also stays bounded: a
-reader makes at most one strong compare/exchange attempt. If it loses, it
-returns the newer published floor and lets a later read finish catching up
-rather than looping in ISR context.
+  /// Publishes a larger floor. Safe writers are externally serialized.
+  void publishAtLeastLocked(int64_t uptime_ns) noexcept;
 
-Passive reads no longer perform ahead-of-wall sleeping. Pacing belongs to
-`system_time_sync()` and dispatching explicit delays, which can sleep outside
-the timer mutex and then re-evaluate the mapping. This keeps ISR reads safe and
-prevents logging or sampling from unexpectedly blocking.
+  /// Replaces the wall-to-uptime mapping. Safe writers are externally serialized.
+  void storeAutoSyncMappingLocked(bool enabled, int64_t host_offset_ns) noexcept;
 
-### Slow-path locking
+ private:
+  enum class InitializationState : uint8_t {
+    kUninitialized,
+    kInitializing,
+    kReady,
+  };
 
-The Linux FreeRTOS port represents every task with a pthread and can switch the
-selected task from a signal handler. An ordinary `std::mutex` alone is unsafe:
-if task A is preempted while holding it and the newly selected task B blocks on
-the same mutex, the port still considers B selected and may never resume A.
+  // The winning first reader initializes mapping_ and publishes kReady.
+  InitializationState initializeForReadOrObserve() noexcept;
 
-Every task/native slow-path acquisition therefore uses a small reusable
-roo_testing-internal RAII guard that saves the caller's POSIX signal mask,
-blocks all maskable signals, and only then locks the host mutex. The operation
-performs any required nonblocking wake-eventfd write as part of the locked state
-transition, then unlocks and restores the saved mask. Blocking all signals keeps
-the system package
-independent of the port's private signal numbers while preventing a selected
-FreeRTOS pthread from being switched away inside libc synchronization code. A
-task may briefly wait for the native worker to release the mutex, but the worker
-is independently scheduled and can make progress. The worker inherits an
-all-blocked signal mask for its lifetime.
+  PublishedAutoSyncMapping mapping_;
+  std::atomic<int64_t> published_uptime_ns_{0};
+  std::atomic<InitializationState> initialization_{
+      InitializationState::kUninitialized};
+};
+```
+
+`PublishedAutoSyncMapping` in turn owns a small
+`AtomicSnapshotPublication` helper. The helper exposes `tryBeginRead()`,
+`stillCurrent()`, and `publishLocked()`; it does not expose its version or the
+parity protocol used to update it. `tryLoadOnce()` makes one bounded read
+attempt and returns no snapshot when publication is in progress or its opaque
+token is no longer current.
+
+```cpp
+template <uint64_t kMaxCompletedVersion>
+class AtomicSnapshotPublicationImpl {
+ public:
+  static_assert(kMaxCompletedVersion >= 2);
+  static_assert((kMaxCompletedVersion & 1) == 0);
+
+  class ReadToken {
+   public:
+    ReadToken(const ReadToken&) = default;
+    ReadToken& operator=(const ReadToken&) = default;
+
+   private:
+    friend class AtomicSnapshotPublicationImpl;
+    explicit ReadToken(uint64_t version) : version_(version) {}
+    uint64_t version_;
+  };
+
+  std::optional<ReadToken> tryBeginRead() const noexcept;
+  bool stillCurrent(ReadToken token) const noexcept;
+
+  // Writers must be externally serialized. Exhaustion is checked before the
+  // update marker is published, so failure cannot strand readers behind it.
+  template <typename PublishFields>
+  void publishLocked(PublishFields publish_fields) noexcept {
+    static_assert(std::is_nothrow_invocable_v<PublishFields&>);
+    const uint64_t version = version_.load();
+    CHECK_EQ(version & 1, 0);
+    CHECK_LE(version, kMaxCompletedVersion - 2);
+    version_.store(version + 1);
+    publish_fields();
+    version_.store(version + 2);
+  }
+
+ private:
+  std::atomic<uint64_t> version_{0};
+};
+
+using AtomicSnapshotPublication = AtomicSnapshotPublicationImpl<
+    std::numeric_limits<uint64_t>::max() - 1>;
+
+class PublishedAutoSyncMapping {
+ public:
+  struct Snapshot {
+    bool enabled;
+    int64_t host_offset_ns;
+  };
+
+  std::optional<Snapshot> tryLoadOnce() const noexcept;
+  void storeLocked(Snapshot value) noexcept;
+
+ private:
+  AtomicSnapshotPublication publication_;
+  std::atomic<bool> enabled_{false};
+  std::atomic<int64_t> host_offset_ns_{0};
+};
+```
+
+`AtomicSnapshotPublication` exists to publish several lock-free scalar fields
+as one accepted snapshot. The even/odd version protocol is private to that
+purpose-named helper. All writers are serialized by `SystemTimeService` before
+calling `storeLocked()`. `publishLocked()` checks that two version values remain
+before it marks publication in progress, writes the fields, and publishes the
+completed version. Its compile-time callable check enforces a non-throwing
+field writer, so an exception cannot leave publication permanently in progress.
+`tryLoadOnce()` accepts fields only when its before/after samples are the same
+even value. It never retries: an ISR that interrupted a writer immediately
+falls back to `publishedFloorNanos()`. Publication versions never wrap;
+exhausting the version space is a fatal slow-path invariant, covered with a
+reduced-limit test. Production code uses the purpose-named alias with the last
+even `uint64_t` value; only the helper's unit test instantiates
+`AtomicSnapshotPublicationImpl<4>` to reach exhaustion.
+
+All participating atomics are constant-initialized, use sequentially consistent
+operations, and are statically asserted always lock-free. On the first
+`nowNanos()` call, `initializeForReadOrObserve()` blocks the port's scheduler
+and simulated-interrupt signals before it attempts to change `uninitialized`
+to `initializing`. The winner publishes the initial mapping and then `ready`
+before restoring the signal mask; only a caller that observes `ready` can call
+`tryLoadOnce()`. A nested or racing reader that observes `initializing` returns
+the published floor instead of waiting. The disabled default mapping is
+therefore never accepted as initialized state, and a FreeRTOS task cannot be
+suspended after claiming initialization but before publishing `ready`.
+
+Every task/native slow path that reads or changes the mapping, floor, or waiter
+state calls `ensureInitializedForSlowPath()` before taking the service lock.
+That helper uses the same signal-mask-before-claim order. It completes
+initialization itself when state is `uninitialized`; if it observes
+`initializing`, it waits for `ready`. Such a waiter cannot depend on a suspended
+FreeRTOS initializer, because a FreeRTOS initializer masks task-switch signals
+before publishing `initializing`; the only concurrent initializer continues on
+an independently scheduled native pthread. The subsequent service lock
+serializes the requested mutation after initialization, so an initial
+`system_time_set_auto_sync(false)` cannot be overwritten by a later first read.
+
+`nowNanos()` samples `CLOCK_MONOTONIC` only after accepting a mapping snapshot.
+It publishes a wall-derived candidate with at most one strong
+compare/exchange. Losing that race returns the newer floor; a later read can
+finish catching up. Enabling auto-sync maps the current published uptime to the
+current host instant without moving time. Disabling first publishes progress
+observed at the disable instant and then replaces the mapping. Explicit
+mutations also publish only forward progress, so the atomic floor remains the
+sole authoritative current-time value.
+
+`system_time_get_micros()` converts the result to microseconds. It never locks,
+allocates, dispatches, starts the waiter, or sleeps. Ahead-of-wall pacing moves
+to `system_time_sync()` and explicit delays, outside host locks.
+
+### Guarded slow state
+
+A *slow-path operation* is a task/native operation allowed to lock, allocate,
+destroy callbacks, wake the waiter, or sleep. It is not an execution thread or
+an ESP-IDF timer-dispatch mode. Alarm management and clock mutation are slow
+paths; passive clock reads and signal-side interrupt delivery are not.
+
+The native deadline waiter is a pthread, not a FreeRTOS task. It cannot take a
+FreeRTOS semaphore, while the selected FreeRTOS task pthread must share the
+same alarm state with it. The design therefore adds
+`roo_testing/host/scheduler_safe_host_lock.h/.cpp`, exported only to roo_testing
+packages as `//roo_testing/host:synchronization`. Its
+`SchedulerSafeHostLock` is backed by a host mutex. This is not a framework API
+and does not replace any ESP-IDF or Arduino lock.
+
+Ordinary service code therefore reads like a conventional locked update; the
+snapshot-publication and signal-mask protocols stay inside their helpers:
+
+```cpp
+void SystemTimeService::setAutoSync(bool enabled) {
+  clock_.ensureInitializedForSlowPath();
+  SchedulerSafeHostLock lock(state_mutex_);
+  clock_.storeAutoSyncMappingLocked(makeMapping(enabled));
+  wakeWaiterLocked();
+}
+```
+
+`SchedulerSafeHostLock` saves the caller's POSIX signal mask, blocks all
+maskable signals, and only then locks the host mutex. It unlocks before
+restoring the saved mask. The order matters: the Linux port cannot suspend task
+A while A owns shared host state and then select task B, which would wait for A
+while A is no longer runnable. A task can still wait for the native worker,
+because that independently scheduled pthread continues running. The waiter
+inherits an all-blocked signal mask for its lifetime.
+
+The utility lands in a small roo_testing-only host-synchronization target. The
+timer service uses it for clock and alarm slow state. The existing host mutexes
+inside `FakeGpioPin`, `SimpleVoltageSink`, and `SimpleDigitalSink` migrate to the
+same guard because later alarm-driven LEDC publication can contend with them.
+The FreeRTOS Linux port, `roo_testing::mutex`, and vendored framework locking do
+not change in this phase.
 
 No callback invocation, callback-capture destruction, allocation retry, host
-sleep, descriptor poll, or thread join occurs while an ordinary slow path owns
-this guarded mutex. The implementation tests a low-priority task being
-preempted around timer mutations while a higher-priority task and the native
-worker contend for the same state; the test must make progress without
-priority-inversion deadlock.
+sleep, descriptor poll, or thread join occurs while this lock is held. A
+nonblocking eventfd wake that records a locked state transition is the only
+external operation permitted before unlock.
 
 ### Alarm storage and identity
 
@@ -295,10 +502,11 @@ runs.
 
 Insertion provides the strong exception guarantee across both containers. If
 ID-index insertion fails after the ordered record was inserted, scheduling
-erases that record and destroys its callback outside the mutex before
-propagating or reporting the allocation failure. Destruction occurs after the
-slow-path guard has also restored the caller's signal mask; scheduling never leaves an
-uncancellable partial registration.
+erases that record and destroys its callback outside the service lock before
+propagating `std::bad_alloc` in exception-enabled host builds. A no-exception
+build follows its C++ allocation runtime's fatal policy. Destruction occurs
+after the slow-path guard has restored the caller's signal mask; scheduling
+never leaves an uncancellable partial registration.
 
 The callback owns its captures according to normal `std::function` rules.
 Borrowed state must outlive any handler execution that may already have been
@@ -308,12 +516,13 @@ concurrent claim.
 
 ### Scheduling and cancellation
 
-Scheduling `CHECK`s that the callback is non-empty, allocates an ID, and inserts
-the record while holding the timer mutex. It then wakes the native waiter if
-the earliest deadline or its host mapping changed. An already-due deadline is
-queued normally; scheduling never calls user code inline. In auto-sync mode the
-waiter may nevertheless claim it concurrently before the scheduling call
-returns.
+Scheduling `CHECK`s that the callback is non-empty, that converting the
+microsecond deadline to signed nanoseconds is representable, and that the ID
+space and service lifecycle remain open. It allocates an ID and inserts the
+record while holding the service lock, then wakes the native waiter if the
+earliest deadline or host mapping changed. An already-due deadline is queued
+normally; scheduling never calls user code inline. In auto-sync mode the waiter
+may nevertheless claim it concurrently before the scheduling call returns.
 
 Scheduling and cancellation may run from an ordinary native host thread or a
 FreeRTOS task. They must not run in POSIX-signal or emulated ISR context because
@@ -321,7 +530,7 @@ they lock and may allocate or destroy captured state.
 
 Cancellation removes an unclaimed record from both containers. Move the
 callback out while locked and destroy it after unlock so captured-object
-destructors cannot re-enter the timer under its mutex. The slow-path guard also
+destructors cannot re-enter the service under its lock. The slow-path guard also
 restores the original signal mask before destruction. Once a drainer has
 claimed a record, cancellation is a no-op.
 
@@ -342,10 +551,10 @@ Use Linux `CLOCK_MONOTONIC` as the host elapsed-time source and never publish an
 observed value below current uptime. Both `system_time_delay_micros()` and
 `system_time_lag_ns()` perform checked unit conversion and duration addition;
 an unrepresentable mutation fails a `CHECK` before changing state.
-Deadline comparisons do not blindly multiply an arbitrary signed-microsecond
-deadline into nanoseconds. The waiter uses checked conversion and treats an
-unrepresentably distant deadline as farther than any host wait it can arm,
-rechecking after notifications or bounded long waits.
+Deadline comparisons use the checked conversion already performed by
+`ScheduleSystemTimeAlarm()`. Every stored deadline is consequently representable
+as signed nanoseconds; values outside the API's documented inclusive range are
+rejected before insertion.
 
 `system_time_delay_micros()` remains the dispatching explicit-advance
 operation. It walks through intervening alarm deadlines. At each boundary it
@@ -357,16 +566,21 @@ for a later delay or explicit pump. With auto-sync enabled, it wakes the waiter
 because hardware time has become due even though the mutating caller remains a
 non-dispatching path.
 
+Only application/test time drivers use the dispatching delay. A peripheral shim
+that is waiting for its own completion must block its calling task on a
+FreeRTOS primitive; it must not call `system_time_delay_micros()` to force its
+deadline to arrive.
+
 `ProcessSystemTimeAlarms()` first observes current uptime using the normal
 auto-sync behavior and drains everything due at that observed time. It does not
 add time itself. If wall-clock synchronization moved uptime past several
 deadlines, callbacks still run in deadline/registration order but observe the
 current, possibly later, uptime.
 
-With auto-sync disabled, a test or another task must advance time and pump it.
-A consumer such as an LEDC channel wait may call
-`ProcessSystemTimeAlarms()` at a documented retry boundary, but that is an
-integration decision, not another source of time advancement.
+With auto-sync disabled, a separate test driver, native host thread, or
+FreeRTOS task must advance time and pump it. A peripheral task blocked on its
+completion primitive only waits; it never pumps the global alarm queue on a
+timeout or retry boundary.
 
 ### ISR-visible busy delays
 
@@ -388,28 +602,22 @@ dispatching fake-delay behavior.
 ### Autonomous auto-sync delivery
 
 One process-wide native deadline waiter supplies the event that real timer
-hardware would otherwise generate. It starts lazily from a dynamic scheduling,
-auto-sync-enabling, or fixed-compare-source registration slow path, never from
-the lock-free clock-read path. Before inserting the first auto-synchronized
-alarm, enabling auto-sync with queued work, or publishing a fixed source handle,
-the service successfully creates its descriptors and waiter. Fixed-source
-registration does this even in manual mode; the worker then remains dormant but
-the signal-safe publication transport is valid. Thread construction uses an
-RAII signal-mask guard; failure restores the creator's mask and fails fatally
-before publishing state that falsely promises autonomous delivery.
+hardware would otherwise generate. It starts lazily before inserting the first
+alarm while auto-sync is enabled, or before enabling auto-sync when alarms are
+already queued. The lock-free clock-read path never starts it. Descriptor and
+thread construction is transactional; failure restores the creator's signal
+mask, closes partial resources, and terminates before the API promises
+autonomous delivery.
 
-A mutex-protected wake generation is incremented for queue changes, clock-mode
-or mapping changes, explicit time mutations, drain release or exceptional
-cleanup, and shutdown. Before unlocking, the changer performs a nonblocking
-eight-byte `write()` to a Linux eventfd. `EAGAIN` means a wake is already
-pending and is safely coalesced; `EINTR` gets one bounded retry, and any
-remaining error sets a lock-free fatal-status field. Persistent queue state plus
-the generation means eventfd counter coalescing cannot lose the reason to
-recompute. Ordinary slow paths restore the signal mask and fail immediately on
-that status. A signal-side publisher cannot rely on a later task or worker wake,
-so after the bounded retry it emits a fixed diagnostic with `write()` and exits
-through an async-signal-safe fatal path; it never silently leaves the sole wake
-pending only in memory.
+A service-lock-protected wake generation changes whenever the queue, clock
+mapping, uptime, drain ownership, or lifecycle changes. Before unlocking, the
+changer performs a nonblocking eight-byte `write()` to a Linux eventfd.
+`EAGAIN` means a wake is already pending and is safely coalesced. Any other
+persistent error is fatal after the caller restores its signal mask. Persistent
+queue state plus the generation ensures that eventfd counter coalescing cannot
+lose the reason to recompute. No signal-side eventfd publisher is part of this
+proposal; ISR-safe hardware-compare rearming belongs to the separate future
+`esp_timer` backend design.
 
 The worker owns a `timerfd_create(CLOCK_MONOTONIC, ...)` descriptor and polls it
 together with the wake eventfd. While auto-sync is enabled, it maps the earliest
@@ -417,7 +625,7 @@ emulated deadline to an absolute host instant and programs the timerfd with
 `TFD_TIMER_ABSTIME`. A wake-event read forces a full recomputation and retarget;
 a timer-event read samples and publishes wall-derived uptime, then competes for
 ordinary drain ownership. It always rechecks generation, mode, and earliest
-work after reacquiring the timer mutex. Early/stale readiness simply disarms or
+work after reacquiring the service lock. Early/stale readiness simply disarms or
 retargets and polls again, so a wall-time callback is never intentionally
 delivered before its emulated deadline. Absolute programming avoids accumulated
 drift and wall-clock adjustments.
@@ -434,31 +642,55 @@ mask without adding a FreeRTOS dependency. Descriptor and thread startup is
 transactional: eventfd, timerfd, or thread failure restores the creator mask,
 closes partial resources, and fails before promising autonomous delivery. The
 worker is never detached. An internal, testable service-lifecycle seam
-transitions `running -> closing -> stopped` under the timer mutex. New schedule,
-mutation, or drain entry while closing/stopped fails a `CHECK` before changing
-state; the return-only-ID scheduling API never fabricates a recoverable failure
+transitions `running -> closing -> stopped` under the service lock. New schedule,
+clock/mode mutation, or drain entry while closing/stopped fails a `CHECK`
+before changing state; cancellation follows the no-op/removal exception below,
+and the return-only-ID scheduling API never fabricates a recoverable failure
 result.
 Passive reads remain available, and cancellation retains its public no-op
 contract: during closing it may remove an unclaimed record, while after
 extraction/stopping it safely finds nothing. This also lets a pending callback
 capture destructor cancel related IDs during shutdown without aborting.
-Shutdown is forbidden from the active drainer itself because waiting for that
-drain would self-deadlock. After entering `closing`, it wakes the worker and
-waits for both worker exit and `drain_active == false`, including an explicit
-pump that may already have claimed a callback on another thread. Only then does
-it move all unclaimed callbacks out, clear both the ordered queue and ID index,
-mark the process-stable service object stopped, and destroy the captures after
-unlock and signal-mask restoration. It closes timerfd/eventfd only after the
-worker and every registered signal-side compare producer are quiescent.
+Shutdown uses two internal calls declared in
+`roo_testing/system/timer_host_lifecycle.h`; neither is part of `timer.h` or a
+framework API:
 
-Production framework shutdown invokes the same path before static consumer
-teardown. Its caller first quiesces other FreeRTOS tasks that can enter the
-timer, while consumer adapters cancel and quiesce their registrations; the
-system package therefore need not block the selected pthread waiting for a
-suspended FreeRTOS task. Dedicated lifecycle tests race shutdown with both the
-worker and an explicit native drainer, verify the active-drainer rejection, and
-cover the production shutdown route without exposing a public global alarm
-reset.
+```cpp
+// Task/native-only and nonblocking. Returns false while a drainer is active.
+bool TryBeginSystemTimeServiceShutdownForHost();
+
+// Native-only, after the FreeRTOS scheduler has returned.
+void FinishSystemTimeServiceShutdownForHost();
+```
+
+`TryBeginSystemTimeServiceShutdownForHost()` is forbidden from the active
+drainer itself. Under the service lock, it returns `false` without changing
+lifecycle state while any native or FreeRTOS drainer is active. When no drainer
+is active, the same critical section changes `running` to `closing`, preventing
+a new drainer from winning, and wakes the worker. The selected runner task
+delays for one FreeRTOS tick after a `false` result, allowing a preempted or
+lower-priority task drainer to finish, then retries. Consumer-owned tasks and
+registrations must already be quiescent before this loop, so no new management
+entry races the successful transition.
+
+After the successful transition, the runner ends the scheduler.
+`FinishSystemTimeServiceShutdownForHost()` then joins the worker; moves all
+unclaimed callbacks out; clears the ordered queue and ID index; closes timerfd
+and eventfd; publishes `stopped`; and destroys captures after unlock and
+signal-mask restoration. It never waits for a FreeRTOS drainer after the
+scheduler has stopped: the successful begin call proved there was none, and
+`closing` prevented a replacement. Dedicated lifecycle tests cover both halves
+without exposing a public global alarm reset.
+
+Phase 6 wires that path into
+[`esp_idf_support/main.cpp`](../roo_testing/frameworks/esp_idf_support/main.cpp),
+[`freertos_gtest_main.cpp`](../roo_testing/frameworks/arduino_support/freertos_gtest_main.cpp),
+and the Arduino-aware
+[`gtest_main.cpp`](../roo_testing/frameworks/arduino_support/gtest_main.cpp).
+The ordinary [Arduino sketch runner](../roo_testing/frameworks/arduino_support/main.cpp)
+has no normal return path, so abrupt process termination remains its only stop
+path and relies on process teardown rather than pretending to perform orderly
+service shutdown.
 
 The waiter executes only internal alarm handlers. A handler may run on this
 native thread, so it must be thread-safe and short and must translate promised
@@ -473,25 +705,25 @@ interrupt while the selected FreeRTOS task is CPU-busy.
 Only one drainer owns callback dispatch at a time. It performs this loop:
 
 1. Coordinate drain ownership and the applicable explicit or wall-observed
-   limit under the timer mutex.
+   limit under the service lock.
 2. Synchronize or advance to that limit and remove the earliest due
    record from both containers, marking it claimed.
-3. Release the mutex and invoke the callback.
-4. Destroy the callback outside the mutex, then lock and rescan.
+3. Release the lock and invoke the callback.
+4. Destroy the callback outside the lock, then lock and rescan.
 5. When no due work remains, clear drain ownership and confirm the queue state
    in the same critical section.
 
 A scope guard owns the drain marker for the entire loop. On normal completion,
 step 5 clears ownership and disarms the guard in the same critical section, so
 the guard cannot later clear a new drainer's ownership. On abnormal exit, the
-guard clears ownership under the mutex. Alarm handlers must not throw. If a
+guard clears ownership under the service lock. Alarm handlers must not throw. If a
 handler nevertheless throws during an explicit pump in a host build with
-exceptions enabled, its local `std::function` is destroyed outside the mutex,
+exceptions enabled, its local `std::function` is destroyed outside the lock,
 the guard releases drain ownership, and the exception propagates. Remaining
 alarms stay queued for a later pump; the drainer does not catch the exception
 and continue invoking unrelated handlers. The native waiter catches at its
-thread boundary and terminates with a diagnostic because no caller exists to
-receive the contract violation.
+thread boundary and emits a process-fatal diagnostic because no caller exists
+to receive the contract violation.
 
 A recursive or concurrent pump that finds an active drainer records that a
 rescan is needed and returns without invoking callbacks. The owner processes
@@ -508,8 +740,8 @@ Consequently, a recursive or concurrent pump can return while due handlers are
 still pending with the active drainer. The ordinary before-return drain
 guarantee applies only to the caller that owns drain delivery.
 
-Wall-clock sleeping for auto-sync never holds the timer mutex. After waking,
-the waiter reacquires the mutex and re-evaluates the clock generation, drain
+Wall-clock sleeping for auto-sync never holds the service lock. After waking,
+the waiter reacquires the lock and re-evaluates the clock generation, drain
 ownership, and earliest alarm rather than relying on a stale snapshot.
 
 ### Consumer adapters
@@ -519,111 +751,25 @@ or FreeRTOS task explicitly pumps time. It must not directly invoke a public
 callback that promises a task or ISR context. Consumers add that dispatch layer
 after releasing alarm and peripheral locks:
 
-- The [LEDC adapter](ledc_voltage_emulation.md#alarm-service-integration)
+- The planned [LEDC adapter](ledc_voltage_emulation.md#alarm-service-integration)
   materializes generation-checked completion state and appends an ordered pair:
   final GPIO publication, then an internal completion finalizer. The finalizer
-  publishes the ISR mailbox/status and raises the LEDC source only after the
-  GPIO and sink calls have returned. Its emulated ISR releases the channel
-  gate, invokes the registered callback, and requests any `FromISR` yield. After
-  unlocking, the alarm handler attempts the non-waiting LEDC drain so an
+  publishes the ISR mailbox/status and raises the LEDC source through the
+  implemented [ESP-IDF interrupt adapter](emulated_interrupts.md#esp-idf-adapter)
+  only after the GPIO and sink calls have returned. Its emulated ISR releases
+  the channel gate, invokes the registered callback, and requests any
+  `FromISR` yield. After unlocking, the alarm handler attempts the non-waiting
+  LEDC drain so an
   autonomous completion cannot remain queued when no application call follows.
-- The future `esp_timer` integration builds the vendored common
-  [`esp_timer.c`](../roo_testing/frameworks/esp-idf/components/esp_timer/src/esp_timer.c)
-  and `esp_timer_impl_common.c` and supplies a roo_testing
-  `esp_timer_impl_*` backend. The backend represents the minimum cached hardware
-  compare with one internal fixed system-time compare source. Expiry publishes
-  timer interrupt status and raises the profile-selected LAC/SYSTIMER source;
-  its lower ISR clears status and invokes the vendored `timer_alarm_handler`.
-  The upstream layer therefore retains handle lifetime, separate TASK/ISR
-  ordering, periodic catch-up and skip policy, minimum-period clamping,
-  callback re-entry, deferred deletion, timer-task notification, yield latching,
-  and next-alarm queries.
-- The backend includes a signal-safe compare-rearm mailbox from its first
-  `ESP_TIMER_TASK` phase. This is required even before public `ESP_TIMER_ISR`
-  callbacks are configured: upstream marks start, stop, and restart operations
-  as IRAM-safe, framework ISR paths call them, and those operations can call
-  `esp_timer_impl_set_alarm_id()`. Under the upstream `s_time_update_lock`, that
-  function updates `timestamp_id[id]`, computes the minimum TASK/ISR head
-  (`UINT64_MAX` means disarmed), and passes that deadline and a new source
-  generation to the source's signal-safe publish operation. That operation
-  admits the writer, publishes the atomic compare snapshot, and performs a
-  nonblocking wake on the alarm service's eventfd before releasing the writer
-  claim. It never calls the dynamic mutex/allocating alarm API.
-
-  The fixed source is a follow-on internal extension, not part of the public API
-  proposed here. It has a task-registered, process-stable callback record and an
-  ISR-published atomic `{deadline, generation, armed}` snapshot. Both the native
-  waiter and every explicit delay/pump merge registered source snapshots with
-  the dynamic queue before choosing the next deadline. Claim is a
-  generation-checked CAS, so a changed/disarmed source suppresses a stale
-  expiry. After invoking a claimed source, the drainer rescans; an ISR-side
-  rearm that happened during delivery is therefore visible immediately.
-
-  Registration transactionally starts the alarm transport before publishing an
-  accepting source. Signal-side publication first claims a statically asserted
-  lock-free packed `{service_epoch, accepting, writer_count}` word, loads the
-  eventfd only from the process-stable service record, publishes the compare
-  snapshot and writes the wake while still counted as a writer, and only then
-  release-decrements the count. It never caches an unprotected raw descriptor.
-
-  Unregister uses `accepting` to gate both publication and drainer claims. Under
-  the timer mutex it first clears `accepting`, so no new writer or drainer can
-  enter, then releases the mutex and waits for already-admitted writers to
-  leave. It reacquires the timer mutex, performs a final generation increment
-  and disarm after those publications, and removes the now non-claimable source.
-  After unlocking, it waits for handlers claimed before admission closed to
-  finish. Only then does unregister return. Only after every fixed source is
-  unregistered may service shutdown close the eventfd. This prevents late
-  publication, uninitialized-descriptor, close/write, and descriptor-reuse ABA
-  races.
-
-  This direct ingress is essential in manual mode. An ISR can start/restart a
-  TASK timer and return immediately before the task advances fake time; the one
-  explicit pump must already see that compare rather than wait for an
-  asynchronous reconciler to allocate a dynamic alarm. Before an explicit pump
-  linearizes its final drain release under the timer mutex, it performs a stable
-  generation pass and leaves no source published before that point both due and
-  unclaimed. A signal delivered after mask restoration but before the C++ call
-  physically returns is a later publication. Concurrent native time drivers
-  synchronize their intended ordering with framework task/ISR operations, as
-  they must for deterministic manual-time tests.
-- Initial public `esp_timer` support otherwise matches the current host
-  configuration and implements `ESP_TIMER_TASK`. Enabling `ESP_TIMER_ISR` is a
-  separate configuration phase for the second upstream list, direct ISR
-  callbacks, yield behavior, and their tests--not the point at which signal-safe
-  rearming first becomes necessary. There is no total registration order across
-  TASK and ISR lists; when both heads coincide, upstream dispatches ISR work
-  before the follow-up interrupt that wakes TASK delivery.
-- The host does not currently execute ESP-IDF's linker-collected
-  `ESP_SYSTEM_INIT_FN` entries, so merely building the upstream sources would
-  leave the timer task and interrupt uninitialized. The future adapter adds an
-  idempotent host wrapper used by the ESP-IDF runner, Arduino runner, and
-  FreeRTOS test main. Each process calls `esp_timer_early_init()` before starting
-  the scheduler. Its startup task then calls `esp_timer_init()` before
-  `app_main`, tests, or `initArduino()`; Arduino's current pre-scheduler
-  `initArduino()` call moves into that task before `setup()`. Only the full init
-  needs this timing, because the current host interrupt allocator requires a
-  running FreeRTOS task. Wrapper idempotence does not change the public API:
-  a second direct `esp_timer_init()` still returns `ESP_ERR_INVALID_STATE`.
-
-  The host sdkconfig also selects the current single-core timer interrupt
-  profile with `CONFIG_ESP_TIMER_ISR_AFFINITY_CPU0`; otherwise the vendored
-  source cannot define its init mask. A later SoC profile changes this config
-  rather than baking ESP32 affinity into the generic backend.
-- Framework shutdown first requires clients to stop/delete every timer and
-  checks `esp_timer_deinit()`. If either upstream timer list still contains an
-  active timer or queued delete event, deinit returns `ESP_ERR_INVALID_STATE`
-  and all services remain alive. On success, upstream calls the backend's
-  `esp_timer_impl_deinit()` before deleting the timer task. That backend method
-  itself synchronously invalidates the compare generation, disables and
-  quiesces its interrupt, disarms and quiescently unregisters the fixed compare
-  source, and waits for any already-claimed source handler before returning.
-  Source generations are never reset across deinit/reinit, and claimed handlers
-  retain process-stable/shared backend state, so cancellation cannot create a
-  stale-callback use-after-free. Any partially failed init rolls back the same
-  source/interrupt resources before reporting failure. Only after successful
-  `esp_timer_deinit()` may framework shutdown stop the generic interrupt and
-  alarm services.
+- A future `esp_timer_impl_*` backend will reuse the vendored common
+  [`esp_timer`](../roo_testing/frameworks/esp-idf/components/esp_timer/src/esp_timer.c)
+  layer and the implemented [interrupt adapter](emulated_interrupts.md#esp-idf-adapter).
+  The common layer will continue to own public handles, periodic policy, and
+  TASK/ISR dispatch. Because upstream start/stop/restart can rearm the hardware
+  compare from ISR context, that backend needs a fixed, signal-safe compare
+  ingress rather than this proposal's allocating dynamic-alarm API. Its mailbox,
+  startup, source profile, and deinitialization require a separate design before
+  implementation; they are intentionally not hidden inside the generic queue.
 - Arduino hardware timer and GPTimer adapters convert counter alarms to uptime
   deadlines. Start, stop, writes, frequency changes, autoreload configuration,
   and counter reload values cancel or replace their current internal alarm;
@@ -660,54 +806,87 @@ void ProcessSystemTimeAlarms();
 `SystemTimeAlarmId{0}` is invalid. Cancellation has no return value because the
 caller cannot safely infer whether a callback already began executing from a
 boolean result. An empty callback is a programmer error and fails `CHECK`
-without allocating an ID. All three functions are ordinary native-thread or
-FreeRTOS-task operations and are not callable from an emulated ISR.
+without allocating an ID. `deadline_uptime_us` accepts the inclusive range
+`[-9,223,372,036,854,775, +9,223,372,036,854,775]`, which is exactly the
+microsecond range safely convertible to the internal signed-nanosecond
+representation. A value outside that range, ID exhaustion, and scheduling
+after service shutdown fail `CHECK` before changing state. Container allocation failure
+propagates `std::bad_alloc` in exception-enabled host builds with the queue and
+index rolled back; no-exception builds use their allocation runtime's fatal
+policy. Cancellation of zero, unknown, completed, claimed, or post-shutdown IDs
+is a no-op.
+
+All three functions are ordinary native-thread or FreeRTOS-task operations and
+are not callable from an emulated ISR. Until the autonomous waiter phase lands,
+the API is safe but explicit-pump-only: auto-sync can update uptime, but only
+`ProcessSystemTimeAlarms()` or a dispatching explicit delay invokes handlers.
 
 No public ESP-IDF or Arduino timer API is added in this design.
 
 ## Implementation Plan
 
-Authoring references: follow this repository's
-[design-authoring guidance](../.github/instructions/embedded-design-doc-authoring.instructions.md),
-[C++ code-authoring guidance](../.github/instructions/embedded-cpp-code-authoring.instructions.md),
-and adjacent system-timer/test conventions.
+Authoring reference: follow this repository's
+[C++ code-authoring guidance](../.github/instructions/embedded-cpp-code-authoring.instructions.md).
 
-### Phase 1: ISR-safe monotonic uptime and host locking
+### Phase 1: Scheduler-safe host locking
 
-Refactor `system/timer.h/.cpp` around the constant-initialized atomic uptime and
-bounded initialization/publication protocol. Use
-`clock_gettime(CLOCK_MONOTONIC)` for the signal-safe host sample, move
-ahead-of-wall pacing out of passive reads, add a reusable internal
-signal-masking host-mutex guard, and add checked conversions and arithmetic.
-Apply that guard immediately to `FakeGpioPin`,
-`SimpleVoltageSink`, and `SimpleDigitalSink` retained-signal mutexes as well as
-the clock slow path. The preemptive Linux scheduler already makes those shared
-locks unsafe when a selected task can be suspended while owning one; this
-hardening is a prerequisite for steady LEDC publication, not a consequence of
-adding the native alarm waiter. Route ISR calls to Arduino/ROM microsecond delay
-through the separate host busy-wait path. Do not add alarms or a worker in this
-phase.
+Add `//roo_testing/host:synchronization` with `SchedulerSafeHostLock`, then
+migrate the existing host mutexes in `FakeGpioPin`, `SimpleVoltageSink`, and
+`SimpleDigitalSink`.
+Document that it is for state shared with native pthreads and does not replace
+FreeRTOS synchronization in framework code. Do not change clock semantics or add
+alarms in this phase.
 
-Proposed commit: `Make emulated time and shared host locks ISR-safe`
+Proposed commit: `Guard shared host state against FreeRTOS signal preemption`
 
-Validation: add pure-host clock tests for monotonic publication, auto-sync
-transitions, ahead-of-wall pacing, concurrent lag/delay/read operations, and
-failure-before-mutation overflow. Cover first-call and interrupted
-initialization, mixed-mapping rejection, and bounded CAS contention. Add a
-FreeRTOS integration test that repeatedly reads `micros()`/`esp_timer_get_time()`
-and uses each ISR-visible busy-delay shim in emulated ISR context while task and
-native contexts mutate the slow clock state; it must neither deadlock nor
-regress. A priority-inversion regression has low- and high-priority tasks plus a
-native contender exercise the clock, fake-GPIO, and built-in sink locks.
+Validation: add focused lock-order and signal-mask restoration tests. A
+FreeRTOS regression uses low- and high-priority tasks plus a native contender to
+exercise each migrated lock and prove that the selected task cannot be switched
+away while it owns host state.
 
-### Phase 2: Deterministic manual-time alarms
+### Phase 2: ISR-safe monotonic uptime
+
+Add `AtomicSnapshotPublication`, `PublishedAutoSyncMapping`, and
+`AtomicUptimePublication`; refactor `system/timer.h/.cpp` to use
+`CLOCK_MONOTONIC`, checked signed-nanosecond arithmetic, and the Phase 1 host
+lock for slow state. Move ahead-of-wall pacing out of passive reads. Update the
+clock API comments with the ISR-safe/task-only split. Do not add alarm storage
+or a worker.
+
+Proposed commit: `Publish emulated uptime through an ISR-safe atomic clock`
+
+Validation: run pure-host clock tests for monotonic publication, auto-sync
+transitions, concurrent lag/delay/read operations, and failure-before-mutation
+overflow. `AtomicSnapshotPublicationImpl<4>` tests cover stable snapshots,
+immediate publication-in-progress fallback, changed-token rejection, and
+nonwrapping version exhaustion. First-use tests cover a slow mutation before
+any read, a racing native initializer, an interrupted initializer, and bounded
+compare/exchange contention. A
+FreeRTOS integration test repeatedly reads `micros()` and
+`esp_timer_get_time()` from emulated ISR context while task and native contexts
+mutate slow clock state.
+
+### Phase 3: ISR-visible busy delays
+
+Add the internal `system_time_busy_wait_micros()` path and route ISR calls from
+Arduino `delayMicroseconds()` and ESP ROM delay shims to it. Task-context calls
+retain dispatching fake-time delay behavior. Update shim documentation in the
+same commit.
+
+Proposed commit: `Keep ISR busy delays outside fake-time advancement`
+
+Validation: invoke every routed delay shim from task and emulated ISR contexts.
+Verify that ISR calls consume host monotonic time without changing fake uptime,
+dispatching alarms, allocating, or losing deferred scheduler/interrupt signals.
+
+### Phase 4: Deterministic manual-time alarms
 
 Add the C++ alarm API, ordered records and ID index, cancellation, explicit
 single-drainer dispatch, chronological delay integration, rescan generation,
 and exception-safe callback lifetime. Add a private allocation-failure
 failpoint so rollback across the ordered queue and ID index is testable. Add
-focused pure-host tests and BUILD dependencies. Clock reads remain outside the
-alarm mutex.
+focused pure-host tests, API documentation, and BUILD dependencies. Clock reads
+remain outside the service lock.
 
 Proposed commit: `Add deterministic system-time alarms`
 
@@ -715,97 +894,113 @@ Validation: with auto-sync disabled, cover future/due/past and equal deadlines,
 cancellation and claimed work, callback-created alarms, recursive/concurrent
 pumps, explicit delays across multiple deadlines, container-allocation failure,
 checked extreme deadlines, throwing explicit handlers, and destruction outside
-the mutex. Every test cancels its remaining IDs and restores auto-sync.
+the service lock. Every test cancels its remaining IDs and restores auto-sync.
 
 The safe interim state after this phase has no autonomous delivery: even with
 auto-sync enabled, alarms require `ProcessSystemTimeAlarms()` or a dispatching
-explicit delay. No LEDC fade or public timer consumer lands until Phase 3.
+explicit delay. No production alarm-backed peripheral consumer lands until
+Phase 6.
 
-### Phase 3: Autonomous auto-sync waiter
+### Phase 5: Autonomous auto-sync waiter
 
 Add the one process-wide native waiter, absolute monotonic timerfd, wake
 eventfd/generation, signal-mask setup, startup rollback, drain handoff, and
-explicit stop/join lifecycle seam. Keep it dormant in manual mode and keep the
-system package independent of FreeRTOS and the interrupt controller.
+two-part lifecycle seam. Declare
+`TryBeginSystemTimeServiceShutdownForHost()` and
+`FinishSystemTimeServiceShutdownForHost()` in the internal
+`timer_host_lifecycle.h`, expose them through a restricted
+`//roo_testing/system:timer_host_lifecycle` target, and keep the timer service
+itself independent of FreeRTOS and the interrupt controller. Keep the worker
+dormant in manual mode. Descriptor/thread creation rolls back all partial state
+before publishing `running`; direct lifecycle tests drive the begin operation
+until it establishes `closing`, then call finish to join, extract captures,
+close descriptors, and publish `stopped` in the documented order.
 
 Proposed commit: `Wake system-time alarms from host monotonic time`
 
 Validation: verify that wall time alone fires a future alarm, manual mode never
 does, enabling resumes a queued alarm, earlier insertion and cancellation
 retarget a far wait, no coalesced eventfd wake is lost, explicit and native
-drainers never overlap, and shutdown quiesces the worker. In a separate
+drainers never overlap, startup failure rolls back, and shutdown quiesces the
+worker. Verify that begin returns `false` without changing state while either a
+native or FreeRTOS drainer is active, succeeds after that drainer finishes, and
+rejects a call from the active handler itself. In a separate
 FreeRTOS integration test, have an internal alarm handler assert a generic
 interrupt and verify it preempts CPU-busy task code without an explicit pump.
 Characterize unloaded wake lateness but assert only no-early-fire and eventual
-delivery, not a host-specific latency ceiling.
+delivery, not a host-specific latency ceiling. Add a two-task integration case:
+task A waits for an alarm-backed completion, task B continues running, and the
+native waiter raises an interrupt that releases only task A.
 
-After the shared host-lock hardening in Phase 1, [steady LEDC
-publication](ledc_voltage_emulation.md#implementation-plan) may proceed in
-parallel with alarm Phases 2-3. LEDC fade Phase 3 is the first downstream
-consumer that requires all alarm phases plus the implemented interrupt
-controller. Public `esp_timer` support follows as a separate design and build
-slice using the vendored common upper layer and a host `esp_timer_impl_*`
-backend, not as part of the generic alarm commit.
+### Phase 6: Host-runner shutdown integration
+
+Replace direct `std::exit()` in the ESP-IDF and two FreeRTOS GTest runner tasks
+with result capture and the two-part lifecycle sequence. After application/test
+tasks and consumer registrations are quiescent, the selected runner task loops
+on `TryBeginSystemTimeServiceShutdownForHost()`, using `vTaskDelay(1)` after a
+`false` result so another FreeRTOS drainer can finish. It then calls
+`vTaskEndScheduler()`. Once `vTaskStartScheduler()` returns, native `main()`
+calls `FinishSystemTimeServiceShutdownForHost()` and returns the captured
+result. Update the runner contracts and BUILD dependencies in the same commit.
+
+Proposed commit: `Shut down system-time alarms from host runners`
+
+Validation: exercise the real `esp_idf_support/main.cpp`,
+`arduino_support/freertos_gtest_main.cpp`, and
+`arduino_support/gtest_main.cpp` return paths through
+`//test/profile:esp_idf_main_test`, `//test:system_time_alarm_freertos_test`, and
+`//test:arduino_gtest_environment_test`. In the focused FreeRTOS target, let a
+lower-priority drainer be preempted between callbacks by the runner task; prove
+that begin first returns `false`, the one-tick delay lets the drainer finish,
+the scheduler then stops, and native finish leaves no joinable worker or live
+descriptor.
+
+After Phase 1, [steady LEDC publication](ledc_voltage_emulation.md#implementation-plan)
+can proceed in parallel with alarm Phases 2-6. The LEDC [internal fade
+engine](ledc_voltage_emulation.md#phase-3-internal-fade-and-ordered-completion-engine)
+requires all alarm phases. Its public [ESP-IDF fade
+integration](ledc_voltage_emulation.md#phase-5-esp-idf-fade-and-blocking-api)
+also requires the implemented [interrupt
+controller](emulated_interrupts.md#generic-controller). Public `esp_timer`
+support requires a separate backend design because its ISR-safe
+hardware-compare rearm path is outside the dynamic API proposed here.
 
 ## Testing Plan
 
-Pure-host tests separately cover the atomic clock, deterministic alarm queue,
-and autonomous waiter. Together they exercise monotonic ISR-compatible reads,
-checked mutations, mode transitions, deadline/registration ordering,
-cancellation and lifetime races, non-inline scheduling, explicit chronological
-advancement, single-owner re-entry/concurrency, waiter retargeting and shutdown,
-and invoke/destroy-outside-lock behavior. Exception-enabled manual tests verify
-that a throwing handler releases drain ownership and leaves unclaimed work for
-the next pump.
+The implementation adds four focused Bazel targets:
 
-FreeRTOS integration tests cover ISR clock reads and the full native-deadline to
-logical-interrupt path against CPU-busy code. Timing tests verify no early fire
-and eventual delivery. They do not assert microsecond host latency: general
-Linux scheduling is not a real-time contract.
+- `//test:system_time_clock_test` covers the scheduler-safe host lock, atomic
+  publication helpers, monotonic reads, checked mutation, mode changes, and ISR
+  busy-delay routing.
+- `//test:system_time_alarm_test` covers queue ordering, cancellation and
+  lifetime, non-inline scheduling, explicit chronological advancement,
+  non-nesting delivery, and waiter retargeting.
+- `//test:system_time_alarm_lifecycle_test` covers transactional waiter startup,
+  the two-part shutdown seam, active-drainer handoff, capture destruction, and
+  descriptor cleanup in an isolated process.
+- `//test:system_time_alarm_freertos_test` covers ISR clock reads, CPU-busy
+  preemption, pre-scheduler drainer quiescence, and the task-local blocking
+  scenario from Requirement 15.
 
-Alarm unit tests run in an isolated test process because any global drainer can
-legitimately dispatch due consumer work. Tests capture a starting uptime and
-use relative deadlines rather than resetting or assuming zero. Every test
-retains and cancels the IDs it creates, quiesces any worker-visible state, and
-restores timer auto-sync. Tests do not expose a global reset operation that
-could invalidate another consumer's alarms.
+The existing `//test/profile:esp_idf_main_test` and
+`//test:arduino_gtest_environment_test` targets cover the two framework-aware
+runner return paths; the FreeRTOS alarm target uses the plain FreeRTOS GTest
+runner.
 
-The separate `esp_timer` adapter slice tests upstream behavior at the public
-API boundary rather than duplicating it in the generic alarm suite. In
-particular, it verifies:
+Timing assertions require no early fire and eventual delivery; they do not
+assert microsecond host latency. The detailed cases and failure injection stay
+with their implementation phases rather than being repeated here.
 
-- end-to-end one-shot/periodic timing, FIFO equal deadlines, callback arguments,
-  and `xPortInIsrContext() == false` in the dedicated timer task;
-- a periodic timer is reinserted before its callback: one callback-side case
-  restarts it successfully, a separate case stops it successfully (after which
-  restart fails because stop cleared its armed/period state), and direct delete
-  while still armed fails;
-- a one-shot is disarmed before its callback, so stop/restart fails, while
-  separate callback cases can start it again or enqueue deferred deletion;
-- TASK-list delete-event reclamation in the initial configuration; moving an
-  ISR-list handle to TASK deletion is added with the later ISR-dispatch phase;
-- an overdue ordinary periodic timer repeatedly catches up while preserving
-  its absolute phase;
-- `skip_unhandled_events` collapses backlog only when
-  `(now - alarm) / period > 1`; exactly one fully missed period still produces
-  the two due callbacks;
-- periodic start and periodic restart clamp to the backend's 50 microsecond
-  minimum, while the common one-shot path does not apply that clamp;
-- start/stop/restart from a real emulated ISR even for TASK-dispatched timers,
-  rapid coalesced rearm/disarm commands, post-claim generation revalidation,
-  and suppression of a stale already-claimed compare; in manual mode an ISR
-  start/restart followed immediately on ISR return by one task-side advance
-  across the deadline delivers the callback without a second pump;
-- empty and changing nearest-alarm queries, wake-up exclusion for timers marked
-  to skip unhandled sleep events, `get_period`, `get_expiry_time`, `is_active`,
-  and documented invalid argument/state results;
-- once-only early/full startup in every runner, initialization rollback, and a
-  second direct public init returning `ESP_ERR_INVALID_STATE`; with `esp_timer`
-  as the process's first and only alarm consumer, an auto-synchronized TASK
-  callback still fires while application code is CPU-busy; and
-- deinit with active or queued-delete work returning `ESP_ERR_INVALID_STATE`
-  while leaving the service live, followed by clean deinit with compare-source
-  and handler quiescence and no stale interrupt.
+Alarm unit-test binaries run in isolated processes because any global drainer
+can legitimately dispatch due consumer work. Tests capture a starting uptime
+and use relative deadlines rather than resetting or assuming zero. Ordinary
+cases retain and cancel the IDs they create, quiesce worker-visible state, and
+restore timer auto-sync. The lifecycle target deliberately stops its process's
+service and therefore contains no later alarm case. Tests do not expose a
+global reset operation that could invalidate another consumer's alarms.
+
+The separate future `esp_timer` backend design owns its public-API and upstream
+conformance targets; they are not part of the generic alarm suite.
 
 ## Caveats
 
@@ -819,34 +1014,20 @@ releasing locks. If external publication is already being drained, an ordered
 post-publication continuation performs the source assertion later without
 nested delivery.
 
-The generic deadline API has one-microsecond timestamp granularity, and
-`clock_getres()` reports one-nanosecond `CLOCK_MONOTONIC` resolution on the
-authoring host, but neither number is the delivery resolution. The practical
-limit is kernel wakeup plus pthread scheduling, callback work ahead in the one
-waiter, and any interval for which the selected FreeRTOS pthread masks
-simulated-interrupt delivery. An unloaded characterization on that host used
-50, 100, and 1000 microsecond absolute timerfd waits. Despite the process's
-default 50 microsecond timer slack, overshoot was approximately 4-11
-microseconds median and 14-46 microseconds 99th percentile; lowering slack did
-not materially improve this timerfd path. Individual samples were roughly
-0.1-0.2 milliseconds late, and other host activity can still produce
-millisecond-scale outliers. End-to-end interrupt latency also includes the
-alarm adapter and signal dispatch. Host load or a slow earlier handler can
-increase all of these values. The figures motivate the native waiter over the
-1 ms scheduler tick but are not an API guarantee.
-Deterministic mode preserves exact deadline ordering; wall mode preserves
-no-early-fire and catches up late work.
+The generic deadline API has one-microsecond timestamp granularity, but that is
+not its delivery resolution. Wall-mode latency includes the kernel timer wake,
+pthread scheduling, earlier callbacks on the single waiter, and any interval
+for which the selected FreeRTOS pthread masks simulated interrupts. The native
+timerfd avoids the scheduler tick's unavoidable one-millisecond quantization,
+but it still has no hard upper latency bound. Phase 5 records unloaded latency
+for diagnostics while asserting only no-early-fire and eventual delivery.
+Deterministic mode preserves exact deadline ordering; wall mode catches up late
+work in that order.
 
 The timerfd/eventfd transport is Linux-specific, matching the current FreeRTOS
 host port. The queue, clock, and manual-pump semantics remain separable from
 that transport, but a future non-Linux host port needs its own absolute waiter
 and signal-safe control-wake backend.
-
-Consequently, wall mode cannot promise sustained 50 microsecond `esp_timer`
-periods even though the ESP-IDF backend reports that minimum. The future
-adapter preserves upstream phase, catch-up, and `skip_unhandled_events` policy
-so lateness is handled like an overdue hardware compare rather than by
-inventing a host timing guarantee.
 
 An alarm handler that blocks stalls whichever explicit task owns the pump or,
 on autonomous delivery, the only native waiter and every wall-driven alarm
@@ -888,12 +1069,11 @@ as uptime and leaves the alarm core independent of FreeRTOS.
 
 #### Use only a pthread condition variable for the native waiter
 
-A monotonic condition wait can retarget ordinary task-created alarms, but it
-does not provide an async-signal-safe wake for a hardware compare reprogrammed
-from an emulated ISR. On the measured host it also inherited roughly 50
-microseconds of default timer slack. The Linux timerfd/eventfd pair provides an
-absolute high-resolution deadline and a coalescing signal-safe control wake to
-the same single waiter.
+A monotonic condition wait could satisfy the dynamic queue alone. The selected
+Linux timerfd/eventfd pair gives the worker one explicit absolute-deadline source
+and one coalescing control source for retarget and shutdown, and it can later
+accept the already-identified ISR-safe fixed-compare wake without replacing the
+waiter transport. The tradeoff is the Linux dependency recorded in Caveats.
 
 #### Use `roo_scheduler`
 
@@ -907,19 +1087,20 @@ Clock reads occur in logging, sampling, and validation paths. Making them
 execute arbitrary callbacks would create surprising re-entry and turn passive
 observation into a mutation point.
 
-#### Protect passive clock reads with the alarm mutex or a spinning seqlock
+#### Protect passive clock reads with the service lock or a spinning seqlock
 
-An emulated ISR can preempt the code that owns that mutex or is updating the
+An emulated ISR can preempt the code that owns that lock or is updating the
 seqlock. Waiting or spinning would deadlock the interrupted task. The bounded
 atomic snapshot can fall back to already published monotonic uptime instead.
 
 #### Use an unguarded host mutex for slow state
 
-The FreeRTOS Linux port can suspend one task pthread and select another while
-the first owns a libc/pthread lock. If the selected task then waits for that
-lock, the owner cannot be rescheduled. The signal-mask guard prevents task
-handoff only for the short interval in which a task owns shared host state;
-callbacks and waits remain outside it.
+This alternative concerns only roo_testing host state shared with the native
+waiter; ESP-IDF and Arduino framework code continues to use FreeRTOS locks. The
+Linux port can suspend one task pthread and select another while the first owns
+an ordinary host lock. If the selected task waits for that lock, the owner
+cannot be rescheduled. `SchedulerSafeHostLock` prevents task handoff only for
+the short host critical section; callbacks and waits remain outside it.
 
 #### Route ISR busy delays through fake-time advancement
 
@@ -945,16 +1126,14 @@ peripheral adapter or, for `esp_timer`, in the reused upstream common layer.
 
 ## Future Work
 
-- Complete [LEDC fade Phase 3](ledc_voltage_emulation.md#phase-3-ledc-fade-state-machine)
-  over the alarm and interrupt services.
-- Add a host `esp_timer_impl_*` backend and Bazel-build the vendored common
-  `esp_timer` layer for current `ESP_TIMER_TASK` support. Include the
-  internal fixed compare-source extension, signal-safe rearm publication,
-  framework startup/shutdown integration, and preserved list, callback,
-  lifecycle, periodic, and query tests in this first slice.
-- If `ESP_TIMER_ISR` is enabled in the host configuration, extend that backend
-  to the second dispatch list and test direct ISR callbacks and yield behavior.
-- Complete Arduino hardware-timer alarm delivery and add a direct GPTimer shim
-  when required.
-- Use alarms for additional asynchronous peripheral completions when their
-  observable timing matters to a test.
+- Implement the LEDC [internal fade
+  engine](ledc_voltage_emulation.md#phase-3-internal-fade-and-ordered-completion-engine)
+  and [ESP-IDF fade API](ledc_voltage_emulation.md#phase-5-esp-idf-fade-and-blocking-api)
+  over the completed alarm and interrupt services.
+- Write a dedicated `esp_timer` backend design covering the fixed signal-safe
+  compare ingress, LAC/SYSTIMER source profiles, framework startup/shutdown,
+  `ESP_TIMER_TASK`, and a later `ESP_TIMER_ISR` configuration phase.
+- Specify Arduino hardware-timer and GPTimer adapters in a separate design over
+  the one-shot alarm and interrupt boundaries.
+- Add further asynchronous peripheral completions only through consumer designs
+  that define their state-publication and callback-context contracts.

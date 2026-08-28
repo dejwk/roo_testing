@@ -10,20 +10,21 @@ DC, RMS, and peak-related analysis.
 
 ## Motivation
 
-[`VoltageSink`](../roo_testing/transducers/voltage/voltage.h) currently receives
-only a scalar voltage. That loses the frequency, phase, shape, and duty cycle of
-an AC or PWM output. Tests and emulated devices consequently cannot choose
-between instantaneous voltage, average voltage, or RMS voltage according to
-their physical behavior.
+Before this design was implemented,
+[`VoltageSink`](../roo_testing/transducers/voltage/voltage.h) received only a
+scalar voltage. That lost the frequency, phase, shape, and duty cycle of an AC
+or PWM output. Tests and emulated devices consequently could not choose between
+instantaneous voltage, average voltage, or RMS voltage according to their
+physical behavior.
 
 ## Background
 
-`VoltageSink` is the push side of the voltage transducer API. Its built-in
-implementations, `SimpleVoltageSink` and `SimpleDigitalSink`, retain the last
-scalar written to them. [`FakeGpioPin`](../roo_testing/buses/gpio/fake_gpio.h)
-also stores and forwards a scalar. `VoltageSource` is already pull-based and
-can return a time-varying sample through a callback; this design does not change
-it.
+At proposal time, `VoltageSink` was the scalar-only push side of the voltage
+transducer API. Its built-in implementations, `SimpleVoltageSink` and
+`SimpleDigitalSink`, retained the last scalar written to them, and
+[`FakeGpioPin`](../roo_testing/buses/gpio/fake_gpio.h) also stored and forwarded
+a scalar. `VoltageSource` was already pull-based and could return a time-varying
+sample through a callback; the implemented design did not change it.
 
 The fake platform has one monotonic uptime, returned by
 [`system_time_get_micros()`](../roo_testing/system/timer.h). Arduino `micros()`
@@ -69,8 +70,9 @@ Unix time and this design introduces no second clock or time epoch.
 
 ## Design Overview
 
-Add an immutable `VoltageSignal` value whose specification is either constant
-or one of the supported carrier shapes. A periodic carrier stores rails,
+The implemented design uses an immutable `VoltageSignal` value whose
+specification is either constant or one of the supported carrier shapes. A
+periodic carrier stores rails,
 frequency, and its phase-zero uptime. Shape-specific data adds phase placement,
 sawtooth direction, or square duty and inversion. A square can use a
 `LinearDutyFade`; the carrier remains periodic while its duty envelope changes
@@ -409,9 +411,8 @@ implemented shape or interim fallback.
 ## Implementation Plan
 
 Authoring reference: follow this repository's
-[design-authoring guidance](../.github/instructions/embedded-design-doc-authoring.instructions.md)
-and the conventions in adjacent voltage, GPIO, and test code; roo_testing has
-no separate code-authoring guide at the time of this proposal.
+[C++ code-authoring guidance](../.github/instructions/embedded-cpp-code-authoring.instructions.md)
+and adjacent voltage, GPIO, and test conventions.
 
 ### Phase 1: Signal values, sampling, and analysis
 
@@ -419,7 +420,9 @@ Add `voltage_signal.h/.cpp`, export them from the voltage BUILD target, and add
 focused unit tests for factories, phase arithmetic, all shapes, duty envelopes,
 inspection/equality, and analytical metrics.
 
-Proposed commit: `Add time-aware voltage signal model`
+Implemented commit:
+[`95a6fa4f`](https://github.com/dejwk/roo_testing/commit/95a6fa4fedfea724cc321c3b3466573aa9ea91c6)
+`Implement phase 1 of periodic voltage signals`
 
 Validation: build and run the voltage tests, including death tests and extreme
 time/frequency cases.
@@ -431,7 +434,9 @@ waveform-aware callback in both simple sinks, and migrate every roo-owned
 derived class and scalar call site. Include compile coverage for all affected
 libraries and tests for pre-write and re-entrant callback behavior.
 
-Proposed commit: `Make voltage sinks preserve signal metadata`
+Implemented commit:
+[`da1f1803`](https://github.com/dejwk/roo_testing/commit/da1f1803680440e46257b254875200758033c0bf)
+`Migrate VoltageSink to the waveform-aware contract`
 
 Validation: run voltage/transducer tests and build all reverse dependencies of
 the voltage package.
@@ -442,23 +447,25 @@ Store, sample, and forward signals in fake GPIO; add explicit-time reads and
 exact inspection; correct the `VoltageIO` adapter; update BUILD dependencies and
 GPIO tests in the same commit.
 
-Proposed commit: `Propagate voltage signals through fake GPIO`
+Implemented commit:
+[`738ca80e`](https://github.com/dejwk/roo_testing/commit/738ca80eed012ae60ae4c97bcf985fd85a03e8e8)
+`Propagate voltage signals through fake GPIO`
 
 Validation: run GPIO and voltage tests, then the full roo_testing test suite.
 
 ## Testing Plan
 
-The voltage tests cover every waveform at cardinal phases and cycle boundaries,
-negative relative time, extreme finite frequency/time separation, half-open
-square boundaries, inversion, 0/100% duty, and linear fades before, during, and
-after their interval. They also verify structural inspection and every
-analytical formula, including the 0-3.3 V PWM sanity values.
+`//test:voltage_signal_test` covers every waveform at cardinal phases and cycle
+boundaries, negative relative time, extreme finite frequency/time separation,
+half-open square boundaries, inversion, 0/100% duty, linear fades, structural
+inspection, and analytical formulas.
 
-Sink and GPIO tests cover scalar wrappers, unwritten behavior, local-DC versus
-instantaneous views, descriptor-preserving forwarding, callback ordering and
-re-entry, attached legacy-source behavior, and `VoltageIO` routing. Repository
-build coverage proves that every roo-owned subclass and caller migrated to the
-breaking virtual contract.
+`//test:gpio_test` and the sink coverage in `//test:voltage_signal_test` cover
+scalar wrappers, unwritten behavior, local-DC versus instantaneous views,
+descriptor-preserving forwarding, callback ordering and re-entry, attached
+legacy-source behavior, and `VoltageIO` routing. Repository build coverage
+proves that every roo-owned subclass and caller migrated to the breaking virtual
+contract.
 
 ## Caveats
 

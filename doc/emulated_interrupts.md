@@ -11,15 +11,16 @@ emulated clock or blocking unrelated tasks.
 ## Motivation
 
 Many ESP-IDF and Arduino drivers complete asynchronous operations in interrupt
-handlers. Calling those handlers from an alarm-pump task gives them the wrong
+handlers. Calling those handlers from an [alarm drainer or native
+waiter](emulated_time_alarms.md#dispatch-and-re-entry) gives them the wrong
 context, while delivering only at FreeRTOS calls cannot interrupt a CPU-busy
 loop. Advancing global emulated time to imitate a busy wait also changes time
 for every task and conflicts with wall-clock synchronization.
 
-A reusable interrupt path lets peripheral models publish state and assert a
-logical source. The registered framework handler then runs with the same
-FreeRTOS ISR-facing contract it uses on hardware, including `FromISR` APIs and
-deferred task switching.
+A reusable interrupt path lets peripheral models publish completion state and
+request the associated framework interrupt. The registered handler then runs
+with the same FreeRTOS ISR-facing contract it uses on hardware, including
+`FromISR` APIs and deferred task switching.
 
 ## Background
 
@@ -28,12 +29,13 @@ suspends the current task context, enters an interrupt frame, masks interrupts
 according to the architecture's rules, invokes the handler, and may select a
 different task when the outermost interrupt returns.
 
-roo_testing uses ESP-IDF's single-core pthread-backed Linux FreeRTOS port. Each
-FreeRTOS task owns a pthread, but only the selected task is intended to execute.
-The port already uses POSIX signals for the scheduler tick and task handoff.
-Peripheral delivery adds a dedicated signal targeted at the currently selected
-FreeRTOS pthread, allowing host code to interrupt ordinary instructions rather
-than waiting for a cooperative call site.
+roo_testing uses ESP-IDF's single-core pthread-backed [Linux FreeRTOS
+port](../roo_testing/frameworks/esp-idf/components/freertos/FreeRTOS-Kernel/portable/linux/port.c).
+Each FreeRTOS task owns a pthread, but only the selected task is intended to
+execute. The port already uses POSIX signals for the scheduler tick and task
+handoff. Peripheral delivery adds a dedicated signal targeted at the currently
+selected FreeRTOS pthread, allowing host code to interrupt ordinary
+instructions rather than waiting for a cooperative call site.
 
 The port tracks two related but distinct depths:
 
@@ -49,11 +51,11 @@ The signal-shared depths and ISR-exit yield latch use `volatile sig_atomic_t`;
 ordinary FreeRTOS integer types are not sufficient for asynchronous signal
 access even when their machine representation happens to be atomic.
 
-ESP-IDF's allocator accepts target-specific signed interrupt sources. Positive
-`ETS_*` values vary across ESP32, C3, S3, C6, and other SoCs, while negative
-pseudo-sources denote CPU-local interrupts. A reusable host controller therefore
-cannot use a classic-ESP32 source count or source number as generic storage
-identity.
+ESP-IDF's [interrupt allocator](../roo_testing/frameworks/esp-idf/components/esp_hw_support/include/esp_intr_alloc.h)
+accepts target-specific signed interrupt sources. Positive `ETS_*` values vary
+across ESP32, C3, S3, C6, and other SoCs, while negative pseudo-sources denote
+CPU-local interrupts. A reusable host controller therefore cannot use a
+classic-ESP32 source count or source number as generic storage identity.
 
 ## Requirements
 
@@ -65,18 +67,18 @@ identity.
    task's execution is suspended.
 4. A requested yield occurs after the outermost emulated handler returns, not
    in the middle of dispatcher bookkeeping.
-5. Pending requests coalesce. Disabling a registration retains pending state,
-   and enabling it requests delivery.
-6. Registration, removal, and reuse cannot redirect a stale host event to a new
-   handler.
+5. Repeated assertions for one interrupt coalesce. Masking its delivery retains
+   the asserted state, and unmasking it requests delivery.
+6. Removing and later replacing a handler cannot redirect a stale host event
+   to the replacement.
 7. Signal-side delivery is lock-free, nonblocking, nonthrowing, and performs no
    allocation.
-8. Generic controller storage is independent of Espressif source numbers and
-   SoC-specific interrupt counts.
-9. The ESP-IDF adapter preserves handler arguments, signed sources, initial
-   enable state, anonymous allocations, same-source vector compatibility,
-   shared-handler chaining, status filtering, and documented invalid flag
-   combinations.
+8. Host interrupt routing and storage do not assume Espressif source numbering
+   or a target-specific interrupt count.
+9. ESP-IDF-facing behavior preserves handler arguments, signed sources,
+   initial enable state, anonymous allocations, same-source vector
+   compatibility, shared-handler chaining, status filtering, and documented
+   invalid flag combinations.
 10. Target MMIO addresses are opaque numeric keys and are never dereferenced
     as host pointers.
 
@@ -122,8 +124,22 @@ logical source vector onto a controller registration and walks compatible
 shared `intr_handle_t` records from that vector handler. Peripheral models
 update their authoritative state before raising a source.
 
-This split satisfies Requirements 1-4 in the port, Requirements 5-7 in the
-controller, and Requirements 8-10 at the adapter boundary.
+In this document, a *source assertion* is one event identified by a signed
+ESP-IDF source value. While that source is allocated, one adapter *source
+vector* owns one generic controller registration. A *controller registration*
+is a fixed slot plus generation, handler, argument, enabled state, and one
+coalesced pending bit. Each public `intr_handle_t` is a separate *registration
+record* that owns one framework handler and may share its source vector with
+compatible records. A record's matched bit captures status-filter eligibility
+for the next vector pass, whereas the controller pending bit requests the pass
+itself. Controller generations and adapter publication epochs identify one
+table-slot lifetime and permanently retire at exhaustion. A *status snapshot*
+is a borrowed address/value pair materialized by a peripheral for one source
+assertion; the address is an opaque target key. The final port nudge carries no
+source, vector, or handler identity.
+
+This split satisfies Requirements 1-4 in the port, Requirements 5-8 in the
+controller, and Requirements 9-10 at the adapter boundary.
 
 ## Design Details
 
@@ -155,14 +171,16 @@ task context, and no awakened task runs in the middle of a framework handler.
 
 ### Generic controller
 
-The controller has 64 static registration slots. Each slot contains lock-free
-atomics for a handler, argument, generation, allocated/enabled flags, and a
-coalesced pending bit. A value handle contains a slot and generation. Reusing a
-slot increments its generation, so a delayed producer holding an old handle
-cannot assert the replacement registration. Generations never wrap: after a
-slot publishes its maximum generation and that registration is removed, the
-slot is permanently retired. Registration tries another slot and eventually
-returns `kNoCapacity` rather than making an ancient handle valid again.
+Bounded signal-side work and stale-lifetime rejection require fixed storage with
+no allocation or pointer reuse in the dispatcher. The controller therefore has
+64 static registration slots. Each slot contains lock-free atomics for a
+handler, argument, generation, allocated/enabled flags, and a coalesced pending
+bit. A value handle contains a slot and generation. Reusing a slot increments
+its generation, so a delayed producer holding an old handle cannot assert the
+replacement registration. Generations never wrap: after a slot publishes its
+maximum generation and that registration is removed, the slot is permanently
+retired. Registration tries another slot and eventually returns `kNoCapacity`
+rather than making an ancient handle valid again.
 
 Registration and unregistration are FreeRTOS-task operations. They mask port
 signals while publishing or retiring handler lifetime. Enable, disable, and
@@ -185,7 +203,9 @@ are not portable API guarantees.
 
 ### ESP-IDF adapter
 
-The adapter has fixed source-vector and public-registration tables. Source
+Preserving ESP-IDF sharing and status filtering without putting target source
+IDs in the generic controller requires a separate fixed mapping layer. The
+adapter therefore has source-vector and public-registration tables. Source
 values are signed, compared as values, and never used as array indexes. One
 live source maps to one logical vector and therefore one generic controller
 slot. Its signal-side vector handler walks every compatible shared record in a
@@ -195,9 +215,6 @@ entering a separate host interrupt for each handler.
 Source-vector publication epochs and registration epochs likewise never wrap.
 An entry is retired after its last representable epoch; allocation skips
 retired entries and returns `ESP_ERR_NOT_FOUND` when no fresh identity remains.
-Focused tests compile private controller and adapter variants with deliberately
-small identity spaces so exhaustion and stale-operation rejection execute in a
-bounded test rather than relying on billions of production lifetimes.
 
 When a source already has a vector, a second non-shared allocation or a
 shared/non-shared mix returns `ESP_ERR_NOT_FOUND`. Same-source shared
@@ -222,19 +239,20 @@ without a mask. `ESP_INTR_FLAG_IRAM` is retained as host metadata because a host
 function address cannot pass target IRAM classification.
 
 For `esp_intr_alloc_intrstatus()`, the 32-bit target register is an opaque key.
-A peripheral assertion may provide address/value snapshots that were
-materialized from its authoritative emulated state. Before nudging the port,
-the adapter marks unconditional shared handlers and only status-filtered
-handlers whose matching snapshot has a masked bit set. Missing status means
-“not known asserted,” never “dereference this target address.” Non-shared
-handlers ignore intrstatus metadata, as ESP-IDF's direct non-shared dispatch
-does. Filtering occurs at assertion time rather than ISR entry so borrowed
-snapshots require no asynchronous lifetime.
+The snapshot overload supplies address/value pairs materialized from the
+peripheral's authoritative emulated state. Before nudging the port, the adapter
+marks unconditional shared handlers and only status-filtered handlers whose
+matching snapshot has a masked bit set. Missing status means “not known
+asserted,” never “dereference this target address.” Non-shared handlers ignore
+intrstatus metadata, as ESP-IDF's direct non-shared dispatch does. Filtering
+occurs at assertion time rather than ISR entry so borrowed snapshots require no
+asynchronous lifetime.
 
 ### Alarm and peripheral integration
 
-The emulated-time alarm service remains a neutral deadline mechanism. A
-hardware-like consumer handles a due deadline in this order:
+The [emulated-time alarm service](emulated_time_alarms.md#consumer-adapters)
+remains a neutral deadline mechanism. A hardware-like consumer handles a due
+deadline in this order:
 
 1. materialize peripheral status and completion state without invoking the
    public framework ISR;
@@ -246,11 +264,11 @@ hardware-like consumer handles a due deadline in this order:
 4. raise the adapter's signed source with any required status snapshots; and
 5. let the registered framework handler run through the signal path.
 
-Task-dispatched timers add another layer. For example, real `esp_timer` first
-enters its hardware timer ISR. ISR-dispatch callbacks run there, while ordinary
-callbacks are released by notifying the dedicated timer task. The emulator can
-model both using the same deadline engine: raise a timer interrupt, then let
-its ISR either invoke ISR callbacks or wake the timer task.
+Task-dispatched timers add another layer. Real `esp_timer` first enters its
+hardware timer ISR; ISR-dispatch callbacks run there, while ordinary callbacks
+are released by notifying the dedicated timer task. A dedicated future backend
+design will specify both the initial task-dispatch path and later public
+ISR-dispatch support; neither is part of this interrupt proposal.
 
 ## Proposed API
 
@@ -265,6 +283,14 @@ struct InterruptHandle {
   uint32_t generation;
 };
 
+enum class InterruptRegistrationResult {
+  kRegistered,
+  kInvalidArgument,
+  kWrongContext,
+  kNoCapacity,
+  kBackendUnavailable,
+};
+
 InterruptRegistrationResult registerInterrupt(
     InterruptHandler handler, void* argument, bool initially_enabled,
     InterruptHandle* out_handle);
@@ -273,6 +299,13 @@ bool enableInterrupt(InterruptHandle handle) noexcept;
 bool disableInterrupt(InterruptHandle handle) noexcept;
 bool setInterruptPending(InterruptHandle handle) noexcept;
 ```
+
+Registration and unregistration require a scheduler-running FreeRTOS task;
+`kWrongContext` reports any other caller. `kNoCapacity` includes both live and
+permanently retired slots, and `kBackendUnavailable` reports a conflicting or
+unavailable port dispatcher. Enable, disable, and pending are lock-free
+operations available to native producers and emulated ISRs. A false boolean
+result means the value handle no longer identifies a live registration.
 
 The implemented ESP-facing source assertion is declared in
 [`esp_interrupts.h`](../roo_testing/frameworks/esp_idf_support/esp_interrupts.h):
@@ -293,6 +326,14 @@ ESP-IDF code continues to use its existing `esp_intr_alloc`,
 `esp_intr_alloc_intrstatus`, `esp_intr_free`, `esp_intr_enable`, and
 `esp_intr_disable` APIs.
 
+Those five functions are the complete implemented host allocator surface in
+this design. Other declarations from `esp_intr_alloc.h`, including binding,
+inspection, reservation, IRAM/non-IRAM control, and interrupt-number control,
+are intentionally absent from the host link surface. A consumer that uses one
+fails at link time rather than receiving a silent success from a no-op shim.
+Adding any such API requires a separate design that specifies its observable
+host semantics.
+
 ## Implementation Plan
 
 Follow the repository's
@@ -304,7 +345,9 @@ Track active interrupt frames separately from logical critical nesting, expose
 accurate ISR queries, and make zero- and one-argument `portYIELD_FROM_ISR` forms
 compatible with ESP-IDF and Arduino code.
 
-Implemented commit: `Recognize ISR context in the FreeRTOS Linux port`
+Implemented commit:
+[`8e66ad73`](https://github.com/dejwk/roo_testing/commit/8e66ad73)
+`Recognize ISR context in the FreeRTOS Linux port`
 
 Validation: tick handlers and ISR-unblocked tasks observe the correct context;
 task switches restore both nesting counters.
@@ -314,7 +357,9 @@ task switches restore both nesting counters.
 Add payload-free signal ingress, selected-pthread publication, pending
 coalescing, late installation, critical-section deferral, and ISR-exit yields.
 
-Implemented commit: `Deliver simulated interrupts through the FreeRTOS Linux port`
+Implemented commit:
+[`56aa4072`](https://github.com/dejwk/roo_testing/commit/56aa4072)
+`Deliver simulated interrupts through the FreeRTOS Linux port`
 
 Validation: interrupt CPU-busy code, deliberately clobber and restore `errno`,
 defer through nested critical sections until the outer exit, drain re-requests,
@@ -327,61 +372,65 @@ Add generation-checked fixed registrations, lock-free assertion and dispatch,
 logical same-source vectors, safe status snapshots, real allocator handles,
 and focused lifecycle tests.
 
-Implemented commit: `Add the emulated interrupt controller and ESP-IDF adapter`
+Implemented commit:
+[`5616d666`](https://github.com/dejwk/roo_testing/commit/5616d666)
+`Add the emulated interrupt controller and ESP-IDF adapter`
 
 Validation: run controller and allocator suites repeatedly with shuffled test
 order, including disabled pending delivery, stale handles, handler reassertion,
 shared chaining/filtering and compatibility, anonymous allocation, native
-source assertion racing reuse, invalid flags, and forced near-exhaustion that
-retires identities without wraparound.
+source assertion racing reuse, and invalid flags.
 
-### Phase 4: Alarm-backed peripheral interrupts
+### Phase 4: Signal and identity hardening
+
+Use signal-safe scalar types for port bookkeeping, preserve `errno`, verify
+nested critical deferral and both yield forms, and permanently retire exhausted
+controller generations and adapter epochs.
+
+Implemented commit:
+[`cfa45f11`](https://github.com/dejwk/roo_testing/commit/cfa45f11)
+`Harden emulated interrupt identity and signal state`
+
+Validation: run the focused port/controller/allocator suites uncached and with
+20 shuffled repetitions. Reduced identity-space variants must reach exhaustion
+without making any stale handle, callback argument, generation, or epoch live
+again.
+
+### Phase 5: Alarm-backed LEDC interrupt completion
 
 After all [emulated-time alarm phases](emulated_time_alarms.md#implementation-plan),
-have alarm consumers materialize status and raise a logical source. Integrate
-LEDC fade completion first, including ISR semaphore release, callback context,
-and task-local blocking. This is the same integration milestone as [LEDC fade
-Phase 3](ledc_voltage_emulation.md#phase-3-ledc-fade-state-machine), not a
-second sequential implementation. Follow with the separate `esp_timer_impl_*`
-milestone: its fixed compare source raises the profile-selected timer interrupt,
-whose lower ISR invokes the vendored common handler and wakes the dedicated
-timer task for `ESP_TIMER_TASK` callbacks. Add direct ISR callbacks when that
-dispatch method is enabled. Follow with Arduino hardware timers or GPTimer.
+make the LEDC fade consumer materialize status and raise its logical source.
+Include ISR semaphore release, callback context, and task-local blocking. This
+is the interrupt slice of [LEDC Phase
+5](ledc_voltage_emulation.md#phase-5-esp-idf-fade-and-blocking-api), not a
+second sequential implementation.
 
-Proposed commit: `Route LEDC fade completion through emulated interrupts`
+Proposed commit: `Emulate ESP-IDF LEDC fades through interrupts`
 
 Validation: an auto-synchronized deadline interrupts a CPU-busy task without
-an explicit pump. In manual mode a separate native host time-driver thread (or
-a FreeRTOS driver task that can actually preempt the busy task) advances and
-pumps the deadline before the source interrupts that busy task; a lower-priority
-FreeRTOS driver would never be scheduled and is not a valid test setup. Blocked
-same-channel tasks resume while unrelated tasks continue; callbacks see ISR
-context and can request a yield.
-
-### Phase 5: Additional SoCs and fidelity
-
-Supply target profiles and peripheral source constants without changing the
-generic controller. Add per-core ingress before enabling SMP profiles, and add
-priority/nesting only with tests that demonstrate a consumer requirement.
-
-Proposed commit: `Add target-specific interrupt routing profiles`
-
-Validation: compile and run source-routing contracts for each supported SoC;
-verify no generic storage depends on an `ETS_MAX_INTR_SOURCE` value.
+an explicit pump. In manual mode a separate native host time-driver thread
+advances and pumps the deadline before the source interrupts that busy task; a
+lower-priority FreeRTOS driver is not used because it cannot preempt the busy
+task. Blocked same-channel tasks resume while unrelated tasks continue;
+callbacks see ISR context and can request a yield. Update the LEDC design status
+and its fade example in the same commit.
 
 ## Testing Plan
 
-Port tests cover POSIX delivery, bookkeeping, task handoff, nested critical
-deferral, `errno` preservation, and ISR-exit yields. Controller tests cover
-coalescing, disable/enable latching, non-wrapping generation exhaustion, handler
-reassertion, and signal-side enable/disable. ESP-IDF adapter tests cover signed
-source routing, native producers, shared handlers, same-source compatibility,
-status snapshots, anonymous allocations, flags, status-address safety, handle
-lifecycle, and non-wrapping publication-epoch exhaustion.
+The implemented port layer is covered by
+`//test:freertos_posix_isr_context_test`,
+`//test:freertos_posix_simulated_interrupt_install_test`, and
+`//test:freertos_posix_simulated_interrupt_test`. The generic layer is covered
+by `//test:interrupt_controller_test` and
+`//test:interrupt_controller_exhaustion_test`. The ESP-IDF boundary is covered
+by `//test:esp_intr_alloc_test`, `//test:esp_intr_alloc_anonymous_test`, and
+`//test:esp_intr_alloc_epoch_exhaustion_test`.
 
-Peripheral integration tests will combine fake-time deadlines with task and ISR
-observations. Stress runs use Bazel's repeated-test and GTest shuffle options to
-expose process-global installation and stale-state dependencies.
+Run the controller and allocator suites with Bazel `--runs_per_test` and the
+GTest `--gtest_shuffle` argument to expose process-global installation and
+stale-state dependencies. Phase 5 adds its integration target in the same
+commit; that target combines emulated deadlines with task and ISR
+observations rather than duplicating the layer-focused suites.
 
 ## Caveats
 
@@ -414,7 +463,8 @@ Source assertion protects a call already in progress from crossing vector
 free/reuse. It cannot identify the causal lifetime of a producer that calls
 only after an old peripheral operation was cancelled and the same numeric
 source was reallocated. Alarm and peripheral models must validate their own
-generation before entering `raiseInterruptSource()`.
+generation before entering `raiseInterruptSource()`, following the [alarm
+consumer lifetime contract](emulated_time_alarms.md#consumer-adapters).
 
 ### Rejected Alternatives
 
@@ -447,15 +497,22 @@ explicit.
 
 ## Future Work
 
-- Integrate status snapshots with each emulated peripheral that uses
-  `esp_intr_alloc_intrstatus`.
-- Implement the remaining allocator inspection, binding, IRAM, and non-IRAM
-  APIs as consumers require them.
-- Add target vector inventories when exact cross-source vector packing becomes
-  observable to a supported driver.
-- Add per-core ingress and affinity when a supported Espressif SMP profile is
-  introduced.
-- Add priority and nested interrupt modeling only after defining its interaction
-  with POSIX signal masks and FreeRTOS critical sections.
-- Add the host `esp_timer_impl_*` backend, then route GPIO, Arduino hardware
-  timer, GPTimer, and other peripheral shims through the same controller.
+The following work is intentionally outside this design and requires a
+separate design document before implementation:
+
+- Adding peripheral-specific status-snapshot integration beyond the LEDC
+  adapter selected in Phase 5.
+- Adding allocator binding, inspection, reservation, IRAM/non-IRAM control, or
+  interrupt-number control APIs to the implemented host link surface.
+- Defining target vector inventories, cross-source vector packing, and source
+  profiles for additional Espressif SoCs.
+- Adding SMP delivery, per-core selected-pthread ingress, and affinity. The
+  separate design must provide handler quiescence across dispatching cores.
+- Adding priority preemption, nested interrupt delivery, NMI, or high-level
+  handlers. The separate design must define their POSIX signal masks and
+  FreeRTOS critical-section interaction.
+- Adding a host `esp_timer_impl_*` backend. Its separate design must cover the
+  signal-safe fixed compare source, the initial `ESP_TIMER_TASK` path, startup
+  and teardown, and a later `ESP_TIMER_ISR` configuration phase.
+- Routing GPIO, Arduino hardware timers, GPTimer, and further peripheral shims
+  through the controller.

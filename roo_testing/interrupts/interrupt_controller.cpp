@@ -4,6 +4,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -17,6 +18,16 @@ constexpr uint64_t kAllocated = uint64_t{1} << 0;
 constexpr uint64_t kEnabled = uint64_t{1} << 1;
 constexpr uint64_t kPending = uint64_t{1} << 2;
 constexpr unsigned kGenerationShift = 32;
+// A test-only target shortens the identity space to exercise retirement.
+#ifdef ROO_TESTING_INTERNAL_INTERRUPT_MAX_GENERATION
+constexpr uint32_t kMaxGeneration =
+    ROO_TESTING_INTERNAL_INTERRUPT_MAX_GENERATION;
+#else
+constexpr uint32_t kMaxGeneration = std::numeric_limits<uint32_t>::max();
+#endif
+
+static_assert(kMaxGeneration > 0,
+              "interrupt registrations need a nonzero generation");
 
 struct InterruptSlot {
   std::atomic<uint64_t> state{0};
@@ -41,10 +52,9 @@ uint64_t StateWithGeneration(uint32_t generation, uint64_t flags) {
   return (static_cast<uint64_t>(generation) << kGenerationShift) | flags;
 }
 
-uint32_t NextGeneration(uint64_t state) {
-  uint32_t generation = Generation(state) + 1;
-  if (generation == 0) generation = 1;
-  return generation;
+// Returns whether allocating the slot can produce a never-before-used handle.
+bool HasUnusedGeneration(uint64_t state) {
+  return Generation(state) < kMaxGeneration;
 }
 
 bool IsTaskOperationContext() {
@@ -102,9 +112,11 @@ InterruptRegistrationResult registerInterrupt(InterruptHandler handler,
   for (size_t i = 0; i < interrupt_slots.size(); ++i) {
     InterruptSlot& slot = interrupt_slots[i];
     const uint64_t old_state = slot.state.load(std::memory_order_relaxed);
-    if ((old_state & kAllocated) != 0) continue;
+    if ((old_state & kAllocated) != 0 || !HasUnusedGeneration(old_state)) {
+      continue;
+    }
 
-    const uint32_t generation = NextGeneration(old_state);
+    const uint32_t generation = Generation(old_state) + 1;
     slot.handler.store(handler, std::memory_order_relaxed);
     slot.argument.store(argument, std::memory_order_relaxed);
     const uint64_t flags = kAllocated | (initially_enabled ? kEnabled : 0);

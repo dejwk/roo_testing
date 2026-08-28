@@ -17,18 +17,25 @@ index 3c3bb2b3..5938cc95 100644
  
  typedef struct THREAD
  {
-@@ -99,12 +101,23 @@ static pthread_once_t hSigSetupThread = PTHREAD_ONCE_INIT;
+@@ -99,18 +101,30 @@ static pthread_once_t hSigSetupThread = PTHREAD_ONCE_INIT;
  static sigset_t xAllSignals;
  static sigset_t xSchedulerOriginalSignalMask;
  static pthread_t hMainThread = ( pthread_t )NULL;
 +static pthread_t hRunningThread = ( pthread_t )NULL;
- /* Logical critical-section/ISR exclusion depth for the active FreeRTOS
-  * context. Direct interrupt masking does not change this bookkeeping. */
- static volatile BaseType_t uxCriticalNesting;
- /* Active ISR-frame depth for the active FreeRTOS context. An ordinary task
-  * critical section changes uxCriticalNesting but does not change this value. */
- static volatile UBaseType_t uxInterruptNesting;
-+static volatile BaseType_t xYieldPending;
+ /*
+  * These values are accessed both by task code and by asynchronous signal
+  * handlers. volatile sig_atomic_t is the C representation that guarantees
+  * indivisible reads and writes in both contexts without requiring a lock.
+  *
+  * uxCriticalNesting is the logical critical-section/ISR exclusion depth for
+  * the active FreeRTOS context. Direct interrupt masking does not change it.
+  * uxInterruptNesting is only the active ISR-frame depth; an ordinary task
+  * critical section therefore changes the former without changing the latter.
+  */
+ static volatile sig_atomic_t uxCriticalNesting;
+ static volatile sig_atomic_t uxInterruptNesting;
++/* A boolean request consumed after the outermost signal-side ISR returns. */
++static volatile sig_atomic_t xYieldPending;
 +static volatile sig_atomic_t xSimulatedInterruptPending;
 +static RooTestingInterruptDispatcher pxSimulatedInterruptDispatcher;
 +
@@ -41,7 +48,7 @@ index 3c3bb2b3..5938cc95 100644
  /*-----------------------------------------------------------*/
  
  static BaseType_t xSchedulerEnd = pdFALSE;
-@@ -118,9 +131,12 @@ static void prvSwitchThread( Thread_t * xThreadToResume,
+@@ -124,9 +138,12 @@ static void prvSwitchThread( Thread_t * xThreadToResume,
  static void prvSuspendSelf( Thread_t * thread);
  static void prvResumeThread( Thread_t * xThreadId );
  static void vPortSystemTickHandler( int sig );
@@ -54,7 +61,7 @@ index 3c3bb2b3..5938cc95 100644
  /*-----------------------------------------------------------*/
  
  static void prvFatalError( const char *pcCall, int iErrno )
-@@ -226,7 +242,7 @@ BaseType_t xPortStartScheduler( void )
+@@ -232,7 +249,7 @@ BaseType_t xPortStartScheduler( void )
  void vPortEndScheduler( void )
  {
      struct itimerval itimer;
@@ -63,7 +70,7 @@ index 3c3bb2b3..5938cc95 100644
      Thread_t *xCurrentThread;
  
      /* Stop the timer and ignore any pending SIGALRMs that would end
-@@ -238,10 +254,14 @@ void vPortEndScheduler( void )
+@@ -244,10 +261,14 @@ void vPortEndScheduler( void )
      itimer.it_interval.tv_usec = 0;
      (void)setitimer( ITIMER_REAL, &itimer, NULL );
  
@@ -82,7 +89,7 @@ index 3c3bb2b3..5938cc95 100644
  
      /* Signal the scheduler to exit its loop. */
      xSchedulerEnd = pdTRUE;
-@@ -311,6 +331,12 @@ void vPortYieldFromISR( void )
+@@ -317,6 +338,12 @@ void vPortYieldFromISR( void )
      Thread_t *xThreadToSuspend;
      Thread_t *xThreadToResume;
  
@@ -95,7 +102,7 @@ index 3c3bb2b3..5938cc95 100644
      xThreadToSuspend = prvGetThreadFromTask( xTaskGetCurrentTaskHandle() );
  
      vTaskSwitchContext();
-@@ -392,6 +418,61 @@ static void prvExitInterruptContext( void )
+@@ -398,6 +425,61 @@ static void prvExitInterruptContext( void )
  }
  /*-----------------------------------------------------------*/
  
@@ -157,7 +164,7 @@ index 3c3bb2b3..5938cc95 100644
  /*
   * Setup the systick timer to generate the tick interrupts at the required
   * frequency.
-@@ -454,6 +535,7 @@ static void vPortSystemTickHandler( int sig )
+@@ -460,6 +542,7 @@ static void vPortSystemTickHandler( int sig )
  
  #if ( configUSE_PREEMPTION == 1 )
      /* Select Next Task. */
@@ -165,7 +172,7 @@ index 3c3bb2b3..5938cc95 100644
      vTaskSwitchContext();
  
      pxThreadToResume = prvGetThreadFromTask( xTaskGetCurrentTaskHandle() );
-@@ -462,6 +544,40 @@ static void vPortSystemTickHandler( int sig )
+@@ -468,6 +551,40 @@ static void vPortSystemTickHandler( int sig )
  #endif
  
      prvExitInterruptContext();
@@ -206,7 +213,7 @@ index 3c3bb2b3..5938cc95 100644
      errno = iSavedErrno;
  }
  /*-----------------------------------------------------------*/
-@@ -497,6 +595,7 @@ static void *prvWaitForStart( void * pvParams )
+@@ -503,6 +602,7 @@ static void *prvWaitForStart( void * pvParams )
      /* Resumed for the first time, unblocks all signals. */
      uxCriticalNesting = 0;
      uxInterruptNesting = 0;
@@ -214,7 +221,7 @@ index 3c3bb2b3..5938cc95 100644
      vPortEnableInterrupts();
  
      /* Call the task's entry point. */
-@@ -566,16 +665,18 @@ static void prvSuspendSelf( Thread_t *thread )
+@@ -572,16 +672,18 @@ static void prvSuspendSelf( Thread_t *thread )
  
  static void prvResumeThread( Thread_t *xThreadId )
  {
@@ -234,7 +241,7 @@ index 3c3bb2b3..5938cc95 100644
      int iRet;
  
      hMainThread = pthread_self();
-@@ -608,6 +709,12 @@ static void prvSetupSignalsAndSchedulerPolicy( void )
+@@ -614,6 +716,12 @@ static void prvSetupSignalsAndSchedulerPolicy( void )
      sigtick.sa_handler = vPortSystemTickHandler;
      sigfillset( &sigtick.sa_mask );
  
@@ -247,7 +254,7 @@ index 3c3bb2b3..5938cc95 100644
      iRet = sigaction( SIG_RESUME, &sigresume, NULL );
      if ( iRet )
      {
-@@ -619,6 +726,12 @@ static void prvSetupSignalsAndSchedulerPolicy( void )
+@@ -625,6 +733,12 @@ static void prvSetupSignalsAndSchedulerPolicy( void )
      {
          prvFatalError( "sigaction", errno );
      }

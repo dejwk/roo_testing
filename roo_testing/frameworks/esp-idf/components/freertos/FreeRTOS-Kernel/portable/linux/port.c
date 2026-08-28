@@ -102,13 +102,20 @@ static sigset_t xAllSignals;
 static sigset_t xSchedulerOriginalSignalMask;
 static pthread_t hMainThread = ( pthread_t )NULL;
 static pthread_t hRunningThread = ( pthread_t )NULL;
-/* Logical critical-section/ISR exclusion depth for the active FreeRTOS
- * context. Direct interrupt masking does not change this bookkeeping. */
-static volatile BaseType_t uxCriticalNesting;
-/* Active ISR-frame depth for the active FreeRTOS context. An ordinary task
- * critical section changes uxCriticalNesting but does not change this value. */
-static volatile UBaseType_t uxInterruptNesting;
-static volatile BaseType_t xYieldPending;
+/*
+ * These values are accessed both by task code and by asynchronous signal
+ * handlers. volatile sig_atomic_t is the C representation that guarantees
+ * indivisible reads and writes in both contexts without requiring a lock.
+ *
+ * uxCriticalNesting is the logical critical-section/ISR exclusion depth for
+ * the active FreeRTOS context. Direct interrupt masking does not change it.
+ * uxInterruptNesting is only the active ISR-frame depth; an ordinary task
+ * critical section therefore changes the former without changing the latter.
+ */
+static volatile sig_atomic_t uxCriticalNesting;
+static volatile sig_atomic_t uxInterruptNesting;
+/* A boolean request consumed after the outermost signal-side ISR returns. */
+static volatile sig_atomic_t xYieldPending;
 static volatile sig_atomic_t xSimulatedInterruptPending;
 static RooTestingInterruptDispatcher pxSimulatedInterruptDispatcher;
 
@@ -637,8 +644,8 @@ static void *prvWaitForStart( void * pvParams )
 static void prvSwitchThread( Thread_t *pxThreadToResume,
                              Thread_t *pxThreadToSuspend )
 {
-    BaseType_t uxSavedCriticalNesting;
-    UBaseType_t uxSavedInterruptNesting;
+    sig_atomic_t uxSavedCriticalNesting;
+    sig_atomic_t uxSavedInterruptNesting;
 
     if ( pxThreadToSuspend != pxThreadToResume )
     {

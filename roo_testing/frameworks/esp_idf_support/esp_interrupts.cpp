@@ -18,11 +18,27 @@ constexpr size_t kRegistrationCapacity = 64;
 
 constexpr uint64_t kVectorPublished = uint64_t{1} << 0;
 constexpr unsigned kVectorEpochShift = 1;
+constexpr uint64_t kRepresentableVectorEpoch = UINT64_MAX >> kVectorEpochShift;
 
 constexpr uint64_t kRecordPublished = uint64_t{1} << 0;
 constexpr uint64_t kRecordEnabled = uint64_t{1} << 1;
 constexpr uint64_t kRecordMatched = uint64_t{1} << 2;
 constexpr unsigned kRecordEpochShift = 3;
+constexpr uint64_t kRepresentableRecordEpoch = UINT64_MAX >> kRecordEpochShift;
+
+#ifdef ROO_TESTING_INTERNAL_ESP_INTERRUPT_MAX_EPOCH
+constexpr uint64_t kMaxVectorEpoch =
+    ROO_TESTING_INTERNAL_ESP_INTERRUPT_MAX_EPOCH;
+constexpr uint64_t kMaxRecordEpoch =
+    ROO_TESTING_INTERNAL_ESP_INTERRUPT_MAX_EPOCH;
+static_assert(kMaxVectorEpoch > 0 &&
+              kMaxVectorEpoch <= kRepresentableVectorEpoch);
+static_assert(kMaxRecordEpoch > 0 &&
+              kMaxRecordEpoch <= kRepresentableRecordEpoch);
+#else
+constexpr uint64_t kMaxVectorEpoch = kRepresentableVectorEpoch;
+constexpr uint64_t kMaxRecordEpoch = kRepresentableRecordEpoch;
+#endif
 
 struct SourceVector {
   std::atomic<uint64_t> publication{0};
@@ -76,10 +92,11 @@ uint64_t PublishedVectorEpoch(uint64_t epoch) {
   return (epoch << kVectorEpochShift) | kVectorPublished;
 }
 
-uint64_t NextVectorEpoch(uint64_t publication) {
-  uint64_t epoch = VectorEpoch(publication) + 1;
-  if (epoch == 0) epoch = 1;
-  return epoch;
+bool NextVectorEpoch(uint64_t publication, uint64_t* next_epoch) {
+  const uint64_t epoch = VectorEpoch(publication);
+  if (epoch >= kMaxVectorEpoch) return false;
+  *next_epoch = epoch + 1;
+  return true;
 }
 
 uint64_t RecordEpoch(uint64_t state) { return state >> kRecordEpochShift; }
@@ -88,10 +105,11 @@ uint64_t RecordState(uint64_t epoch, uint64_t flags) {
   return (epoch << kRecordEpochShift) | flags;
 }
 
-uint64_t NextRecordEpoch(uint64_t state) {
-  uint64_t epoch = RecordEpoch(state) + 1;
-  if (epoch == 0) epoch = 1;
-  return epoch;
+bool NextRecordEpoch(uint64_t state, uint64_t* next_epoch) {
+  const uint64_t epoch = RecordEpoch(state);
+  if (epoch >= kMaxRecordEpoch) return false;
+  *next_epoch = epoch + 1;
+  return true;
 }
 
 bool IsTaskOperationContext() {
@@ -125,8 +143,11 @@ SourceVector* FindSourceVector(int source) {
 
 SourceVector* FindFreeVector() {
   for (SourceVector& vector : source_vectors) {
-    if (!IsVectorPublished(
-            vector.publication.load(std::memory_order_relaxed))) {
+    const uint64_t publication =
+        vector.publication.load(std::memory_order_relaxed);
+    // A slot at its maximum epoch is retired even after publication clears.
+    if (!IsVectorPublished(publication) &&
+        VectorEpoch(publication) < kMaxVectorEpoch) {
       return &vector;
     }
   }
@@ -135,7 +156,9 @@ SourceVector* FindFreeVector() {
 
 intr_handle_data_t* FindFreeRecord() {
   for (intr_handle_data_t& record : registrations) {
-    if (!IsRecordPublished(record.state.load(std::memory_order_relaxed))) {
+    const uint64_t state = record.state.load(std::memory_order_relaxed);
+    // Never reuse a record if its next identity would wrap and alias epoch one.
+    if (!IsRecordPublished(state) && RecordEpoch(state) < kMaxRecordEpoch) {
       return &record;
     }
   }
@@ -351,6 +374,13 @@ esp_err_t AllocateInterrupt(int source, int flags, uint32_t status_register,
     portEXIT_CRITICAL(nullptr);
     return ESP_ERR_NOT_FOUND;
   }
+  const uint64_t old_record_state =
+      free_record->state.load(std::memory_order_relaxed);
+  uint64_t record_epoch = 0;
+  if (!NextRecordEpoch(old_record_state, &record_epoch)) {
+    portEXIT_CRITICAL(nullptr);
+    return ESP_ERR_NOT_FOUND;
+  }
 
   SourceVector* vector = FindSourceVector(source);
   bool new_vector = false;
@@ -368,6 +398,12 @@ esp_err_t AllocateInterrupt(int source, int flags, uint32_t status_register,
       portEXIT_CRITICAL(nullptr);
       return ESP_ERR_NOT_FOUND;
     }
+    uint64_t vector_epoch = 0;
+    if (!NextVectorEpoch(vector->publication.load(std::memory_order_relaxed),
+                         &vector_epoch)) {
+      portEXIT_CRITICAL(nullptr);
+      return ESP_ERR_NOT_FOUND;
+    }
     const roo_testing::InterruptRegistrationResult result =
         roo_testing::registerInterrupt(DispatchSourceVector, vector, false,
                                        &controller_handle);
@@ -375,8 +411,7 @@ esp_err_t AllocateInterrupt(int source, int flags, uint32_t status_register,
       portEXIT_CRITICAL(nullptr);
       return RegistrationError(result);
     }
-    vector_publication = PublishedVectorEpoch(
-        NextVectorEpoch(vector->publication.load(std::memory_order_relaxed)));
+    vector_publication = PublishedVectorEpoch(vector_epoch);
     vector->source.store(source, std::memory_order_relaxed);
     vector->controller_slot.store(controller_handle.slot,
                                   std::memory_order_relaxed);
@@ -387,8 +422,6 @@ esp_err_t AllocateInterrupt(int source, int flags, uint32_t status_register,
     new_vector = true;
   }
 
-  const uint64_t old_record_state =
-      free_record->state.load(std::memory_order_relaxed);
   const uint64_t record_flags =
       kRecordPublished |
       ((flags & ESP_INTR_FLAG_INTRDISABLED) == 0 ? kRecordEnabled : 0);
@@ -407,9 +440,8 @@ esp_err_t AllocateInterrupt(int source, int flags, uint32_t status_register,
   free_record->status_mask.store(
       (flags & ESP_INTR_FLAG_SHARED) != 0 ? status_mask : 0,
       std::memory_order_relaxed);
-  free_record->state.store(
-      RecordState(NextRecordEpoch(old_record_state), record_flags),
-      std::memory_order_release);
+  free_record->state.store(RecordState(record_epoch, record_flags),
+                           std::memory_order_release);
 
   if (new_vector) {
     vector->publication.store(vector_publication, std::memory_order_release);

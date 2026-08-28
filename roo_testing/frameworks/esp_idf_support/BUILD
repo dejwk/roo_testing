@@ -15,6 +15,25 @@ cc_library(
     ],
 )
 
+# Recompile the real adapter with a tiny epoch space so exhaustion is reachable
+# through the public ESP-IDF API in one isolated test process.
+cc_library(
+    name = "interrupts_epoch_test_support",
+    srcs = ["esp_interrupts.cpp"],
+    hdrs = ["esp_interrupts.h"],
+    copts = ["-Werror"],
+    local_defines = [
+        "ROO_TESTING_INTERNAL_ESP_INTERRUPT_MAX_EPOCH=2",
+    ],
+    testonly = True,
+    visibility = ["//test:__pkg__"],
+    deps = [
+        "//roo_testing/frameworks/esp-idf:headers",
+        "//roo_testing/frameworks/esp-idf/components/freertos",
+        "//roo_testing/interrupts:interrupt_controller",
+    ],
+)
+
 # Host process entry point for an ESP-IDF-style application. The source is
 # destination-owned because upstream ESP-IDF startup is target/bootloader
 # specific and cannot serve as a native Linux main().

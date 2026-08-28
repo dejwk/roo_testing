@@ -32,6 +32,8 @@ enum class InterruptRegistrationResult {
 /// The handler and argument must remain valid until successful unregistration.
 /// The handler runs in POSIX-signal and FreeRTOS ISR context, so it must use
 /// only ISR-safe APIs and must not throw, block, lock, or allocate.
+/// Generations never wrap; a slot is permanently retired after exhausting its
+/// handle identity space.
 InterruptRegistrationResult registerInterrupt(InterruptHandler handler,
                                               void* argument,
                                               bool initially_enabled,

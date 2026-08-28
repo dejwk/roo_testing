@@ -44,19 +44,26 @@ diff --git a/components/freertos/FreeRTOS-Kernel/portable/linux/port.c b/compone
 index 603c5de8..3c3bb2b3 100644
 --- a/components/freertos/FreeRTOS-Kernel/portable/linux/port.c
 +++ b/components/freertos/FreeRTOS-Kernel/portable/linux/port.c
-@@ -100,6 +100,11 @@ static sigset_t xAllSignals;
+@@ -100,6 +100,17 @@ static sigset_t xAllSignals;
  static sigset_t xSchedulerOriginalSignalMask;
  static pthread_t hMainThread = ( pthread_t )NULL;
-+/* Logical critical-section/ISR exclusion depth for the active FreeRTOS
-+ * context. Direct interrupt masking does not change this bookkeeping. */
- static volatile BaseType_t uxCriticalNesting;
-+/* Active ISR-frame depth for the active FreeRTOS context. An ordinary task
-+ * critical section changes uxCriticalNesting but does not change this value. */
-+static volatile UBaseType_t uxInterruptNesting;
+-static volatile BaseType_t uxCriticalNesting;
++/*
++ * These values are accessed both by task code and by asynchronous signal
++ * handlers. volatile sig_atomic_t is the C representation that guarantees
++ * indivisible reads and writes in both contexts without requiring a lock.
++ *
++ * uxCriticalNesting is the logical critical-section/ISR exclusion depth for
++ * the active FreeRTOS context. Direct interrupt masking does not change it.
++ * uxInterruptNesting is only the active ISR-frame depth; an ordinary task
++ * critical section therefore changes the former without changing the latter.
++ */
++static volatile sig_atomic_t uxCriticalNesting;
++static volatile sig_atomic_t uxInterruptNesting;
  /*-----------------------------------------------------------*/
  
  static BaseType_t xSchedulerEnd = pdFALSE;
-@@ -114,6 +119,8 @@ static void prvSuspendSelf( Thread_t * thread);
+@@ -114,6 +125,8 @@ static void prvSuspendSelf( Thread_t * thread);
  static void prvResumeThread( Thread_t * xThreadId );
  static void vPortSystemTickHandler( int sig );
  static void vPortStartFirstTask( void );
@@ -65,7 +72,7 @@ index 603c5de8..3c3bb2b3 100644
  /*-----------------------------------------------------------*/
  
  static void prvFatalError( const char *pcCall, int iErrno )
-@@ -297,6 +300,12 @@ bool xPortCanYield( void )
+@@ -297,6 +306,12 @@ bool xPortCanYield( void )
  }
  /*-----------------------------------------------------------*/
  
@@ -78,7 +85,7 @@ index 603c5de8..3c3bb2b3 100644
  void vPortYieldFromISR( void )
  {
      Thread_t *xThreadToSuspend;
-@@ -361,6 +370,24 @@ static uint64_t prvStartTimeNs;
+@@ -361,6 +376,24 @@ static uint64_t prvStartTimeNs;
   * to adjust timing according to full demo requirements */
  /* static uint64_t prvTickCount; */
  
@@ -103,7 +110,7 @@ index 603c5de8..3c3bb2b3 100644
  /*
   * Setup the systick timer to generate the tick interrupts at the required
   * frequency.
-@@ -403,7 +430,7 @@ static void vPortSystemTickHandler( int sig )
+@@ -403,7 +436,7 @@ static void vPortSystemTickHandler( int sig )
      Thread_t *pxThreadToResume;
      /* uint64_t xExpectedTicks; */
  
@@ -112,7 +119,7 @@ index 603c5de8..3c3bb2b3 100644
  
  #if ( configUSE_PREEMPTION == 1 )
      pxThreadToSuspend = prvGetThreadFromTask( xTaskGetCurrentTaskHandle() );
-@@ -430,7 +457,7 @@ static void vPortSystemTickHandler( int sig )
+@@ -430,7 +463,7 @@ static void vPortSystemTickHandler( int sig )
      prvSwitchThread(pxThreadToResume, pxThreadToSuspend);
  #endif
  
@@ -121,7 +128,7 @@ index 603c5de8..3c3bb2b3 100644
      errno = iSavedErrno;
  }
  /*-----------------------------------------------------------*/
-@@ -469,6 +496,7 @@ static void *prvWaitForStart( void * pvParams )
+@@ -469,6 +502,7 @@ static void *prvWaitForStart( void * pvParams )
  
      /* Resumed for the first time, unblocks all signals. */
      uxCriticalNesting = 0;
@@ -129,15 +136,16 @@ index 603c5de8..3c3bb2b3 100644
      vPortEnableInterrupts();
  
      /* Call the task's entry point. */
-@@ -489,6 +517,7 @@ static void prvSwitchThread( Thread_t *pxThreadToResume,
+@@ -489,6 +523,7 @@ static void prvSwitchThread( Thread_t *pxThreadToResume,
                               Thread_t *pxThreadToSuspend )
  {
-     BaseType_t uxSavedCriticalNesting;
-+    UBaseType_t uxSavedInterruptNesting;
+-    BaseType_t uxSavedCriticalNesting;
++    sig_atomic_t uxSavedCriticalNesting;
++    sig_atomic_t uxSavedInterruptNesting;
  
      if ( pxThreadToSuspend != pxThreadToResume )
      {
-@@ -500,6 +529,7 @@ static void prvSwitchThread( Thread_t *pxThreadToResume,
+@@ -500,6 +535,7 @@ static void prvSwitchThread( Thread_t *pxThreadToResume,
           * we switch back to this task.
           */
          uxSavedCriticalNesting = uxCriticalNesting;
@@ -145,7 +153,7 @@ index 603c5de8..3c3bb2b3 100644
  
          prvResumeThread( pxThreadToResume );
          if ( pxThreadToSuspend->xDying )
-@@ -509,6 +539,7 @@ static void prvSwitchThread( Thread_t *pxThreadToResume,
+@@ -509,6 +545,7 @@ static void prvSwitchThread( Thread_t *pxThreadToResume,
          prvSuspendSelf( pxThreadToSuspend );
  
          uxCriticalNesting = uxSavedCriticalNesting;

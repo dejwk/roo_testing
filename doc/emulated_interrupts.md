@@ -45,6 +45,9 @@ The port tracks two related but distinct depths:
 
 These values are saved on a suspended pthread's stack across an ISR-triggered
 task switch, so the globals always describe the selected execution context.
+The signal-shared depths and ISR-exit yield latch use `volatile sig_atomic_t`;
+ordinary FreeRTOS integer types are not sufficient for asynchronous signal
+access even when their machine representation happens to be atomic.
 
 ESP-IDF's allocator accepts target-specific signed interrupt sources. Positive
 `ETS_*` values vary across ESP32, C3, S3, C6, and other SoCs, while negative
@@ -156,7 +159,10 @@ The controller has 64 static registration slots. Each slot contains lock-free
 atomics for a handler, argument, generation, allocated/enabled flags, and a
 coalesced pending bit. A value handle contains a slot and generation. Reusing a
 slot increments its generation, so a delayed producer holding an old handle
-cannot assert the replacement registration.
+cannot assert the replacement registration. Generations never wrap: after a
+slot publishes its maximum generation and that registration is removed, the
+slot is permanently retired. Registration tries another slot and eventually
+returns `kNoCapacity` rather than making an ancient handle valid again.
 
 Registration and unregistration are FreeRTOS-task operations. They mask port
 signals while publishing or retiring handler lifetime. Enable, disable, and
@@ -185,6 +191,13 @@ live source maps to one logical vector and therefore one generic controller
 slot. Its signal-side vector handler walks every compatible shared record in a
 single ISR pass, matching ESP-IDF's `shared_intr_isr` structure instead of
 entering a separate host interrupt for each handler.
+
+Source-vector publication epochs and registration epochs likewise never wrap.
+An entry is retired after its last representable epoch; allocation skips
+retired entries and returns `ESP_ERR_NOT_FOUND` when no fresh identity remains.
+Focused tests compile private controller and adapter variants with deliberately
+small identity spaces so exhaustion and stale-operation rejection execute in a
+bounded test rather than relying on billions of production lifetimes.
 
 When a source already has a vector, a second non-shared allocation or a
 shared/non-shared mix returns `ESP_ERR_NOT_FOUND`. Same-source shared
@@ -303,8 +316,10 @@ coalescing, late installation, critical-section deferral, and ISR-exit yields.
 
 Implemented commit: `Deliver simulated interrupts through the FreeRTOS Linux port`
 
-Validation: interrupt CPU-busy code, preserve `errno`, defer under critical
-nesting, drain re-requests, and wake a higher-priority task only at ISR exit.
+Validation: interrupt CPU-busy code, deliberately clobber and restore `errno`,
+defer through nested critical sections until the outer exit, drain re-requests,
+and exercise both argument forms of `portYIELD_FROM_ISR()` while waking a
+higher-priority task only at ISR exit.
 
 ### Phase 3: Generic controller and ESP-IDF adapter
 
@@ -317,7 +332,8 @@ Implemented commit: `Add the emulated interrupt controller and ESP-IDF adapter`
 Validation: run controller and allocator suites repeatedly with shuffled test
 order, including disabled pending delivery, stale handles, handler reassertion,
 shared chaining/filtering and compatibility, anonymous allocation, native
-source assertion racing reuse, and invalid flags.
+source assertion racing reuse, invalid flags, and forced near-exhaustion that
+retires identities without wraparound.
 
 ### Phase 4: Alarm-backed peripheral interrupts
 
@@ -355,12 +371,13 @@ verify no generic storage depends on an `ETS_MAX_INTR_SOURCE` value.
 
 ## Testing Plan
 
-Port tests cover POSIX delivery, bookkeeping, task handoff, critical deferral,
-and ISR-exit yields. Controller tests cover coalescing, disable/enable latching,
-generation reuse, handler reassertion, and signal-side enable/disable. ESP-IDF
-adapter tests cover signed source routing, native producers, shared handlers,
-same-source compatibility, status snapshots, anonymous allocations, flags,
-status-address safety, and handle lifecycle.
+Port tests cover POSIX delivery, bookkeeping, task handoff, nested critical
+deferral, `errno` preservation, and ISR-exit yields. Controller tests cover
+coalescing, disable/enable latching, non-wrapping generation exhaustion, handler
+reassertion, and signal-side enable/disable. ESP-IDF adapter tests cover signed
+source routing, native producers, shared handlers, same-source compatibility,
+status snapshots, anonymous allocations, flags, status-address safety, handle
+lifecycle, and non-wrapping publication-epoch exhaustion.
 
 Peripheral integration tests will combine fake-time deadlines with task and ISR
 observations. Stress runs use Bazel's repeated-test and GTest shuffle options to

@@ -1,5 +1,6 @@
 #include "esp_intr_alloc.h"
 
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <csignal>
@@ -37,6 +38,14 @@ bool SpinUntil(volatile sig_atomic_t* value, sig_atomic_t expected) {
   while (*value != expected && std::chrono::steady_clock::now() < deadline) {
   }
   return *value == expected;
+}
+
+bool SpinUntilAtLeast(volatile sig_atomic_t* value, sig_atomic_t minimum) {
+  const auto deadline =
+      std::chrono::steady_clock::now() + std::chrono::seconds(2);
+  while (*value < minimum && std::chrono::steady_clock::now() < deadline) {
+  }
+  return *value >= minimum;
 }
 
 void DelayedSourceRaise() {
@@ -266,7 +275,9 @@ TEST(EspInterruptAllocator, EnforcesSharedVectorCompatibility) {
 // Verifies native source assertions cannot cross a task-side free/reallocate
 // boundary while fixed vector and registration slots are repeatedly reused.
 TEST(EspInterruptAllocator, RacesNativeRaiseAgainstReuse) {
-  HandlerState state;
+  constexpr size_t kGenerationCount = 100;
+  std::array<HandlerState, kGenerationCount> states{};
+  std::array<sig_atomic_t, kGenerationCount> counts_after_free{};
   std::atomic<bool> keep_raising{true};
   portENTER_CRITICAL(nullptr);
   std::thread raiser([&keep_raising] {
@@ -278,15 +289,21 @@ TEST(EspInterruptAllocator, RacesNativeRaiseAgainstReuse) {
   portEXIT_CRITICAL(nullptr);
 
   bool lifecycle_ok = true;
+  size_t completed_generations = 0;
   intr_handle_t live_handle = nullptr;
-  for (int i = 0; i < 100; ++i) {
-    const esp_err_t allocated =
-        esp_intr_alloc(kRaceSource, 0, InterruptHandler, &state, &live_handle);
+  for (size_t i = 0; i < states.size(); ++i) {
+    const esp_err_t allocated = esp_intr_alloc(kRaceSource, 0, InterruptHandler,
+                                               &states[i], &live_handle);
     if (allocated != ESP_OK) {
       ADD_FAILURE() << "allocation failed at iteration " << i << ": "
                     << allocated;
       lifecycle_ok = false;
       break;
+    }
+    roo_testing::esp_idf::raiseInterruptSource(kRaceSource);
+    if (!SpinUntilAtLeast(&states[i].count, 1)) {
+      ADD_FAILURE() << "generation " << i << " was not delivered";
+      lifecycle_ok = false;
     }
     const esp_err_t freed = esp_intr_free(live_handle);
     if (freed != ESP_OK) {
@@ -295,6 +312,9 @@ TEST(EspInterruptAllocator, RacesNativeRaiseAgainstReuse) {
       break;
     }
     live_handle = nullptr;
+    counts_after_free[i] = states[i].count;
+    completed_generations = i + 1;
+    if (!lifecycle_ok) break;
   }
 
   keep_raising.store(false, std::memory_order_release);
@@ -303,15 +323,24 @@ TEST(EspInterruptAllocator, RacesNativeRaiseAgainstReuse) {
     EXPECT_EQ(esp_intr_free(live_handle), ESP_OK);
   }
   EXPECT_TRUE(lifecycle_ok);
+  for (size_t i = 0; i < completed_generations; ++i) {
+    EXPECT_EQ(states[i].count, counts_after_free[i])
+        << "retired callback argument changed at generation " << i;
+    EXPECT_EQ(states[i].observed_isr, 1) << "generation " << i;
+  }
 
-  const sig_atomic_t count_before_final_raise = state.count;
+  HandlerState final_state;
   intr_handle_t final_handle = nullptr;
-  ASSERT_EQ(
-      esp_intr_alloc(kRaceSource, 0, InterruptHandler, &state, &final_handle),
-      ESP_OK);
+  ASSERT_EQ(esp_intr_alloc(kRaceSource, 0, InterruptHandler, &final_state,
+                           &final_handle),
+            ESP_OK);
   roo_testing::esp_idf::raiseInterruptSource(kRaceSource);
-  EXPECT_TRUE(SpinUntil(&state.count, count_before_final_raise + 1));
-  EXPECT_EQ(state.observed_isr, 1);
+  EXPECT_TRUE(SpinUntil(&final_state.count, 1));
+  EXPECT_EQ(final_state.observed_isr, 1);
+  for (size_t i = 0; i < completed_generations; ++i) {
+    EXPECT_EQ(states[i].count, counts_after_free[i])
+        << "final allocation aliased generation " << i;
+  }
   EXPECT_EQ(esp_intr_free(final_handle), ESP_OK);
 }
 

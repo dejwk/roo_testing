@@ -14,6 +14,7 @@ enum class DispatchMode : sig_atomic_t {
   kRecordContext,
   kRerequest,
   kWakeTask,
+  kWakeTaskNoArgYield,
 };
 
 volatile sig_atomic_t dispatch_mode =
@@ -28,7 +29,12 @@ TaskHandle_t task_to_wake = nullptr;
 void SimulatedInterruptDispatcher() {
   handler_count = handler_count + 1;
   handler_observed_isr = xPortInIsrContext() == pdTRUE ? 1 : -1;
-  if (dispatch_mode != static_cast<sig_atomic_t>(DispatchMode::kWakeTask)) {
+  // Deliberately perturb the interrupted pthread's errno. The port's signal
+  // frame must restore it before returning to task code.
+  errno = ERANGE;
+  if (dispatch_mode != static_cast<sig_atomic_t>(DispatchMode::kWakeTask) &&
+      dispatch_mode !=
+          static_cast<sig_atomic_t>(DispatchMode::kWakeTaskNoArgYield)) {
     if (dispatch_mode == static_cast<sig_atomic_t>(DispatchMode::kRerequest) &&
         handler_count == 1) {
       vPortRequestSimulatedInterrupt();
@@ -38,7 +44,12 @@ void SimulatedInterruptDispatcher() {
 
   BaseType_t higher_priority_task_woken = pdFALSE;
   vTaskNotifyGiveFromISR(task_to_wake, &higher_priority_task_woken);
-  portYIELD_FROM_ISR(higher_priority_task_woken);
+  if (dispatch_mode ==
+      static_cast<sig_atomic_t>(DispatchMode::kWakeTaskNoArgYield)) {
+    portYIELD_FROM_ISR();
+  } else {
+    portYIELD_FROM_ISR(higher_priority_task_woken);
+  }
   handler_continued_before_task = awakened_task_ran == 0 ? 1 : -1;
 }
 
@@ -99,9 +110,9 @@ void AwakenedTask(void* arg) {
 TEST(FreeRtosPosixSimulatedInterrupt, InterruptsCpuBusyTask) {
   ASSERT_TRUE(ResetDispatcher(DispatchMode::kRecordContext));
   constexpr int kErrnoSentinel = EDOM;
-  errno = kErrnoSentinel;
 
   std::thread requester = StartDelayedInterruptRequester();
+  errno = kErrnoSentinel;
   const bool handled = SpinUntil(&handler_count, 1);
   const int errno_after_interrupt = errno;
   requester.join();
@@ -118,8 +129,12 @@ TEST(FreeRtosPosixSimulatedInterrupt, CriticalSectionDefersInterrupt) {
   ASSERT_TRUE(ResetDispatcher(DispatchMode::kRecordContext));
 
   portENTER_CRITICAL(nullptr);
+  portENTER_CRITICAL(nullptr);
   std::thread requester = StartDelayedInterruptRequester();
   std::this_thread::sleep_for(std::chrono::milliseconds(60));
+  EXPECT_EQ(handler_count, 0);
+  portEXIT_CRITICAL(nullptr);
+  std::this_thread::sleep_for(std::chrono::milliseconds(20));
   EXPECT_EQ(handler_count, 0);
   portEXIT_CRITICAL(nullptr);
 
@@ -152,6 +167,41 @@ TEST(FreeRtosPosixSimulatedInterrupt, YieldsAtInterruptExit) {
   state.test_task = xTaskGetCurrentTaskHandle();
   TaskHandle_t awakened_task = nullptr;
   ASSERT_EQ(xTaskCreate(AwakenedTask, "irq_awakened", 2048, &state,
+                        uxTaskPriorityGet(nullptr) + 1, &awakened_task),
+            pdPASS);
+  ASSERT_NE(awakened_task, nullptr);
+
+  portENTER_CRITICAL(nullptr);
+  task_to_wake = awakened_task;
+  portEXIT_CRITICAL(nullptr);
+
+  std::thread requester = StartDelayedInterruptRequester();
+  const uint32_t notifications = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(2000));
+  requester.join();
+
+  portENTER_CRITICAL(nullptr);
+  task_to_wake = nullptr;
+  portEXIT_CRITICAL(nullptr);
+
+  EXPECT_EQ(notifications, 1U);
+  EXPECT_EQ(handler_count, 1);
+  EXPECT_EQ(handler_continued_before_task, 1);
+  EXPECT_EQ(awakened_task_ran, 1);
+  EXPECT_EQ(awakened_task_observed_isr, 0);
+  EXPECT_EQ(xPortInIsrContext(), pdFALSE);
+
+  vTaskDelete(awakened_task);
+}
+
+// Verifies the Arduino-style no-argument form also latches its request in the
+// signal handler and performs the switch only after ISR bookkeeping is clear.
+TEST(FreeRtosPosixSimulatedInterrupt, NoArgYieldAtInterruptExit) {
+  ASSERT_TRUE(ResetDispatcher(DispatchMode::kWakeTaskNoArgYield));
+
+  WakeTaskState state;
+  state.test_task = xTaskGetCurrentTaskHandle();
+  TaskHandle_t awakened_task = nullptr;
+  ASSERT_EQ(xTaskCreate(AwakenedTask, "irq_no_arg", 2048, &state,
                         uxTaskPriorityGet(nullptr) + 1, &awakened_task),
             pdPASS);
   ASSERT_NE(awakened_task, nullptr);

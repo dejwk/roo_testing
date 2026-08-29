@@ -3,3 +3,4 @@
 0002-emulate-linux-isr-context.patch
 0003-deliver-simulated-linux-interrupts.patch
 0004-stabilize-linux-scheduler-shutdown.patch
+0005-use-portable-uint64-formats-in-esp-timer.patch

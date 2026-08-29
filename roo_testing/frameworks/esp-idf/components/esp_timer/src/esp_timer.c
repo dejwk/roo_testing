@@ -5,6 +5,7 @@
  */
 
 #include <sys/param.h>
+#include <inttypes.h>
 #include <string.h>
 #include "soc/soc.h"
 #include "esp_types.h"
@@ -615,13 +616,13 @@ static void print_timer_info(esp_timer_handle_t t, char** dst, size_t* dst_size)
         cb = snprintf(*dst, *dst_size, "timer@%-10p  ", t);
     }
 
-    cb += snprintf(*dst + cb, *dst_size - cb, "%-10lld  %-12lld  %-12d  %-12d  %-12d  %-12lld\n",
+    cb += snprintf(*dst + cb, *dst_size - cb, "%-10" PRIu64 "  %-12" PRIu64 "  %-12d  %-12d  %-12d  %-12" PRIu64 "\n",
                    (uint64_t)t->period, t->alarm, t->times_armed,
                    t->times_triggered, t->times_skipped, t->total_callback_run_time);
     /* keep this in sync with the format string, used in esp_timer_dump */
 #define TIMER_INFO_LINE_LEN 103
 #else
-    size_t cb = snprintf(*dst, *dst_size, "timer@%-14p  %-10lld  %-12lld\n", t, (uint64_t)t->period, t->alarm);
+    size_t cb = snprintf(*dst, *dst_size, "timer@%-14p  %-10" PRIu64 "  %-12" PRIu64 "\n", t, (uint64_t)t->period, t->alarm);
 #define TIMER_INFO_LINE_LEN 47
 #endif
     *dst += cb;

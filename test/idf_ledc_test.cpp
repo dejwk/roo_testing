@@ -123,7 +123,7 @@ TEST(IdfLedcTest, RejectsInvalidArgumentsAndUnconfiguredChannels) {
   EXPECT_EQ(LEDC_ERR_DUTY, ledc_get_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_4));
 }
 
-TEST(IdfLedcTest, UnsupportedFadesLeaveCommittedOutputUntouched) {
+TEST(IdfLedcTest, InstallsAndStartsAnEspIdfFade) {
   ledc_timer_config_t timer{};
   timer.speed_mode = LEDC_LOW_SPEED_MODE;
   timer.duty_resolution = LEDC_TIMER_2_BIT;
@@ -138,14 +138,15 @@ TEST(IdfLedcTest, UnsupportedFadesLeaveCommittedOutputUntouched) {
   channel.duty = 2;
   ASSERT_EQ(ESP_OK, ledc_channel_config(&channel));
 
-  EXPECT_EQ(ESP_ERR_NOT_SUPPORTED, ledc_fade_func_install(0));
-  EXPECT_EQ(
-      ESP_ERR_NOT_SUPPORTED,
-      ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3, 4, 10));
-  EXPECT_EQ(
-      ESP_ERR_NOT_SUPPORTED,
-      ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3, LEDC_FADE_NO_WAIT));
+  ASSERT_EQ(ESP_OK, ledc_fade_func_install(0));
+  ASSERT_EQ(ESP_OK,
+            ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3, 4,
+                                    100));
+  ASSERT_EQ(ESP_OK,
+            ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3,
+                            LEDC_FADE_NO_WAIT));
   EXPECT_EQ(2U, ledc_get_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3));
+  ledc_fade_func_uninstall();
 }
 
 }  // namespace

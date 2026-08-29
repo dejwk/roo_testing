@@ -82,6 +82,7 @@ cc_library(
         ":esp_ringbuf",
         "//roo_testing/frameworks/esp-idf/components/freertos:freertos",
         "//roo_testing/frameworks/esp_idf_support:interrupts",
+        ":ledc_fade_engine",
         "//roo_testing/microcontrollers/esp32:core",
         "//roo_testing/sys",
         "//roo_testing/system:timer",

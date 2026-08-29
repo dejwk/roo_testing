@@ -38,6 +38,11 @@ class LedcFadeEngine {
   LedcFadeEngine(const LedcFadeEngine&) = delete;
   LedcFadeEngine& operator=(const LedcFadeEngine&) = delete;
 
+  // Invoked after the final endpoint has been published.  The callback is
+  // deliberately outside the engine lock so it may cross the interrupt
+  // boundary without coupling GPIO delivery to driver state.
+  void SetCompletionNotifier(void (*notifier)(void*), void* arg);
+
   bool Start(const Request& request);
   bool Cancel(uint8_t channel);
   Snapshot snapshot(uint8_t channel) const;

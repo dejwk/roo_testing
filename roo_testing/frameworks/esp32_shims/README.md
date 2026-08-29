@@ -31,18 +31,21 @@ trees, then adjusted to ESP-IDF 6.0.2 / Arduino-ESP32 3.3.11 declarations.
 | Arduino runtime | Modern `EspClass` dependencies and Arduino HAL entry points are backed by the same services above | modified Arduino core/HAL sources |
 | ESP-IDF LEDC | Configured timers and channels publish immutable PWM voltage signals to `FakeEsp32` GPIO; duty changes remain pending until `ledc_update_duty()` | host shim |
 
-## LEDC phases 1-2
+## LEDC phases 1-5
 
 The ESP-IDF LEDC shim models steady PWM output only.  A configured channel
 publishes a square signal using its timer frequency, shared timer origin,
 committed duty, hpoint, and inversion.  Timer or channel reconfiguration
 republishes affected outputs; moving or deconfiguring a channel drives its old
-pin low.  Fade APIs are deliberately unavailable until their deterministic
-completion, blocking, and cancellation model is implemented:
-`ledc_fade_func_install`, `ledc_set_fade_with_time`, and `ledc_fade_start`
-return `ESP_ERR_NOT_SUPPORTED`.  Arduino fade APIs return `false` without
-changing output.  Arduino gamma configuration and gamma fades are likewise
-unsupported; the two void gamma calls log a warning and otherwise do nothing.
+pin low.  ESP-IDF fades are installed through the emulated LEDC interrupt:
+the fade engine publishes a continuous duty envelope, commits its endpoint
+before raising the completion interrupt, and invokes registered fade callbacks
+from ISR context. `LEDC_FADE_NO_WAIT` returns after publication; a
+`LEDC_FADE_WAIT_DONE` caller waits on the channel gate when running in a
+FreeRTOS task. Bare `ledc_update_duty()` rejects an active fade. Arduino fades
+remain unavailable until Phase 6. Arduino gamma configuration and gamma fades
+are likewise unsupported; the two void gamma calls log a warning and otherwise
+do nothing.
 
 Arduino LEDC attaches each channel with an independent carrier origin and
 immediately publishes its zero-duty output.  Writes, tones, frequency or

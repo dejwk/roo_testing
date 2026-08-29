@@ -55,6 +55,8 @@ struct LedcFadeEngine::Impl {
   std::array<Channel, kChannels> channels;
   std::vector<Delivery> delivery;
   bool draining = false;
+  void (*notifier)(void*) = nullptr;
+  void* notifier_arg = nullptr;
 
   VoltageSignal signal(const Channel& channel, bool endpoint) const {
     const Request& r = channel.request;
@@ -97,12 +99,21 @@ struct LedcFadeEngine::Impl {
       }
       FakeEsp32().gpio.get(item.pin).write(item.signal);
       if (item.finalize) {
-        roo_testing::SchedulerSafeHostLock lock(mutex);
-        Channel& channel = channels[item.channel];
-        if (channel.generation == item.generation &&
-            channel.state == State::kQueued) {
-          channel.state = State::kPending;
+        void (*notifier)(void*) = nullptr;
+        void* notifier_arg = nullptr;
+        {
+          roo_testing::SchedulerSafeHostLock lock(mutex);
+          Channel& channel = channels[item.channel];
+          if (channel.generation == item.generation &&
+              channel.state == State::kQueued) {
+            channel.state = State::kPending;
+            notifier = this->notifier;
+            notifier_arg = this->notifier_arg;
+          }
         }
+        // The notifier enters the emulated interrupt controller.  It must not
+        // run under the engine lock.
+        if (notifier != nullptr) notifier(notifier_arg);
       }
     }
   }
@@ -132,6 +143,12 @@ struct LedcFadeEngine::Impl {
 
 LedcFadeEngine::LedcFadeEngine() : impl_(new Impl) {}
 LedcFadeEngine::~LedcFadeEngine() { delete impl_; }
+
+void LedcFadeEngine::SetCompletionNotifier(void (*notifier)(void*), void* arg) {
+  roo_testing::SchedulerSafeHostLock lock(impl_->mutex);
+  impl_->notifier = notifier;
+  impl_->notifier_arg = arg;
+}
 
 bool LedcFadeEngine::Start(const Request& request) {
   if (kLedcDeliveryActive) return false;

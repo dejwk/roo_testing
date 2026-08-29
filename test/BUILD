@@ -184,7 +184,7 @@ cc_test(
     linkstatic = 1,
     deps = [
         "//roo_testing/frameworks/esp32_shims:idf",
-        "@googletest//:gtest_main",
+        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
     ],
 )
 

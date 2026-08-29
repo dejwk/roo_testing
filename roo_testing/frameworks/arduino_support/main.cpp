@@ -1,9 +1,15 @@
+#include <cstdlib>
+
 #include "Arduino.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "roo_testing/frameworks/esp32_shims/esp_timer_host.h"
 
 namespace {
 void RunSketch(void*) {
+  if (roo_testing::esp32_shims::InitializeEspTimerForHost() != ESP_OK) {
+    std::abort();
+  }
   setup();
   for (;;) {
     loop();

@@ -2,3 +2,4 @@
 0001-expose-linux-task-context.patch
 0002-emulate-linux-isr-context.patch
 0003-deliver-simulated-linux-interrupts.patch
+0004-stabilize-linux-scheduler-shutdown.patch

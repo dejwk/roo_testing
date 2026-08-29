@@ -485,7 +485,7 @@ cc_test(
     linkopts = ["-Wl,--wrap=vApplicationTickHook"],
     linkstatic = 1,
     deps = [
-        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "//roo_testing/frameworks/arduino_support:bare_freertos_gtest_main",
         "//roo_testing/frameworks/esp-idf/components/freertos",
         "@googletest//:gtest",
     ],
@@ -498,7 +498,7 @@ cc_test(
     copts = ["-Werror"],
     linkstatic = 1,
     deps = [
-        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "//roo_testing/frameworks/arduino_support:bare_freertos_gtest_main",
         "//roo_testing/frameworks/esp-idf/components/freertos",
         "//roo_testing/frameworks/esp-idf/components/freertos:roo_testing_port_api",
         "@googletest//:gtest",
@@ -512,7 +512,7 @@ cc_test(
     copts = ["-Werror"],
     linkstatic = 1,
     deps = [
-        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "//roo_testing/frameworks/arduino_support:bare_freertos_gtest_main",
         "//roo_testing/frameworks/esp-idf/components/freertos",
         "//roo_testing/frameworks/esp-idf/components/freertos:roo_testing_port_api",
         "@googletest//:gtest",
@@ -525,7 +525,7 @@ cc_test(
     srcs = ["freertos_posix_thread_join_regression_test.cpp"],
     linkstatic = 1,
     deps = [
-        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "//roo_testing/frameworks/arduino_support:bare_freertos_gtest_main",
         "//roo_testing/frameworks/esp-idf/components/freertos",
     ],
 )
@@ -537,7 +537,7 @@ cc_test(
     copts = ["-Werror"],
     linkstatic = 1,
     deps = [
-        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "//roo_testing/frameworks/arduino_support:bare_freertos_gtest_main",
         "//roo_testing/interrupts:interrupt_controller",
         "@googletest//:gtest",
     ],
@@ -550,7 +550,7 @@ cc_test(
     copts = ["-Werror"],
     linkstatic = 1,
     deps = [
-        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "//roo_testing/frameworks/arduino_support:bare_freertos_gtest_main",
         "//roo_testing/interrupts:interrupt_controller_exhaustion_test_support",
         "@googletest//:gtest",
     ],
@@ -563,7 +563,7 @@ cc_test(
     copts = ["-Werror"],
     linkstatic = 1,
     deps = [
-        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "//roo_testing/frameworks/arduino_support:bare_freertos_gtest_main",
         "//roo_testing/frameworks/esp_idf_support:interrupts",
         "@googletest//:gtest",
     ],
@@ -576,7 +576,7 @@ cc_test(
     copts = ["-Werror"],
     linkstatic = 1,
     deps = [
-        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "//roo_testing/frameworks/arduino_support:bare_freertos_gtest_main",
         "//roo_testing/frameworks/esp_idf_support:interrupts",
         "@googletest//:gtest",
     ],
@@ -589,7 +589,7 @@ cc_test(
     copts = ["-Werror"],
     linkstatic = 1,
     deps = [
-        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "//roo_testing/frameworks/arduino_support:bare_freertos_gtest_main",
         "//roo_testing/frameworks/esp_idf_support:interrupts_epoch_test_support",
         "@googletest//:gtest",
     ],

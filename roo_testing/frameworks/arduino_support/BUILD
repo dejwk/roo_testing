@@ -38,3 +38,17 @@ cc_library(
         "@googletest//:gtest",
     ],
 )
+
+# FreeRTOS-only runner for port and interrupt-controller tests that must start
+# before the ESP timer installs its process-global interrupt dispatcher.
+cc_library(
+    name = "bare_freertos_gtest_main",
+    srcs = ["bare_freertos_gtest_main.cpp"],
+    alwayslink = 1,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//roo_testing/frameworks/esp-idf/components/freertos",
+        "//roo_testing/system:timer",
+        "@googletest//:gtest",
+    ],
+)

@@ -214,6 +214,12 @@ BaseType_t xPortStartScheduler( void )
 {
     int iSignal;
     sigset_t xSignals;
+#if ( INCLUDE_xTaskGetIdleTaskHandle == 1 )
+    TaskHandle_t xIdleTask;
+#endif
+#if ( configUSE_TIMERS == 1 )
+    TaskHandle_t xTimerTask;
+#endif
 
     hMainThread = pthread_self();
 
@@ -233,14 +239,24 @@ BaseType_t xPortStartScheduler( void )
         sigwait( &xSignals, &iSignal );
     }
 
+    /* Snapshot scheduler-owned task handles before cancelling either pthread.
+     * A cancelled task can run pthread cleanup while being joined; do not rely
+     * on kernel globals remaining readable between the two cancellations. */
+#if ( INCLUDE_xTaskGetIdleTaskHandle == 1 )
+    xIdleTask = xTaskGetIdleTaskHandle();
+#endif
+#if ( configUSE_TIMERS == 1 )
+    xTimerTask = xTimerGetTimerDaemonTaskHandle();
+#endif
+
     /* Cancel the Idle task and free its resources */
 #if ( INCLUDE_xTaskGetIdleTaskHandle == 1 )
-    vPortCancelThread( xTaskGetIdleTaskHandle() );
+    vPortCancelThread( xIdleTask );
 #endif
 
 #if ( configUSE_TIMERS == 1 )
     /* Cancel the Timer task and free its resources */
-    vPortCancelThread( xTimerGetTimerDaemonTaskHandle() );
+    vPortCancelThread( xTimerTask );
 #endif /* configUSE_TIMERS */
 
     /* Restore original signal mask. */

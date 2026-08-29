@@ -57,6 +57,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -249,15 +250,29 @@ BaseType_t xPortStartScheduler( void )
     xTimerTask = xTimerGetTimerDaemonTaskHandle();
 #endif
 
-    /* Cancel the Idle task and free its resources */
-#if ( INCLUDE_xTaskGetIdleTaskHandle == 1 )
+#if ( INCLUDE_xTaskGetIdleTaskHandle == 1 ) && ( configUSE_TIMERS == 1 )
+    /* Keep the FreeRTOS buffers as the actual pthread stacks: stack sizing and
+     * overflow behaviour are part of the Linux port's useful fidelity. ASAN
+     * can reclaim a terminating custom stack at host-page granularity, though,
+     * including port metadata at the top of an adjacent lower-address stack.
+     * Tear down from lower to higher metadata addresses so any such reclaimed
+     * bytes belong only to a pthread that has already been joined. */
+    if ( ( uintptr_t ) prvGetThreadFromTask( xIdleTask ) <
+         ( uintptr_t ) prvGetThreadFromTask( xTimerTask ) )
+    {
+        vPortCancelThread( xIdleTask );
+        vPortCancelThread( xTimerTask );
+    }
+    else
+    {
+        vPortCancelThread( xTimerTask );
+        vPortCancelThread( xIdleTask );
+    }
+#elif ( configUSE_TIMERS == 1 )
+    vPortCancelThread( xTimerTask );
+#elif ( INCLUDE_xTaskGetIdleTaskHandle == 1 )
     vPortCancelThread( xIdleTask );
 #endif
-
-#if ( configUSE_TIMERS == 1 )
-    /* Cancel the Timer task and free its resources */
-    vPortCancelThread( xTimerTask );
-#endif /* configUSE_TIMERS */
 
     /* Restore original signal mask. */
     (void)pthread_sigmask( SIG_SETMASK, &xSchedulerOriginalSignalMask,  NULL );

@@ -1,7 +1,15 @@
 diff --git a/components/freertos/FreeRTOS-Kernel/portable/linux/port.c b/components/freertos/FreeRTOS-Kernel/portable/linux/port.c
 --- a/components/freertos/FreeRTOS-Kernel/portable/linux/port.c
 +++ b/components/freertos/FreeRTOS-Kernel/portable/linux/port.c
-@@ -214,6 +214,12 @@ BaseType_t xPortStartScheduler( void )
+@@ -57,6 +57,7 @@
+ #include <errno.h>
+ #include <pthread.h>
+ #include <signal.h>
++#include <stdint.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+@@ -214,6 +215,12 @@
  {
      int iSignal;
      sigset_t xSignals;
@@ -14,30 +22,49 @@ diff --git a/components/freertos/FreeRTOS-Kernel/portable/linux/port.c b/compone
  
      hMainThread = pthread_self();
  
-@@ -233,14 +239,24 @@ BaseType_t xPortStartScheduler( void )
+@@ -233,15 +240,39 @@
          sigwait( &xSignals, &iSignal );
      }
  
+-    /* Cancel the Idle task and free its resources */
 +    /* Snapshot scheduler-owned task handles before cancelling either pthread.
 +     * A cancelled task can run pthread cleanup while being joined; do not rely
 +     * on kernel globals remaining readable between the two cancellations. */
-+#if ( INCLUDE_xTaskGetIdleTaskHandle == 1 )
+ #if ( INCLUDE_xTaskGetIdleTaskHandle == 1 )
+-    vPortCancelThread( xTaskGetIdleTaskHandle() );
 +    xIdleTask = xTaskGetIdleTaskHandle();
-+#endif
-+#if ( configUSE_TIMERS == 1 )
+ #endif
+-
+ #if ( configUSE_TIMERS == 1 )
+-    /* Cancel the Timer task and free its resources */
+-    vPortCancelThread( xTimerGetTimerDaemonTaskHandle() );
+-#endif /* configUSE_TIMERS */
 +    xTimerTask = xTimerGetTimerDaemonTaskHandle();
 +#endif
 +
-     /* Cancel the Idle task and free its resources */
- #if ( INCLUDE_xTaskGetIdleTaskHandle == 1 )
--    vPortCancelThread( xTaskGetIdleTaskHandle() );
-+    vPortCancelThread( xIdleTask );
- #endif
- 
- #if ( configUSE_TIMERS == 1 )
-     /* Cancel the Timer task and free its resources */
--    vPortCancelThread( xTimerGetTimerDaemonTaskHandle() );
++#if ( INCLUDE_xTaskGetIdleTaskHandle == 1 ) && ( configUSE_TIMERS == 1 )
++    /* Keep the FreeRTOS buffers as the actual pthread stacks: stack sizing and
++     * overflow behaviour are part of the Linux port's useful fidelity. ASAN
++     * can reclaim a terminating custom stack at host-page granularity, though,
++     * including port metadata at the top of an adjacent lower-address stack.
++     * Tear down from lower to higher metadata addresses so any such reclaimed
++     * bytes belong only to a pthread that has already been joined. */
++    if ( ( uintptr_t ) prvGetThreadFromTask( xIdleTask ) <
++         ( uintptr_t ) prvGetThreadFromTask( xTimerTask ) )
++    {
++        vPortCancelThread( xIdleTask );
++        vPortCancelThread( xTimerTask );
++    }
++    else
++    {
++        vPortCancelThread( xTimerTask );
++        vPortCancelThread( xIdleTask );
++    }
++#elif ( configUSE_TIMERS == 1 )
 +    vPortCancelThread( xTimerTask );
- #endif /* configUSE_TIMERS */
++#elif ( INCLUDE_xTaskGetIdleTaskHandle == 1 )
++    vPortCancelThread( xIdleTask );
++#endif
  
      /* Restore original signal mask. */
+     (void)pthread_sigmask( SIG_SETMASK, &xSchedulerOriginalSignalMask,  NULL );

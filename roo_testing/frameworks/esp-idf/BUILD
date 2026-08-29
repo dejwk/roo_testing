@@ -4,6 +4,7 @@ exports_files([
     "components/esp_common/src/esp_err_to_name.c",
     "components/esp_ringbuf/ringbuf.c",
     "components/esp_timer/src/esp_timer.c",
+    "components/esp_timer/src/ets_timer_legacy.c",
     "components/esp_timer/src/esp_timer_impl_common.c",
     "components/esp_timer/src/esp_timer_init.c",
 ])

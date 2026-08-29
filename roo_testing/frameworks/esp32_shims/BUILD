@@ -24,7 +24,7 @@ cc_library(
     ],
 )
 
-# Internal-only Phase 1 model of the ESP timer counter, compare and IRQ path.
+# Internal host model of the ESP timer compare and IRQ path.
 cc_library(
     name = "esp_timer_impl_host",
     srcs = [
@@ -52,6 +52,7 @@ cc_library(
         "esp_now.cpp",
         "event.cpp",
         "//roo_testing/frameworks/esp-idf:components/esp_timer/src/esp_timer.c",
+        "//roo_testing/frameworks/esp-idf:components/esp_timer/src/ets_timer_legacy.c",
         "//roo_testing/frameworks/esp-idf:components/esp_timer/src/esp_timer_init.c",
         "esp_timer_host_etm.cpp",
         "esp_timer_host_lifecycle.cpp",
@@ -122,6 +123,31 @@ cc_library(
     deps = [
         ":arduino",
         ":idf",
+    ],
+)
+
+cc_test(
+    name = "ets_timer_legacy_test",
+    size = "small",
+    srcs = ["ets_timer_legacy_test.cpp"],
+    linkstatic = 1,
+    deps = [
+        ":idf",
+        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "@googletest//:gtest",
+    ],
+)
+
+cc_test(
+    name = "ets_timer_legacy_manual_test",
+    size = "small",
+    srcs = ["ets_timer_legacy_test.cpp"],
+    linkstatic = 1,
+    deps = [
+        ":idf",
+        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "//roo_testing/system:manual_time_mode",
+        "@googletest//:gtest",
     ],
 )
 

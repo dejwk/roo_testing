@@ -189,6 +189,14 @@ cc_test(
 )
 
 cc_test(
+    name = "arduino_ledc_test",
+    size = "small",
+    srcs = ["arduino_ledc_test.cpp"],
+    linkstatic = 1,
+    deps = ["//:arduino_gtest_main"],
+)
+
+cc_test(
     name = "arduino_spi_clock_test",
     size = "small",
     srcs = ["arduino_spi_clock_test.cpp"],

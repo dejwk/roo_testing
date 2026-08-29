@@ -29,6 +29,20 @@ trees, then adjusted to ESP-IDF 6.0.2 / Arduino-ESP32 3.3.11 declarations.
 | Wi-Fi/netif/DNS | Scan/connect events use the fake Wi-Fi environment; sockets remain native Linux sockets; unsupported radio/AP controls are safe no-ops | IDF `esp_wifi/esp_wifi.cpp` and modified Arduino WiFi sources |
 | ESP-NOW | Callbacks and payloads are forwarded to the fake ESP-NOW bus | IDF `esp_wifi/esp_now.cpp` |
 | Arduino runtime | Modern `EspClass` dependencies and Arduino HAL entry points are backed by the same services above | modified Arduino core/HAL sources |
+| ESP-IDF LEDC | Configured timers and channels publish immutable PWM voltage signals to `FakeEsp32` GPIO; duty changes remain pending until `ledc_update_duty()` | host shim |
+
+## LEDC phase 1
+
+The ESP-IDF LEDC shim models steady PWM output only.  A configured channel
+publishes a square signal using its timer frequency, shared timer origin,
+committed duty, hpoint, and inversion.  Timer or channel reconfiguration
+republishes affected outputs; moving or deconfiguring a channel drives its old
+pin low.  Fade APIs are deliberately unavailable until their deterministic
+completion, blocking, and cancellation model is implemented:
+`ledc_fade_func_install`, `ledc_set_fade_with_time`, and `ledc_fade_start`
+return `ESP_ERR_NOT_SUPPORTED`.  Arduino fade APIs return `false` without
+changing output.  Arduino gamma configuration and gamma fades are likewise
+unsupported; the two void gamma calls log a warning and otherwise do nothing.
 
 When an upstream declaration changes, prefer adapting this package over
 patching the imported source.  Add a focused host test for any newly emulated

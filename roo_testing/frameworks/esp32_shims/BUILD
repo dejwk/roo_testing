@@ -114,6 +114,7 @@ cc_library(
         "//roo_testing/frameworks/esp-idf/components/freertos:freertos",
         "//roo_testing/microcontrollers/esp32:core",
         "//roo_testing/system:timer",
+        "@glog",
     ],
 )
 

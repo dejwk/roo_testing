@@ -373,6 +373,28 @@ cc_test(
 )
 
 cc_test(
+    name = "system_time_auto_alarms_test",
+    size = "small",
+    linkstatic = 1,
+    srcs = ["system_time_auto_alarms_test.cpp"],
+    deps = [
+        "//roo_testing/system:timer",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "system_time_alarm_lifecycle_test",
+    size = "small",
+    linkstatic = 1,
+    srcs = ["system_time_alarm_lifecycle_test.cpp"],
+    deps = [
+        "//roo_testing/system:timer",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "soc_profile_test",
     size = "small",
     srcs = ["soc_profile_test.cpp"],

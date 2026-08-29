@@ -18,6 +18,12 @@ void CancelSystemTimeAlarm(SystemTimeAlarmId id);
 /// Delivers all alarms due at the current emulated uptime.
 void ProcessSystemTimeAlarms();
 
+/// Starts host-runner shutdown when no alarm callback is being delivered.
+bool TryBeginSystemTimeServiceShutdownForHost();
+
+/// Joins the alarm worker and discards pending callbacks after scheduler exit.
+void FinishSystemTimeServiceShutdownForHost();
+
 extern "C" {
 #endif
 

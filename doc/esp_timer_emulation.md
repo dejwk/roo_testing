@@ -324,6 +324,49 @@ and the backend target has restricted visibility. The public APIs become
 available only when the vendored common service replaces all overlapping stubs
 in one change; there is no partially functional public timer interval.
 
+### Example: task-dispatched one-shot completion
+
+Phase 2 adds an `examples/esp_timer` ESP-IDF application and a matching host
+test. The example starts one 50-millisecond `ESP_TIMER_TASK` timer, then blocks
+only its creating FreeRTOS task until the timer task notifies it:
+
+```cpp
+#include "esp_err.h"
+#include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+namespace {
+
+TaskHandle_t waiting_task;
+
+void NotifyWaitingTask(void*) {
+  xTaskNotifyGive(waiting_task);
+}
+
+}  // namespace
+
+extern "C" void app_main() {
+  waiting_task = xTaskGetCurrentTaskHandle();
+  esp_timer_create_args_t timer_args{};
+  timer_args.callback = NotifyWaitingTask;
+  timer_args.dispatch_method = ESP_TIMER_TASK;
+  timer_args.name = "example";
+  esp_timer_handle_t timer;
+  ESP_ERROR_CHECK(esp_timer_create(&timer_args, &timer));
+  ESP_ERROR_CHECK(esp_timer_start_once(timer, 50000));
+
+  ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+  ESP_ERROR_CHECK(esp_timer_delete(timer));
+}
+```
+
+`NotifyWaitingTask()` runs on the dedicated ESP timer task, so it uses
+`xTaskNotifyGive()`, not `xTaskNotifyGiveFromISR()`. In a manual-time test, the
+test driver advances time and yields the scheduler; the blocked application task
+does neither. The matching test proves one notification, task-context callback
+execution, and deletion after one-shot completion.
+
 ## Implementation Plan
 
 Authoring reference: follow this repository's
@@ -355,8 +398,9 @@ Compile the vendored common, init, and implementation-common sources with the
 host backend. Remove overlapping timer stubs from `idf_core.cpp`, add the ETM
 not-supported implementation, add the restricted lifecycle helpers, and wire
 the ESP-IDF runner and both FreeRTOS GTest runners to initialize before user code
-and deinitialize before generic alarm shutdown. Update BUILD dependencies and
-public API documentation. Add focused conformance targets in both clock modes.
+and deinitialize before generic alarm shutdown. Add the task-dispatch example
+and matching host test. Update BUILD dependencies and public API documentation.
+Add focused conformance targets in both clock modes.
 
 Proposed commit: `Run the vendored ESP timer service on the host backend`
 

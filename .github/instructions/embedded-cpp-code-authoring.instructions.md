@@ -28,6 +28,8 @@ policy on top of this baseline.
   unnecessary line count.
 - Keep `CHECK` and related assertion macros at their point of use so failures
   report the source line that expresses the violated contract.
+- Embedded-target code must build with exceptions disabled (`-fno-exceptions`);
+  do not use `throw`, `try`, `catch`, or exception-dependent behavior.
 - Avoid `const_cast` as a way to bridge const/non-const mismatches; fix the
   interface unless the target is provably non-mutating on that path.
 - Avoid RTTI-dependent constructs such as `dynamic_cast` and `typeid` in

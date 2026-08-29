@@ -122,8 +122,10 @@ cc_library(
     name = "ledc_fade_engine",
     srcs = ["ledc_fade_engine.cpp"],
     hdrs = ["ledc_fade_engine.h"],
+    copts = ["-fno-exceptions"],
     visibility = ["//visibility:public"],
     deps = [
+        "//roo_testing/host:synchronization",
         "//roo_testing/microcontrollers/esp32:core",
         "//roo_testing/system:timer",
         "//roo_testing/transducers/voltage",

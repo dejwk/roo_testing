@@ -219,6 +219,7 @@ cc_test(
     name = "ledc_fade_engine_autosync_test",
     size = "small",
     srcs = ["ledc_fade_engine_test.cpp"],
+    copts = ["-fno-exceptions"],
     deps = [
         "//roo_testing/frameworks/esp32_shims:ledc_fade_engine",
         "@googletest//:gtest_main",
@@ -229,6 +230,7 @@ cc_test(
     name = "ledc_fade_engine_manual_test",
     size = "small",
     srcs = ["ledc_fade_engine_test.cpp"],
+    copts = ["-fno-exceptions"],
     deps = [
         "//roo_testing/frameworks/esp32_shims:ledc_fade_engine",
         "//roo_testing/system:manual_time_mode",

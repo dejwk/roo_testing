@@ -82,4 +82,19 @@ TEST(LedcFadeEngineTest, EndpointPublicationPrecedesCompletionMailbox) {
   EXPECT_TRUE(engine.snapshot(4).completion_pending);
 }
 
+TEST(LedcFadeEngineTest, RejectsMutationReenteredFromSinkDelivery) {
+  LedcFadeEngine engine;
+  bool rejected = false;
+  roo_testing_transducers::SimpleVoltageSink sink =
+      roo_testing_transducers::SimpleVoltageSink::WithSignalCallback(
+          "reentry", [&](const roo_testing_transducers::VoltageSignal&) {
+            rejected = !engine.Cancel(5);
+          });
+  FakeEsp32().gpio.attachOutput(35, sink);
+  ASSERT_TRUE(engine.Start(Request(5, 35, 100)));
+  EXPECT_TRUE(rejected);
+  EXPECT_TRUE(engine.snapshot(5).gate_held);
+  ASSERT_TRUE(engine.Cancel(5));
+}
+
 }  // namespace

@@ -5,12 +5,14 @@
 #include <mutex>
 #include <vector>
 
+#include "roo_testing/host/scheduler_safe_host_lock.h"
 #include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 #include "roo_testing/system/timer.h"
 #include "roo_testing/transducers/voltage/voltage.h"
 
 namespace {
 constexpr size_t kChannels = 16;
+thread_local bool kLedcDeliveryActive = false;
 using roo_testing_transducers::ConstantDuty;
 using roo_testing_transducers::DutyProfile;
 using roo_testing_transducers::LinearDutyFade;
@@ -70,20 +72,32 @@ struct LedcFadeEngine::Impl {
   }
 
   void drain() {
+    if (kLedcDeliveryActive) return;
+    kLedcDeliveryActive = true;
+    struct DeliveryContextGuard {
+      explicit DeliveryContextGuard(Impl& impl) : impl_(impl) {}
+
+      ~DeliveryContextGuard() {
+        roo_testing::SchedulerSafeHostLock lock(impl_.mutex);
+        impl_.draining = false;
+        kLedcDeliveryActive = false;
+      }
+
+      Impl& impl_;
+    } guard(*this);
+
     while (true) {
       Delivery item{};
       {
-        std::lock_guard<std::mutex> lock(mutex);
-        if (!draining || delivery.empty()) {
-          draining = false;
-          return;
-        }
+        roo_testing::SchedulerSafeHostLock lock(mutex);
+        if (!draining || delivery.empty()) return;
         item = delivery.front();
         delivery.erase(delivery.begin());
+        if (channels[item.channel].generation != item.generation) continue;
       }
       FakeEsp32().gpio.get(item.pin).write(item.signal);
       if (item.finalize) {
-        std::lock_guard<std::mutex> lock(mutex);
+        roo_testing::SchedulerSafeHostLock lock(mutex);
         Channel& channel = channels[item.channel];
         if (channel.generation == item.generation &&
             channel.state == State::kQueued) {
@@ -96,7 +110,7 @@ struct LedcFadeEngine::Impl {
   void deadline(uint8_t index, uint64_t generation) {
     bool drain_now = false;
     {
-      std::lock_guard<std::mutex> lock(mutex);
+      roo_testing::SchedulerSafeHostLock lock(mutex);
       Channel& channel = channels[index];
       if (channel.generation != generation || channel.state != State::kArmed)
         return;
@@ -120,6 +134,7 @@ LedcFadeEngine::LedcFadeEngine() : impl_(new Impl) {}
 LedcFadeEngine::~LedcFadeEngine() { delete impl_; }
 
 bool LedcFadeEngine::Start(const Request& request) {
+  if (kLedcDeliveryActive) return false;
   if (request.channel >= kChannels || request.pin < 0 ||
       request.frequency_hz == 0 || request.resolution == 0 ||
       request.resolution > 20 ||
@@ -136,7 +151,7 @@ bool LedcFadeEngine::Start(const Request& request) {
   uint64_t generation;
   bool drain_now = false;
   {
-    std::lock_guard<std::mutex> lock(impl_->mutex);
+    roo_testing::SchedulerSafeHostLock lock(impl_->mutex);
     Impl::Channel& channel = impl_->channels[request.channel];
     if (channel.state != Impl::State::kIdle &&
         channel.state != Impl::State::kCancelled)
@@ -166,7 +181,7 @@ bool LedcFadeEngine::Start(const Request& request) {
         now + request.duration_us, [this, c = request.channel, generation] {
           impl_->deadline(c, generation);
         });
-    std::lock_guard<std::mutex> lock(impl_->mutex);
+    roo_testing::SchedulerSafeHostLock lock(impl_->mutex);
     if (impl_->channels[request.channel].generation == generation)
       impl_->channels[request.channel].alarm = id;
   }
@@ -175,11 +190,12 @@ bool LedcFadeEngine::Start(const Request& request) {
 }
 
 bool LedcFadeEngine::Cancel(uint8_t index) {
+  if (kLedcDeliveryActive) return false;
   if (index >= kChannels) return false;
   SystemTimeAlarmId alarm = 0;
   bool drain_now = false;
   {
-    std::lock_guard<std::mutex> lock(impl_->mutex);
+    roo_testing::SchedulerSafeHostLock lock(impl_->mutex);
     Impl::Channel& channel = impl_->channels[index];
     if (channel.state != Impl::State::kArmed &&
         channel.state != Impl::State::kQueued)
@@ -209,7 +225,7 @@ bool LedcFadeEngine::Cancel(uint8_t index) {
 
 LedcFadeEngine::Snapshot LedcFadeEngine::snapshot(uint8_t index) const {
   if (index >= kChannels) return {};
-  std::lock_guard<std::mutex> lock(impl_->mutex);
+  roo_testing::SchedulerSafeHostLock lock(impl_->mutex);
   const Impl::Channel& channel = impl_->channels[index];
   const uint32_t duty =
       channel.state == Impl::State::kArmed
@@ -226,7 +242,7 @@ LedcFadeEngine::Snapshot LedcFadeEngine::snapshot(uint8_t index) const {
 std::optional<LedcFadeEngine::Completion> LedcFadeEngine::TakeCompletion(
     uint8_t index) {
   if (index >= kChannels) return std::nullopt;
-  std::lock_guard<std::mutex> lock(impl_->mutex);
+  roo_testing::SchedulerSafeHostLock lock(impl_->mutex);
   Impl::Channel& channel = impl_->channels[index];
   if (channel.state != Impl::State::kPending) return std::nullopt;
   Completion result{index, channel.generation, channel.duty};

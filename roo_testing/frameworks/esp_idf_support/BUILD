@@ -43,6 +43,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/environment:idf",
+        "//roo_testing/frameworks/esp32_shims:idf",
         "//roo_testing/frameworks/esp-idf/components/freertos",
     ],
     alwayslink = 1,

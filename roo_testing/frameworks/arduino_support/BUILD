@@ -7,6 +7,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/arduino-esp32/cores/esp32:arduino",
+        "//roo_testing/frameworks/esp32_shims:idf",
         "//roo_testing/frameworks/esp-idf/components/freertos",
     ],
 )
@@ -18,6 +19,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/arduino-esp32/cores/esp32:arduino",
+        "//roo_testing/frameworks/esp32_shims:idf",
         "//roo_testing/frameworks/esp-idf/components/freertos",
         "//roo_testing/system:timer",
         "@googletest//:gtest",
@@ -30,6 +32,7 @@ cc_library(
     alwayslink = 1,
     visibility = ["//visibility:public"],
     deps = [
+        "//roo_testing/frameworks/esp32_shims:idf",
         "//roo_testing/frameworks/esp-idf/components/freertos",
         "//roo_testing/system:timer",
         "@googletest//:gtest",

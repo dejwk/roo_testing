@@ -3,6 +3,7 @@
 #include <limits>
 
 #include "esp_err.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "gtest/gtest.h"
 #include "roo_testing/system/timer.h"
@@ -26,6 +27,9 @@ class EspTimerImplHostTest : public testing::Test {
   void SetUp() override {
     handler_calls.store(0, std::memory_order_relaxed);
     handler_in_isr.store(false, std::memory_order_relaxed);
+    // The runner owns the public service initially. Later cases leave only the
+    // backend initialized, so public deinitialization is intentionally inert.
+    esp_timer_deinit();
     ASSERT_EQ(ESP_OK, esp_timer_impl_early_init());
     ASSERT_EQ(ESP_OK, esp_timer_impl_init(AlarmHandler));
   }

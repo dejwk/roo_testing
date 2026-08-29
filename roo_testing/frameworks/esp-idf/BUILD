@@ -3,6 +3,9 @@ load("@rules_cc//cc:cc_library.bzl", "cc_library")
 exports_files([
     "components/esp_common/src/esp_err_to_name.c",
     "components/esp_ringbuf/ringbuf.c",
+    "components/esp_timer/src/esp_timer.c",
+    "components/esp_timer/src/esp_timer_impl_common.c",
+    "components/esp_timer/src/esp_timer_init.c",
 ])
 
 # ESP-IDF's target-oriented component build graph is intentionally not mirrored.
@@ -125,6 +128,7 @@ cc_library(
         "components/esp_system/include",
         "components/esp_system/port/include",
         "components/esp_timer/include",
+        "components/esp_timer/private_include",
         "components/esp_wifi/include",
         "components/esp_wifi/include/local",
         "components/hal/include",

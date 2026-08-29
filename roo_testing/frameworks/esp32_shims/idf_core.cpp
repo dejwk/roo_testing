@@ -70,15 +70,6 @@ void esp_fill_random(void* buffer, size_t length) {
   }
 }
 
-int64_t esp_timer_get_time(void) { return system_time_get_micros(); }
-
-esp_err_t esp_timer_early_init(void) { return ESP_OK; }
-esp_err_t esp_timer_init(void) { return ESP_OK; }
-esp_err_t esp_timer_deinit(void) { return ESP_OK; }
-int64_t esp_timer_get_next_alarm(void) { return INT64_MAX; }
-int64_t esp_timer_get_next_alarm_for_wake_up(void) { return INT64_MAX; }
-void esp_timer_isr_dispatch_need_yield(void) {}
-
 void esp_rom_delay_us(uint32_t us) {
   if (xPortInIsrContext()) {
     system_time_busy_wait_micros(us);

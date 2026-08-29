@@ -3,6 +3,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "gtest/gtest.h"
+#include "roo_testing/frameworks/esp32_shims/esp_timer_host.h"
 #include "roo_testing/system/timer.h"
 
 namespace {
@@ -10,7 +11,10 @@ namespace {
 std::atomic<int> kTestResult{1};
 
 void RunTests(void*) {
-  kTestResult.store(RUN_ALL_TESTS(), std::memory_order_release);
+  int result = roo_testing::esp32_shims::InitializeEspTimerForHost();
+  if (result == ESP_OK) result = RUN_ALL_TESTS();
+  if (roo_testing::esp32_shims::ShutdownEspTimerForHost() != ESP_OK) result = 1;
+  kTestResult.store(result, std::memory_order_release);
   while (!TryBeginSystemTimeServiceShutdownForHost()) {
     vTaskDelay(1);
   }

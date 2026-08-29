@@ -5,6 +5,7 @@
 
 #include "esp_err.h"
 #include "esp_intr_alloc.h"
+#include "esp_timer.h"
 #include "glog/logging.h"
 #include "roo_testing/frameworks/esp_idf_support/esp_interrupts.h"
 #include "roo_testing/system/timer.h"
@@ -158,10 +159,6 @@ void esp_timer_impl_set_alarm_id(uint64_t timestamp, unsigned alarm_id) {
   if (!keep_alarm) CancelSystemTimeAlarm(new_alarm);
 }
 
-void esp_timer_impl_set_alarm(uint64_t timestamp) {
-  esp_timer_impl_set_alarm_id(timestamp, 0);
-}
-
 void esp_timer_impl_advance(int64_t time_us) {
   CHECK_GE(time_us, 0);
   system_time_delay_micros(static_cast<uint64_t>(time_us));
@@ -169,7 +166,7 @@ void esp_timer_impl_advance(int64_t time_us) {
 
 int64_t esp_timer_impl_get_time(void) { return system_time_get_micros(); }
 
-uint64_t esp_timer_impl_get_min_period_us(void) { return 50; }
+int64_t esp_timer_get_time(void) { return esp_timer_impl_get_time(); }
 
 uint64_t esp_timer_impl_get_counter_reg(void) {
   return static_cast<uint64_t>(system_time_get_micros());
@@ -181,3 +178,12 @@ uint64_t esp_timer_impl_get_alarm_reg(void) {
 }
 
 }  // extern "C"
+
+namespace roo_testing::esp32_shims {
+
+bool IsEspTimerImplInitializedForHost() {
+  std::lock_guard<std::mutex> lock(compare_mutex);
+  return initialized;
+}
+
+}  // namespace roo_testing::esp32_shims

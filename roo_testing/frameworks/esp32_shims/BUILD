@@ -27,11 +27,19 @@ cc_library(
 # Internal-only Phase 1 model of the ESP timer counter, compare and IRQ path.
 cc_library(
     name = "esp_timer_impl_host",
-    srcs = ["esp_timer_impl_host.cpp"],
-    copts = ["-Werror"],
+    srcs = [
+        "//roo_testing/frameworks/esp-idf:components/esp_timer/src/esp_timer_impl_common.c",
+        "esp_timer_impl_host.cpp",
+    ],
+    copts = ["-Werror", "-Wno-error=format"],
+    local_defines = [
+        "CONFIG_ESP_TIMER_ISR_AFFINITY_CPU0=1",
+        "CONFIG_LOG_VERSION=1",
+    ],
     visibility = ["//roo_testing/frameworks/esp32_shims:__pkg__"],
     deps = [
         "//roo_testing/frameworks/esp-idf:headers",
+        "//roo_testing/frameworks/esp-idf/components/freertos:freertos",
         "//roo_testing/frameworks/esp_idf_support:interrupts",
         "//roo_testing/system:timer",
         "@glog",
@@ -43,6 +51,10 @@ cc_library(
     srcs = [
         "esp_now.cpp",
         "event.cpp",
+        "//roo_testing/frameworks/esp-idf:components/esp_timer/src/esp_timer.c",
+        "//roo_testing/frameworks/esp-idf:components/esp_timer/src/esp_timer_init.c",
+        "esp_timer_host_etm.cpp",
+        "esp_timer_host_lifecycle.cpp",
         "idf_core.cpp",
         "idf_drivers.cpp",
         "idf_ledc.cpp",
@@ -51,12 +63,21 @@ cc_library(
         "ota_partition.cpp",
         "wifi.cpp",
     ],
-    hdrs = ["shim_internal.h"],
+    copts = ["-Werror", "-Wno-error=format"],
+    hdrs = [
+        "esp_timer_host.h",
+        "shim_internal.h",
+    ],
     linkstatic = 1,
+    local_defines = [
+        "CONFIG_ESP_TIMER_ISR_AFFINITY_CPU0=1",
+        "CONFIG_LOG_VERSION=1",
+    ],
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/esp-idf:headers",
         ":esp_err_to_name",
+        ":esp_timer_impl_host",
         ":esp_ringbuf",
         "//roo_testing/frameworks/esp-idf/components/freertos:freertos",
         "//roo_testing/frameworks/esp_idf_support:interrupts",
@@ -101,6 +122,31 @@ cc_library(
     deps = [
         ":arduino",
         ":idf",
+    ],
+)
+
+cc_test(
+    name = "esp_timer_host_test",
+    size = "small",
+    srcs = ["esp_timer_host_test.cpp"],
+    linkstatic = 1,
+    deps = [
+        ":idf",
+        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "@googletest//:gtest",
+    ],
+)
+
+cc_test(
+    name = "esp_timer_host_manual_test",
+    size = "small",
+    srcs = ["esp_timer_host_test.cpp"],
+    linkstatic = 1,
+    deps = [
+        ":idf",
+        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "//roo_testing/system:manual_time_mode",
+        "@googletest//:gtest",
     ],
 )
 

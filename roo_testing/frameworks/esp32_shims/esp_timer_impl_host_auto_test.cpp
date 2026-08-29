@@ -2,6 +2,7 @@
 #include <cstdint>
 
 #include "esp_err.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "gtest/gtest.h"
 #include "roo_testing/system/timer.h"
@@ -21,6 +22,7 @@ void AlarmHandler(void*) {
 // Verifies auto-sync alarm delivery reaches the common handler through IRQ.
 TEST(EspTimerImplHostAutoTest, DeliversWithoutAnExplicitAlarmPump) {
   handler_calls.store(0, std::memory_order_relaxed);
+  ASSERT_EQ(ESP_OK, esp_timer_deinit());
   ASSERT_EQ(ESP_OK, esp_timer_impl_early_init());
   ASSERT_EQ(ESP_OK, esp_timer_impl_init(AlarmHandler));
 

@@ -3,6 +3,7 @@
 #include "esp32-hal-ledc.h"
 #include "esp32-hal.h"
 #include "roo_testing/microcontrollers/esp32/fake_esp32.h"
+#include "roo_testing/system/timer.h"
 #include "roo_testing/transducers/voltage/voltage_signal.h"
 
 namespace {
@@ -23,17 +24,37 @@ roo_testing_transducers::SquareVoltageSpec SquareSignal(uint8_t pin) {
   return std::get<roo_testing_transducers::SquareVoltageSpec>(signal->spec());
 }
 
-TEST(ArduinoLedcTest, UnsupportedFadesDoNotChangeOutputOrInvokeCallbacks) {
+TEST(ArduinoLedcTest, StartsFadesAndRejectsConcurrentFade) {
   ASSERT_TRUE(ledcAttachChannel(23, 1000, 8, 0));
   ASSERT_TRUE(ledcWrite(23, 37));
 
-  EXPECT_FALSE(ledcFade(23, 1, 100, 10));
+  EXPECT_TRUE(ledcFade(23, 1, 100, 10));
   EXPECT_FALSE(ledcFadeWithInterrupt(23, 1, 100, 10, FadeCallback));
-  EXPECT_FALSE(ledcFadeWithInterruptArg(
-      23, 1, 100, 10, [](void* value) { *static_cast<bool*>(value) = true; },
-      &callback_invoked));
-  EXPECT_EQ(37U, ledcRead(23));
+  EXPECT_GE(ledcRead(23), 1U);
+  EXPECT_LE(ledcRead(23), 100U);
   EXPECT_FALSE(callback_invoked);
+}
+
+TEST(ArduinoLedcTest, ZeroDurationFadeCompletesAndInvokesCallbacks) {
+  ASSERT_TRUE(ledcAttach(30, 1000, 8));
+  callback_invoked = false;
+  EXPECT_TRUE(ledcFadeWithInterrupt(30, 0, 255, 0, FadeCallback));
+  EXPECT_EQ(256U, ledcRead(30));
+  EXPECT_TRUE(callback_invoked);
+}
+
+TEST(ArduinoLedcTest, FadePublishesEnvelopeAndMaterializesReadback) {
+  ASSERT_TRUE(ledcAttachChannel(31, 1000, 8, 7));
+  ASSERT_TRUE(ledcFade(31, 0, 128, 10));
+  const auto signal = SquareSignal(31);
+  EXPECT_TRUE(std::holds_alternative<roo_testing_transducers::LinearDutyFade>(
+      signal.duty));
+  system_time_lag_ns(5000000);
+  ProcessSystemTimeAlarms();
+  EXPECT_EQ(64U, ledcRead(31));
+  system_time_lag_ns(5000000);
+  ProcessSystemTimeAlarms();
+  EXPECT_EQ(128U, ledcRead(31));
 }
 
 TEST(ArduinoLedcTest, PublishesMappedDutyAndAnalogWriteOutput) {

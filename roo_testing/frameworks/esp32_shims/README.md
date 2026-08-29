@@ -42,10 +42,12 @@ the fade engine publishes a continuous duty envelope, commits its endpoint
 before raising the completion interrupt, and invokes registered fade callbacks
 from ISR context. `LEDC_FADE_NO_WAIT` returns after publication; a
 `LEDC_FADE_WAIT_DONE` caller waits on the channel gate when running in a
-FreeRTOS task. Bare `ledc_update_duty()` rejects an active fade. Arduino fades
-remain unavailable until Phase 6. Arduino gamma configuration and gamma fades
-are likewise unsupported; the two void gamma calls log a warning and otherwise
-do nothing.
+FreeRTOS task. Bare `ledc_update_duty()` rejects an active fade. Arduino fade
+calls use the same value-owned envelope and LEDC interrupt completion path;
+they commit the supplied start duty, reject a concurrent fade on the channel,
+and clear one-fade callbacks on completion or detach. Arduino gamma
+configuration and gamma fades are unsupported; the two void gamma calls log a
+warning and otherwise do nothing.
 
 Arduino LEDC attaches each channel with an independent carrier origin and
 immediately publishes its zero-duty output.  Writes, tones, frequency or

@@ -110,6 +110,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":idf",
+        ":ledc_fade_engine",
         "//roo_testing/frameworks/arduino-esp32/cores/esp32:headers",
         "//roo_testing/frameworks/esp-idf:headers",
         "//roo_testing/frameworks/esp-idf/components/freertos:freertos",

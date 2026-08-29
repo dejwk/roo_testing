@@ -266,9 +266,10 @@ deadline in this order:
 
 Task-dispatched timers add another layer. Real `esp_timer` first enters its
 hardware timer ISR; ISR-dispatch callbacks run there, while ordinary callbacks
-are released by notifying the dedicated timer task. A dedicated future backend
-design will specify both the initial task-dispatch path and later public
-ISR-dispatch support; neither is part of this interrupt proposal.
+are released by notifying the dedicated timer task. The dedicated
+[ESP Timer design](esp_timer_emulation.md) specifies the initial task-dispatch
+backend and leaves ISR dispatch disabled until an allocation-free compare
+ingress is designed; neither implementation is part of this interrupt proposal.
 
 ## Proposed API
 
@@ -515,8 +516,8 @@ separate design document before implementation:
 - Adding priority preemption, nested interrupt delivery, NMI, or high-level
   handlers. The separate design must define their POSIX signal masks and
   FreeRTOS critical-section interaction.
-- Adding a host `esp_timer_impl_*` backend. Its separate design must cover the
-  signal-safe fixed compare source, the initial `ESP_TIMER_TASK` path, startup
-  and teardown, and a later `ESP_TIMER_ISR` configuration phase.
+- Implementing the task-dispatched host
+  [`esp_timer_impl_*` backend](esp_timer_emulation.md), followed by its separate
+  fixed compare ingress for a later `ESP_TIMER_ISR` configuration.
 - Routing GPIO, Arduino hardware timers, GPTimer, and further peripheral shims
   through the controller.

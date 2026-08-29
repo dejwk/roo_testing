@@ -1,6 +1,6 @@
 # Emulated-time alarms
 
-Status: Proposed
+Status: Implemented
 
 ## Objective
 
@@ -74,7 +74,8 @@ Adapters translate its neutral callback into their promised context.
 
 ### Out of scope
 
-- Public `esp_timer`, GPTimer, or Arduino hardware-timer APIs.
+- Public [`esp_timer`](esp_timer_emulation.md), GPTimer, or Arduino
+  hardware-timer APIs.
 - FreeRTOS software timers, task delays, or `roo_scheduler` jobs.
 - Interrupt delivery; see [Emulated interrupts](emulated_interrupts.md).
 - A built-in periodic alarm API.
@@ -403,7 +404,8 @@ surprising re-entry and violate the clock's passive ISR-safe contract.
 #### Reimplement public `esp_timer` semantics
 
 The vendored common implementation already owns handles, periodic policy, and
-TASK/ISR dispatch. A future backend should emulate its hardware boundary.
+TASK/ISR dispatch. The dedicated [ESP Timer design](esp_timer_emulation.md)
+therefore emulates its hardware boundary.
 
 #### Add periodic alarms to the core
 
@@ -413,5 +415,5 @@ behavior. Those policies remain with consumers.
 ## Future Work
 
 - Implement LEDC fade completion over the alarm and interrupt services.
-- Design an `esp_timer` backend around the vendored common implementation.
+- Implement the [ESP Timer host backend](esp_timer_emulation.md).
 - Specify Arduino hardware-timer and GPTimer adapters over these boundaries.

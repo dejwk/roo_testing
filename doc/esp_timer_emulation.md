@@ -368,26 +368,29 @@ automatic runner initialization; active-timer shutdown rejection; prior public
 deinitialization; and clean ordered shutdown. Compile-time checks reject
 ISR-dispatch configuration.
 
-### Phase 3: Vendored component integration coverage
+### Phase 3: Legacy ETS timer integration
 
-Enable representative vendored users that already fit the host component graph:
-the legacy ETS timer adapter and one task-dispatched ESP-IDF component. Document
-their host support and keep unrelated component bring-up out of this commit.
+Compile the vendored
+[`ets_timer_legacy.c`](../roo_testing/frameworks/esp-idf/components/esp_timer/src/ets_timer_legacy.c)
+adapter and document support for its `ets_timer_*` and `os_timer_*` aliases. It
+is the selected integration consumer because its entire behavior is expressed
+over `esp_timer`, it uses `ESP_TIMER_TASK`, and it introduces no unrelated
+peripheral model.
 
-Proposed commit: `Verify ESP-IDF components on emulated esp_timer`
+Proposed commit: `Run legacy ETS timers on emulated esp_timer`
 
-Validation: exercise one-shot and periodic ETS timers plus a component-owned
-timer through its public lifecycle in manual and auto-sync binaries. Confirm
-that no test calls the generic alarm API directly and that all callbacks run on
-the ESP timer task.
+Validation: exercise `ets_timer_setfn()`, one-shot and periodic microsecond and
+millisecond arming, disarm, deletion after disarm, and all `os_timer_*` aliases
+in manual and auto-sync binaries. Confirm that the adapter never calls the
+generic alarm API directly and that every callback runs on the ESP timer task.
 
 ## Testing Plan
 
 Backend tests validate the hardware boundary independently of upstream policy.
 Public conformance tests then exercise the unmodified common service in separate
 manual and auto-sync processes. FreeRTOS integration verifies ISR-to-task
-handoff, callback context, priority, and CPU-busy preemption. Component tests
-prove that real vendored callers use the same path.
+handoff, callback context, priority, and CPU-busy preemption. Legacy ETS adapter
+tests prove that a real vendored compatibility layer uses the same path.
 
 Wall-time cases assert no early callback and eventual delivery, not a hard
 latency threshold. Manual cases use relative deadlines from observed uptime and
@@ -421,6 +424,16 @@ the restricted lifecycle helpers from its selected FreeRTOS task. It cannot rely
 on the target linker section being executed automatically.
 
 ### Rejected Alternatives
+
+#### Add an arbitrary second integration component
+
+Phase 3 does not bring up another component merely as a smoke test. The software
+Task Watchdog requests `ESP_TIMER_ISR`, which is outside this design. Touch
+filtering and Ethernet link polling use task dispatch, but compiling and
+validating either also requires its peripheral or driver lifecycle; that work
+belongs to the corresponding component design. Phase 2 already covers the same
+public timer semantics they consume, while the selected legacy ETS adapter adds
+integration coverage without unrelated infrastructure.
 
 #### Reimplement the public service in C++
 

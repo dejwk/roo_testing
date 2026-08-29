@@ -1,6 +1,6 @@
 # ESP-IDF esp_timer emulation
 
-Status: Proposed
+Status: Completed
 
 ## Objective
 

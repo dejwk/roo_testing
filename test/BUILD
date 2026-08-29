@@ -216,6 +216,35 @@ test_suite(
 )
 
 cc_test(
+    name = "ledc_fade_engine_autosync_test",
+    size = "small",
+    srcs = ["ledc_fade_engine_test.cpp"],
+    deps = [
+        "//roo_testing/frameworks/esp32_shims:ledc_fade_engine",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "ledc_fade_engine_manual_test",
+    size = "small",
+    srcs = ["ledc_fade_engine_test.cpp"],
+    deps = [
+        "//roo_testing/frameworks/esp32_shims:ledc_fade_engine",
+        "//roo_testing/system:manual_time_mode",
+        "@googletest//:gtest_main",
+    ],
+)
+
+test_suite(
+    name = "ledc_fade_engine_test",
+    tests = [
+        ":ledc_fade_engine_autosync_test",
+        ":ledc_fade_engine_manual_test",
+    ],
+)
+
+cc_test(
     name = "arduino_spi_clock_test",
     size = "small",
     srcs = ["arduino_spi_clock_test.cpp"],

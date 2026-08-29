@@ -119,6 +119,18 @@ cc_library(
 )
 
 cc_library(
+    name = "ledc_fade_engine",
+    srcs = ["ledc_fade_engine.cpp"],
+    hdrs = ["ledc_fade_engine.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//roo_testing/microcontrollers/esp32:core",
+        "//roo_testing/system:timer",
+        "//roo_testing/transducers/voltage",
+    ],
+)
+
+cc_library(
     name = "esp32_shims",
     visibility = ["//visibility:public"],
     deps = [

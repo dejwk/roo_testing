@@ -1,13 +1,18 @@
+#include <algorithm>
 #include <array>
 #include <cmath>
 
 #include "esp32-hal-ledc.h"
 #include "esp32-hal-periman.h"
 #include "glog/logging.h"
+#include "roo_testing/microcontrollers/esp32/fake_esp32.h"
+#include "roo_testing/system/timer.h"
+#include "roo_testing/transducers/voltage/voltage.h"
 
 namespace {
 constexpr size_t kPins = SOC_GPIO_PIN_COUNT;
 constexpr size_t kChannels = SOC_LEDC_CHANNEL_NUM;
+
 struct Channel {
   bool attached = false;
   uint8_t pin = UINT8_MAX;
@@ -15,6 +20,7 @@ struct Channel {
   uint32_t frequency = 1000;
   uint32_t duty = 0;
   bool inverted = false;
+  int64_t carrier_origin_us = 0;
 };
 std::array<Channel, kChannels> channels;
 std::array<int8_t, kPins> pin_channel = [] {
@@ -29,6 +35,36 @@ Channel* forPin(uint8_t pin) {
              ? &channels[pin_channel[pin]]
              : nullptr;
 }
+
+uint32_t PeriodCounts(uint8_t resolution) { return uint32_t{1} << resolution; }
+
+uint32_t MappedDuty(const Channel& channel) {
+  const uint32_t period = PeriodCounts(channel.resolution);
+  if (channel.resolution > 1 && channel.duty >= period - 1) return period;
+  return std::min(channel.duty, period);
+}
+
+roo_testing_transducers::VoltageSignal BuildSignal(const Channel& channel) {
+  using roo_testing_transducers::ConstantDuty;
+  using roo_testing_transducers::VoltageDigitalHigh;
+  using roo_testing_transducers::VoltageSignal;
+
+  if (channel.frequency == 0) {
+    return VoltageSignal::Constant(channel.inverted ? VoltageDigitalHigh()
+                                                    : 0.0f);
+  }
+  return VoltageSignal::Square(
+      0.0f, VoltageDigitalHigh(), channel.frequency,
+      ConstantDuty{static_cast<double>(MappedDuty(channel)) /
+                   PeriodCounts(channel.resolution)},
+      channel.carrier_origin_us, 0.0, channel.inverted);
+}
+
+void Publish(const Channel& channel) {
+  FakeEsp32().gpio.get(channel.pin).write(BuildSignal(channel));
+}
+
+void DriveLow(uint8_t pin) { FakeEsp32().gpio.get(pin).write(0.0f); }
 }  // namespace
 
 extern "C" {
@@ -46,11 +82,21 @@ bool ledcAttachChannel(uint8_t pin, uint32_t frequency, uint8_t resolution,
     return false;
   if (pin_channel[pin] >= 0) ledcDetach(pin);
   auto& state = channels[channel];
-  if (state.attached && state.pin < pin_channel.size())
+  if (state.attached && state.pin < pin_channel.size()) {
+    DriveLow(state.pin);
     pin_channel[state.pin] = -1;
-  state = {true, pin, resolution, frequency, 0, false};
+    perimanClearPinBus(state.pin);
+  }
+  state = {
+      true, pin, resolution, frequency, 0, false, system_time_get_micros()};
   pin_channel[pin] = channel;
-  return perimanSetPinBus(pin, ESP32_BUS_TYPE_LEDC, &state, 0, channel);
+  if (!perimanSetPinBus(pin, ESP32_BUS_TYPE_LEDC, &state, 0, channel)) {
+    state = {};
+    pin_channel[pin] = -1;
+    return false;
+  }
+  Publish(state);
+  return true;
 }
 
 bool ledcAttach(uint8_t pin, uint32_t frequency, uint8_t resolution) {
@@ -65,11 +111,13 @@ bool ledcWrite(uint8_t pin, uint32_t duty) {
   Channel* state = forPin(pin);
   if (!state) return false;
   state->duty = duty;
+  Publish(*state);
   return true;
 }
 bool ledcWriteChannel(uint8_t channel, uint32_t duty) {
   if (channel >= channels.size() || !channels[channel].attached) return false;
   channels[channel].duty = duty;
+  Publish(channels[channel]);
   return true;
 }
 uint32_t ledcWriteTone(uint8_t pin, uint32_t frequency) {
@@ -77,6 +125,7 @@ uint32_t ledcWriteTone(uint8_t pin, uint32_t frequency) {
   if (!state) return 0;
   state->frequency = frequency;
   state->duty = frequency ? 1u << (state->resolution - 1) : 0;
+  Publish(*state);
   return frequency;
 }
 uint32_t ledcWriteNote(uint8_t pin, note_t note, uint8_t octave) {
@@ -88,7 +137,7 @@ uint32_t ledcWriteNote(uint8_t pin, note_t note, uint8_t octave) {
 }
 uint32_t ledcRead(uint8_t pin) {
   Channel* state = forPin(pin);
-  return state ? state->duty : 0;
+  return state ? MappedDuty(*state) : 0;
 }
 uint32_t ledcReadFreq(uint8_t pin) {
   Channel* state = forPin(pin);
@@ -97,6 +146,7 @@ uint32_t ledcReadFreq(uint8_t pin) {
 bool ledcDetach(uint8_t pin) {
   Channel* state = forPin(pin);
   if (!state) return false;
+  DriveLow(pin);
   *state = {};
   pin_channel[pin] = -1;
   perimanClearPinBus(pin);
@@ -108,12 +158,15 @@ uint32_t ledcChangeFrequency(uint8_t pin, uint32_t frequency,
   if (!state || resolution == 0 || resolution > 20) return 0;
   state->frequency = frequency;
   state->resolution = resolution;
+  state->carrier_origin_us = system_time_get_micros();
+  Publish(*state);
   return frequency;
 }
 bool ledcOutputInvert(uint8_t pin, bool inverted) {
   Channel* state = forPin(pin);
   if (!state) return false;
   state->inverted = inverted;
+  Publish(*state);
   return true;
 }
 bool ledcFade(uint8_t, uint32_t, uint32_t, int) { return false; }

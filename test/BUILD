@@ -189,11 +189,30 @@ cc_test(
 )
 
 cc_test(
-    name = "arduino_ledc_test",
+    name = "arduino_ledc_autosync_test",
     size = "small",
     srcs = ["arduino_ledc_test.cpp"],
     linkstatic = 1,
     deps = ["//:arduino_gtest_main"],
+)
+
+cc_test(
+    name = "arduino_ledc_manual_test",
+    size = "small",
+    srcs = ["arduino_ledc_test.cpp"],
+    linkstatic = 1,
+    deps = [
+        "//:arduino_gtest_main",
+        "//roo_testing/system:manual_time_mode",
+    ],
+)
+
+test_suite(
+    name = "arduino_ledc_test",
+    tests = [
+        ":arduino_ledc_autosync_test",
+        ":arduino_ledc_manual_test",
+    ],
 )
 
 cc_test(

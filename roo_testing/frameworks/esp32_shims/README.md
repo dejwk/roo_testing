@@ -31,7 +31,7 @@ trees, then adjusted to ESP-IDF 6.0.2 / Arduino-ESP32 3.3.11 declarations.
 | Arduino runtime | Modern `EspClass` dependencies and Arduino HAL entry points are backed by the same services above | modified Arduino core/HAL sources |
 | ESP-IDF LEDC | Configured timers and channels publish immutable PWM voltage signals to `FakeEsp32` GPIO; duty changes remain pending until `ledc_update_duty()` | host shim |
 
-## LEDC phase 1
+## LEDC phases 1-2
 
 The ESP-IDF LEDC shim models steady PWM output only.  A configured channel
 publishes a square signal using its timer frequency, shared timer origin,
@@ -43,6 +43,14 @@ completion, blocking, and cancellation model is implemented:
 return `ESP_ERR_NOT_SUPPORTED`.  Arduino fade APIs return `false` without
 changing output.  Arduino gamma configuration and gamma fades are likewise
 unsupported; the two void gamma calls log a warning and otherwise do nothing.
+
+Arduino LEDC attaches each channel with an independent carrier origin and
+immediately publishes its zero-duty output.  Writes, tones, frequency or
+resolution changes, and inversion republish the channel.  For resolutions
+above one bit, a requested duty at or above `period - 1` is represented as the
+full-on `period` count, including `ledcRead()` (for example, 8-bit duty 255
+reads back as 256).  Reassigning or detaching a channel drives the former pin
+low; a zero-frequency tone publishes the inversion-adjusted idle rail.
 
 When an upstream declaration changes, prefer adapting this package over
 patching the imported source.  Add a focused host test for any newly emulated

@@ -270,9 +270,9 @@ space-separated additions. All callers use their checked-in `.bazelversion`;
 Roo clients pin Bazel 9.2.0. Pull requests may restore trusted Bazel caches but
 cannot save new cache entries.
 
-For the 2.0 release, push and tag roo_testing first, register that release in
+For the 2.1.0 release, push and tag roo_testing first, register that release in
 the Roo Bazel registry, and only then push clients whose `MODULE.bazel` requests
-`roo_testing` 2.0.0. The reusable workflow does not add a local path override,
+`roo_testing` 2.1.0. The reusable workflow does not add a local path override,
 so reversing that order makes client dependency resolution fail even when the
 workflow itself is already reachable at its pinned commit.
 
@@ -300,30 +300,54 @@ The behavior of the physical world is modeled in _transducers_, sensing or indic
 
 The transducers are used by the simulated _devices_, provided as part of the library and mimicking the real hardware, that you virtually 'connect' to your microcontroller at the beginning of the program (as illustrated in the examples). For example, the FakeOneWireThermometer device simulates an actual sensor such as DS18B20, and communicates with the emulated microcontroller using the actual One Wire protocol, but reports temperatures indicated by your custom thermometer sensor.
 
-Another basic example is the VoltageSource, which is a transducer that you can use to feed signals to the microcontroller via its GPIO pins. Using emulated GPIO and voltage inputs, you can emulate an external logic, e.g. calculate a logical function of some GPIO outputs and feed it back to a GPIO input. 
+Another basic example is the `VoltageSource` transducer, which feeds signals to
+the microcontroller through GPIO pins. GPIO outputs likewise retain complete,
+time-aware `VoltageSignal` values, so tests and emulated devices can inspect a
+PWM or other periodic output at a chosen uptime, rather than observing only its
+last scalar level. This makes it possible to emulate external logic that
+observes GPIO outputs and feeds a result back to a GPIO input. See the
+[periodic voltage-signal design](doc/periodic_voltage_signals.md) for the
+available waveforms and analysis helpers.
 
 ## What is supported
 
-* GPIO, both digital I/O and analog inputs
+* GPIO: digital I/O, analog inputs, and retained constant or periodic voltage
+  signals (including PWM)
 * SPI, emulated at pin level, accurately modeling bus speeds
 * I2C
-* UART
-* Networking
-* FreeRTOS API
-* SPIFFS and LittleFS, mouting a local directory
+* UART, including host console devices and a bidirectional `FakeUartCable`
+* Networking and the station-mode Wi-Fi path
+* FreeRTOS API, simulated ISR context, and the supported ESP-IDF interrupt
+  allocation APIs
+* Emulated manual or host-synchronized time, one-shot alarms, and ESP-IDF
+  `esp_timer`
+* ESP-IDF and Arduino LEDC PWM output and linear fades; see the
+  [LEDC emulation reference](doc/ledc_voltage_emulation.md)
+* SPIFFS and LittleFS, mounting a local directory
 * NVS, using a local file for storage
-* SD (rudimentary)
+* SD VFS mounts backed by a local directory
 * External devices: a couple of TFT displays, the DS3231 real time clock, and the temperature sensors using the OneWire interface.
 
 ## Limitations (call for contributors!)
 
 * Arduino and ESP-IDF-only frontends are supported for the classic ESP32; other
   Espressif SoCs are not yet selectable.
-* WiFi is incomplete; only the station mode is reasonably emulated. Some functions are no-op. The network bridges to your native connection. As long as your computer is connected to the network, the emulated microcontroller will also have network access.
-* SD is also very rudimentary; it redirects file system operations to a local directory, without emulating any of the SPI protocol. (The consequence is, for example, that performance is unrealistically fast).
+* Wi-Fi is incomplete; the station mode is the supported path, while many
+  radio and AP controls are no-ops. Networking uses the host connection, so an
+  emulated device has network access whenever its computer does.
+* SD VFS mounts redirect filesystem access to an existing local directory; they
+  do not emulate SDMMC/SDSPI block transactions or timing. Consequently,
+  performance is unrealistically fast and code that performs raw card I/O is
+  unsupported.
 * I2C is modeled at the interface level, bypassing some low-level OS queues and hardware pins. (As long as you use standard libraries, it doesn't matter much).
 * Simulated TFT displays don't model all commands, just the basic set used by common libraries.
-* Interrupts are not currently supported.
+* Interrupt emulation covers the supported FreeRTOS signal path and ESP-IDF
+  allocation adapter; it is not a register-accurate model and does not yet
+  cover every peripheral or ESP-IDF interrupt-control API. See
+  [emulated interrupts](doc/emulated_interrupts.md).
+* LEDC intentionally supports a focused API subset. Arduino gamma APIs and
+  advanced ESP-IDF LEDC operations such as step/multi-range fades, fade stop,
+  timer pause/resume, and channel-timer rebinding remain unsupported.
 * The emulator does not accurately reflect the microcontroller's performance - it tends to run faster because your computer has a faster CPU. (Notable exception is the SPI emulation, which reflects communication delays accurately). Also, your computer has way more memory, both on the heap and the stack. The host ABI remains in effect: on a typical 64-bit Linux host, pointers, `size_t`, and `long` are 64-bit, while they are 32-bit on ESP32. (`int` is 32-bit on both.) Use fixed-width types when the width is part of a protocol or stored representation. Because of these differences, a sketch can work in the emulator and still fail on real hardware.
 
 ## Debugging with VS Code

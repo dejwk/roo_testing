@@ -188,6 +188,7 @@ StackType_t *pxPortInitialiseStack( StackType_t *pxTopOfStack,
 
     iRet = pthread_create( &thread->pthread, &xThreadAttributes,
                            prvWaitForStart, thread );
+    pthread_attr_destroy( &xThreadAttributes );
     if ( iRet )
     {
         prvFatalError( "pthread_create", iRet );
@@ -252,8 +253,8 @@ BaseType_t xPortStartScheduler( void )
 
 #if ( INCLUDE_xTaskGetIdleTaskHandle == 1 ) && ( configUSE_TIMERS == 1 )
     /* Keep the FreeRTOS buffers as the actual pthread stacks: stack sizing and
-     * overflow behaviour are part of the Linux port's useful fidelity. ASAN
-     * can reclaim a terminating custom stack at host-page granularity, though,
+     * overflow behaviour are part of the Linux port's useful fidelity. Thread
+     * cleanup can reclaim a terminating custom stack at host-page granularity,
      * including port metadata at the top of an adjacent lower-address stack.
      * Tear down from lower to higher metadata addresses so any such reclaimed
      * bytes belong only to a pthread that has already been joined. */
@@ -765,13 +766,13 @@ static void prvSetupSignalsAndSchedulerPolicy( void )
 
     /* The scheduler tick is an implementation detail and must not surface as
      * EINTR from restartable host system calls used by emulated tasks. */
-    sigtick.sa_flags = SA_RESTART;
+    sigtick.sa_flags = SA_RESTART | SA_ONSTACK;
     sigtick.sa_handler = vPortSystemTickHandler;
     sigfillset( &sigtick.sa_mask );
 
     /* Peripheral interrupts share the tick's restart and masking behavior but
      * drain source state through the installed roo_testing dispatcher. */
-    siginterrupt.sa_flags = SA_RESTART;
+    siginterrupt.sa_flags = SA_RESTART | SA_ONSTACK;
     siginterrupt.sa_handler = vPortSimulatedInterruptHandler;
     sigfillset( &siginterrupt.sa_mask );
 

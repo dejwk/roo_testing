@@ -9,6 +9,11 @@ diff --git a/components/freertos/FreeRTOS-Kernel/portable/linux/port.c b/compone
  #include <stdio.h>
  #include <stdlib.h>
  #include <string.h>
+@@ -188,3 +189,4 @@ StackType_t *pxPortInitialiseStack( StackType_t *pxTopOfStack,
+     iRet = pthread_create( &thread->pthread, &xThreadAttributes,
+                            prvWaitForStart, thread );
++    pthread_attr_destroy( &xThreadAttributes );
+     if ( iRet )
 @@ -214,6 +215,12 @@
  {
      int iSignal;
@@ -44,8 +49,8 @@ diff --git a/components/freertos/FreeRTOS-Kernel/portable/linux/port.c b/compone
 +
 +#if ( INCLUDE_xTaskGetIdleTaskHandle == 1 ) && ( configUSE_TIMERS == 1 )
 +    /* Keep the FreeRTOS buffers as the actual pthread stacks: stack sizing and
-+     * overflow behaviour are part of the Linux port's useful fidelity. ASAN
-+     * can reclaim a terminating custom stack at host-page granularity, though,
++     * overflow behaviour are part of the Linux port's useful fidelity. Thread
++     * cleanup can reclaim a terminating custom stack at host-page granularity,
 +     * including port metadata at the top of an adjacent lower-address stack.
 +     * Tear down from lower to higher metadata addresses so any such reclaimed
 +     * bytes belong only to a pthread that has already been joined. */
@@ -68,3 +73,37 @@ diff --git a/components/freertos/FreeRTOS-Kernel/portable/linux/port.c b/compone
  
      /* Restore original signal mask. */
      (void)pthread_sigmask( SIG_SETMASK, &xSchedulerOriginalSignalMask,  NULL );
+@@ -762,3 +787,3 @@ static void prvSetupSignalsAndSchedulerPolicy( void )
+      * EINTR from restartable host system calls used by emulated tasks. */
+-    sigtick.sa_flags = SA_RESTART;
++    sigtick.sa_flags = SA_RESTART | SA_ONSTACK;
+     sigtick.sa_handler = vPortSystemTickHandler;
+@@ -769,3 +794,3 @@ static void prvSetupSignalsAndSchedulerPolicy( void )
+      * drain source state through the installed roo_testing dispatcher. */
+-    siginterrupt.sa_flags = SA_RESTART;
++    siginterrupt.sa_flags = SA_RESTART | SA_ONSTACK;
+     siginterrupt.sa_handler = vPortSimulatedInterruptHandler;
+diff --git a/components/freertos/FreeRTOS-Kernel/portable/linux/utils/wait_for_event.c b/components/freertos/FreeRTOS-Kernel/portable/linux/utils/wait_for_event.c
+--- a/components/freertos/FreeRTOS-Kernel/portable/linux/utils/wait_for_event.c
++++ b/components/freertos/FreeRTOS-Kernel/portable/linux/utils/wait_for_event.c
+@@ -46,3 +46,8 @@ struct event
+ };
+-
++
++static void event_unlock_after_cancel( void *mutex )
++{
++    pthread_mutex_unlock( mutex );
++}
++
+ struct event * event_create(void)
+@@ -67,3 +71,4 @@ bool event_wait( struct event * ev )
+     pthread_mutex_lock( &ev->mutex );
++    pthread_cleanup_push( event_unlock_after_cancel, &ev->mutex );
+-
++
+     while( ev->event_triggered == false )
+@@ -74,3 +80,3 @@ bool event_wait( struct event * ev )
+     ev->event_triggered = false;
+-    pthread_mutex_unlock( &ev->mutex );
++    pthread_cleanup_pop( 1 );
+     return true;

@@ -45,6 +45,11 @@ struct event
     bool event_triggered;
 };
 
+static void event_unlock_after_cancel( void *mutex )
+{
+    pthread_mutex_unlock( mutex );
+}
+
 struct event * event_create(void)
 {
     struct event * ev = malloc( sizeof( struct event ) );
@@ -65,6 +70,7 @@ void event_delete( struct event * ev )
 bool event_wait( struct event * ev )
 {
     pthread_mutex_lock( &ev->mutex );
+    pthread_cleanup_push( event_unlock_after_cancel, &ev->mutex );
 
     while( ev->event_triggered == false )
     {
@@ -72,7 +78,7 @@ bool event_wait( struct event * ev )
     }
 
     ev->event_triggered = false;
-    pthread_mutex_unlock( &ev->mutex );
+    pthread_cleanup_pop( 1 );
     return true;
 }
 bool event_wait_timed( struct event * ev,

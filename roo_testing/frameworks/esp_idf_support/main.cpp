@@ -13,11 +13,10 @@ void RunApp(void*) {
     std::exit(EXIT_FAILURE);
   }
   app_main();
-  // On hardware the main task is deleted when app_main returns. For a finite
-  // host example, successful return should terminate the process cleanly.
-  std::exit(roo_testing::esp32_shims::ShutdownEspTimerForHost() == ESP_OK
-                ? EXIT_SUCCESS
-                : EXIT_FAILURE);
+  // Match ESP-IDF: returning from app_main deletes only the main task. The
+  // scheduler and peripheral emulation continue running until the host process
+  // is closed.
+  vTaskDelete(nullptr);
 }
 
 }  // namespace

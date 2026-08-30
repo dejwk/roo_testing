@@ -2,7 +2,7 @@ load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
 cc_library(
     name = "timer",
-    srcs = glob(["*.cpp"]),
+    srcs = ["timer.cpp"],
     hdrs = glob(["*.h"]),
     visibility = ["//visibility:public"],
     deps = [

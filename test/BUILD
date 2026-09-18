@@ -366,9 +366,11 @@ cc_test(
     srcs = ["rtc_ds3231_i2c_test.cpp"],
     linkstatic = 1,
     deps = [
-        "//:arduino_gtest_main",
         "//roo_testing/devices/clock/ds3231",
-    ],
+    ] + select({
+        "//roo_testing/platforms:is_idf": ["//:esp_idf_gtest_main"],
+        "//conditions:default": ["//:arduino_gtest_main"],
+    }),
 )
 
 cc_test(
@@ -592,5 +594,21 @@ cc_test(
         "//roo_testing/frameworks/arduino_support:bare_freertos_gtest_main",
         "//roo_testing/frameworks/esp_idf_support:interrupts_epoch_test_support",
         "@googletest//:gtest",
+    ],
+)
+
+cc_test(
+    name = "idf_i2c_device_test",
+    target_compatible_with = select({
+        "//roo_testing/platforms:is_idf": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+    size = "small",
+    srcs = ["idf_i2c_device_test.cpp"],
+    linkstatic = True,
+    deps = [
+        "//:esp_idf_gtest_main",
+        "//roo_testing/frameworks/esp32_shims:idf",
+        "//roo_testing/microcontrollers/esp32:core",
     ],
 )

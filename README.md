@@ -365,3 +365,26 @@ After that, you can Run > Start Debugging (make sure to select the just created 
 # Please get involved!
 
 If you find this library useful, but perhaps missing something important for you, please consider contributing. I will be happy to guide and I will gladly review and accept external contributions.
+
+### Modern ESP-IDF I2C master emulation
+
+The native shim supports `i2c_new_master_bus`, bus lookup and deletion, device
+registration/removal, synchronous transmit/receive/combined transfers, and
+address probing. It routes SDA/SCL through the ESP32 GPIO matrix to devices
+attached using `FakeEsp32().attachI2cDevice(...)`, including `FakeDs3231`.
+Combined transfers preserve the repeated START (no STOP after the write), and
+device errors map to IDF status codes. Complete calls are serialized on the host.
+
+This models synchronous 7-bit transactions. It does not model bus clock timing,
+electrical pullups, asynchronous callbacks/queues, power management, or
+coexistence with legacy/Arduino bus ownership. Unsupported queue, address-mode,
+and ACK-disabling configurations fail explicitly. Device timeouts are forwarded
+in milliseconds, saturated to the emulated device's 16-bit range; host mutex
+waits do not model the hardware timeout deadline. Transfers over 65535 bytes
+are rejected because the emulated peripheral interface has a 16-bit length.
+
+Validate with:
+
+```sh
+bazel test --config=roo_testing_idf_esp32 //test:idf_i2c_device_test
+```

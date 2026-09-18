@@ -43,19 +43,23 @@ void Esp32I2c::stop() {}
 void Esp32I2c::end() {}
 
 int32_t Esp32I2c::write(uint16_t address, const uint8_t* buf, size_t size,
-                        uint32_t timeOutMillis) {
+                        uint32_t timeOutMillis, bool sendStop) {
   FakeI2cDevice* dev = resolveOut(address);
   if (dev == nullptr) {
     return ESP_ERR_NOT_FOUND;
   }
-  return dev->write(buf, size, true, timeOutMillis);
+  return dev->write(buf, size, sendStop, timeOutMillis);
 }
 
 int32_t Esp32I2c::read(uint16_t address, uint8_t* buf, size_t size,
-                        uint32_t timeOutMillis) {
+                       uint32_t timeOutMillis, bool sendStop) {
   FakeI2cDevice* dev = resolveOut(address);
   if (dev == nullptr) {
     return ESP_ERR_NOT_FOUND;
   }
-  return dev->read(buf, size, true, timeOutMillis);
+  return dev->read(buf, size, sendStop, timeOutMillis);
+}
+
+bool Esp32I2c::probe(uint16_t address) {
+  return resolveOut(address) != nullptr;
 }

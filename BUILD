@@ -121,6 +121,8 @@ test_suite(
     name = "idf_tests",
     tags = ["manual"],
     tests = [
+        "//test:idf_i2c_device_test",
+        "//test:rtc_ds3231_i2c_test",
         "//test:legacy_i2c_interface_test",
         "//test/profile:esp_idf_gtest_main_test",
         "//test/profile:esp_idf_main_test",

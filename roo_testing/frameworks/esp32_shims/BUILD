@@ -58,6 +58,7 @@ cc_library(
         "esp_timer_host_lifecycle.cpp",
         "idf_core.cpp",
         "idf_drivers.cpp",
+        "idf_i2c.cpp",
         "idf_ledc.cpp",
         "idf_sd.cpp",
         "nvs.cpp",

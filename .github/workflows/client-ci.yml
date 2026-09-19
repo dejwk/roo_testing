@@ -59,7 +59,9 @@ jobs:
 
       - name: Free disk space
         run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          # The selected Roo frontend may initialize rules_android; retain the
+          # runner-provided SDK and its platform APIs for Bazel.
+          sudo rm -rf /usr/share/dotnet /opt/ghc
           sudo apt-get clean
 
       - name: Install client system dependencies

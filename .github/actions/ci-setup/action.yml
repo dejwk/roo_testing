@@ -8,7 +8,9 @@ runs:
     - name: Free disk space
       shell: bash
       run: |
-        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        # Bazel's Arduino and ESP-IDF profiles initialize rules_android, which
+        # requires the platform APIs in the runner-provided Android SDK.
+        sudo rm -rf /usr/share/dotnet /opt/ghc
         sudo apt-get clean
 
     - name: Install system development dependencies

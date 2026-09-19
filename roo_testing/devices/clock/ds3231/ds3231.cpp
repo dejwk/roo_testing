@@ -44,8 +44,9 @@ FakeDs3231::FakeDs3231(Thermometer* thermometer)
 
 FakeI2cDevice::Result FakeDs3231::write(const uint8_t* buf, uint16_t size,
                                         bool sendStop, uint16_t timeOutMillis) {
-  if (buf == nullptr || size == 0 || buf[0] >= kRegisterCount)
+  if (buf == nullptr || size == 0 || buf[0] >= kRegisterCount) {
     return I2C_ERROR_DEV;
+  }
   register_address_ = buf[0];
   tick();
   for (int i = 0; i < size - 1; ++i) {
@@ -92,9 +93,7 @@ void FakeDs3231::tick() {
   registers_[0x11] = (int8_t)tempC;
   registers_[0x12] = ((int)((tempC + 128.0) * 4.0) % 4) << 6;
 
-  for (int i = 0; i < kRegisterCount; ++i) {
-    registers_written_[i] = false;
-  }
+  for (int i = 0; i < kRegisterCount; ++i) registers_written_[i] = false;
 }
 
 uint8_t FakeDs3231::register_read(int index) const { return registers_[index]; }

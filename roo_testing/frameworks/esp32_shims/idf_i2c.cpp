@@ -54,8 +54,9 @@ static_assert(SOC_I2C_NUM <= 2, "Add the selected SoC's I2C matrix signals");
 // Tests registry membership without dereferencing an external handle.
 bool IsValidBus(i2c_master_bus_handle_t bus) {
   if (bus == nullptr) return false;
-  for (i2c_master_bus_handle_t current : GetRegistry().buses)
+  for (i2c_master_bus_handle_t current : GetRegistry().buses) {
     if (current == bus) return true;
+  }
   return false;
 }
 
@@ -63,7 +64,7 @@ bool IsValidBus(i2c_master_bus_handle_t bus) {
 bool IsValidDevice(i2c_master_dev_handle_t device) {
   if (device == nullptr) return false;
   for (i2c_master_bus_handle_t bus : GetRegistry().buses) {
-    if (bus && bus->devices.count(device)) return true;
+    if (bus != nullptr && bus->devices.count(device) != 0) return true;
   }
   return false;
 }
@@ -99,32 +100,35 @@ esp_err_t ResultCode(int32_t result) {
 extern "C" {
 esp_err_t i2c_new_master_bus(const i2c_master_bus_config_t* config,
                              i2c_master_bus_handle_t* result) {
-  if (!config || !result || !IsValidPin(config->sda_io_num) ||
-      !IsValidPin(config->scl_io_num) ||
-      config->sda_io_num == config->scl_io_num)
+  if (config == nullptr || result == nullptr ||
+      !IsValidPin(config->sda_io_num) || !IsValidPin(config->scl_io_num) ||
+      config->sda_io_num == config->scl_io_num) {
     return ESP_ERR_INVALID_ARG;
+  }
   *result = nullptr;
   // Background queues and power-domain behavior are not modeled.
-  if (config->trans_queue_depth != 0 || config->flags.allow_pd)
+  if (config->trans_queue_depth != 0 || config->flags.allow_pd != 0) {
     return ESP_ERR_NOT_SUPPORTED;
+  }
   Registry& r = GetRegistry();
   std::lock_guard<std::mutex> lock(r.mutex);
   int port = config->i2c_port;
   if (port == -1) {
     for (size_t i = 0; i < r.buses.size(); ++i) {
-      if (!r.buses[i]) {
+      if (r.buses[i] == nullptr) {
         port = i;
         break;
       }
     }
     if (port == -1) return ESP_ERR_NOT_FOUND;
   }
-  if (port < 0 || static_cast<size_t>(port) >= r.buses.size())
+  if (port < 0 || static_cast<size_t>(port) >= r.buses.size()) {
     return ESP_ERR_INVALID_ARG;
-  if (r.buses[port]) return ESP_ERR_NOT_FOUND;
+  }
+  if (r.buses[port] != nullptr) return ESP_ERR_NOT_FOUND;
   auto* bus = new (std::nothrow)
       i2c_master_bus_t{port, config->sda_io_num, config->scl_io_num, {}};
-  if (!bus) return ESP_ERR_NO_MEM;
+  if (bus == nullptr) return ESP_ERR_NO_MEM;
   const Signals& sig = kSignals[port];
   FakeEsp32().out_matrix.assign(bus->sda, sig.sda_out, false, false);
   FakeEsp32().in_matrix.assign(bus->sda, sig.sda_in, false);
@@ -137,28 +141,32 @@ esp_err_t i2c_new_master_bus(const i2c_master_bus_config_t* config,
 
 esp_err_t i2c_master_get_bus_handle(i2c_port_num_t port,
                                     i2c_master_bus_handle_t* result) {
-  if (!result || port < 0 ||
-      static_cast<size_t>(port) >= GetRegistry().buses.size())
+  if (result == nullptr || port < 0 ||
+      static_cast<size_t>(port) >= GetRegistry().buses.size()) {
     return ESP_ERR_INVALID_ARG;
+  }
   std::lock_guard<std::mutex> lock(GetRegistry().mutex);
   *result = GetRegistry().buses[port];
-  return *result ? ESP_OK : ESP_ERR_NOT_FOUND;
+  return *result != nullptr ? ESP_OK : ESP_ERR_NOT_FOUND;
 }
 
 esp_err_t i2c_master_bus_add_device(i2c_master_bus_handle_t bus,
                                     const i2c_device_config_t* config,
                                     i2c_master_dev_handle_t* result) {
-  if (!config || !result || !config->scl_speed_hz) return ESP_ERR_INVALID_ARG;
+  if (config == nullptr || result == nullptr || config->scl_speed_hz == 0) {
+    return ESP_ERR_INVALID_ARG;
+  }
   *result = nullptr;
   if (config->dev_addr_length != I2C_ADDR_BIT_LEN_7 ||
-      config->flags.disable_ack_check)
+      config->flags.disable_ack_check != 0) {
     return ESP_ERR_NOT_SUPPORTED;
+  }
   if (config->device_address > 0x7f) return ESP_ERR_INVALID_ARG;
   std::lock_guard<std::mutex> lock(GetRegistry().mutex);
   if (!IsValidBus(bus)) return ESP_ERR_INVALID_ARG;
   auto* device =
       new (std::nothrow) i2c_master_dev_t{bus, config->device_address};
-  if (!device) return ESP_ERR_NO_MEM;
+  if (device == nullptr) return ESP_ERR_NO_MEM;
   bus->devices.insert(device);
   *result = device;
   return ESP_OK;
@@ -188,7 +196,9 @@ esp_err_t i2c_del_master_bus(i2c_master_bus_handle_t bus) {
 
 esp_err_t i2c_master_transmit(i2c_master_dev_handle_t device,
                               const uint8_t* data, size_t size, int timeout) {
-  if (!data || !size || size > UINT16_MAX) return ESP_ERR_INVALID_ARG;
+  if (data == nullptr || size == 0 || size > UINT16_MAX) {
+    return ESP_ERR_INVALID_ARG;
+  }
   std::lock_guard<std::mutex> lock(GetRegistry().mutex);
   if (!IsValidDevice(device)) return ESP_ERR_INVALID_ARG;
   return ResultCode(
@@ -199,7 +209,9 @@ esp_err_t i2c_master_transmit(i2c_master_dev_handle_t device,
 
 esp_err_t i2c_master_receive(i2c_master_dev_handle_t device, uint8_t* data,
                              size_t size, int timeout) {
-  if (!data || !size || size > UINT16_MAX) return ESP_ERR_INVALID_ARG;
+  if (data == nullptr || size == 0 || size > UINT16_MAX) {
+    return ESP_ERR_INVALID_ARG;
+  }
   std::lock_guard<std::mutex> lock(GetRegistry().mutex);
   if (!IsValidDevice(device)) return ESP_ERR_INVALID_ARG;
   return ResultCode(
@@ -212,9 +224,10 @@ esp_err_t i2c_master_transmit_receive(i2c_master_dev_handle_t device,
                                       const uint8_t* tx, size_t tx_size,
                                       uint8_t* rx, size_t rx_size,
                                       int timeout) {
-  if (!tx || !rx || !tx_size || !rx_size || tx_size > UINT16_MAX ||
-      rx_size > UINT16_MAX)
+  if (tx == nullptr || rx == nullptr || tx_size == 0 || rx_size == 0 ||
+      tx_size > UINT16_MAX || rx_size > UINT16_MAX) {
     return ESP_ERR_INVALID_ARG;
+  }
   std::lock_guard<std::mutex> lock(GetRegistry().mutex);
   if (!IsValidDevice(device)) return ESP_ERR_INVALID_ARG;
   Esp32I2c& controller = FakeEsp32().i2c(device->bus->port);

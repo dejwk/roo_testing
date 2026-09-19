@@ -1,3 +1,16 @@
+# roo_testing 2.1.2
+
+### Added
+
+- Emulated the modern ESP-IDF I2C master API, including bus/device lifecycle, probing, synchronous transmit/receive, and repeated-start combined transfers through fake ESP32 GPIO routing.
+- Added modern I2C support and regression coverage for `FakeDs3231`.
+
+### Changed
+
+- Updated Bazel dependencies, including `rules_cc`, `rules_python`, GoogleTest, and Protobuf.
+
+---
+
 # [roo_testing 2.1.1](https://github.com/dejwk/roo_testing/releases/tag/2.1.1)
 
 Published 2026-08-30.

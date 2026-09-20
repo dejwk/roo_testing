@@ -108,21 +108,8 @@
 
 namespace {
 
-enum class ValueType {
-  I8,
-  U8,
-  I16,
-  U16,
-  I32,
-  U32,
-  I64,
-  U64,
-  STR,
-  BLOB,
-};
-
 struct EntryValue {
-  ValueType type = ValueType::I32;
+  Nvs::Type type = Nvs::Type::I32;
   int64_t sint_value = 0;
   uint64_t uint_value = 0;
   std::string str_value;
@@ -389,71 +376,71 @@ static bool HexDecode(const std::string& input, std::string* out) {
   return true;
 }
 
-static const char* TypeToString(ValueType type) {
+static const char* TypeToString(Nvs::Type type) {
   switch (type) {
-    case ValueType::I8:
+    case Nvs::Type::I8:
       return "I8";
-    case ValueType::U8:
+    case Nvs::Type::U8:
       return "U8";
-    case ValueType::I16:
+    case Nvs::Type::I16:
       return "I16";
-    case ValueType::U16:
+    case Nvs::Type::U16:
       return "U16";
-    case ValueType::I32:
+    case Nvs::Type::I32:
       return "I32";
-    case ValueType::U32:
+    case Nvs::Type::U32:
       return "U32";
-    case ValueType::I64:
+    case Nvs::Type::I64:
       return "I64";
-    case ValueType::U64:
+    case Nvs::Type::U64:
       return "U64";
-    case ValueType::STR:
+    case Nvs::Type::STR:
       return "STR";
-    case ValueType::BLOB:
+    case Nvs::Type::BLOB:
       return "BLOB";
   }
   return "I32";
 }
 
-static bool TypeFromString(const std::string& value, ValueType* out) {
+static bool TypeFromString(const std::string& value, Nvs::Type* out) {
   if (value == "I8") {
-    *out = ValueType::I8;
+    *out = Nvs::Type::I8;
     return true;
   }
   if (value == "U8") {
-    *out = ValueType::U8;
+    *out = Nvs::Type::U8;
     return true;
   }
   if (value == "I16") {
-    *out = ValueType::I16;
+    *out = Nvs::Type::I16;
     return true;
   }
   if (value == "U16") {
-    *out = ValueType::U16;
+    *out = Nvs::Type::U16;
     return true;
   }
   if (value == "I32") {
-    *out = ValueType::I32;
+    *out = Nvs::Type::I32;
     return true;
   }
   if (value == "U32") {
-    *out = ValueType::U32;
+    *out = Nvs::Type::U32;
     return true;
   }
   if (value == "I64") {
-    *out = ValueType::I64;
+    *out = Nvs::Type::I64;
     return true;
   }
   if (value == "U64") {
-    *out = ValueType::U64;
+    *out = Nvs::Type::U64;
     return true;
   }
   if (value == "STR") {
-    *out = ValueType::STR;
+    *out = Nvs::Type::STR;
     return true;
   }
   if (value == "BLOB") {
-    *out = ValueType::BLOB;
+    *out = Nvs::Type::BLOB;
     return true;
   }
   return false;
@@ -508,14 +495,14 @@ static void WriteEntryValue(std::ostringstream& out, const EntryValue& value,
   WriteJsonString(out, TypeToString(value.type));
   out << ",\n";
   WriteIndent(out, indent + 2);
-  if (value.type == ValueType::STR) {
+  if (value.type == Nvs::Type::STR) {
     out << "\"str\": ";
     WriteJsonString(out, value.str_value);
-  } else if (value.type == ValueType::BLOB) {
+  } else if (value.type == Nvs::Type::BLOB) {
     out << "\"blob_hex\": ";
     WriteJsonString(out, HexEncode(value.blob_value));
-  } else if (value.type == ValueType::U8 || value.type == ValueType::U16 ||
-             value.type == ValueType::U32 || value.type == ValueType::U64) {
+  } else if (value.type == Nvs::Type::U8 || value.type == Nvs::Type::U16 ||
+             value.type == Nvs::Type::U32 || value.type == Nvs::Type::U64) {
     out << "\"uint\": " << value.uint_value;
   } else {
     out << "\"sint\": " << value.sint_value;
@@ -619,7 +606,7 @@ static bool JsonToStorage(const JsonValue& root, NvsStorage* storage,
               if (error) *error = "unknown entry type";
               return false;
             }
-            if (entry.type == ValueType::STR) {
+            if (entry.type == Nvs::Type::STR) {
               auto str_it = entry_obj.find("str");
               if (str_it == entry_obj.end() ||
                   str_it->second.type != JsonValue::Type::kString) {
@@ -627,7 +614,7 @@ static bool JsonToStorage(const JsonValue& root, NvsStorage* storage,
                 return false;
               }
               entry.str_value = str_it->second.string_value;
-            } else if (entry.type == ValueType::BLOB) {
+            } else if (entry.type == Nvs::Type::BLOB) {
               auto blob_it = entry_obj.find("blob_hex");
               if (blob_it == entry_obj.end() ||
                   blob_it->second.type != JsonValue::Type::kString) {
@@ -638,10 +625,10 @@ static bool JsonToStorage(const JsonValue& root, NvsStorage* storage,
                 if (error) *error = "invalid blob_hex";
                 return false;
               }
-            } else if (entry.type == ValueType::U8 ||
-                       entry.type == ValueType::U16 ||
-                       entry.type == ValueType::U32 ||
-                       entry.type == ValueType::U64) {
+            } else if (entry.type == Nvs::Type::U8 ||
+                       entry.type == Nvs::Type::U16 ||
+                       entry.type == Nvs::Type::U32 ||
+                       entry.type == Nvs::Type::U64) {
               auto uint_it = entry_obj.find("uint");
               if (uint_it == entry_obj.end() ||
                   uint_it->second.type != JsonValue::Type::kNumber) {
@@ -767,7 +754,7 @@ class NvsImpl {
     return ESP_OK;
   }
 
-  esp_err_t get(nvs_handle_t handle, const char* key, ValueType expected_type,
+  esp_err_t get(nvs_handle_t handle, const char* key, Nvs::Type expected_type,
                 EntryValue& val) {
     if (open_partitions_.find(handle) == open_partitions_.end()) {
       return ESP_ERR_NVS_INVALID_HANDLE;
@@ -786,6 +773,25 @@ class NvsImpl {
       return ESP_ERR_NVS_TYPE_MISMATCH;
     }
     val = entry;
+    return ESP_OK;
+  }
+
+  esp_err_t find_key(nvs_handle_t handle, const char* key,
+                     Nvs::Type* out_type) {
+    if (open_partitions_.find(handle) == open_partitions_.end()) {
+      return ESP_ERR_NVS_INVALID_HANDLE;
+    }
+    Handle& h = open_partitions_[handle];
+    if (strlen(key) > 15) {
+      return ESP_ERR_NVS_INVALID_NAME;
+    }
+    auto& entries =
+        storage_.partitions[h.partition_name].name_spaces[h.ns_name].entries;
+    auto entry = entries.find(key);
+    if (entry == entries.end()) {
+      return ESP_ERR_NVS_NOT_FOUND;
+    }
+    if (out_type != nullptr) *out_type = entry->second.type;
     return ESP_OK;
   }
 
@@ -845,56 +851,56 @@ esp_err_t Nvs::open(const char* part_name, const char* name, bool readonly,
 
 esp_err_t Nvs::set_i8(nvs_handle_t handle, const char* key, int8_t value) {
   EntryValue val;
-  val.type = ValueType::I8;
+  val.type = Nvs::Type::I8;
   val.sint_value = value;
   return impl_->set(handle, key, std::move(val));
 }
 
 esp_err_t Nvs::set_u8(nvs_handle_t handle, const char* key, uint8_t value) {
   EntryValue val;
-  val.type = ValueType::U8;
+  val.type = Nvs::Type::U8;
   val.uint_value = value;
   return impl_->set(handle, key, std::move(val));
 }
 
 esp_err_t Nvs::set_i16(nvs_handle_t handle, const char* key, int16_t value) {
   EntryValue val;
-  val.type = ValueType::I16;
+  val.type = Nvs::Type::I16;
   val.sint_value = value;
   return impl_->set(handle, key, std::move(val));
 }
 
 esp_err_t Nvs::set_u16(nvs_handle_t handle, const char* key, uint16_t value) {
   EntryValue val;
-  val.type = ValueType::U16;
+  val.type = Nvs::Type::U16;
   val.uint_value = value;
   return impl_->set(handle, key, std::move(val));
 }
 
 esp_err_t Nvs::set_i32(nvs_handle_t handle, const char* key, int32_t value) {
   EntryValue val;
-  val.type = ValueType::I32;
+  val.type = Nvs::Type::I32;
   val.sint_value = value;
   return impl_->set(handle, key, std::move(val));
 }
 
 esp_err_t Nvs::set_u32(nvs_handle_t handle, const char* key, uint32_t value) {
   EntryValue val;
-  val.type = ValueType::U32;
+  val.type = Nvs::Type::U32;
   val.uint_value = value;
   return impl_->set(handle, key, std::move(val));
 }
 
 esp_err_t Nvs::set_i64(nvs_handle_t handle, const char* key, int64_t value) {
   EntryValue val;
-  val.type = ValueType::I64;
+  val.type = Nvs::Type::I64;
   val.sint_value = value;
   return impl_->set(handle, key, std::move(val));
 }
 
 esp_err_t Nvs::set_u64(nvs_handle_t handle, const char* key, uint64_t value) {
   EntryValue val;
-  val.type = ValueType::U64;
+  val.type = Nvs::Type::U64;
   val.uint_value = value;
   return impl_->set(handle, key, std::move(val));
 }
@@ -902,7 +908,7 @@ esp_err_t Nvs::set_u64(nvs_handle_t handle, const char* key, uint64_t value) {
 esp_err_t Nvs::set_str(nvs_handle_t handle, const char* key,
                        const char* value) {
   EntryValue val;
-  val.type = ValueType::STR;
+  val.type = Nvs::Type::STR;
   val.str_value = value;
   return impl_->set(handle, key, std::move(val));
 }
@@ -910,14 +916,14 @@ esp_err_t Nvs::set_str(nvs_handle_t handle, const char* key,
 esp_err_t Nvs::set_blob(nvs_handle_t handle, const char* key, const void* value,
                         size_t length) {
   EntryValue val;
-  val.type = ValueType::BLOB;
+  val.type = Nvs::Type::BLOB;
   val.blob_value = std::string((const char*)value, length);
   return impl_->set(handle, key, std::move(val));
 }
 
 esp_err_t Nvs::get_i8(nvs_handle_t handle, const char* key, int8_t* value) {
   EntryValue val;
-  esp_err_t err = impl_->get(handle, key, ValueType::I8, val);
+  esp_err_t err = impl_->get(handle, key, Nvs::Type::I8, val);
   if (err != ESP_OK) return err;
   *value = val.sint_value;
   return ESP_OK;
@@ -925,7 +931,7 @@ esp_err_t Nvs::get_i8(nvs_handle_t handle, const char* key, int8_t* value) {
 
 esp_err_t Nvs::get_u8(nvs_handle_t handle, const char* key, uint8_t* value) {
   EntryValue val;
-  esp_err_t err = impl_->get(handle, key, ValueType::U8, val);
+  esp_err_t err = impl_->get(handle, key, Nvs::Type::U8, val);
   if (err != ESP_OK) return err;
   *value = val.uint_value;
   return ESP_OK;
@@ -933,7 +939,7 @@ esp_err_t Nvs::get_u8(nvs_handle_t handle, const char* key, uint8_t* value) {
 
 esp_err_t Nvs::get_i16(nvs_handle_t handle, const char* key, int16_t* value) {
   EntryValue val;
-  esp_err_t err = impl_->get(handle, key, ValueType::I16, val);
+  esp_err_t err = impl_->get(handle, key, Nvs::Type::I16, val);
   if (err != ESP_OK) return err;
   *value = val.sint_value;
   return ESP_OK;
@@ -941,7 +947,7 @@ esp_err_t Nvs::get_i16(nvs_handle_t handle, const char* key, int16_t* value) {
 
 esp_err_t Nvs::get_u16(nvs_handle_t handle, const char* key, uint16_t* value) {
   EntryValue val;
-  esp_err_t err = impl_->get(handle, key, ValueType::U16, val);
+  esp_err_t err = impl_->get(handle, key, Nvs::Type::U16, val);
   if (err != ESP_OK) return err;
   *value = val.uint_value;
   return ESP_OK;
@@ -949,7 +955,7 @@ esp_err_t Nvs::get_u16(nvs_handle_t handle, const char* key, uint16_t* value) {
 
 esp_err_t Nvs::get_i32(nvs_handle_t handle, const char* key, int32_t* value) {
   EntryValue val;
-  esp_err_t err = impl_->get(handle, key, ValueType::I32, val);
+  esp_err_t err = impl_->get(handle, key, Nvs::Type::I32, val);
   if (err != ESP_OK) return err;
   *value = val.sint_value;
   return ESP_OK;
@@ -957,7 +963,7 @@ esp_err_t Nvs::get_i32(nvs_handle_t handle, const char* key, int32_t* value) {
 
 esp_err_t Nvs::get_u32(nvs_handle_t handle, const char* key, uint32_t* value) {
   EntryValue val;
-  esp_err_t err = impl_->get(handle, key, ValueType::U32, val);
+  esp_err_t err = impl_->get(handle, key, Nvs::Type::U32, val);
   if (err != ESP_OK) return err;
   *value = val.uint_value;
   return ESP_OK;
@@ -965,7 +971,7 @@ esp_err_t Nvs::get_u32(nvs_handle_t handle, const char* key, uint32_t* value) {
 
 esp_err_t Nvs::get_i64(nvs_handle_t handle, const char* key, int64_t* value) {
   EntryValue val;
-  esp_err_t err = impl_->get(handle, key, ValueType::I64, val);
+  esp_err_t err = impl_->get(handle, key, Nvs::Type::I64, val);
   if (err != ESP_OK) return err;
   *value = val.sint_value;
   return ESP_OK;
@@ -973,7 +979,7 @@ esp_err_t Nvs::get_i64(nvs_handle_t handle, const char* key, int64_t* value) {
 
 esp_err_t Nvs::get_u64(nvs_handle_t handle, const char* key, uint64_t* value) {
   EntryValue val;
-  esp_err_t err = impl_->get(handle, key, ValueType::U64, val);
+  esp_err_t err = impl_->get(handle, key, Nvs::Type::U64, val);
   if (err != ESP_OK) return err;
   *value = val.uint_value;
   return ESP_OK;
@@ -982,7 +988,7 @@ esp_err_t Nvs::get_u64(nvs_handle_t handle, const char* key, uint64_t* value) {
 esp_err_t Nvs::get_str(nvs_handle_t handle, const char* key, char* value,
                        size_t* length) {
   EntryValue val;
-  esp_err_t err = impl_->get(handle, key, ValueType::STR, val);
+  esp_err_t err = impl_->get(handle, key, Nvs::Type::STR, val);
   if (err != ESP_OK) return err;
   size_t actual = std::max(*length, val.str_value.size() + 1);
   if (value != nullptr) {
@@ -995,7 +1001,7 @@ esp_err_t Nvs::get_str(nvs_handle_t handle, const char* key, char* value,
 esp_err_t Nvs::get_blob(nvs_handle_t handle, const char* key, char* value,
                         size_t* length) {
   EntryValue val;
-  esp_err_t err = impl_->get(handle, key, ValueType::BLOB, val);
+  esp_err_t err = impl_->get(handle, key, Nvs::Type::BLOB, val);
   if (err != ESP_OK) return err;
   size_t actual = std::max(*length, val.blob_value.size());
   if (value != nullptr) {
@@ -1003,6 +1009,10 @@ esp_err_t Nvs::get_blob(nvs_handle_t handle, const char* key, char* value,
   }
   *length = actual;
   return ESP_OK;
+}
+
+esp_err_t Nvs::find_key(nvs_handle_t handle, const char* key, Type* out_type) {
+  return impl_->find_key(handle, key, out_type);
 }
 
 esp_err_t Nvs::commit() {

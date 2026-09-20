@@ -14,6 +14,21 @@ class NvsImpl;
 
 class Nvs {
  public:
+  // Values mirror nvs_type_t without making the storage model depend on
+  // ESP-IDF headers.
+  enum class Type : uint8_t {
+    U8 = 0x01,
+    I8 = 0x11,
+    U16 = 0x02,
+    I16 = 0x12,
+    U32 = 0x04,
+    I32 = 0x14,
+    U64 = 0x08,
+    I64 = 0x18,
+    STR = 0x21,
+    BLOB = 0x42,
+  };
+
   Nvs(const std::string& path);
 
   ~Nvs();
@@ -50,6 +65,8 @@ class Nvs {
 
   esp_err_t get_blob(nvs_handle_t handle, const char* key, char* value,
                      size_t* length);
+
+  esp_err_t find_key(nvs_handle_t handle, const char* key, Type* out_type);
 
   esp_err_t commit();
 

@@ -120,6 +120,15 @@ esp_err_t nvs_get_blob(nvs_handle_t h, const char* k, void* v, size_t* n) {
   return Storage().get_blob(h, k, static_cast<char*>(v), n);
 }
 
+esp_err_t nvs_find_key(nvs_handle_t h, const char* k, nvs_type_t* out_type) {
+  Nvs::Type type;
+  esp_err_t result = Storage().find_key(h, k, out_type ? &type : nullptr);
+  if (result == ESP_OK && out_type != nullptr) {
+    *out_type = static_cast<nvs_type_t>(type);
+  }
+  return result;
+}
+
 esp_err_t nvs_erase_key(nvs_handle_t h, const char* k) {
   return Storage().erase_key(h, k);
 }

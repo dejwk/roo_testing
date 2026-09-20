@@ -1,3 +1,11 @@
+# roo_testing 2.1.3
+
+### Added
+
+- Added `nvs_find_key()` support to ESP32 NVS emulation, including key existence checks and stored-type reporting for all supported NVS value types.
+
+---
+
 # roo_testing 2.1.2
 
 ### Added

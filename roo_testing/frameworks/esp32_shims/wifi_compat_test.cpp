@@ -1,10 +1,14 @@
 #include <memory>
+#include <string>
 #include <type_traits>
 
+#include "esp_event.h"
 #include "esp_phy.h"
 #include "esp_private/wifi_os_adapter.h"
 #include "esp_smartconfig.h"
 #include "esp_wifi.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 #include "roo_testing/frameworks/esp32_shims/wifi_host.h"
 #include "roo_testing/transducers/wifi/wifi.h"
@@ -22,6 +26,26 @@ static_assert(std::is_same_v<decltype(&esp_phy_set_ant),
                              esp_err_t (*)(esp_phy_ant_config_t *)>);
 
 namespace {
+
+struct StationEventCapture {
+  wifi_event_sta_connected_t connected = {};
+  wifi_event_sta_disconnected_t disconnected = {};
+  SemaphoreHandle_t event_received = nullptr;
+};
+
+void CaptureStationEvent(void *arg, esp_event_base_t, int32_t event_id,
+                         void *event_data) {
+  auto *capture = static_cast<StationEventCapture *>(arg);
+  if (event_id == WIFI_EVENT_STA_CONNECTED) {
+    capture->connected = *static_cast<wifi_event_sta_connected_t *>(event_data);
+  } else if (event_id == WIFI_EVENT_STA_DISCONNECTED) {
+    capture->disconnected =
+        *static_cast<wifi_event_sta_disconnected_t *>(event_data);
+  } else {
+    return;
+  }
+  xSemaphoreGive(capture->event_received);
+}
 
 TEST(WifiCompatTest, DriverLifecycleIsExplicitAndResettable) {
   using roo_testing::esp32::wifi::DriverState;
@@ -179,6 +203,71 @@ TEST(WifiCompatTest, ScanFiltersSortsAndConsumesResults) {
   EXPECT_EQ(count, 0);
   EXPECT_EQ(esp_wifi_stop(), ESP_OK);
   EXPECT_EQ(esp_wifi_deinit(), ESP_OK);
+}
+
+// Verifies fixed-width IDF fields do not require spare null-terminator bytes.
+TEST(WifiCompatTest, SupportsMaximumLengthSsidAndPassword) {
+  using roo_testing_transducers::wifi::AccessPoint;
+  using roo_testing_transducers::wifi::Environment;
+  using roo_testing_transducers::wifi::MacAddress;
+
+  static Environment environment;
+  const MacAddress ap_mac(0x02, 0, 0, 0, 0, 4);
+  const std::string ssid(32, 's');
+  const std::string password(64, 'p');
+  auto ap = std::make_unique<AccessPoint>(ap_mac, ssid);
+  ap->setAuthMode(roo_testing_transducers::wifi::AUTH_WPA2_PSK)
+      ->setPasswd(password);
+  environment.addAccessPoint(std::move(ap));
+  FakeEsp32().setWifiEnvironment(environment);
+
+  ASSERT_EQ(esp_event_loop_create_default(), ESP_OK);
+  StationEventCapture capture;
+  capture.event_received = xSemaphoreCreateBinary();
+  ASSERT_NE(capture.event_received, nullptr);
+  ASSERT_EQ(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
+                                       CaptureStationEvent, &capture),
+            ESP_OK);
+
+  roo_testing::esp32::wifi::Reset();
+  wifi_init_config_t init_config = WIFI_INIT_CONFIG_DEFAULT();
+  ASSERT_EQ(esp_wifi_init(&init_config), ESP_OK);
+  ASSERT_EQ(esp_wifi_set_mode(WIFI_MODE_STA), ESP_OK);
+  ASSERT_EQ(esp_wifi_start(), ESP_OK);
+
+  wifi_config_t station_config = {};
+  memcpy(station_config.sta.ssid, ssid.data(), ssid.size());
+  memcpy(station_config.sta.password, password.data(), password.size());
+  station_config.sta.scan_method = WIFI_ALL_CHANNEL_SCAN;
+  station_config.sta.bssid_set = true;
+  for (size_t i = 0; i < sizeof(station_config.sta.bssid); ++i) {
+    station_config.sta.bssid[i] = ap_mac.get(i);
+  }
+  ASSERT_EQ(esp_wifi_set_config(WIFI_IF_STA, &station_config), ESP_OK);
+  ASSERT_EQ(esp_wifi_connect(), ESP_OK);
+  ASSERT_EQ(xSemaphoreTake(capture.event_received, pdMS_TO_TICKS(1000)),
+            pdTRUE);
+  EXPECT_EQ(capture.connected.ssid_len, ssid.size());
+  EXPECT_EQ(memcmp(capture.connected.ssid, ssid.data(), ssid.size()), 0);
+
+  wifi_ap_record_t info = {};
+  ASSERT_EQ(esp_wifi_sta_get_ap_info(&info), ESP_OK);
+  EXPECT_EQ(memcmp(info.ssid, ssid.data(), ssid.size()), 0);
+  EXPECT_EQ(info.ssid[ssid.size()], '\0');
+
+  ASSERT_EQ(esp_wifi_disconnect(), ESP_OK);
+  ASSERT_EQ(xSemaphoreTake(capture.event_received, pdMS_TO_TICKS(1000)),
+            pdTRUE);
+  EXPECT_EQ(capture.disconnected.ssid_len, ssid.size());
+  EXPECT_EQ(memcmp(capture.disconnected.ssid, ssid.data(), ssid.size()), 0);
+
+  EXPECT_EQ(esp_wifi_stop(), ESP_OK);
+  EXPECT_EQ(esp_wifi_deinit(), ESP_OK);
+  EXPECT_EQ(esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID,
+                                         CaptureStationEvent),
+            ESP_OK);
+  EXPECT_EQ(esp_event_loop_delete_default(), ESP_OK);
+  vSemaphoreDelete(capture.event_received);
 }
 
 } // namespace

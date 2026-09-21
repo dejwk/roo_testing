@@ -142,13 +142,20 @@ void CopyMac(const MacAddress &source, uint8_t *destination) {
     destination[i] = source.get(i);
 }
 
-void CopyString(const std::string &source, uint8_t *destination,
-                size_t capacity) {
-  if (capacity == 0)
-    return;
-  const size_t size = std::min(source.size(), capacity - 1);
+// Reads a possibly unterminated fixed-width IDF byte-string field.
+std::string ReadStringField(const uint8_t *source, size_t capacity) {
+  return std::string(reinterpret_cast<const char *>(source),
+                     strnlen(reinterpret_cast<const char *>(source), capacity));
+}
+
+// Copies a string into a fixed-width field and returns its represented length.
+size_t CopyStringField(const std::string &source, uint8_t *destination,
+                       size_t capacity) {
+  const size_t size = std::min(source.size(), capacity);
   memcpy(destination, source.data(), size);
-  destination[size] = '\0';
+  if (size < capacity)
+    destination[size] = '\0';
+  return size;
 }
 
 wifi_auth_mode_t ToAuthMode(roo_testing_transducers::wifi::AuthMode auth_mode) {
@@ -158,7 +165,7 @@ wifi_auth_mode_t ToAuthMode(roo_testing_transducers::wifi::AuthMode auth_mode) {
 wifi_ap_record_t ToRecord(const AccessPoint &ap) {
   wifi_ap_record_t record = {};
   CopyMac(ap.macAddress(), record.bssid);
-  CopyString(ap.ssid(), record.ssid, sizeof(record.ssid));
+  CopyStringField(ap.ssid(), record.ssid, sizeof(record.ssid));
   record.primary = static_cast<uint8_t>(ap.channel());
   record.second = WIFI_SECOND_CHAN_NONE;
   record.rssi = ap.rssi();
@@ -176,8 +183,8 @@ wifi_ap_record_t ToRecord(const AccessPoint &ap) {
 
 AccessPoint *FindConfiguredAccessPoint() {
   const auto &environment = FakeEsp32().getWifiEnvironment();
-  const std::string ssid(
-      reinterpret_cast<const char *>(g_station_config.sta.ssid));
+  const std::string ssid = ReadStringField(g_station_config.sta.ssid,
+                                           sizeof(g_station_config.sta.ssid));
   AccessPoint *found = nullptr;
   for (const auto &entry : environment.access_points()) {
     AccessPoint *candidate = entry.second.get();
@@ -195,10 +202,10 @@ AccessPoint *FindConfiguredAccessPoint() {
 
 void PostDisconnect(wifi_err_reason_t reason) {
   wifi_event_sta_disconnected_t event = {};
-  CopyString(reinterpret_cast<const char *>(g_station_config.sta.ssid),
-             event.ssid, sizeof(event.ssid));
+  const std::string ssid = ReadStringField(g_station_config.sta.ssid,
+                                           sizeof(g_station_config.sta.ssid));
   event.ssid_len = static_cast<uint8_t>(
-      strnlen(reinterpret_cast<const char *>(event.ssid), sizeof(event.ssid)));
+      CopyStringField(ssid, event.ssid, sizeof(event.ssid)));
   event.reason = reason;
   esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &event, sizeof(event),
                  portMAX_DELAY);
@@ -434,8 +441,9 @@ esp_err_t esp_wifi_connect(void) {
     if (ap == nullptr) {
       // Post outside the lock because handlers may call back into Wi-Fi APIs.
     } else {
-      const char *password =
-          reinterpret_cast<const char *>(g_station_config.sta.password);
+      const std::string password =
+          ReadStringField(g_station_config.sta.password,
+                          sizeof(g_station_config.sta.password));
       if (ap->passwd() != password)
         ap = reinterpret_cast<AccessPoint *>(1);
     }
@@ -466,9 +474,8 @@ esp_err_t esp_wifi_connect(void) {
   }
   wifi_event_sta_connected_t connected = {};
   CopyMac(ap->macAddress(), connected.bssid);
-  CopyString(ap->ssid(), connected.ssid, sizeof(connected.ssid));
-  connected.ssid_len =
-      static_cast<uint8_t>(std::min(ap->ssid().size(), sizeof(connected.ssid)));
+  connected.ssid_len = static_cast<uint8_t>(
+      CopyStringField(ap->ssid(), connected.ssid, sizeof(connected.ssid)));
   connected.channel = static_cast<uint8_t>(ap->channel());
   connected.authmode = ToAuthMode(ap->auth_mode());
   esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED, &connected,

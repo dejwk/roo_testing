@@ -13,6 +13,8 @@ constexpr char kDefaultPartition[] = "nvs";
 
 Nvs& Storage() { return FakeEsp32().nvs; }
 
+nvs_sec_scheme_t* security_scheme = nullptr;
+
 }  // namespace
 
 struct nvs_opaque_iterator_t {
@@ -34,6 +36,12 @@ esp_err_t nvs_flash_init_partition_ptr(const esp_partition_t* partition) {
   return Storage().init(partition->label, partition->size);
 }
 
+esp_err_t nvs_flash_init_partition_bdl(const char* partition_label,
+                                       esp_blockdev_handle_t bdl) {
+  if (partition_label == nullptr || bdl == nullptr) return ESP_ERR_INVALID_ARG;
+  return ESP_ERR_NOT_SUPPORTED;
+}
+
 esp_err_t nvs_flash_deinit(void) { return Storage().deinit(kDefaultPartition); }
 esp_err_t nvs_flash_deinit_partition(const char* partition_label) {
   return Storage().deinit(partition_label);
@@ -48,10 +56,52 @@ esp_err_t nvs_flash_erase_partition_ptr(const esp_partition_t* partition) {
   if (partition == nullptr) return ESP_ERR_INVALID_ARG;
   return Storage().erase_partition(partition->label);
 }
-esp_err_t nvs_flash_secure_init(nvs_sec_cfg_t*) { return nvs_flash_init(); }
+esp_err_t nvs_flash_secure_init(nvs_sec_cfg_t* cfg) {
+  return cfg == nullptr ? nvs_flash_init() : ESP_ERR_NVS_ENCR_NOT_SUPPORTED;
+}
 esp_err_t nvs_flash_secure_init_partition(const char* partition,
-                                          nvs_sec_cfg_t*) {
-  return nvs_flash_init_partition(partition);
+                                          nvs_sec_cfg_t* cfg) {
+  if (partition == nullptr) return ESP_ERR_INVALID_ARG;
+  return cfg == nullptr ? nvs_flash_init_partition(partition)
+                        : ESP_ERR_NVS_ENCR_NOT_SUPPORTED;
+}
+
+esp_err_t nvs_flash_generate_keys(const esp_partition_t* partition,
+                                  nvs_sec_cfg_t* cfg) {
+  if (partition == nullptr || cfg == nullptr) return ESP_ERR_INVALID_ARG;
+  return ESP_ERR_NVS_ENCR_NOT_SUPPORTED;
+}
+
+esp_err_t nvs_flash_read_security_cfg(const esp_partition_t* partition,
+                                      nvs_sec_cfg_t* cfg) {
+  if (partition == nullptr || cfg == nullptr) return ESP_ERR_INVALID_ARG;
+  return ESP_ERR_NVS_ENCR_NOT_SUPPORTED;
+}
+
+esp_err_t nvs_flash_register_security_scheme(nvs_sec_scheme_t* scheme_cfg) {
+  if (scheme_cfg == nullptr) return ESP_ERR_INVALID_ARG;
+  security_scheme = scheme_cfg;
+  return ESP_OK;
+}
+
+void nvs_flash_deregister_security_scheme(void) { security_scheme = nullptr; }
+
+nvs_sec_scheme_t* nvs_flash_get_default_security_scheme(void) {
+  return security_scheme;
+}
+
+esp_err_t nvs_flash_generate_keys_v2(nvs_sec_scheme_t* scheme_cfg,
+                                     nvs_sec_cfg_t* cfg) {
+  if (scheme_cfg == nullptr || cfg == nullptr) return ESP_ERR_INVALID_ARG;
+  if (scheme_cfg->nvs_flash_key_gen == nullptr) return ESP_ERR_NOT_SUPPORTED;
+  return scheme_cfg->nvs_flash_key_gen(scheme_cfg->scheme_data, cfg);
+}
+
+esp_err_t nvs_flash_read_security_cfg_v2(nvs_sec_scheme_t* scheme_cfg,
+                                         nvs_sec_cfg_t* cfg) {
+  if (scheme_cfg == nullptr || cfg == nullptr) return ESP_ERR_INVALID_ARG;
+  if (scheme_cfg->nvs_flash_read_cfg == nullptr) return ESP_ERR_NOT_SUPPORTED;
+  return scheme_cfg->nvs_flash_read_cfg(scheme_cfg->scheme_data, cfg);
 }
 
 esp_err_t nvs_open(const char* namespace_name, nvs_open_mode_t open_mode,
@@ -202,6 +252,7 @@ esp_err_t nvs_erase_key(nvs_handle_t h, const char* k) {
   return Storage().erase_key(h, k);
 }
 esp_err_t nvs_erase_all(nvs_handle_t h) { return Storage().erase_all(h); }
+esp_err_t nvs_purge_all(nvs_handle_t h) { return Storage().purge_all(h); }
 esp_err_t nvs_commit(nvs_handle_t h) { return Storage().commit(h); }
 void nvs_close(nvs_handle_t h) { Storage().close(h); }
 

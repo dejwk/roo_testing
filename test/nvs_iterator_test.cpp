@@ -10,6 +10,16 @@
 
 namespace {
 
+esp_err_t GenerateTestKeys(const void* data, nvs_sec_cfg_t* cfg) {
+  cfg->eky[0] = *static_cast<const uint8_t*>(data);
+  return ESP_OK;
+}
+
+esp_err_t ReadTestKeys(const void* data, nvs_sec_cfg_t* cfg) {
+  cfg->tky[0] = *static_cast<const uint8_t*>(data);
+  return ESP_OK;
+}
+
 TEST(NvsIteratorTest, EnumeratesNamespaceAndFiltersByType) {
   nvs_handle_t handle = 0;
   ASSERT_EQ(ESP_OK, nvs_open("iter_test", NVS_READWRITE, &handle));
@@ -198,6 +208,33 @@ TEST(NvsIteratorTest, CommitValidatesHandleAndEraseReportsMissingKey) {
   EXPECT_EQ(ESP_OK, nvs_commit(handle));
   nvs_close(handle);
   EXPECT_EQ(ESP_ERR_NVS_INVALID_HANDLE, nvs_commit(handle));
+}
+
+TEST(NvsIteratorTest, SupportsPurgeAndSecurityApiSurface) {
+  nvs_handle_t handle = 0;
+  ASSERT_EQ(ESP_OK, nvs_open("api_surface", NVS_READWRITE, &handle));
+  EXPECT_EQ(ESP_OK, nvs_purge_all(handle));
+  nvs_close(handle);
+  EXPECT_EQ(ESP_ERR_NVS_INVALID_HANDLE, nvs_purge_all(handle));
+
+  EXPECT_EQ(ESP_ERR_INVALID_ARG, nvs_flash_init_partition_bdl("bdl", nullptr));
+  EXPECT_EQ(ESP_ERR_NVS_ENCR_NOT_SUPPORTED,
+            nvs_flash_secure_init(reinterpret_cast<nvs_sec_cfg_t*>(1)));
+
+  uint8_t marker = 42;
+  nvs_sec_scheme_t scheme = {};
+  scheme.scheme_data = &marker;
+  scheme.nvs_flash_key_gen = GenerateTestKeys;
+  scheme.nvs_flash_read_cfg = ReadTestKeys;
+  ASSERT_EQ(ESP_OK, nvs_flash_register_security_scheme(&scheme));
+  EXPECT_EQ(&scheme, nvs_flash_get_default_security_scheme());
+  nvs_sec_cfg_t cfg = {};
+  EXPECT_EQ(ESP_OK, nvs_flash_generate_keys_v2(&scheme, &cfg));
+  EXPECT_EQ(42u, cfg.eky[0]);
+  EXPECT_EQ(ESP_OK, nvs_flash_read_security_cfg_v2(&scheme, &cfg));
+  EXPECT_EQ(42u, cfg.tky[0]);
+  nvs_flash_deregister_security_scheme();
+  EXPECT_EQ(nullptr, nvs_flash_get_default_security_scheme());
 }
 
 } // namespace

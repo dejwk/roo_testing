@@ -707,6 +707,23 @@ static size_t UsedEntries(const NamespaceStorage& name_space) {
   return result;
 }
 
+static size_t UsedEntries(const PartitionStorage& partition) {
+  size_t result = partition.name_spaces.size();
+  for (const auto& name_space : partition.name_spaces) {
+    result += UsedEntries(name_space.second);
+  }
+  return result;
+}
+
+static size_t AvailableEntries(const PartitionStorage& partition) {
+  const size_t usable_entries =
+      partition.total_entries > kNvsEntriesPerPage
+          ? partition.total_entries - kNvsEntriesPerPage
+          : 0;
+  const size_t used_entries = UsedEntries(partition);
+  return used_entries < usable_entries ? usable_entries - used_entries : 0;
+}
+
 }  // namespace
 
 class NvsImpl {
@@ -835,6 +852,9 @@ class NvsImpl {
       if (readonly) {
         return ESP_ERR_NVS_NOT_FOUND;
       }
+      if (AvailableEntries(part) == 0) {
+        return ESP_ERR_NVS_NOT_ENOUGH_SPACE;
+      }
       part.name_spaces[name];
     }
     int id = next_id_++;
@@ -859,8 +879,17 @@ class NvsImpl {
     if (!IsValidNvsName(key)) {
       return ESP_ERR_NVS_INVALID_NAME;
     }
-    storage_.partitions[h.partition_name].name_spaces[h.ns_name].entries[key] =
-        std::move(val);
+    PartitionStorage& partition = storage_.partitions[h.partition_name];
+    auto& entries = partition.name_spaces[h.ns_name].entries;
+    auto existing = entries.find(key);
+    const size_t old_size =
+        existing == entries.end() ? 0 : EntryCount(existing->second);
+    const size_t new_size = EntryCount(val);
+    if (new_size > old_size &&
+        new_size - old_size > AvailableEntries(partition)) {
+      return ESP_ERR_NVS_NOT_ENOUGH_SPACE;
+    }
+    entries[key] = std::move(val);
     return ESP_OK;
   }
 
@@ -1020,6 +1049,15 @@ class NvsImpl {
     storage_.partitions[h.partition_name]
         .name_spaces[h.ns_name]
         .entries.clear();
+    return ESP_OK;
+  }
+
+  esp_err_t purge_all(nvs_handle_t handle) {
+    auto entry = open_partitions_.find(handle);
+    if (entry == open_partitions_.end()) return ESP_ERR_NVS_INVALID_HANDLE;
+    if (entry->second.readonly) return ESP_ERR_NVS_READ_ONLY;
+    // Erases are applied immediately in the compacted in-memory model, so
+    // there are no stale physical entries left for purge to reclaim.
     return ESP_OK;
   }
 
@@ -1276,4 +1314,8 @@ esp_err_t Nvs::erase_key(nvs_handle_t handle, const char* key) {
 
 esp_err_t Nvs::erase_all(nvs_handle_t handle) {
   return impl_->erase_all(handle);
+}
+
+esp_err_t Nvs::purge_all(nvs_handle_t handle) {
+  return impl_->purge_all(handle);
 }

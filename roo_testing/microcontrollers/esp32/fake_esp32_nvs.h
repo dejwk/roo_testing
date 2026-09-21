@@ -101,6 +101,8 @@ class Nvs {
 
   esp_err_t erase_all(nvs_handle_t handle);
 
+  esp_err_t purge_all(nvs_handle_t handle);
+
   void close(nvs_handle_t handle);
 
  private:

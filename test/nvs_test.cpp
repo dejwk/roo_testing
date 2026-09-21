@@ -193,3 +193,20 @@ TEST(FakeEsp32NvsTest, CommitPersistsOnlyTheSelectedNamespace) {
   EXPECT_NE(nvs.open("nvs", "pending", true, &handle), 0);
   std::remove(path.c_str());
 }
+
+TEST(FakeEsp32NvsTest, EnforcesPartitionCapacity) {
+  constexpr int kNotEnoughSpace = 0x1105;
+  std::string path = MakeTempFile();
+  Nvs nvs(path);
+  ASSERT_EQ(nvs.init("small", 2 * 4096), 0);
+  nvs_handle_t handle = 0;
+  ASSERT_EQ(nvs.open("small", "settings", false, &handle), 0);
+  EXPECT_EQ(nvs.set_str(handle, "too_large", std::string(4000, 'x').c_str()),
+            kNotEnoughSpace);
+  EXPECT_EQ(nvs.set_u32(handle, "small", 1), 0);
+
+  ASSERT_EQ(nvs.init("one_page", 4096), 0);
+  EXPECT_EQ(nvs.open("one_page", "settings", false, &handle),
+            kNotEnoughSpace);
+  std::remove(path.c_str());
+}

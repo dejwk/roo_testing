@@ -95,7 +95,7 @@ class Nvs {
   esp_err_t get_stats(const char* partition_name, Stats* stats);
   esp_err_t get_used_entry_count(nvs_handle_t handle, size_t* used_entries);
 
-  esp_err_t commit();
+  esp_err_t commit(nvs_handle_t handle);
 
   esp_err_t erase_key(nvs_handle_t handle, const char* key);
 

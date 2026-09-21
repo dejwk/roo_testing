@@ -748,15 +748,19 @@ class NvsImpl {
                   << std::endl;
         exit(EXIT_FAILURE);
       }
+      committed_storage_ = storage_;
     }
   }
 
   esp_err_t init(const char* partition_name, size_t partition_size) {
     if (partition_name == nullptr) return ESP_ERR_INVALID_ARG;
     PartitionStorage& partition = storage_.partitions[partition_name];
+    PartitionStorage& committed_partition =
+        committed_storage_.partitions[partition_name];
     if (partition_size != 0) {
       partition.total_entries =
           (partition_size / 4096) * kNvsEntriesPerPage;
+      committed_partition.total_entries = partition.total_entries;
     }
     initialized_partitions_.insert(partition_name);
     save();
@@ -800,13 +804,14 @@ class NvsImpl {
       }
     }
     partition->second.name_spaces.clear();
+    committed_storage_.partitions[partition_name].name_spaces.clear();
     save();
     return ESP_OK;
   }
 
   void save() {
     std::ostringstream out;
-    WriteStorage(out, storage_, 0);
+    WriteStorage(out, committed_storage_, 0);
     std::string val = out.str();
     std::ofstream output_file(path_);
     output_file << val;
@@ -971,6 +976,20 @@ class NvsImpl {
 
   void close(nvs_handle_t handle) { open_partitions_.erase(handle); }
 
+  esp_err_t commit(nvs_handle_t handle) {
+    auto entry = open_partitions_.find(handle);
+    if (entry == open_partitions_.end()) return ESP_ERR_NVS_INVALID_HANDLE;
+    const Handle& h = entry->second;
+    const PartitionStorage& partition = storage_.partitions[h.partition_name];
+    PartitionStorage& committed_partition =
+        committed_storage_.partitions[h.partition_name];
+    committed_partition.total_entries = partition.total_entries;
+    committed_partition.name_spaces[h.ns_name] =
+        partition.name_spaces.at(h.ns_name);
+    save();
+    return ESP_OK;
+  }
+
   esp_err_t erase_key(nvs_handle_t handle, const char* key) {
     if (open_partitions_.find(handle) == open_partitions_.end()) {
       return ESP_ERR_NVS_INVALID_HANDLE;
@@ -982,8 +1001,11 @@ class NvsImpl {
     if (!IsValidNvsName(key)) {
       return ESP_ERR_NVS_INVALID_NAME;
     }
-    storage_.partitions[h.partition_name].name_spaces[h.ns_name].entries.erase(
-        key);
+    if (storage_.partitions[h.partition_name]
+            .name_spaces[h.ns_name]
+            .entries.erase(key) == 0) {
+      return ESP_ERR_NVS_NOT_FOUND;
+    }
     return ESP_OK;
   }
 
@@ -1003,6 +1025,7 @@ class NvsImpl {
 
  private:
   NvsStorage storage_;
+  NvsStorage committed_storage_;
   std::string path_;
   std::set<std::string> initialized_partitions_;
   std::map<int, Handle> open_partitions_;
@@ -1243,10 +1266,7 @@ esp_err_t Nvs::get_used_entry_count(nvs_handle_t handle,
   return impl_->get_used_entry_count(handle, used_entries);
 }
 
-esp_err_t Nvs::commit() {
-  impl_->save();
-  return ESP_OK;
-}
+esp_err_t Nvs::commit(nvs_handle_t handle) { return impl_->commit(handle); }
 
 void Nvs::close(nvs_handle_t handle) { impl_->close(handle); }
 

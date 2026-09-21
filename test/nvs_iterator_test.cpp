@@ -191,4 +191,13 @@ TEST(NvsIteratorTest, ReportsPhysicalEntryUsage) {
   ASSERT_EQ(ESP_OK, nvs_flash_init());
 }
 
+TEST(NvsIteratorTest, CommitValidatesHandleAndEraseReportsMissingKey) {
+  nvs_handle_t handle = 0;
+  ASSERT_EQ(ESP_OK, nvs_open("semantics", NVS_READWRITE, &handle));
+  EXPECT_EQ(ESP_ERR_NVS_NOT_FOUND, nvs_erase_key(handle, "missing"));
+  EXPECT_EQ(ESP_OK, nvs_commit(handle));
+  nvs_close(handle);
+  EXPECT_EQ(ESP_ERR_NVS_INVALID_HANDLE, nvs_commit(handle));
+}
+
 } // namespace

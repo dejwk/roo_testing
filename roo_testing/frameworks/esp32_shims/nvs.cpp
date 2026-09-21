@@ -202,7 +202,7 @@ esp_err_t nvs_erase_key(nvs_handle_t h, const char* k) {
   return Storage().erase_key(h, k);
 }
 esp_err_t nvs_erase_all(nvs_handle_t h) { return Storage().erase_all(h); }
-esp_err_t nvs_commit(nvs_handle_t) { return Storage().commit(); }
+esp_err_t nvs_commit(nvs_handle_t h) { return Storage().commit(h); }
 void nvs_close(nvs_handle_t h) { Storage().close(h); }
 
 esp_err_t nvs_get_stats(const char* partition_name, nvs_stats_t* stats) {

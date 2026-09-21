@@ -43,7 +43,7 @@ TEST(FakeEsp32NvsTest, RoundTripStorage) {
     ASSERT_EQ(nvs.set_u32(handle, "volume", 7), 0);
     ASSERT_EQ(nvs.set_str(handle, "device_name", "demo-board"), 0);
     ASSERT_EQ(nvs.set_blob(handle, "calib", blob_data, sizeof(blob_data)), 0);
-    ASSERT_EQ(nvs.commit(), 0);
+    ASSERT_EQ(nvs.commit(handle), 0);
     nvs.close(handle);
   }
 
@@ -110,7 +110,7 @@ TEST(FakeEsp32NvsTest, RoundTripStorage) {
 }
 
 TEST(FakeEsp32NvsTest, LoadFromGoldenJson) {
-  const char *kGoldenJson = R"json({
+  const char* kGoldenJson = R"json({
   "partitions": {
     "nvs": {
       "name_spaces": {
@@ -165,5 +165,31 @@ TEST(FakeEsp32NvsTest, LoadFromGoldenJson) {
   EXPECT_EQ(std::memcmp(blob_buf.data(), blob_data, blob_len), 0);
 
   nvs.close(handle);
+  std::remove(path.c_str());
+}
+
+TEST(FakeEsp32NvsTest, CommitPersistsOnlyTheSelectedNamespace) {
+  std::string path = MakeTempFile();
+  {
+    Nvs nvs(path);
+    ASSERT_EQ(nvs.init("nvs"), 0);
+    nvs_handle_t committed = 0;
+    nvs_handle_t pending = 0;
+    ASSERT_EQ(nvs.open("nvs", "committed", false, &committed), 0);
+    ASSERT_EQ(nvs.open("nvs", "pending", false, &pending), 0);
+    ASSERT_EQ(nvs.set_u32(committed, "value", 1), 0);
+    ASSERT_EQ(nvs.set_u32(pending, "value", 2), 0);
+    ASSERT_EQ(nvs.commit(committed), 0);
+  }
+
+  Nvs nvs(path);
+  ASSERT_EQ(nvs.init("nvs"), 0);
+  nvs_handle_t handle = 0;
+  ASSERT_EQ(nvs.open("nvs", "committed", true, &handle), 0);
+  uint32_t value = 0;
+  EXPECT_EQ(nvs.get_u32(handle, "value", &value), 0);
+  EXPECT_EQ(value, 1u);
+  nvs.close(handle);
+  EXPECT_NE(nvs.open("nvs", "pending", true, &handle), 0);
   std::remove(path.c_str());
 }

@@ -6,6 +6,7 @@
 #include "esp_smartconfig.h"
 #include "esp_wifi.h"
 #include "roo_testing/microcontrollers/esp32/fake_esp32.h"
+#include "roo_testing/frameworks/esp32_shims/wifi_host.h"
 #include "roo_testing/transducers/wifi/wifi.h"
 #include "gtest/gtest.h"
 
@@ -21,6 +22,40 @@ static_assert(std::is_same_v<decltype(&esp_phy_set_ant),
                              esp_err_t (*)(esp_phy_ant_config_t *)>);
 
 namespace {
+
+TEST(WifiCompatTest, DriverLifecycleIsExplicitAndResettable) {
+  using roo_testing::esp32::wifi::DriverState;
+  using roo_testing::esp32::wifi::StationState;
+
+  roo_testing::esp32::wifi::Reset();
+  wifi_mode_t mode = WIFI_MODE_MAX;
+  EXPECT_EQ(esp_wifi_get_mode(&mode), ESP_ERR_WIFI_NOT_INIT);
+
+  wifi_init_config_t config = WIFI_INIT_CONFIG_DEFAULT();
+  ASSERT_EQ(esp_wifi_init(&config), ESP_OK);
+  EXPECT_EQ(esp_wifi_init(&config), ESP_ERR_WIFI_INIT_STATE);
+  auto state = roo_testing::esp32::wifi::GetState();
+  EXPECT_EQ(state.driver, DriverState::kStopped);
+  EXPECT_EQ(state.station, StationState::kIdle);
+  EXPECT_EQ(state.mode, WIFI_MODE_STA);
+
+  ASSERT_EQ(esp_wifi_start(), ESP_OK);
+  state = roo_testing::esp32::wifi::GetState();
+  EXPECT_EQ(state.driver, DriverState::kStarted);
+  EXPECT_EQ(state.station, StationState::kIdle);
+
+  ASSERT_EQ(esp_wifi_set_mode(WIFI_MODE_AP), ESP_OK);
+  state = roo_testing::esp32::wifi::GetState();
+  EXPECT_EQ(state.station, StationState::kDisabled);
+  EXPECT_EQ(esp_wifi_connect(), ESP_ERR_WIFI_MODE);
+
+  EXPECT_EQ(esp_wifi_stop(), ESP_OK);
+  EXPECT_EQ(esp_wifi_deinit(), ESP_OK);
+  state = roo_testing::esp32::wifi::GetState();
+  EXPECT_EQ(state.driver, DriverState::kUninitialized);
+  EXPECT_EQ(state.station, StationState::kDisabled);
+  EXPECT_EQ(state.mode, WIFI_MODE_NULL);
+}
 
 TEST(WifiCompatTest, ExposesSmartconfigEventBaseAndInitTables) {
   ASSERT_NE(SC_EVENT, nullptr);
@@ -115,6 +150,9 @@ TEST(WifiCompatTest, ScanFiltersSortsAndConsumesResults) {
   environment.addAccessPoint(std::move(hidden));
   FakeEsp32().setWifiEnvironment(environment);
 
+  roo_testing::esp32::wifi::Reset();
+  wifi_init_config_t init_config = WIFI_INIT_CONFIG_DEFAULT();
+  ASSERT_EQ(esp_wifi_init(&init_config), ESP_OK);
   ASSERT_EQ(esp_wifi_set_mode(WIFI_MODE_STA), ESP_OK);
   ASSERT_EQ(esp_wifi_start(), ESP_OK);
   wifi_scan_config_t config = {};
@@ -140,6 +178,7 @@ TEST(WifiCompatTest, ScanFiltersSortsAndConsumesResults) {
   ASSERT_EQ(esp_wifi_scan_get_ap_num(&count), ESP_OK);
   EXPECT_EQ(count, 0);
   EXPECT_EQ(esp_wifi_stop(), ESP_OK);
+  EXPECT_EQ(esp_wifi_deinit(), ESP_OK);
 }
 
 } // namespace

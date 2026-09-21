@@ -68,6 +68,7 @@ cc_library(
     hdrs = [
         "esp_timer_host.h",
         "shim_internal.h",
+        "wifi_host.h",
     ],
     copts = ["-Werror", "-Wno-error=format"],
     linkstatic = 1,

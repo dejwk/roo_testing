@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "roo_testing/microcontrollers/esp32/fake_esp32.h"
+#include "roo_testing/frameworks/esp32_shims/wifi_host.h"
 
 ESP_EVENT_DEFINE_BASE(WIFI_EVENT);
 ESP_EVENT_DEFINE_BASE(IP_EVENT);
@@ -46,8 +47,12 @@ namespace {
 using AccessPoint = roo_testing_transducers::wifi::AccessPoint;
 using Connection = roo_testing_transducers::wifi::Connection;
 using MacAddress = roo_testing_transducers::wifi::MacAddress;
+using DriverState = roo_testing::esp32::wifi::DriverState;
+using StationState = roo_testing::esp32::wifi::StationState;
 
 std::mutex g_mutex;
+DriverState g_driver_state = DriverState::kUninitialized;
+StationState g_station_state = StationState::kDisabled;
 wifi_mode_t g_mode = WIFI_MODE_NULL;
 wifi_config_t g_station_config = {};
 wifi_config_t g_ap_config = {};
@@ -67,7 +72,6 @@ wifi_country_t g_country = {
     .max_tx_power = 20,
     .policy = WIFI_COUNTRY_POLICY_AUTO,
 };
-bool g_started = false;
 std::vector<wifi_ap_record_t> g_scan_results;
 std::vector<wifi_ap_record_t> g_pending_scan_results;
 uint64_t g_scan_generation = 0;
@@ -76,6 +80,48 @@ std::unique_ptr<Connection> g_connection;
 esp_netif_t *g_default_netif = nullptr;
 esp_netif_t *g_station_netif = nullptr;
 std::vector<esp_netif_t *> g_netifs;
+
+bool HasStation(wifi_mode_t mode) {
+  return mode == WIFI_MODE_STA || mode == WIFI_MODE_APSTA;
+}
+
+bool HasAccessPoint(wifi_mode_t mode) {
+  return mode == WIFI_MODE_AP || mode == WIFI_MODE_APSTA;
+}
+
+bool IsValidMode(wifi_mode_t mode) {
+  return mode >= WIFI_MODE_NULL && mode < WIFI_MODE_MAX;
+}
+
+void ResetDriverLocked(DriverState driver_state) {
+  ++g_scan_generation;
+  g_driver_state = driver_state;
+  g_station_state = driver_state == DriverState::kUninitialized
+                        ? StationState::kDisabled
+                        : StationState::kIdle;
+  g_mode = driver_state == DriverState::kUninitialized ? WIFI_MODE_NULL
+                                                        : WIFI_MODE_STA;
+  g_station_config = {};
+  g_ap_config = {};
+  g_smartconfig_started = false;
+  g_smartconfig_type = SC_TYPE_ESPTOUCH;
+  g_power_save = WIFI_PS_MIN_MODEM;
+  g_protocol = WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N;
+  g_bandwidth = WIFI_BW20;
+  g_channel = 1;
+  g_max_tx_power = 78;
+  g_country = {
+      .cc = "01",
+      .schan = 1,
+      .nchan = 11,
+      .max_tx_power = 20,
+      .policy = WIFI_COUNTRY_POLICY_AUTO,
+  };
+  g_scan_results.clear();
+  g_pending_scan_results.clear();
+  g_scan_in_progress = false;
+  g_connection.reset();
+}
 
 constexpr wifi_osi_funcs_t MakeHostWifiOsiFuncs() {
   wifi_osi_funcs_t funcs = {};
@@ -192,6 +238,7 @@ void CompleteAndPostScan(uint64_t generation) {
     g_scan_results = std::move(g_pending_scan_results);
     g_pending_scan_results.clear();
     g_scan_in_progress = false;
+    g_station_state = StationState::kIdle;
     result_count = static_cast<uint16_t>(g_scan_results.size());
   }
   wifi_event_sta_scan_done_t event = {};
@@ -214,6 +261,24 @@ void CompleteScan(void *arg) {
 
 } // namespace
 
+namespace roo_testing {
+namespace esp32 {
+namespace wifi {
+
+void Reset() {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  ResetDriverLocked(DriverState::kUninitialized);
+}
+
+StateSnapshot GetState() {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  return {g_driver_state, g_station_state, g_mode};
+}
+
+}  // namespace wifi
+}  // namespace esp32
+}  // namespace roo_testing
+
 extern "C" {
 
 // WIFI_INIT_CONFIG_DEFAULT() embeds these ESP-IDF-owned adapter tables. The
@@ -224,54 +289,147 @@ wifi_osi_funcs_t g_wifi_osi_funcs = MakeHostWifiOsiFuncs();
 const wpa_crypto_funcs_t g_wifi_default_wpa_crypto_funcs =
     MakeHostWpaCryptoFuncs();
 
-esp_err_t esp_wifi_init(const wifi_init_config_t *) { return ESP_OK; }
-esp_err_t esp_wifi_deinit(void) { return ESP_OK; }
+esp_err_t esp_wifi_init(const wifi_init_config_t *config) {
+  if (config == nullptr) return ESP_ERR_INVALID_ARG;
+  std::lock_guard<std::mutex> lock(g_mutex);
+  if (g_driver_state != DriverState::kUninitialized) {
+    return ESP_ERR_WIFI_INIT_STATE;
+  }
+  ResetDriverLocked(DriverState::kStopped);
+  return ESP_OK;
+}
+
+esp_err_t esp_wifi_deinit(void) {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  if (g_driver_state == DriverState::kUninitialized) {
+    return ESP_ERR_WIFI_NOT_INIT;
+  }
+  if (g_driver_state == DriverState::kStarted) {
+    return ESP_ERR_WIFI_INIT_STATE;
+  }
+  ResetDriverLocked(DriverState::kUninitialized);
+  return ESP_OK;
+}
 
 esp_err_t esp_wifi_set_mode(wifi_mode_t mode) {
-  std::lock_guard<std::mutex> lock(g_mutex);
-  g_mode = mode;
+  if (!IsValidMode(mode)) return ESP_ERR_INVALID_ARG;
+  wifi_mode_t previous_mode;
+  bool started;
+  {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (g_driver_state == DriverState::kUninitialized) {
+      return ESP_ERR_WIFI_NOT_INIT;
+    }
+    previous_mode = g_mode;
+    started = g_driver_state == DriverState::kStarted;
+    g_mode = mode;
+    if (!HasStation(mode)) {
+      ++g_scan_generation;
+      g_scan_in_progress = false;
+      g_pending_scan_results.clear();
+      g_connection.reset();
+      g_station_state = StationState::kDisabled;
+    } else if (!HasStation(previous_mode)) {
+      g_station_state = StationState::kIdle;
+    }
+  }
+  if (started && HasStation(previous_mode) != HasStation(mode)) {
+    esp_event_post(WIFI_EVENT, HasStation(mode) ? WIFI_EVENT_STA_START
+                                                : WIFI_EVENT_STA_STOP,
+                   nullptr, 0, portMAX_DELAY);
+  }
+  if (started && HasAccessPoint(previous_mode) != HasAccessPoint(mode)) {
+    esp_event_post(WIFI_EVENT, HasAccessPoint(mode) ? WIFI_EVENT_AP_START
+                                                    : WIFI_EVENT_AP_STOP,
+                   nullptr, 0, portMAX_DELAY);
+  }
   return ESP_OK;
 }
 esp_err_t esp_wifi_get_mode(wifi_mode_t *mode) {
   if (mode == nullptr)
     return ESP_ERR_INVALID_ARG;
   std::lock_guard<std::mutex> lock(g_mutex);
+  if (g_driver_state == DriverState::kUninitialized) {
+    return ESP_ERR_WIFI_NOT_INIT;
+  }
   *mode = g_mode;
   return ESP_OK;
 }
 
 esp_err_t esp_wifi_start(void) {
+  wifi_mode_t mode;
   {
     std::lock_guard<std::mutex> lock(g_mutex);
-    g_started = true;
+    if (g_driver_state == DriverState::kUninitialized) {
+      return ESP_ERR_WIFI_NOT_INIT;
+    }
+    if (g_mode == WIFI_MODE_NULL) return ESP_ERR_WIFI_MODE;
+    if (g_driver_state == DriverState::kStarted) return ESP_OK;
+    g_driver_state = DriverState::kStarted;
+    g_station_state = HasStation(g_mode) ? StationState::kIdle
+                                         : StationState::kDisabled;
+    mode = g_mode;
   }
-  if (g_mode == WIFI_MODE_STA || g_mode == WIFI_MODE_APSTA) {
+  if (HasStation(mode)) {
     esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_START, nullptr, 0, portMAX_DELAY);
   }
-  if (g_mode == WIFI_MODE_AP || g_mode == WIFI_MODE_APSTA) {
+  if (HasAccessPoint(mode)) {
     esp_event_post(WIFI_EVENT, WIFI_EVENT_AP_START, nullptr, 0, portMAX_DELAY);
   }
   return ESP_OK;
 }
 
 esp_err_t esp_wifi_stop(void) {
+  wifi_mode_t mode;
   {
     std::lock_guard<std::mutex> lock(g_mutex);
-    g_started = false;
+    if (g_driver_state == DriverState::kUninitialized) {
+      return ESP_ERR_WIFI_NOT_INIT;
+    }
+    if (g_driver_state == DriverState::kStopped) return ESP_OK;
+    mode = g_mode;
+    g_driver_state = DriverState::kStopped;
+    g_station_state = HasStation(mode) ? StationState::kIdle
+                                       : StationState::kDisabled;
+    ++g_scan_generation;
+    g_scan_in_progress = false;
+    g_pending_scan_results.clear();
     g_connection.reset();
   }
-  esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_STOP, nullptr, 0, portMAX_DELAY);
+  if (HasStation(mode)) {
+    esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_STOP, nullptr, 0, portMAX_DELAY);
+  }
+  if (HasAccessPoint(mode)) {
+    esp_event_post(WIFI_EVENT, WIFI_EVENT_AP_STOP, nullptr, 0, portMAX_DELAY);
+  }
   return ESP_OK;
 }
-esp_err_t esp_wifi_restore(void) { return ESP_OK; }
+esp_err_t esp_wifi_restore(void) {
+  std::lock_guard<std::mutex> lock(g_mutex);
+  if (g_driver_state == DriverState::kUninitialized) {
+    return ESP_ERR_WIFI_NOT_INIT;
+  }
+  const DriverState state = g_driver_state;
+  ResetDriverLocked(state);
+  return ESP_OK;
+}
 esp_err_t esp_wifi_clear_fast_connect(void) { return ESP_OK; }
 
 esp_err_t esp_wifi_connect(void) {
   AccessPoint *ap;
   {
     std::lock_guard<std::mutex> lock(g_mutex);
-    if (!g_started)
+    if (g_driver_state == DriverState::kUninitialized)
+      return ESP_ERR_WIFI_NOT_INIT;
+    if (g_driver_state != DriverState::kStarted)
       return ESP_ERR_WIFI_NOT_STARTED;
+    if (!HasStation(g_mode)) return ESP_ERR_WIFI_MODE;
+    if (g_station_state == StationState::kScanning ||
+        g_station_state == StationState::kConnecting) {
+      return ESP_ERR_WIFI_STATE;
+    }
+    if (g_station_config.sta.ssid[0] == '\0') return ESP_ERR_WIFI_SSID;
+    g_station_state = StationState::kConnecting;
     ap = FindConfiguredAccessPoint();
     if (ap == nullptr) {
       // Post outside the lock because handlers may call back into Wi-Fi APIs.
@@ -283,10 +441,18 @@ esp_err_t esp_wifi_connect(void) {
     }
   }
   if (ap == nullptr) {
+    {
+      std::lock_guard<std::mutex> lock(g_mutex);
+      g_station_state = StationState::kIdle;
+    }
     PostDisconnect(WIFI_REASON_NO_AP_FOUND);
     return ESP_OK;
   }
   if (ap == reinterpret_cast<AccessPoint *>(1)) {
+    {
+      std::lock_guard<std::mutex> lock(g_mutex);
+      g_station_state = StationState::kIdle;
+    }
     PostDisconnect(WIFI_REASON_AUTH_FAIL);
     return ESP_OK;
   }
@@ -296,6 +462,7 @@ esp_err_t esp_wifi_connect(void) {
   {
     std::lock_guard<std::mutex> lock(g_mutex);
     g_connection = ap->createConnection(MacAddress(mac));
+    g_station_state = StationState::kAssociated;
   }
   wifi_event_sta_connected_t connected = {};
   CopyMac(ap->macAddress(), connected.bssid);
@@ -313,29 +480,46 @@ esp_err_t esp_wifi_connect(void) {
   got_ip.esp_netif = g_station_netif;
   if (g_station_netif != nullptr)
     got_ip.ip_info = g_station_netif->ip_info;
+  {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    g_station_state = StationState::kGotIp;
+  }
   esp_event_post(IP_EVENT, IP_EVENT_STA_GOT_IP, &got_ip, sizeof(got_ip),
                  portMAX_DELAY);
   return ESP_OK;
 }
 
 esp_err_t esp_wifi_disconnect(void) {
+  bool connected;
   {
     std::lock_guard<std::mutex> lock(g_mutex);
+    if (g_driver_state == DriverState::kUninitialized) {
+      return ESP_ERR_WIFI_NOT_INIT;
+    }
+    if (g_driver_state != DriverState::kStarted) {
+      return ESP_ERR_WIFI_NOT_STARTED;
+    }
+    if (!HasStation(g_mode)) return ESP_ERR_WIFI_MODE;
+    connected = g_connection != nullptr;
     g_connection.reset();
+    g_station_state = StationState::kIdle;
   }
-  PostDisconnect(WIFI_REASON_ASSOC_LEAVE);
+  if (connected) PostDisconnect(WIFI_REASON_ASSOC_LEAVE);
   return ESP_OK;
 }
 
 esp_err_t esp_wifi_scan_start(const wifi_scan_config_t *config, bool block) {
   {
     std::lock_guard<std::mutex> lock(g_mutex);
-    if (!g_started)
+    if (g_driver_state == DriverState::kUninitialized)
+      return ESP_ERR_WIFI_NOT_INIT;
+    if (g_driver_state != DriverState::kStarted)
       return ESP_ERR_WIFI_NOT_STARTED;
     if (g_mode != WIFI_MODE_STA && g_mode != WIFI_MODE_APSTA) {
       return ESP_ERR_WIFI_MODE;
     }
-    if (g_scan_in_progress)
+    if (g_station_state == StationState::kConnecting ||
+        g_scan_in_progress)
       return ESP_ERR_WIFI_STATE;
   }
   std::vector<wifi_ap_record_t> results;
@@ -372,6 +556,7 @@ esp_err_t esp_wifi_scan_start(const wifi_scan_config_t *config, bool block) {
     std::lock_guard<std::mutex> lock(g_mutex);
     g_pending_scan_results = std::move(results);
     g_scan_in_progress = true;
+    g_station_state = StationState::kScanning;
     generation = ++g_scan_generation;
   }
   if (block) {
@@ -383,6 +568,7 @@ esp_err_t esp_wifi_scan_start(const wifi_scan_config_t *config, bool block) {
     if (completion == nullptr) {
       std::lock_guard<std::mutex> lock(g_mutex);
       g_scan_in_progress = false;
+      g_station_state = StationState::kIdle;
       g_pending_scan_results.clear();
       return ESP_ERR_NO_MEM;
     }
@@ -390,6 +576,7 @@ esp_err_t esp_wifi_scan_start(const wifi_scan_config_t *config, bool block) {
                     tskIDLE_PRIORITY + 2, nullptr) != pdPASS) {
       std::lock_guard<std::mutex> lock(g_mutex);
       g_scan_in_progress = false;
+      g_station_state = StationState::kIdle;
       g_pending_scan_results.clear();
       return ESP_ERR_NO_MEM;
     }
@@ -400,12 +587,15 @@ esp_err_t esp_wifi_scan_start(const wifi_scan_config_t *config, bool block) {
 
 esp_err_t esp_wifi_scan_stop(void) {
   std::lock_guard<std::mutex> lock(g_mutex);
-  if (!g_started)
+  if (g_driver_state == DriverState::kUninitialized)
+    return ESP_ERR_WIFI_NOT_INIT;
+  if (g_driver_state != DriverState::kStarted)
     return ESP_ERR_WIFI_NOT_STARTED;
   if (!g_scan_in_progress)
     return ESP_OK;
   ++g_scan_generation;
   g_scan_in_progress = false;
+  g_station_state = StationState::kIdle;
   g_pending_scan_results.clear();
   return ESP_OK;
 }

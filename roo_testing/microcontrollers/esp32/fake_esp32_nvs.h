@@ -3,6 +3,7 @@
 #include <inttypes.h>
 
 #include <string>
+#include <vector>
 
 // #include "esp_err.h"
 // #include "nvs.h"
@@ -27,6 +28,12 @@ class Nvs {
     I64 = 0x18,
     STR = 0x21,
     BLOB = 0x42,
+  };
+
+  struct EntryInfo {
+    std::string namespace_name;
+    std::string key;
+    Type type;
   };
 
   Nvs(const std::string& path);
@@ -67,6 +74,11 @@ class Nvs {
                      size_t* length);
 
   esp_err_t find_key(nvs_handle_t handle, const char* key, Type* out_type);
+
+  esp_err_t list_entries(const char* part_name, const char* namespace_name,
+                         int type, std::vector<EntryInfo>* entries);
+  esp_err_t list_entries(nvs_handle_t handle, int type,
+                         std::vector<EntryInfo>* entries);
 
   esp_err_t commit();
 

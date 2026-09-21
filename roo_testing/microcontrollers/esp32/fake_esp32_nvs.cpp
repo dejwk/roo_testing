@@ -23,6 +23,7 @@
 // #include "nvs_flash.h"
 
 #define ESP_OK 0
+#define ESP_ERR_INVALID_ARG 0x102
 
 #define ESP_ERR_NVS_BASE 0x1100 /*!< Starting number of error codes */
 #define ESP_ERR_NVS_NOT_INITIALIZED \
@@ -795,6 +796,36 @@ class NvsImpl {
     return ESP_OK;
   }
 
+  esp_err_t list_entries(const char* part_name, const char* namespace_name,
+                         int type, std::vector<Nvs::EntryInfo>* entries) {
+    if (part_name == nullptr || entries == nullptr) return ESP_ERR_INVALID_ARG;
+    auto part = storage_.partitions.find(part_name);
+    if (part == storage_.partitions.end()) return ESP_ERR_NVS_PART_NOT_FOUND;
+
+    entries->clear();
+    for (const auto& name_space : part->second.name_spaces) {
+      if (namespace_name != nullptr && name_space.first != namespace_name) {
+        continue;
+      }
+      for (const auto& entry : name_space.second.entries) {
+        if (type != 0xFF && type != static_cast<int>(entry.second.type)) {
+          continue;
+        }
+        entries->push_back(
+            {name_space.first, entry.first, entry.second.type});
+      }
+    }
+    return entries->empty() ? ESP_ERR_NVS_NOT_FOUND : ESP_OK;
+  }
+
+  esp_err_t list_entries(nvs_handle_t handle, int type,
+                         std::vector<Nvs::EntryInfo>* entries) {
+    auto entry = open_partitions_.find(handle);
+    if (entry == open_partitions_.end()) return ESP_ERR_NVS_INVALID_HANDLE;
+    return list_entries(entry->second.partition_name.c_str(),
+                        entry->second.ns_name.c_str(), type, entries);
+  }
+
   void close(nvs_handle_t handle) { open_partitions_.erase(handle); }
 
   esp_err_t erase_key(nvs_handle_t handle, const char* key) {
@@ -1013,6 +1044,16 @@ esp_err_t Nvs::get_blob(nvs_handle_t handle, const char* key, char* value,
 
 esp_err_t Nvs::find_key(nvs_handle_t handle, const char* key, Type* out_type) {
   return impl_->find_key(handle, key, out_type);
+}
+
+esp_err_t Nvs::list_entries(const char* part_name, const char* namespace_name,
+                            int type, std::vector<EntryInfo>* entries) {
+  return impl_->list_entries(part_name, namespace_name, type, entries);
+}
+
+esp_err_t Nvs::list_entries(nvs_handle_t handle, int type,
+                            std::vector<EntryInfo>* entries) {
+  return impl_->list_entries(handle, type, entries);
 }
 
 esp_err_t Nvs::commit() {

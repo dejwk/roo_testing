@@ -477,6 +477,17 @@ cc_test(
 )
 
 cc_test(
+    name = "nvs_iterator_test",
+    size = "small",
+    srcs = ["nvs_iterator_test.cpp"],
+    linkstatic = 1,
+    deps = [
+        "//:arduino_gtest_main",
+        "//roo_testing/frameworks/esp32_shims:idf",
+    ],
+)
+
+cc_test(
     name = "freertos_posix_isr_context_test",
     size = "small",
     srcs = [

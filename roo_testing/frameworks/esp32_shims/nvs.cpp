@@ -3,6 +3,8 @@
 
 #include <string.h>
 
+#include <vector>
+
 #include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 
 namespace {
@@ -12,6 +14,11 @@ constexpr char kDefaultPartition[] = "nvs";
 Nvs& Storage() { return FakeEsp32().nvs; }
 
 }  // namespace
+
+struct nvs_opaque_iterator_t {
+  std::vector<Nvs::EntryInfo> entries;
+  size_t index = 0;
+};
 
 extern "C" {
 
@@ -128,6 +135,61 @@ esp_err_t nvs_find_key(nvs_handle_t h, const char* k, nvs_type_t* out_type) {
   }
   return result;
 }
+
+esp_err_t nvs_entry_find(const char* part_name, const char* namespace_name,
+                         nvs_type_t type, nvs_iterator_t* output_iterator) {
+  if (part_name == nullptr || output_iterator == nullptr) {
+    return ESP_ERR_INVALID_ARG;
+  }
+  auto* iterator = new nvs_opaque_iterator_t;
+  esp_err_t result = Storage().list_entries(
+      part_name, namespace_name, static_cast<int>(type), &iterator->entries);
+  if (result != ESP_OK) {
+    delete iterator;
+    *output_iterator = nullptr;
+    return result;
+  }
+  *output_iterator = iterator;
+  return ESP_OK;
+}
+
+esp_err_t nvs_entry_find_in_handle(nvs_handle_t handle, nvs_type_t type,
+                                   nvs_iterator_t* output_iterator) {
+  if (output_iterator == nullptr) return ESP_ERR_INVALID_ARG;
+  auto* iterator = new nvs_opaque_iterator_t;
+  esp_err_t result = Storage().list_entries(
+      handle, static_cast<int>(type), &iterator->entries);
+  if (result != ESP_OK) {
+    delete iterator;
+    *output_iterator = nullptr;
+    return result;
+  }
+  *output_iterator = iterator;
+  return ESP_OK;
+}
+
+esp_err_t nvs_entry_next(nvs_iterator_t* iterator) {
+  if (iterator == nullptr || *iterator == nullptr) return ESP_ERR_INVALID_ARG;
+  if (++(*iterator)->index < (*iterator)->entries.size()) return ESP_OK;
+  delete *iterator;
+  *iterator = nullptr;
+  return ESP_ERR_NVS_NOT_FOUND;
+}
+
+esp_err_t nvs_entry_info(const nvs_iterator_t iterator,
+                         nvs_entry_info_t* out_info) {
+  if (iterator == nullptr || out_info == nullptr) return ESP_ERR_INVALID_ARG;
+  if (iterator->index >= iterator->entries.size()) return ESP_ERR_INVALID_ARG;
+  const Nvs::EntryInfo& entry = iterator->entries[iterator->index];
+  memset(out_info, 0, sizeof(*out_info));
+  strncpy(out_info->namespace_name, entry.namespace_name.c_str(),
+          sizeof(out_info->namespace_name) - 1);
+  strncpy(out_info->key, entry.key.c_str(), sizeof(out_info->key) - 1);
+  out_info->type = static_cast<nvs_type_t>(entry.type);
+  return ESP_OK;
+}
+
+void nvs_release_iterator(nvs_iterator_t iterator) { delete iterator; }
 
 esp_err_t nvs_erase_key(nvs_handle_t h, const char* k) {
   return Storage().erase_key(h, k);

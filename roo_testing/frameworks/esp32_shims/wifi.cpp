@@ -46,6 +46,8 @@ struct esp_netif_obj {
 namespace {
 
 using AccessPoint = roo_testing_transducers::wifi::AccessPoint;
+using ConnectionAttempt = roo_testing_transducers::wifi::ConnectionAttempt;
+using ConnectionOutcome = roo_testing_transducers::wifi::ConnectionOutcome;
 using MacAddress = roo_testing_transducers::wifi::MacAddress;
 using DriverState = roo_testing::esp32::wifi::DriverState;
 using StationState = roo_testing::esp32::wifi::StationState;
@@ -76,6 +78,7 @@ std::vector<wifi_ap_record_t> g_scan_results;
 std::vector<wifi_ap_record_t> g_pending_scan_results;
 uint64_t g_scan_generation = 0;
 bool g_scan_in_progress = false;
+uint64_t g_connect_generation = 0;
 std::optional<wifi_ap_record_t> g_connected_ap;
 esp_netif_t *g_default_netif = nullptr;
 esp_netif_t *g_station_netif = nullptr;
@@ -101,6 +104,7 @@ bool IsValidMode(wifi_mode_t mode) {
 
 void ResetDriverLocked(DriverState driver_state) {
   ++g_scan_generation;
+  ++g_connect_generation;
   g_driver_state = driver_state;
   g_station_state = driver_state == DriverState::kUninitialized
                         ? StationState::kDisabled
@@ -194,16 +198,17 @@ wifi_ap_record_t ToRecord(const AccessPoint &ap) {
 }
 
 AccessPoint *FindConfiguredAccessPoint(
-    const roo_testing_transducers::wifi::Environment &environment) {
-  const std::string ssid = ReadStringField(g_station_config.sta.ssid,
-                                           sizeof(g_station_config.sta.ssid));
+    const roo_testing_transducers::wifi::Environment &environment,
+    const wifi_config_t &config) {
+  const std::string ssid =
+      ReadStringField(config.sta.ssid, sizeof(config.sta.ssid));
   AccessPoint *found = nullptr;
   for (const auto &entry : environment.access_points()) {
     AccessPoint *candidate = entry.second.get();
     if (candidate->ssid() != ssid)
       continue;
-    if (g_station_config.sta.bssid_set &&
-        MacAddress(g_station_config.sta.bssid) != candidate->macAddress()) {
+    if (config.sta.bssid_set &&
+        MacAddress(config.sta.bssid) != candidate->macAddress()) {
       continue;
     }
     if (found == nullptr || candidate->rssi() > found->rssi())
@@ -212,10 +217,10 @@ AccessPoint *FindConfiguredAccessPoint(
   return found;
 }
 
-void PostDisconnect(wifi_err_reason_t reason) {
+void PostDisconnect(wifi_err_reason_t reason, const wifi_config_t &config) {
   wifi_event_sta_disconnected_t event = {};
-  const std::string ssid = ReadStringField(g_station_config.sta.ssid,
-                                           sizeof(g_station_config.sta.ssid));
+  const std::string ssid =
+      ReadStringField(config.sta.ssid, sizeof(config.sta.ssid));
   event.ssid_len = static_cast<uint8_t>(
       CopyStringField(ssid, event.ssid, sizeof(event.ssid)));
   event.reason = reason;
@@ -223,11 +228,26 @@ void PostDisconnect(wifi_err_reason_t reason) {
                  portMAX_DELAY);
 }
 
+void PostDisconnect(wifi_err_reason_t reason) {
+  PostDisconnect(reason, g_station_config);
+}
+
 void PostLostIp() {
   ip_event_got_ip_t event = {};
   event.esp_netif = g_station_netif;
   esp_event_post(IP_EVENT, IP_EVENT_STA_LOST_IP, &event, sizeof(event),
                  portMAX_DELAY);
+}
+
+void PostLostIpIfCurrent(uint64_t generation) {
+  {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (generation != g_connect_generation || g_station_netif == nullptr ||
+        g_station_netif->ip_info.ip.addr != 0) {
+      return;
+    }
+  }
+  PostLostIp();
 }
 
 bool ClearStationIpLocked() {
@@ -264,6 +284,160 @@ struct PendingScanCompletion {
   uint64_t generation;
   uint32_t duration_ms;
 };
+
+struct PendingConnection {
+  uint64_t generation;
+  wifi_config_t config;
+  std::shared_ptr<const roo_testing_transducers::wifi::Environment> environment;
+  ConnectionAttempt attempt;
+  bool lost_previous_ip;
+};
+
+bool IsConnectionCurrentLocked(uint64_t generation) {
+  return generation == g_connect_generation &&
+         g_driver_state == DriverState::kStarted && HasStation(g_mode) &&
+         g_station_state != StationState::kIdle &&
+         g_station_state != StationState::kDisabled;
+}
+
+bool DelayConnection(uint64_t generation, uint32_t delay_ms) {
+  if (delay_ms != 0)
+    vTaskDelay(pdMS_TO_TICKS(delay_ms));
+  std::lock_guard<std::mutex> lock(g_mutex);
+  return IsConnectionCurrentLocked(generation);
+}
+
+wifi_err_reason_t ResolveAssociation(
+    const roo_testing_transducers::wifi::Environment &environment,
+    const wifi_config_t &config, ConnectionOutcome outcome, AccessPoint **ap) {
+  *ap = FindConfiguredAccessPoint(environment, config);
+  if (outcome == ConnectionOutcome::kNoAccessPoint || *ap == nullptr)
+    return WIFI_REASON_NO_AP_FOUND;
+  if (outcome == ConnectionOutcome::kAuthenticationFailure)
+    return WIFI_REASON_AUTH_FAIL;
+  if (outcome == ConnectionOutcome::kAutomatic) {
+    const std::string password =
+        ReadStringField(config.sta.password, sizeof(config.sta.password));
+    if ((*ap)->passwd() != password)
+      return WIFI_REASON_AUTH_FAIL;
+  }
+  return WIFI_REASON_UNSPECIFIED;
+}
+
+void PostConnected(const AccessPoint &ap) {
+  wifi_event_sta_connected_t connected = {};
+  CopyMac(ap.macAddress(), connected.bssid);
+  connected.ssid_len = static_cast<uint8_t>(
+      CopyStringField(ap.ssid(), connected.ssid, sizeof(connected.ssid)));
+  connected.channel = static_cast<uint8_t>(ap.channel());
+  connected.authmode = ToAuthMode(ap.auth_mode());
+  esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED, &connected,
+                 sizeof(connected), portMAX_DELAY);
+}
+
+void CompleteConnection(PendingConnection *pending) {
+  ConnectionAttempt attempt = pending->attempt;
+  const uint16_t attempt_count = pending->config.sta.failure_retry_cnt + 1;
+  AccessPoint *ap = nullptr;
+  wifi_err_reason_t failure = WIFI_REASON_UNSPECIFIED;
+
+  for (uint16_t index = 0; index < attempt_count; ++index) {
+    if (!DelayConnection(pending->generation, attempt.association_delay_ms))
+      return;
+    failure = ResolveAssociation(*pending->environment, pending->config,
+                                 attempt.outcome, &ap);
+    if (failure == WIFI_REASON_UNSPECIFIED)
+      break;
+    if (index + 1 < attempt_count)
+      attempt = pending->environment->nextConnectionAttempt();
+  }
+
+  if (failure != WIFI_REASON_UNSPECIFIED) {
+    {
+      std::lock_guard<std::mutex> lock(g_mutex);
+      if (!IsConnectionCurrentLocked(pending->generation))
+        return;
+      g_station_state = StationState::kIdle;
+    }
+    PostDisconnect(failure, pending->config);
+    if (pending->lost_previous_ip)
+      PostLostIpIfCurrent(pending->generation);
+    return;
+  }
+
+  if (pending->lost_previous_ip)
+    PostLostIpIfCurrent(pending->generation);
+  {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (!IsConnectionCurrentLocked(pending->generation))
+      return;
+    g_connected_ap = ToRecord(*ap);
+    g_station_state = StationState::kAssociated;
+  }
+  PostConnected(*ap);
+
+  if (attempt.outcome == ConnectionOutcome::kDhcpTimeout)
+    return;
+  if (!DelayConnection(pending->generation, attempt.dhcp_delay_ms))
+    return;
+
+  ip_event_got_ip_t got_ip = {};
+  bool has_ip = false;
+  {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (!IsConnectionCurrentLocked(pending->generation))
+      return;
+    // Arduino creates its AP netif before its station netif. Always deliver
+    // the lease to the station that completed this connection attempt.
+    got_ip.esp_netif = g_station_netif;
+    if (g_station_netif != nullptr) {
+      g_station_netif->up = true;
+      if (g_station_netif->dhcp_client == ESP_NETIF_DHCP_STARTED &&
+          g_station_netif->ip_info.ip.addr == 0) {
+        AssignDhcpLeaseLocked();
+      }
+      got_ip.ip_info = g_station_netif->ip_info;
+      has_ip = got_ip.ip_info.ip.addr != 0;
+    }
+    if (has_ip)
+      g_station_state = StationState::kGotIp;
+  }
+  if (has_ip) {
+    esp_event_post(IP_EVENT, IP_EVENT_STA_GOT_IP, &got_ip, sizeof(got_ip),
+                   portMAX_DELAY);
+  }
+
+  if (attempt.outcome != ConnectionOutcome::kBeaconTimeout &&
+      attempt.outcome != ConnectionOutcome::kRoaming) {
+    return;
+  }
+  if (!DelayConnection(pending->generation, attempt.connected_duration_ms))
+    return;
+
+  bool lost_ip;
+  {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (!IsConnectionCurrentLocked(pending->generation))
+      return;
+    g_connected_ap.reset();
+    lost_ip = ClearStationIpLocked();
+    g_station_state = StationState::kIdle;
+  }
+  PostDisconnect(attempt.outcome == ConnectionOutcome::kRoaming
+                     ? WIFI_REASON_ROAMING
+                     : WIFI_REASON_BEACON_TIMEOUT,
+                 pending->config);
+  if (lost_ip)
+    PostLostIpIfCurrent(pending->generation);
+}
+
+void CompleteConnectionTask(void *arg) {
+  std::unique_ptr<PendingConnection> pending(
+      static_cast<PendingConnection *>(arg));
+  CompleteConnection(pending.get());
+  pending.reset();
+  vTaskDelete(nullptr);
+}
 
 void CompleteAndPostScan(uint64_t generation) {
   uint16_t result_count;
@@ -368,6 +542,7 @@ esp_err_t esp_wifi_set_mode(wifi_mode_t mode) {
     g_mode = mode;
     if (!HasStation(mode)) {
       ++g_scan_generation;
+      ++g_connect_generation;
       g_scan_in_progress = false;
       g_pending_scan_results.clear();
       disconnected = g_connected_ap.has_value();
@@ -451,6 +626,7 @@ esp_err_t esp_wifi_stop(void) {
     g_station_state = HasStation(mode) ? StationState::kIdle
                                        : StationState::kDisabled;
     ++g_scan_generation;
+    ++g_connect_generation;
     g_scan_in_progress = false;
     g_pending_scan_results.clear();
     disconnected = g_connected_ap.has_value();
@@ -485,9 +661,10 @@ esp_err_t esp_wifi_restore(void) {
 esp_err_t esp_wifi_clear_fast_connect(void) { return ESP_OK; }
 
 esp_err_t esp_wifi_connect(void) {
-  AccessPoint *ap;
-  std::shared_ptr<const roo_testing_transducers::wifi::Environment> environment;
-  bool lost_previous_ip;
+  std::unique_ptr<PendingConnection> pending(
+      new (std::nothrow) PendingConnection());
+  if (pending == nullptr)
+    return ESP_ERR_NO_MEM;
   {
     std::lock_guard<std::mutex> lock(g_mutex);
     if (g_driver_state == DriverState::kUninitialized)
@@ -500,83 +677,33 @@ esp_err_t esp_wifi_connect(void) {
     }
     if (g_station_config.sta.ssid[0] == '\0') return ESP_ERR_WIFI_SSID;
     g_connected_ap.reset();
-    lost_previous_ip = ClearStationIpLocked();
+    pending->lost_previous_ip = ClearStationIpLocked();
     g_station_state = StationState::kConnecting;
-    environment = FakeEsp32().acquireWifiEnvironment();
-    ap = FindConfiguredAccessPoint(*environment);
-    if (ap == nullptr) {
-      // Post outside the lock because handlers may call back into Wi-Fi APIs.
-    } else {
-      const std::string password =
-          ReadStringField(g_station_config.sta.password,
-                          sizeof(g_station_config.sta.password));
-      if (ap->passwd() != password)
-        ap = reinterpret_cast<AccessPoint *>(1);
-    }
+    pending->generation = ++g_connect_generation;
+    pending->config = g_station_config;
+    pending->environment = FakeEsp32().acquireWifiEnvironment();
+    pending->attempt = pending->environment->nextConnectionAttempt();
   }
-  if (ap == nullptr) {
-    {
-      std::lock_guard<std::mutex> lock(g_mutex);
-      g_station_state = StationState::kIdle;
-    }
-    PostDisconnect(WIFI_REASON_NO_AP_FOUND);
-    if (lost_previous_ip)
-      PostLostIp();
+
+  const bool asynchronous =
+      pending->attempt.association_delay_ms != 0 ||
+      pending->attempt.dhcp_delay_ms != 0 ||
+      pending->attempt.connected_duration_ms != 0 ||
+      pending->config.sta.failure_retry_cnt != 0 ||
+      pending->attempt.outcome == ConnectionOutcome::kBeaconTimeout ||
+      pending->attempt.outcome == ConnectionOutcome::kRoaming;
+  if (!asynchronous) {
+    CompleteConnection(pending.get());
     return ESP_OK;
   }
-  if (ap == reinterpret_cast<AccessPoint *>(1)) {
-    {
-      std::lock_guard<std::mutex> lock(g_mutex);
+  if (xTaskCreate(CompleteConnectionTask, "wifi_connect", 4096, pending.get(),
+                  tskIDLE_PRIORITY + 2, nullptr) != pdPASS) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (pending->generation == g_connect_generation)
       g_station_state = StationState::kIdle;
-    }
-    PostDisconnect(WIFI_REASON_AUTH_FAIL);
-    if (lost_previous_ip)
-      PostLostIp();
-    return ESP_OK;
+    return ESP_ERR_NO_MEM;
   }
-
-  if (lost_previous_ip)
-    PostLostIp();
-
-  uint8_t mac[6];
-  esp_read_mac(mac, ESP_MAC_WIFI_STA);
-  {
-    std::lock_guard<std::mutex> lock(g_mutex);
-    g_connected_ap = ToRecord(*ap);
-    g_station_state = StationState::kAssociated;
-  }
-  wifi_event_sta_connected_t connected = {};
-  CopyMac(ap->macAddress(), connected.bssid);
-  connected.ssid_len = static_cast<uint8_t>(
-      CopyStringField(ap->ssid(), connected.ssid, sizeof(connected.ssid)));
-  connected.channel = static_cast<uint8_t>(ap->channel());
-  connected.authmode = ToAuthMode(ap->auth_mode());
-  esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED, &connected,
-                 sizeof(connected), portMAX_DELAY);
-
-  ip_event_got_ip_t got_ip = {};
-  bool has_ip = false;
-  {
-    std::lock_guard<std::mutex> lock(g_mutex);
-    // The default netif may be the access point: Arduino creates it before the
-    // station netif. Deliver the IP event to the station that just connected.
-    got_ip.esp_netif = g_station_netif;
-    if (g_station_netif != nullptr) {
-      g_station_netif->up = true;
-      if (g_station_netif->dhcp_client == ESP_NETIF_DHCP_STARTED &&
-          g_station_netif->ip_info.ip.addr == 0) {
-        AssignDhcpLeaseLocked();
-      }
-      got_ip.ip_info = g_station_netif->ip_info;
-      has_ip = got_ip.ip_info.ip.addr != 0;
-    }
-    if (has_ip)
-      g_station_state = StationState::kGotIp;
-  }
-  if (has_ip) {
-    esp_event_post(IP_EVENT, IP_EVENT_STA_GOT_IP, &got_ip, sizeof(got_ip),
-                   portMAX_DELAY);
-  }
+  pending.release();
   return ESP_OK;
 }
 
@@ -592,6 +719,7 @@ esp_err_t esp_wifi_disconnect(void) {
       return ESP_ERR_WIFI_NOT_STARTED;
     }
     if (!HasStation(g_mode)) return ESP_ERR_WIFI_MODE;
+    ++g_connect_generation;
     connected = g_connected_ap.has_value();
     g_connected_ap.reset();
     lost_ip = ClearStationIpLocked();
@@ -622,9 +750,9 @@ esp_err_t esp_wifi_scan_start(const wifi_scan_config_t *config, bool block) {
   const auto environment = FakeEsp32().acquireWifiEnvironment();
   for (const auto &entry : environment->access_points()) {
     const AccessPoint &ap = *entry.second;
+    if (!ap.isVisible() && (config == nullptr || !config->show_hidden))
+      continue;
     if (config != nullptr) {
-      if (!ap.isVisible() && !config->show_hidden)
-        continue;
       if (config->channel != 0 && config->channel != ap.channel())
         continue;
       if (config->ssid != nullptr &&

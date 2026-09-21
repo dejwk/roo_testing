@@ -24,6 +24,25 @@ void OnScanDone(void* arg, esp_event_base_t, int32_t, void*) {
   state->delivered = true;
 }
 
+struct ReconnectDeliveryState {
+  std::atomic<int> connected{0};
+  std::atomic<int> disconnected{0};
+  std::atomic<int> got_ip{0};
+};
+
+void OnReconnectEvent(void* arg, esp_event_base_t event_base, int32_t event_id,
+                      void*) {
+  auto* state = static_cast<ReconnectDeliveryState*>(arg);
+  if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_CONNECTED) {
+    ++state->connected;
+  } else if (event_base == WIFI_EVENT &&
+             event_id == WIFI_EVENT_STA_DISCONNECTED) {
+    ++state->disconnected;
+  } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+    ++state->got_ip;
+  }
+}
+
 // Pumps Arduino tasks until the requested WiFi status arrives or times out.
 bool WaitForWifiStatus(wl_status_t expected,
                        std::chrono::milliseconds timeout) {
@@ -104,6 +123,60 @@ TEST(ArduinoWifiScanTest, ConnectsAndReconnectsThroughArduinoApi) {
   ASSERT_TRUE(WaitForWifiStatus(WL_CONNECTED, std::chrono::seconds(1)));
   EXPECT_NE(static_cast<uint32_t>(WiFi.localIP()), 0U);
 
+  EXPECT_TRUE(WiFi.disconnect(true, true, 1000));
+}
+
+// Verifies a scripted link loss exercises Arduino's automatic reconnect path.
+TEST(ArduinoWifiScanTest, AutoReconnectsAfterBeaconTimeout) {
+  using roo_testing_transducers::wifi::AccessPoint;
+  using roo_testing_transducers::wifi::ConnectionAttempt;
+  using roo_testing_transducers::wifi::ConnectionOutcome;
+  using roo_testing_transducers::wifi::Environment;
+  using roo_testing_transducers::wifi::MacAddress;
+
+  ASSERT_TRUE(WiFi.mode(WIFI_OFF));
+  auto environment = std::make_shared<Environment>();
+  environment->addAccessPoint(std::make_unique<AccessPoint>(
+      MacAddress(0x02, 0x00, 0x00, 0x00, 0x00, 0x03), "auto-reconnect"));
+  environment->queueConnectionAttempt(ConnectionAttempt{
+      ConnectionOutcome::kBeaconTimeout, 0, 0, 20});
+  environment->queueConnectionAttempt(
+      ConnectionAttempt{ConnectionOutcome::kSuccess});
+  FakeEsp32().setWifiEnvironment(environment);
+
+  ReconnectDeliveryState delivery;
+  esp_event_handler_instance_t wifi_instance = nullptr;
+  esp_event_handler_instance_t ip_instance = nullptr;
+  ASSERT_EQ(esp_event_handler_instance_register(
+                WIFI_EVENT, ESP_EVENT_ANY_ID, OnReconnectEvent, &delivery,
+                &wifi_instance),
+            ESP_OK);
+  ASSERT_EQ(esp_event_handler_instance_register(
+                IP_EVENT, ESP_EVENT_ANY_ID, OnReconnectEvent, &delivery,
+                &ip_instance),
+            ESP_OK);
+
+  ASSERT_TRUE(WiFi.setAutoReconnect(true));
+  WiFi.begin("auto-reconnect");
+  const auto deadline =
+      std::chrono::steady_clock::now() + std::chrono::seconds(2);
+  while ((delivery.disconnected < 1 || delivery.got_ip < 2) &&
+         std::chrono::steady_clock::now() < deadline) {
+    delay(1);
+  }
+
+  EXPECT_GE(delivery.connected.load(), 2);
+  EXPECT_GE(delivery.disconnected.load(), 1);
+  EXPECT_GE(delivery.got_ip.load(), 2);
+  EXPECT_EQ(WiFi.status(), WL_CONNECTED);
+  EXPECT_NE(static_cast<uint32_t>(WiFi.localIP()), 0U);
+
+  EXPECT_EQ(esp_event_handler_instance_unregister(
+                WIFI_EVENT, ESP_EVENT_ANY_ID, wifi_instance),
+            ESP_OK);
+  EXPECT_EQ(esp_event_handler_instance_unregister(
+                IP_EVENT, ESP_EVENT_ANY_ID, ip_instance),
+            ESP_OK);
   EXPECT_TRUE(WiFi.disconnect(true, true, 1000));
 }
 

@@ -57,16 +57,19 @@ struct NetworkEventCapture {
   SemaphoreHandle_t got_ip = nullptr;
   SemaphoreHandle_t lost_ip = nullptr;
   SemaphoreHandle_t scan_done = nullptr;
+  wifi_err_reason_t disconnect_reason = WIFI_REASON_UNSPECIFIED;
 };
 
 void CaptureNetworkEvent(void *arg, esp_event_base_t event_base,
-                         int32_t event_id, void *) {
+                         int32_t event_id, void *event_data) {
   auto *capture = static_cast<NetworkEventCapture *>(arg);
   SemaphoreHandle_t semaphore = nullptr;
   if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_CONNECTED) {
     semaphore = capture->connected;
   } else if (event_base == WIFI_EVENT &&
              event_id == WIFI_EVENT_STA_DISCONNECTED) {
+    capture->disconnect_reason = static_cast<wifi_err_reason_t>(
+        static_cast<wifi_event_sta_disconnected_t *>(event_data)->reason);
     semaphore = capture->disconnected;
   } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_SCAN_DONE) {
     semaphore = capture->scan_done;
@@ -616,6 +619,223 @@ TEST(WifiCompatTest, DeliversLifecycleEventsInOrder) {
             ESP_OK);
   EXPECT_EQ(esp_event_loop_delete_default(), ESP_OK);
   vSemaphoreDelete(capture.delivered);
+}
+
+// Verifies attempt timing, retries, cancellation, and scheduled radio changes.
+TEST(WifiCompatTest, RunsScriptedConnectionTimingAndRadioChanges) {
+  using roo_testing::esp32::wifi::StationState;
+  using roo_testing_transducers::wifi::AccessPoint;
+  using roo_testing_transducers::wifi::ConnectionAttempt;
+  using roo_testing_transducers::wifi::ConnectionOutcome;
+  using roo_testing_transducers::wifi::Environment;
+  using roo_testing_transducers::wifi::MacAddress;
+  using roo_testing_transducers::wifi::RSSI;
+
+  const MacAddress ap_mac(0x02, 0, 0, 0, 0, 9);
+  auto environment = std::make_shared<Environment>();
+  environment->setScanDurationMs(0);
+  auto ap = std::make_unique<AccessPoint>(ap_mac, "scripted");
+  ap->setRSSI(RSSI(-60));
+  environment->addAccessPoint(std::move(ap));
+  FakeEsp32().setWifiEnvironment(environment);
+
+  ASSERT_EQ(esp_event_loop_create_default(), ESP_OK);
+  NetworkEventCapture capture;
+  capture.connected = xSemaphoreCreateBinary();
+  capture.disconnected = xSemaphoreCreateBinary();
+  capture.got_ip = xSemaphoreCreateBinary();
+  capture.lost_ip = xSemaphoreCreateBinary();
+  capture.scan_done = xSemaphoreCreateBinary();
+  ASSERT_NE(capture.connected, nullptr);
+  ASSERT_NE(capture.disconnected, nullptr);
+  ASSERT_NE(capture.got_ip, nullptr);
+  ASSERT_NE(capture.lost_ip, nullptr);
+  ASSERT_NE(capture.scan_done, nullptr);
+  ASSERT_EQ(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
+                                       CaptureNetworkEvent, &capture),
+            ESP_OK);
+  ASSERT_EQ(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID,
+                                       CaptureNetworkEvent, &capture),
+            ESP_OK);
+
+  roo_testing::esp32::wifi::Reset();
+  wifi_init_config_t init_config = WIFI_INIT_CONFIG_DEFAULT();
+  ASSERT_EQ(esp_wifi_init(&init_config), ESP_OK);
+  ASSERT_EQ(esp_wifi_set_mode(WIFI_MODE_STA), ESP_OK);
+  esp_netif_t *station_netif = esp_netif_create_default_wifi_sta();
+  ASSERT_NE(station_netif, nullptr);
+  ASSERT_EQ(esp_wifi_start(), ESP_OK);
+  wifi_config_t station_config = {};
+  memcpy(station_config.sta.ssid, "scripted", sizeof("scripted"));
+  ASSERT_EQ(esp_wifi_set_config(WIFI_IF_STA, &station_config), ESP_OK);
+
+  environment->setConnectionDelays(30, 50);
+  ASSERT_EQ(esp_wifi_connect(), ESP_OK);
+  EXPECT_EQ(roo_testing::esp32::wifi::GetState().station,
+            StationState::kConnecting);
+  ASSERT_EQ(xSemaphoreTake(capture.connected, pdMS_TO_TICKS(1000)), pdTRUE);
+  EXPECT_EQ(roo_testing::esp32::wifi::GetState().station,
+            StationState::kAssociated);
+  EXPECT_EQ(xSemaphoreTake(capture.got_ip, 0), pdFALSE);
+  ASSERT_EQ(xSemaphoreTake(capture.got_ip, pdMS_TO_TICKS(1000)), pdTRUE);
+  EXPECT_EQ(roo_testing::esp32::wifi::GetState().station,
+            StationState::kGotIp);
+  ASSERT_EQ(esp_wifi_disconnect(), ESP_OK);
+  ASSERT_EQ(xSemaphoreTake(capture.disconnected, pdMS_TO_TICKS(1000)), pdTRUE);
+  ASSERT_EQ(xSemaphoreTake(capture.lost_ip, pdMS_TO_TICKS(1000)), pdTRUE);
+
+  environment->setConnectionDelays(0, 0);
+  environment->queueConnectionAttempt(
+      ConnectionAttempt{ConnectionOutcome::kNoAccessPoint});
+  environment->queueConnectionAttempt(
+      ConnectionAttempt{ConnectionOutcome::kSuccess});
+  station_config.sta.failure_retry_cnt = 1;
+  ASSERT_EQ(esp_wifi_set_config(WIFI_IF_STA, &station_config), ESP_OK);
+  ASSERT_EQ(esp_wifi_connect(), ESP_OK);
+  ASSERT_EQ(xSemaphoreTake(capture.connected, pdMS_TO_TICKS(1000)), pdTRUE);
+  ASSERT_EQ(xSemaphoreTake(capture.got_ip, pdMS_TO_TICKS(1000)), pdTRUE);
+  EXPECT_EQ(xSemaphoreTake(capture.disconnected, 0), pdFALSE);
+  ASSERT_EQ(esp_wifi_disconnect(), ESP_OK);
+  ASSERT_EQ(xSemaphoreTake(capture.disconnected, pdMS_TO_TICKS(1000)), pdTRUE);
+  ASSERT_EQ(xSemaphoreTake(capture.lost_ip, pdMS_TO_TICKS(1000)), pdTRUE);
+
+  environment->scheduleRSSI(ap_mac, RSSI(-25), 20);
+  vTaskDelay(pdMS_TO_TICKS(30));
+  ASSERT_EQ(esp_wifi_scan_start(nullptr, true), ESP_OK);
+  wifi_ap_record_t record = {};
+  ASSERT_EQ(esp_wifi_scan_get_ap_record(&record), ESP_OK);
+  EXPECT_EQ(record.rssi, -25);
+  environment->scheduleVisibility(ap_mac, false, 20);
+  vTaskDelay(pdMS_TO_TICKS(30));
+  ASSERT_EQ(esp_wifi_scan_start(nullptr, true), ESP_OK);
+  uint16_t count = 1;
+  ASSERT_EQ(esp_wifi_scan_get_ap_num(&count), ESP_OK);
+  EXPECT_EQ(count, 0);
+
+  station_config.sta.failure_retry_cnt = 0;
+  ASSERT_EQ(esp_wifi_set_config(WIFI_IF_STA, &station_config), ESP_OK);
+  environment->scheduleVisibility(ap_mac, true, 0);
+  environment->setConnectionDelays(100, 0);
+  ASSERT_EQ(esp_wifi_connect(), ESP_OK);
+  ASSERT_EQ(esp_wifi_disconnect(), ESP_OK);
+  vTaskDelay(pdMS_TO_TICKS(120));
+  EXPECT_EQ(xSemaphoreTake(capture.connected, 0), pdFALSE);
+  EXPECT_EQ(roo_testing::esp32::wifi::GetState().station,
+            StationState::kIdle);
+
+  EXPECT_EQ(esp_wifi_stop(), ESP_OK);
+  EXPECT_EQ(esp_wifi_deinit(), ESP_OK);
+  esp_netif_destroy_default_wifi(station_netif);
+  EXPECT_EQ(esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID,
+                                         CaptureNetworkEvent),
+            ESP_OK);
+  EXPECT_EQ(esp_event_handler_unregister(IP_EVENT, ESP_EVENT_ANY_ID,
+                                         CaptureNetworkEvent),
+            ESP_OK);
+  EXPECT_EQ(esp_event_loop_delete_default(), ESP_OK);
+  vSemaphoreDelete(capture.connected);
+  vSemaphoreDelete(capture.disconnected);
+  vSemaphoreDelete(capture.got_ip);
+  vSemaphoreDelete(capture.lost_ip);
+  vSemaphoreDelete(capture.scan_done);
+}
+
+// Verifies every forced failure and link-loss outcome maps to IDF events.
+TEST(WifiCompatTest, ReportsScriptedConnectionOutcomes) {
+  using roo_testing::esp32::wifi::StationState;
+  using roo_testing_transducers::wifi::AccessPoint;
+  using roo_testing_transducers::wifi::ConnectionAttempt;
+  using roo_testing_transducers::wifi::ConnectionOutcome;
+  using roo_testing_transducers::wifi::Environment;
+  using roo_testing_transducers::wifi::MacAddress;
+
+  auto environment = std::make_shared<Environment>();
+  environment->addAccessPoint(std::make_unique<AccessPoint>(
+      MacAddress(0x02, 0, 0, 0, 0, 10), "outcomes"));
+  FakeEsp32().setWifiEnvironment(environment);
+
+  ASSERT_EQ(esp_event_loop_create_default(), ESP_OK);
+  NetworkEventCapture capture;
+  capture.connected = xSemaphoreCreateBinary();
+  capture.disconnected = xSemaphoreCreateBinary();
+  capture.got_ip = xSemaphoreCreateBinary();
+  capture.lost_ip = xSemaphoreCreateBinary();
+  ASSERT_NE(capture.connected, nullptr);
+  ASSERT_NE(capture.disconnected, nullptr);
+  ASSERT_NE(capture.got_ip, nullptr);
+  ASSERT_NE(capture.lost_ip, nullptr);
+  ASSERT_EQ(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
+                                       CaptureNetworkEvent, &capture),
+            ESP_OK);
+  ASSERT_EQ(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID,
+                                       CaptureNetworkEvent, &capture),
+            ESP_OK);
+
+  roo_testing::esp32::wifi::Reset();
+  wifi_init_config_t init_config = WIFI_INIT_CONFIG_DEFAULT();
+  ASSERT_EQ(esp_wifi_init(&init_config), ESP_OK);
+  ASSERT_EQ(esp_wifi_set_mode(WIFI_MODE_STA), ESP_OK);
+  esp_netif_t *station_netif = esp_netif_create_default_wifi_sta();
+  ASSERT_NE(station_netif, nullptr);
+  ASSERT_EQ(esp_wifi_start(), ESP_OK);
+  wifi_config_t station_config = {};
+  memcpy(station_config.sta.ssid, "outcomes", sizeof("outcomes"));
+  ASSERT_EQ(esp_wifi_set_config(WIFI_IF_STA, &station_config), ESP_OK);
+
+  environment->queueConnectionAttempt(
+      ConnectionAttempt{ConnectionOutcome::kNoAccessPoint});
+  ASSERT_EQ(esp_wifi_connect(), ESP_OK);
+  ASSERT_EQ(xSemaphoreTake(capture.disconnected, pdMS_TO_TICKS(1000)), pdTRUE);
+  EXPECT_EQ(capture.disconnect_reason, WIFI_REASON_NO_AP_FOUND);
+
+  environment->queueConnectionAttempt(
+      ConnectionAttempt{ConnectionOutcome::kAuthenticationFailure});
+  ASSERT_EQ(esp_wifi_connect(), ESP_OK);
+  ASSERT_EQ(xSemaphoreTake(capture.disconnected, pdMS_TO_TICKS(1000)), pdTRUE);
+  EXPECT_EQ(capture.disconnect_reason, WIFI_REASON_AUTH_FAIL);
+
+  environment->queueConnectionAttempt(
+      ConnectionAttempt{ConnectionOutcome::kDhcpTimeout});
+  ASSERT_EQ(esp_wifi_connect(), ESP_OK);
+  ASSERT_EQ(xSemaphoreTake(capture.connected, pdMS_TO_TICKS(1000)), pdTRUE);
+  EXPECT_EQ(xSemaphoreTake(capture.got_ip, pdMS_TO_TICKS(20)), pdFALSE);
+  EXPECT_EQ(roo_testing::esp32::wifi::GetState().station,
+            StationState::kAssociated);
+  ASSERT_EQ(esp_wifi_disconnect(), ESP_OK);
+  ASSERT_EQ(xSemaphoreTake(capture.disconnected, pdMS_TO_TICKS(1000)), pdTRUE);
+
+  environment->queueConnectionAttempt(ConnectionAttempt{
+      ConnectionOutcome::kBeaconTimeout, 0, 0, 20});
+  ASSERT_EQ(esp_wifi_connect(), ESP_OK);
+  ASSERT_EQ(xSemaphoreTake(capture.connected, pdMS_TO_TICKS(1000)), pdTRUE);
+  ASSERT_EQ(xSemaphoreTake(capture.got_ip, pdMS_TO_TICKS(1000)), pdTRUE);
+  ASSERT_EQ(xSemaphoreTake(capture.disconnected, pdMS_TO_TICKS(1000)), pdTRUE);
+  EXPECT_EQ(capture.disconnect_reason, WIFI_REASON_BEACON_TIMEOUT);
+  ASSERT_EQ(xSemaphoreTake(capture.lost_ip, pdMS_TO_TICKS(1000)), pdTRUE);
+
+  environment->queueConnectionAttempt(
+      ConnectionAttempt{ConnectionOutcome::kRoaming, 0, 0, 20});
+  ASSERT_EQ(esp_wifi_connect(), ESP_OK);
+  ASSERT_EQ(xSemaphoreTake(capture.connected, pdMS_TO_TICKS(1000)), pdTRUE);
+  ASSERT_EQ(xSemaphoreTake(capture.got_ip, pdMS_TO_TICKS(1000)), pdTRUE);
+  ASSERT_EQ(xSemaphoreTake(capture.disconnected, pdMS_TO_TICKS(1000)), pdTRUE);
+  EXPECT_EQ(capture.disconnect_reason, WIFI_REASON_ROAMING);
+  ASSERT_EQ(xSemaphoreTake(capture.lost_ip, pdMS_TO_TICKS(1000)), pdTRUE);
+
+  EXPECT_EQ(esp_wifi_stop(), ESP_OK);
+  EXPECT_EQ(esp_wifi_deinit(), ESP_OK);
+  esp_netif_destroy_default_wifi(station_netif);
+  EXPECT_EQ(esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID,
+                                         CaptureNetworkEvent),
+            ESP_OK);
+  EXPECT_EQ(esp_event_handler_unregister(IP_EVENT, ESP_EVENT_ANY_ID,
+                                         CaptureNetworkEvent),
+            ESP_OK);
+  EXPECT_EQ(esp_event_loop_delete_default(), ESP_OK);
+  vSemaphoreDelete(capture.connected);
+  vSemaphoreDelete(capture.disconnected);
+  vSemaphoreDelete(capture.got_ip);
+  vSemaphoreDelete(capture.lost_ip);
 }
 
 } // namespace

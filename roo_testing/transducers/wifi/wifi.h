@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cmath>
+#include <chrono>
 #include <cstdint>
+#include <deque>
 #include <functional>
 #include <inttypes.h>
 #include <memory>
@@ -182,6 +184,29 @@ enum ConnectionFailure {
   ROAMING = 207,
 };
 
+enum class ConnectionOutcome {
+  /// Resolves the attempt from AP presence and configured credentials.
+  kAutomatic,
+  /// Associates regardless of the configured credentials.
+  kSuccess,
+  kNoAccessPoint,
+  kAuthenticationFailure,
+  /// Associates but never assigns an address or posts a got-IP event.
+  kDhcpTimeout,
+  /// Connects successfully, then reports a beacon timeout.
+  kBeaconTimeout,
+  /// Connects successfully, then reports that roaming ended the link.
+  kRoaming,
+};
+
+/// Describes one station connection attempt in the emulated environment.
+struct ConnectionAttempt {
+  ConnectionOutcome outcome = ConnectionOutcome::kAutomatic;
+  uint32_t association_delay_ms = 0;
+  uint32_t dhcp_delay_ms = 0;
+  uint32_t connected_duration_ms = 0;
+};
+
 class ConnectionEventListener {
 public:
   virtual ~ConnectionEventListener() {}
@@ -203,6 +228,9 @@ public:
   /// Copies access points and timing without borrowing the event listener.
   Environment(const Environment &other)
       : scan_duration_ms_(other.scan_duration_ms_),
+        default_attempt_(other.default_attempt_),
+        connection_attempts_(other.connection_attempts_),
+        scheduled_changes_(other.scheduled_changes_),
         event_listener_(nullptr) {
     for (const auto &entry : other.aps_) {
       addAccessPoint(std::make_unique<AccessPoint>(*entry.second));
@@ -214,12 +242,53 @@ public:
     aps_[access_point->macAddress()] = std::move(access_point);
   }
 
-  const AccessPointMap &access_points() const { return aps_; }
+  const AccessPointMap &access_points() const {
+    applyScheduledChanges();
+    return aps_;
+  }
 
   uint32_t scanDurationMs() const { return scan_duration_ms_; }
 
   void setScanDurationMs(uint32_t duration_ms) {
     scan_duration_ms_ = duration_ms;
+  }
+
+  /// Sets delays used by automatic attempts when the queue is empty.
+  void setConnectionDelays(uint32_t association_delay_ms,
+                           uint32_t dhcp_delay_ms) {
+    default_attempt_.association_delay_ms = association_delay_ms;
+    default_attempt_.dhcp_delay_ms = dhcp_delay_ms;
+  }
+
+  /// Appends a scripted result consumed by the next connection attempt.
+  void queueConnectionAttempt(ConnectionAttempt attempt) {
+    connection_attempts_.push_back(attempt);
+  }
+
+  /// Returns and consumes the next scripted attempt, or the default attempt.
+  ConnectionAttempt nextConnectionAttempt() const {
+    if (connection_attempts_.empty())
+      return default_attempt_;
+    ConnectionAttempt attempt = connection_attempts_.front();
+    connection_attempts_.pop_front();
+    return attempt;
+  }
+
+  /// Changes an AP's signal strength after the specified delay.
+  void scheduleRSSI(const MacAddress &mac, RSSI rssi, uint32_t delay_ms) {
+    scheduled_changes_.push_back(ScheduledChange(
+        mac, std::chrono::steady_clock::now() +
+                 std::chrono::milliseconds(delay_ms),
+        rssi, false, false));
+  }
+
+  /// Changes whether an AP appears in scans after the specified delay.
+  void scheduleVisibility(const MacAddress &mac, bool visible,
+                          uint32_t delay_ms) {
+    scheduled_changes_.push_back(ScheduledChange(
+        mac, std::chrono::steady_clock::now() +
+                 std::chrono::milliseconds(delay_ms),
+        RSSI(0), true, visible));
   }
 
   void setEventListener(ConnectionEventListener *listener) {
@@ -228,6 +297,40 @@ public:
 
 private:
   friend class Connection;
+
+  struct ScheduledChange {
+    ScheduledChange(const MacAddress &mac,
+                    std::chrono::steady_clock::time_point due, RSSI rssi,
+                    bool changes_visibility, bool visible)
+        : mac(mac), due(due), rssi(rssi), changes_visibility(changes_visibility),
+          visible(visible) {}
+
+    MacAddress mac;
+    std::chrono::steady_clock::time_point due;
+    RSSI rssi;
+    bool changes_visibility;
+    bool visible;
+  };
+
+  void applyScheduledChanges() const {
+    const auto now = std::chrono::steady_clock::now();
+    auto change = scheduled_changes_.begin();
+    while (change != scheduled_changes_.end()) {
+      if (change->due > now) {
+        ++change;
+        continue;
+      }
+      auto access_point = aps_.find(change->mac);
+      if (access_point != aps_.end()) {
+        if (change->changes_visibility) {
+          access_point->second->setVisible(change->visible);
+        } else {
+          access_point->second->setRSSI(change->rssi);
+        }
+      }
+      change = scheduled_changes_.erase(change);
+    }
+  }
 
   void notifyConnected(const Connection &connection);
 
@@ -238,9 +341,15 @@ private:
   void notifyConnectionFailed(const Connection &connection,
                               ConnectionFailure failure);
 
-  AccessPointMap aps_;
+  mutable AccessPointMap aps_;
 
   uint32_t scan_duration_ms_;
+
+  ConnectionAttempt default_attempt_;
+
+  mutable std::deque<ConnectionAttempt> connection_attempts_;
+
+  mutable std::deque<ScheduledChange> scheduled_changes_;
 
   ConnectionEventListener *event_listener_;
 };

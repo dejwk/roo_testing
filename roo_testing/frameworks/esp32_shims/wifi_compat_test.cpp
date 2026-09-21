@@ -1,6 +1,9 @@
+#include <initializer_list>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <type_traits>
+#include <vector>
 
 #include "esp_event.h"
 #include "esp_netif.h"
@@ -76,6 +79,63 @@ void CaptureNetworkEvent(void *arg, esp_event_base_t event_base,
     xSemaphoreGive(semaphore);
 }
 
+enum class OrderedEvent {
+  kStaStart,
+  kStaStop,
+  kApStart,
+  kConnected,
+  kDisconnected,
+  kGotIp,
+  kLostIp,
+};
+
+struct OrderedEventCapture {
+  std::mutex mutex;
+  std::vector<OrderedEvent> events;
+  SemaphoreHandle_t delivered = nullptr;
+};
+
+void CaptureOrderedEvent(void *arg, esp_event_base_t event_base,
+                         int32_t event_id, void *) {
+  auto *capture = static_cast<OrderedEventCapture *>(arg);
+  OrderedEvent event;
+  if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+    event = OrderedEvent::kStaStart;
+  } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_STOP) {
+    event = OrderedEvent::kStaStop;
+  } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_START) {
+    event = OrderedEvent::kApStart;
+  } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_CONNECTED) {
+    event = OrderedEvent::kConnected;
+  } else if (event_base == WIFI_EVENT &&
+             event_id == WIFI_EVENT_STA_DISCONNECTED) {
+    event = OrderedEvent::kDisconnected;
+  } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+    event = OrderedEvent::kGotIp;
+  } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_LOST_IP) {
+    event = OrderedEvent::kLostIp;
+  } else {
+    return;
+  }
+  {
+    std::lock_guard<std::mutex> lock(capture->mutex);
+    capture->events.push_back(event);
+  }
+  xSemaphoreGive(capture->delivered);
+}
+
+// Waits for and compares one complete event transition.
+void ExpectOrderedEvents(OrderedEventCapture &capture,
+                         std::initializer_list<OrderedEvent> expected) {
+  for (size_t i = 0; i < expected.size(); ++i) {
+    ASSERT_EQ(xSemaphoreTake(capture.delivered, pdMS_TO_TICKS(1000)), pdTRUE);
+  }
+  std::lock_guard<std::mutex> lock(capture.mutex);
+  EXPECT_EQ(capture.events,
+            std::vector<OrderedEvent>(expected.begin(), expected.end()));
+  capture.events.clear();
+}
+
 TEST(WifiCompatTest, DriverLifecycleIsExplicitAndResettable) {
   using roo_testing::esp32::wifi::DriverState;
   using roo_testing::esp32::wifi::StationState;
@@ -108,6 +168,62 @@ TEST(WifiCompatTest, DriverLifecycleIsExplicitAndResettable) {
   EXPECT_EQ(state.driver, DriverState::kUninitialized);
   EXPECT_EQ(state.station, StationState::kDisabled);
   EXPECT_EQ(state.mode, WIFI_MODE_NULL);
+}
+
+// Verifies core APIs reject calls in invalid lifecycle and interface states.
+TEST(WifiCompatTest, RejectsInvalidLifecycleAndModeCalls) {
+  roo_testing::esp32::wifi::Reset();
+  wifi_config_t wifi_config = {};
+  wifi_ap_record_t ap_record = {};
+  uint16_t ap_count = 0;
+
+  EXPECT_EQ(esp_wifi_connect(), ESP_ERR_WIFI_NOT_INIT);
+  EXPECT_EQ(esp_wifi_disconnect(), ESP_ERR_WIFI_NOT_INIT);
+  EXPECT_EQ(esp_wifi_scan_start(nullptr, false), ESP_ERR_WIFI_NOT_INIT);
+  EXPECT_EQ(esp_wifi_scan_stop(), ESP_ERR_WIFI_NOT_INIT);
+  EXPECT_EQ(esp_wifi_scan_get_ap_num(&ap_count), ESP_ERR_WIFI_NOT_INIT);
+  EXPECT_EQ(esp_wifi_scan_get_ap_records(&ap_count, nullptr),
+            ESP_ERR_WIFI_NOT_INIT);
+  EXPECT_EQ(esp_wifi_scan_get_ap_record(&ap_record), ESP_ERR_WIFI_NOT_INIT);
+  EXPECT_EQ(esp_wifi_clear_ap_list(), ESP_ERR_WIFI_NOT_INIT);
+  EXPECT_EQ(esp_wifi_set_config(WIFI_IF_STA, &wifi_config),
+            ESP_ERR_WIFI_NOT_INIT);
+  EXPECT_EQ(esp_wifi_get_config(WIFI_IF_STA, &wifi_config),
+            ESP_ERR_WIFI_NOT_INIT);
+  EXPECT_EQ(esp_wifi_sta_get_ap_info(&ap_record), ESP_ERR_WIFI_CONN);
+
+  wifi_init_config_t init_config = WIFI_INIT_CONFIG_DEFAULT();
+  ASSERT_EQ(esp_wifi_init(&init_config), ESP_OK);
+  EXPECT_EQ(esp_wifi_connect(), ESP_ERR_WIFI_NOT_STARTED);
+  EXPECT_EQ(esp_wifi_disconnect(), ESP_ERR_WIFI_NOT_STARTED);
+  EXPECT_EQ(esp_wifi_scan_start(nullptr, false), ESP_ERR_WIFI_NOT_STARTED);
+  EXPECT_EQ(esp_wifi_scan_stop(), ESP_ERR_WIFI_NOT_STARTED);
+  EXPECT_EQ(esp_wifi_scan_get_ap_num(&ap_count), ESP_ERR_WIFI_NOT_STARTED);
+  EXPECT_EQ(esp_wifi_scan_get_ap_records(&ap_count, nullptr),
+            ESP_ERR_WIFI_NOT_STARTED);
+  EXPECT_EQ(esp_wifi_scan_get_ap_record(&ap_record),
+            ESP_ERR_WIFI_NOT_STARTED);
+  EXPECT_EQ(esp_wifi_clear_ap_list(), ESP_ERR_WIFI_NOT_STARTED);
+  EXPECT_EQ(esp_wifi_set_config(WIFI_IF_AP, &wifi_config),
+            ESP_ERR_WIFI_MODE);
+  EXPECT_EQ(esp_wifi_set_config(static_cast<wifi_interface_t>(WIFI_IF_MAX),
+                                &wifi_config),
+            ESP_ERR_WIFI_IF);
+  EXPECT_EQ(esp_wifi_get_config(static_cast<wifi_interface_t>(WIFI_IF_MAX),
+                                &wifi_config),
+            ESP_ERR_WIFI_IF);
+
+  ASSERT_EQ(esp_wifi_set_mode(WIFI_MODE_AP), ESP_OK);
+  ASSERT_EQ(esp_wifi_start(), ESP_OK);
+  EXPECT_EQ(esp_wifi_connect(), ESP_ERR_WIFI_MODE);
+  EXPECT_EQ(esp_wifi_scan_start(nullptr, false), ESP_ERR_WIFI_MODE);
+  EXPECT_EQ(esp_wifi_clear_ap_list(), ESP_ERR_WIFI_MODE);
+  EXPECT_EQ(esp_wifi_set_config(WIFI_IF_STA, &wifi_config),
+            ESP_ERR_WIFI_MODE);
+  EXPECT_EQ(esp_wifi_set_config(WIFI_IF_AP, &wifi_config), ESP_OK);
+
+  EXPECT_EQ(esp_wifi_stop(), ESP_OK);
+  EXPECT_EQ(esp_wifi_deinit(), ESP_OK);
 }
 
 TEST(WifiCompatTest, ExposesSmartconfigEventBaseAndInitTables) {
@@ -384,6 +500,20 @@ TEST(WifiCompatTest, MaintainsConnectionAndNetifStateAcrossOperations) {
   EXPECT_EQ(ip_info.ip.addr, 0U);
   EXPECT_TRUE(esp_netif_is_netif_up(station_netif));
 
+  scan_environment->addAccessPoint(std::make_unique<AccessPoint>(
+      MacAddress(0x02, 0, 0, 0, 0, 6), "missing"));
+  ASSERT_EQ(esp_wifi_connect(), ESP_OK);
+  ASSERT_EQ(xSemaphoreTake(capture.connected, pdMS_TO_TICKS(1000)), pdTRUE);
+  ASSERT_EQ(xSemaphoreTake(capture.got_ip, pdMS_TO_TICKS(1000)), pdTRUE);
+  ASSERT_EQ(esp_wifi_sta_get_ap_info(&connected_ap), ESP_OK);
+  EXPECT_STREQ(reinterpret_cast<const char *>(connected_ap.ssid), "missing");
+  state = roo_testing::esp32::wifi::GetState();
+  EXPECT_EQ(state.station, StationState::kGotIp);
+
+  ASSERT_EQ(esp_wifi_disconnect(), ESP_OK);
+  ASSERT_EQ(xSemaphoreTake(capture.disconnected, pdMS_TO_TICKS(1000)), pdTRUE);
+  ASSERT_EQ(xSemaphoreTake(capture.lost_ip, pdMS_TO_TICKS(1000)), pdTRUE);
+
   EXPECT_EQ(esp_wifi_stop(), ESP_OK);
   EXPECT_FALSE(esp_netif_is_netif_up(station_netif));
   EXPECT_EQ(esp_wifi_deinit(), ESP_OK);
@@ -400,6 +530,92 @@ TEST(WifiCompatTest, MaintainsConnectionAndNetifStateAcrossOperations) {
   vSemaphoreDelete(capture.got_ip);
   vSemaphoreDelete(capture.lost_ip);
   vSemaphoreDelete(capture.scan_done);
+}
+
+// Verifies connection teardown events precede IP loss and interface stop.
+TEST(WifiCompatTest, DeliversLifecycleEventsInOrder) {
+  using roo_testing_transducers::wifi::AccessPoint;
+  using roo_testing_transducers::wifi::Environment;
+  using roo_testing_transducers::wifi::MacAddress;
+
+  auto environment = std::make_shared<Environment>();
+  environment->addAccessPoint(std::make_unique<AccessPoint>(
+      MacAddress(0x02, 0, 0, 0, 0, 7), "ordered"));
+  FakeEsp32().setWifiEnvironment(environment);
+
+  ASSERT_EQ(esp_event_loop_create_default(), ESP_OK);
+  roo_testing::esp32::wifi::Reset();
+  wifi_init_config_t init_config = WIFI_INIT_CONFIG_DEFAULT();
+  ASSERT_EQ(esp_wifi_init(&init_config), ESP_OK);
+  ASSERT_EQ(esp_wifi_set_mode(WIFI_MODE_STA), ESP_OK);
+  esp_netif_t *station_netif = esp_netif_create_default_wifi_sta();
+  ASSERT_NE(station_netif, nullptr);
+  ASSERT_EQ(esp_wifi_start(), ESP_OK);
+
+  OrderedEventCapture capture;
+  capture.delivered = xSemaphoreCreateCounting(32, 0);
+  ASSERT_NE(capture.delivered, nullptr);
+  ASSERT_EQ(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
+                                       CaptureOrderedEvent, &capture),
+            ESP_OK);
+  ASSERT_EQ(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID,
+                                       CaptureOrderedEvent, &capture),
+            ESP_OK);
+
+  wifi_config_t station_config = {};
+  memcpy(station_config.sta.ssid, "ordered", sizeof("ordered"));
+  ASSERT_EQ(esp_wifi_set_config(WIFI_IF_STA, &station_config), ESP_OK);
+  ASSERT_EQ(esp_wifi_connect(), ESP_OK);
+  ExpectOrderedEvents(
+      capture, {OrderedEvent::kConnected, OrderedEvent::kGotIp});
+
+  ASSERT_EQ(esp_wifi_disconnect(), ESP_OK);
+  ExpectOrderedEvents(
+      capture, {OrderedEvent::kDisconnected, OrderedEvent::kLostIp});
+
+  ASSERT_EQ(esp_wifi_connect(), ESP_OK);
+  ExpectOrderedEvents(
+      capture, {OrderedEvent::kConnected, OrderedEvent::kGotIp});
+  ASSERT_EQ(esp_wifi_stop(), ESP_OK);
+  ExpectOrderedEvents(capture, {OrderedEvent::kDisconnected,
+                                OrderedEvent::kLostIp,
+                                OrderedEvent::kStaStop});
+
+  ASSERT_EQ(esp_wifi_start(), ESP_OK);
+  ExpectOrderedEvents(capture, {OrderedEvent::kStaStart});
+  ASSERT_EQ(esp_wifi_connect(), ESP_OK);
+  ExpectOrderedEvents(
+      capture, {OrderedEvent::kConnected, OrderedEvent::kGotIp});
+
+  auto empty_environment = std::make_shared<Environment>();
+  FakeEsp32().setWifiEnvironment(empty_environment);
+  ASSERT_EQ(esp_wifi_connect(), ESP_OK);
+  ExpectOrderedEvents(
+      capture, {OrderedEvent::kDisconnected, OrderedEvent::kLostIp});
+
+  empty_environment->addAccessPoint(std::make_unique<AccessPoint>(
+      MacAddress(0x02, 0, 0, 0, 0, 8), "ordered"));
+  ASSERT_EQ(esp_wifi_connect(), ESP_OK);
+  ExpectOrderedEvents(
+      capture, {OrderedEvent::kConnected, OrderedEvent::kGotIp});
+
+  ASSERT_EQ(esp_wifi_set_mode(WIFI_MODE_AP), ESP_OK);
+  ExpectOrderedEvents(capture, {OrderedEvent::kDisconnected,
+                                OrderedEvent::kLostIp,
+                                OrderedEvent::kStaStop,
+                                OrderedEvent::kApStart});
+
+  EXPECT_EQ(esp_wifi_stop(), ESP_OK);
+  EXPECT_EQ(esp_wifi_deinit(), ESP_OK);
+  esp_netif_destroy_default_wifi(station_netif);
+  EXPECT_EQ(esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID,
+                                         CaptureOrderedEvent),
+            ESP_OK);
+  EXPECT_EQ(esp_event_handler_unregister(IP_EVENT, ESP_EVENT_ANY_ID,
+                                         CaptureOrderedEvent),
+            ESP_OK);
+  EXPECT_EQ(esp_event_loop_delete_default(), ESP_OK);
+  vSemaphoreDelete(capture.delivered);
 }
 
 } // namespace

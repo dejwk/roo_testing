@@ -1,3 +1,22 @@
+# roo_testing 2.2.0
+
+### Added
+
+- Added comprehensive ESP32 NVS emulation, including key iteration, partition lifecycle, storage statistics, capacity limits, and additional security APIs.
+- Added scriptable Wi‑Fi scenarios for connection failures, retries, roaming, timed link loss, AP visibility, and RSSI changes.
+
+### Changed
+
+- Replaced the custom event shim with ESP-IDF’s queued event loop.
+- Improved Wi‑Fi scan, driver lifecycle, netif state, event ordering, and Arduino reconnect fidelity.
+
+### Fixed
+
+- Preserved static IPv4 configuration during Wi‑Fi association.
+- Fixed stale IP events, invalid lifecycle calls, hidden-AP filtering, dangling AP state, and NVS validation and commit/erase semantics.
+
+---
+
 # roo_testing 2.1.3
 
 ### Added

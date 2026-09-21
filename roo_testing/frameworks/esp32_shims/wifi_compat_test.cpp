@@ -1,20 +1,24 @@
+#include <memory>
 #include <type_traits>
 
 #include "esp_phy.h"
 #include "esp_private/wifi_os_adapter.h"
 #include "esp_smartconfig.h"
 #include "esp_wifi.h"
+#include "roo_testing/microcontrollers/esp32/fake_esp32.h"
+#include "roo_testing/transducers/wifi/wifi.h"
 #include "gtest/gtest.h"
 
 static_assert(std::is_same_v<decltype(g_wifi_osi_funcs), wifi_osi_funcs_t>);
 static_assert(std::is_same_v<decltype(g_wifi_default_wpa_crypto_funcs),
                              const wpa_crypto_funcs_t>);
-static_assert(std::is_same_v<decltype(&esp_smartconfig_start),
-                             esp_err_t (*)(const smartconfig_start_config_t*)>);
+static_assert(
+    std::is_same_v<decltype(&esp_smartconfig_start),
+                   esp_err_t (*)(const smartconfig_start_config_t *)>);
 static_assert(std::is_same_v<decltype(&esp_phy_set_ant_gpio),
-                             esp_err_t (*)(esp_phy_ant_gpio_config_t*)>);
+                             esp_err_t (*)(esp_phy_ant_gpio_config_t *)>);
 static_assert(std::is_same_v<decltype(&esp_phy_set_ant),
-                             esp_err_t (*)(esp_phy_ant_config_t*)>);
+                             esp_err_t (*)(esp_phy_ant_config_t *)>);
 
 namespace {
 
@@ -44,8 +48,7 @@ TEST(WifiCompatTest, SmartconfigHasSafeHostLifecycle) {
   smartconfig_start_config_t config = {};
   EXPECT_EQ(esp_smartconfig_start(&config), ESP_OK);
   EXPECT_EQ(esp_smartconfig_start(&config), ESP_ERR_INVALID_STATE);
-  EXPECT_EQ(esp_smartconfig_set_type(SC_TYPE_AIRKISS),
-            ESP_ERR_INVALID_STATE);
+  EXPECT_EQ(esp_smartconfig_set_type(SC_TYPE_AIRKISS), ESP_ERR_INVALID_STATE);
   EXPECT_EQ(esp_smartconfig_stop(), ESP_OK);
   EXPECT_EQ(esp_smartconfig_stop(), ESP_OK);
 
@@ -90,4 +93,53 @@ TEST(WifiCompatTest, AntennaConfigurationRoundTripsOnHost) {
   EXPECT_EQ(actual_ant_config.enabled_ant1, 2);
 }
 
-}  // namespace
+TEST(WifiCompatTest, ScanFiltersSortsAndConsumesResults) {
+  using roo_testing_transducers::wifi::AccessPoint;
+  using roo_testing_transducers::wifi::Environment;
+  using roo_testing_transducers::wifi::MacAddress;
+  using roo_testing_transducers::wifi::RSSI;
+
+  static Environment environment;
+  environment.setScanDurationMs(0);
+  auto weak =
+      std::make_unique<AccessPoint>(MacAddress(0x02, 0, 0, 0, 0, 1), "weak");
+  weak->setRSSI(RSSI(-80));
+  environment.addAccessPoint(std::move(weak));
+  auto strong =
+      std::make_unique<AccessPoint>(MacAddress(0x02, 0, 0, 0, 0, 2), "strong");
+  strong->setRSSI(RSSI(-40));
+  environment.addAccessPoint(std::move(strong));
+  auto hidden =
+      std::make_unique<AccessPoint>(MacAddress(0x02, 0, 0, 0, 0, 3), "hidden");
+  hidden->setRSSI(RSSI(-20))->setVisible(false);
+  environment.addAccessPoint(std::move(hidden));
+  FakeEsp32().setWifiEnvironment(environment);
+
+  ASSERT_EQ(esp_wifi_set_mode(WIFI_MODE_STA), ESP_OK);
+  ASSERT_EQ(esp_wifi_start(), ESP_OK);
+  wifi_scan_config_t config = {};
+  ASSERT_EQ(esp_wifi_scan_start(&config, true), ESP_OK);
+
+  uint16_t count = 0;
+  ASSERT_EQ(esp_wifi_scan_get_ap_num(&count), ESP_OK);
+  ASSERT_EQ(count, 2);
+  wifi_ap_record_t record = {};
+  ASSERT_EQ(esp_wifi_scan_get_ap_record(&record), ESP_OK);
+  EXPECT_STREQ(reinterpret_cast<const char *>(record.ssid), "strong");
+  ASSERT_EQ(esp_wifi_scan_get_ap_record(&record), ESP_OK);
+  EXPECT_STREQ(reinterpret_cast<const char *>(record.ssid), "weak");
+  EXPECT_EQ(esp_wifi_scan_get_ap_record(&record), ESP_FAIL);
+
+  config.show_hidden = true;
+  ASSERT_EQ(esp_wifi_scan_start(&config, true), ESP_OK);
+  count = 3;
+  wifi_ap_record_t records[3] = {};
+  ASSERT_EQ(esp_wifi_scan_get_ap_records(&count, records), ESP_OK);
+  ASSERT_EQ(count, 3);
+  EXPECT_STREQ(reinterpret_cast<const char *>(records[0].ssid), "hidden");
+  ASSERT_EQ(esp_wifi_scan_get_ap_num(&count), ESP_OK);
+  EXPECT_EQ(count, 0);
+  EXPECT_EQ(esp_wifi_stop(), ESP_OK);
+}
+
+} // namespace

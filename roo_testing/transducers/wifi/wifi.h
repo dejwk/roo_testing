@@ -1,12 +1,13 @@
 #pragma once
 
 #include <cmath>
+#include <cstdint>
 #include <functional>
+#include <inttypes.h>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <inttypes.h>
-#include <memory>
 
 #include "roo_testing/transducers/transducer.h"
 
@@ -15,23 +16,23 @@ namespace roo_testing_transducers {
 namespace wifi {
 
 class IpAddress {
- public:
+public:
   IpAddress(uint8_t a, uint8_t b, uint8_t c, uint8_t d) {
     addr_ = ((uint32_t)a << 24) | ((uint32_t)b << 16) | ((uint32_t)c << 8) |
             ((uint32_t)d << 0);
   }
 
-  bool operator==(const IpAddress& other) { return addr_ == other.addr_; }
-  bool operator!=(const IpAddress& other) { return addr_ != other.addr_; }
+  bool operator==(const IpAddress &other) { return addr_ == other.addr_; }
+  bool operator!=(const IpAddress &other) { return addr_ != other.addr_; }
 
- private:
+private:
   uint32_t addr_;
 };
 
 class MacAddress {
- public:
+public:
   struct hash {
-    uint64_t operator()(const MacAddress& addr) const { return addr.addr_; }
+    uint64_t operator()(const MacAddress &addr) const { return addr.addr_; }
   };
 
   MacAddress(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint8_t e, uint8_t f) {
@@ -39,32 +40,32 @@ class MacAddress {
             ((uint64_t)d << 16) | ((uint64_t)e << 8) | ((uint64_t)f << 0);
   }
 
-  MacAddress(const uint8_t* addr)
+  MacAddress(const uint8_t *addr)
       : MacAddress(addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]) {}
 
-  bool operator==(const MacAddress& other) const {
+  bool operator==(const MacAddress &other) const {
     return addr_ == other.addr_;
   }
 
-  bool operator!=(const MacAddress& other) const {
+  bool operator!=(const MacAddress &other) const {
     return addr_ != other.addr_;
   }
 
   uint8_t get(int idx) const { return addr_ >> ((5 - idx) << 3); }
 
- private:
+private:
   friend class hash;
 
   uint64_t addr_;
 };
 
 class RSSI {
- public:
+public:
   constexpr RSSI(int8_t val) : val_(val < 0 ? val : 0) {}
 
   operator int8_t() const { return val_; }
 
- private:
+private:
   int8_t val_;
 };
 
@@ -87,63 +88,64 @@ class Connection;
 class Environment;
 
 class AccessPoint {
- public:
-  AccessPoint(const MacAddress& mac, const std::string& ssid)
-      : mac_(mac),
-        channel_(11),
-        ssid_(ssid),
-        visible_(true),
-        auth_mode_(AUTH_OPEN),
-        passwd_() {
+public:
+  AccessPoint(const MacAddress &mac, const std::string &ssid)
+      : mac_(mac), channel_(11), ssid_(ssid), visible_(true),
+        auth_mode_(AUTH_OPEN), passwd_() {
     setRSSI(kRssiStrong);
   }
 
-  const MacAddress& macAddress() const { return mac_; }
+  const MacAddress &macAddress() const { return mac_; }
 
-  const std::string& ssid() const { return ssid_; }
-  const std::string& passwd() const { return passwd_; }
+  const std::string &ssid() const { return ssid_; }
+  const std::string &passwd() const { return passwd_; }
 
   bool isVisible() const { return visible_; }
   int channel() const { return channel_; }
   RSSI rssi() const { return rssi_(); }
   AuthMode auth_mode() const { return auth_mode_; }
 
-  AccessPoint* setChannel(int channel) {
+  AccessPoint *setChannel(int channel) {
     channel_ = channel;
     return this;
   }
 
-  AccessPoint* setRSSI(std::function<RSSI()> rssi) {
+  AccessPoint *setRSSI(std::function<RSSI()> rssi) {
     rssi_ = rssi;
     return this;
   }
 
-  AccessPoint* setRSSI(RSSI value) {
+  AccessPoint *setRSSI(RSSI value) {
     return setRSSI([value]() -> RSSI { return value; });
   }
 
-  AccessPoint* setAuthMode(AuthMode auth_mode) {
+  AccessPoint *setAuthMode(AuthMode auth_mode) {
     auth_mode_ = auth_mode;
     return this;
   }
 
-  AccessPoint* setSSID(const std::string& ssid) {
+  AccessPoint *setSSID(const std::string &ssid) {
     ssid_ = ssid;
     return this;
   }
 
-  AccessPoint* setPasswd(const std::string& passwd) {
+  AccessPoint *setVisible(bool visible) {
+    visible_ = visible;
+    return this;
+  }
+
+  AccessPoint *setPasswd(const std::string &passwd) {
     passwd_ = passwd;
     return this;
   }
 
-  std::unique_ptr<Connection> createConnection(const MacAddress& mac_address);
+  std::unique_ptr<Connection> createConnection(const MacAddress &mac_address);
 
- private:
+private:
   friend class Connection;
   friend class Environment;
 
-  void setEnvironment(Environment* env);
+  void setEnvironment(Environment *env);
 
   MacAddress mac_;
   int channel_;
@@ -155,9 +157,9 @@ class AccessPoint {
   AuthMode auth_mode_;
   std::string passwd_;
 
-  std::unordered_map<MacAddress, Connection*, MacAddress::hash> connections_;
+  std::unordered_map<MacAddress, Connection *, MacAddress::hash> connections_;
 
-  Environment* env_;
+  Environment *env_;
 };
 
 enum ConnectionFailure {
@@ -175,63 +177,71 @@ enum ConnectionFailure {
 };
 
 class ConnectionEventListener {
- public:
+public:
   virtual ~ConnectionEventListener() {}
-  virtual void connected(const Connection& connection) {}
-  virtual void disconnected(const Connection& connection) {}
-  virtual void gotIP(const Connection& connection) {}
-  virtual void connectionFailed(const Connection& connection,
+  virtual void connected(const Connection &connection) {}
+  virtual void disconnected(const Connection &connection) {}
+  virtual void gotIP(const Connection &connection) {}
+  virtual void connectionFailed(const Connection &connection,
                                 ConnectionFailure failure) {}
 };
 
 class Environment {
- public:
+public:
   typedef std::unordered_map<MacAddress, std::unique_ptr<AccessPoint>,
                              MacAddress::hash>
       AccessPointMap;
 
-  Environment() : event_listener_(nullptr) {}
+  Environment() : scan_duration_ms_(1000), event_listener_(nullptr) {}
 
   void addAccessPoint(std::unique_ptr<AccessPoint> access_point) {
     access_point->setEnvironment(this);
     aps_[access_point->macAddress()] = std::move(access_point);
   }
 
-  const AccessPointMap& access_points() const { return aps_; }
+  const AccessPointMap &access_points() const { return aps_; }
 
-  void setEventListener(ConnectionEventListener* listener) {
+  uint32_t scanDurationMs() const { return scan_duration_ms_; }
+
+  void setScanDurationMs(uint32_t duration_ms) {
+    scan_duration_ms_ = duration_ms;
+  }
+
+  void setEventListener(ConnectionEventListener *listener) {
     event_listener_ = listener;
   }
 
- private:
+private:
   friend class Connection;
 
-  void notifyConnected(const Connection& connection);
+  void notifyConnected(const Connection &connection);
 
-  void notifyDisconnected(const Connection& connection);
+  void notifyDisconnected(const Connection &connection);
 
-  void notifyGotIP(const Connection& connection);
+  void notifyGotIP(const Connection &connection);
 
-  void notifyConnectionFailed(const Connection& connection,
+  void notifyConnectionFailed(const Connection &connection,
                               ConnectionFailure failure);
 
   AccessPointMap aps_;
 
-  ConnectionEventListener* event_listener_;
+  uint32_t scan_duration_ms_;
+
+  ConnectionEventListener *event_listener_;
 };
 
 class Connection {
- public:
+public:
   ~Connection() { ap_->connections_.erase(mac_address()); }
 
-  const MacAddress& mac_address() const { return mac_address_; }
-  const AccessPoint& access_point() const { return *ap_; }
+  const MacAddress &mac_address() const { return mac_address_; }
+  const AccessPoint &access_point() const { return *ap_; }
 
   void notifyConnected() { ap_->env_->notifyConnected(*this); }
 
   void notifyDisconnected() { ap_->env_->notifyDisconnected(*this); }
 
-  void notifyGotIP(const Connection& connection) {
+  void notifyGotIP(const Connection &connection) {
     ap_->env_->notifyGotIP(*this);
   }
 
@@ -239,45 +249,49 @@ class Connection {
     ap_->env_->notifyConnectionFailed(*this, failure);
   }
 
- private:
+private:
   friend class AccessPoint;
 
-  Connection(AccessPoint* ap, MacAddress mac_address)
+  Connection(AccessPoint *ap, MacAddress mac_address)
       : ap_(ap), mac_address_(mac_address) {}
 
-  AccessPoint* ap_;
+  AccessPoint *ap_;
   MacAddress mac_address_;
 };
 
-inline std::unique_ptr<Connection> AccessPoint::createConnection(
-    const MacAddress& mac_address) {
+inline std::unique_ptr<Connection>
+AccessPoint::createConnection(const MacAddress &mac_address) {
   auto conn = std::unique_ptr<Connection>(new Connection(this, mac_address));
   connections_[mac_address] = conn.get();
   return conn;
 }
 
-inline void AccessPoint::setEnvironment(Environment* env) { env_ = env; }
+inline void AccessPoint::setEnvironment(Environment *env) { env_ = env; }
 
-inline void Environment::notifyConnected(const Connection& connection) {
-  if (event_listener_ == nullptr) return;
+inline void Environment::notifyConnected(const Connection &connection) {
+  if (event_listener_ == nullptr)
+    return;
   event_listener_->connected(connection);
 }
 
-inline void Environment::notifyDisconnected(const Connection& connection) {
-  if (event_listener_ == nullptr) return;
+inline void Environment::notifyDisconnected(const Connection &connection) {
+  if (event_listener_ == nullptr)
+    return;
   event_listener_->disconnected(connection);
 }
 
-inline void Environment::notifyGotIP(const Connection& connection) {
-  if (event_listener_ == nullptr) return;
+inline void Environment::notifyGotIP(const Connection &connection) {
+  if (event_listener_ == nullptr)
+    return;
   event_listener_->gotIP(connection);
 }
 
-inline void Environment::notifyConnectionFailed(const Connection& connection,
+inline void Environment::notifyConnectionFailed(const Connection &connection,
                                                 ConnectionFailure failure) {
-  if (event_listener_ == nullptr) return;
+  if (event_listener_ == nullptr)
+    return;
   event_listener_->connectionFailed(connection, failure);
 }
 
-}  // namespace wifi
-}  // namespace roo_testing_transducers
+} // namespace wifi
+} // namespace roo_testing_transducers

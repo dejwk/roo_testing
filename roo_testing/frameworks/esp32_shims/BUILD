@@ -65,11 +65,11 @@ cc_library(
         "ota_partition.cpp",
         "wifi.cpp",
     ],
-    copts = ["-Werror", "-Wno-error=format"],
     hdrs = [
         "esp_timer_host.h",
         "shim_internal.h",
     ],
+    copts = ["-Werror", "-Wno-error=format"],
     linkstatic = 1,
     local_defines = [
         "CONFIG_ESP_TIMER_ISR_AFFINITY_CPU0=1",
@@ -251,6 +251,8 @@ cc_test(
     deps = [
         ":idf",
         "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "//roo_testing/microcontrollers/esp32:core",
+        "//roo_testing/transducers/wifi",
         "@googletest//:gtest",
     ],
 )

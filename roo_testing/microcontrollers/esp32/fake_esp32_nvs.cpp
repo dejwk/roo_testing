@@ -109,6 +109,14 @@
 
 namespace {
 
+constexpr size_t kNvsEntrySize = 32;
+constexpr size_t kNvsEntriesPerPage = 126;
+constexpr size_t kDefaultNvsPageCount = 8;
+constexpr size_t kDefaultNvsTotalEntries =
+    kDefaultNvsPageCount * kNvsEntriesPerPage;
+constexpr size_t kBlobChunkSize =
+    kNvsEntrySize * (kNvsEntriesPerPage - 1);
+
 struct EntryValue {
   Nvs::Type type = Nvs::Type::I32;
   int64_t sint_value = 0;
@@ -122,6 +130,7 @@ struct NamespaceStorage {
 };
 
 struct PartitionStorage {
+  size_t total_entries = kDefaultNvsTotalEntries;
   std::map<std::string, NamespaceStorage> name_spaces;
 };
 
@@ -527,6 +536,8 @@ static void WriteStorage(std::ostringstream& out, const NvsStorage& storage,
     WriteJsonString(out, part_it.first);
     out << ": {\n";
     WriteIndent(out, indent + 6);
+    out << "\"total_entries\": " << part_it.second.total_entries << ",\n";
+    WriteIndent(out, indent + 6);
     out << "\"name_spaces\": {";
     if (!part_it.second.name_spaces.empty()) out << "\n";
     bool first_ns = true;
@@ -584,6 +595,15 @@ static bool JsonToStorage(const JsonValue& root, NvsStorage* storage,
   for (const auto& part_pair : parts_it->second.object_value) {
     if (part_pair.second.type != JsonValue::Type::kObject) continue;
     PartitionStorage partition;
+    auto total_entries_it = part_pair.second.object_value.find("total_entries");
+    if (total_entries_it != part_pair.second.object_value.end()) {
+      if (total_entries_it->second.type != JsonValue::Type::kNumber) {
+        if (error) *error = "total_entries must be a number";
+        return false;
+      }
+      partition.total_entries =
+          std::stoull(total_entries_it->second.number_value);
+    }
     auto ns_it = part_pair.second.object_value.find("name_spaces");
     if (ns_it != part_pair.second.object_value.end() &&
         ns_it->second.type == JsonValue::Type::kObject) {
@@ -661,6 +681,32 @@ static bool IsValidNvsName(const char* name) {
   return name != nullptr && name[0] != '\0' && strlen(name) <= 15;
 }
 
+static size_t DivideRoundUp(size_t value, size_t divisor) {
+  return value / divisor + (value % divisor != 0 ? 1 : 0);
+}
+
+static size_t EntryCount(const EntryValue& value) {
+  if (value.type == Nvs::Type::STR) {
+    return 1 + DivideRoundUp(value.str_value.size() + 1, kNvsEntrySize);
+  }
+  if (value.type == Nvs::Type::BLOB) {
+    const size_t chunks =
+        std::max<size_t>(1, DivideRoundUp(value.blob_value.size(),
+                                         kBlobChunkSize));
+    return 1 + chunks +
+           DivideRoundUp(value.blob_value.size(), kNvsEntrySize);
+  }
+  return 1;
+}
+
+static size_t UsedEntries(const NamespaceStorage& name_space) {
+  size_t result = 0;
+  for (const auto& entry : name_space.entries) {
+    result += EntryCount(entry.second);
+  }
+  return result;
+}
+
 }  // namespace
 
 class NvsImpl {
@@ -705,9 +751,13 @@ class NvsImpl {
     }
   }
 
-  esp_err_t init(const char* partition_name) {
+  esp_err_t init(const char* partition_name, size_t partition_size) {
     if (partition_name == nullptr) return ESP_ERR_INVALID_ARG;
-    storage_.partitions[partition_name];
+    PartitionStorage& partition = storage_.partitions[partition_name];
+    if (partition_size != 0) {
+      partition.total_entries =
+          (partition_size / 4096) * kNvsEntriesPerPage;
+    }
     initialized_partitions_.insert(partition_name);
     save();
     return ESP_OK;
@@ -769,11 +819,11 @@ class NvsImpl {
       return ESP_ERR_INVALID_ARG;
     }
     if (!IsValidNvsName(name)) return ESP_ERR_NVS_INVALID_NAME;
-    if (initialized_partitions_.count(part_name) == 0) {
-      return ESP_ERR_NVS_NOT_INITIALIZED;
-    }
     if (storage_.partitions.find(part_name) == storage_.partitions.end()) {
       return ESP_ERR_NVS_PART_NOT_FOUND;
+    }
+    if (initialized_partitions_.count(part_name) == 0) {
+      return ESP_ERR_NVS_NOT_INITIALIZED;
     }
     PartitionStorage& part = storage_.partitions[part_name];
     if (part.name_spaces.find(name) == part.name_spaces.end()) {
@@ -880,6 +930,45 @@ class NvsImpl {
                         entry->second.ns_name.c_str(), type, entries);
   }
 
+  esp_err_t get_stats(const char* partition_name, Nvs::Stats* stats) {
+    if (stats == nullptr) return ESP_ERR_INVALID_ARG;
+    *stats = {};
+    if (partition_name == nullptr) return ESP_ERR_INVALID_ARG;
+    auto partition = storage_.partitions.find(partition_name);
+    if (partition == storage_.partitions.end()) {
+      return ESP_ERR_NVS_PART_NOT_FOUND;
+    }
+    if (initialized_partitions_.count(partition_name) == 0) {
+      return ESP_ERR_NVS_NOT_INITIALIZED;
+    }
+
+    stats->total_entries = partition->second.total_entries;
+    stats->namespace_count = partition->second.name_spaces.size();
+    stats->used_entries = stats->namespace_count;
+    for (const auto& name_space : partition->second.name_spaces) {
+      stats->used_entries += UsedEntries(name_space.second);
+    }
+    stats->free_entries = stats->used_entries < stats->total_entries
+                              ? stats->total_entries - stats->used_entries
+                              : 0;
+    stats->available_entries =
+        stats->free_entries >= kNvsEntriesPerPage
+            ? stats->free_entries - kNvsEntriesPerPage
+            : 0;
+    return ESP_OK;
+  }
+
+  esp_err_t get_used_entry_count(nvs_handle_t handle, size_t* used_entries) {
+    if (used_entries == nullptr) return ESP_ERR_INVALID_ARG;
+    *used_entries = 0;
+    auto entry = open_partitions_.find(handle);
+    if (entry == open_partitions_.end()) return ESP_ERR_NVS_INVALID_HANDLE;
+    const Handle& h = entry->second;
+    *used_entries = UsedEntries(
+        storage_.partitions[h.partition_name].name_spaces[h.ns_name]);
+    return ESP_OK;
+  }
+
   void close(nvs_handle_t handle) { open_partitions_.erase(handle); }
 
   esp_err_t erase_key(nvs_handle_t handle, const char* key) {
@@ -926,8 +1015,8 @@ Nvs::~Nvs() { delete impl_; }
 
 void Nvs::save() { impl_->save(); }
 
-esp_err_t Nvs::init(const char* partition_name) {
-  return impl_->init(partition_name);
+esp_err_t Nvs::init(const char* partition_name, size_t partition_size) {
+  return impl_->init(partition_name, partition_size);
 }
 
 esp_err_t Nvs::deinit(const char* partition_name) {
@@ -1143,6 +1232,15 @@ esp_err_t Nvs::list_entries(const char* part_name, const char* namespace_name,
 esp_err_t Nvs::list_entries(nvs_handle_t handle, int type,
                             std::vector<EntryInfo>* entries) {
   return impl_->list_entries(handle, type, entries);
+}
+
+esp_err_t Nvs::get_stats(const char* partition_name, Stats* stats) {
+  return impl_->get_stats(partition_name, stats);
+}
+
+esp_err_t Nvs::get_used_entry_count(nvs_handle_t handle,
+                                    size_t* used_entries) {
+  return impl_->get_used_entry_count(handle, used_entries);
 }
 
 esp_err_t Nvs::commit() {

@@ -31,7 +31,7 @@ esp_err_t nvs_flash_init_partition(const char* partition_label) {
 
 esp_err_t nvs_flash_init_partition_ptr(const esp_partition_t* partition) {
   if (partition == nullptr) return ESP_ERR_INVALID_ARG;
-  return Storage().init(partition->label);
+  return Storage().init(partition->label, partition->size);
 }
 
 esp_err_t nvs_flash_deinit(void) { return Storage().deinit(kDefaultPartition); }
@@ -205,18 +205,25 @@ esp_err_t nvs_erase_all(nvs_handle_t h) { return Storage().erase_all(h); }
 esp_err_t nvs_commit(nvs_handle_t) { return Storage().commit(); }
 void nvs_close(nvs_handle_t h) { Storage().close(h); }
 
-esp_err_t nvs_get_stats(const char*, nvs_stats_t* stats) {
+esp_err_t nvs_get_stats(const char* partition_name, nvs_stats_t* stats) {
   if (stats == nullptr) return ESP_ERR_INVALID_ARG;
-  memset(stats, 0, sizeof(*stats));
-  stats->total_entries = 1024;
-  stats->free_entries = 1024;
+  Nvs::Stats result;
+  esp_err_t status = Storage().get_stats(
+      partition_name == nullptr ? kDefaultPartition : partition_name, &result);
+  if (status != ESP_OK) {
+    memset(stats, 0, sizeof(*stats));
+    return status;
+  }
+  stats->used_entries = result.used_entries;
+  stats->free_entries = result.free_entries;
+  stats->available_entries = result.available_entries;
+  stats->total_entries = result.total_entries;
+  stats->namespace_count = result.namespace_count;
   return ESP_OK;
 }
 
-esp_err_t nvs_get_used_entry_count(nvs_handle_t, size_t* used_entries) {
-  if (used_entries == nullptr) return ESP_ERR_INVALID_ARG;
-  *used_entries = 0;
-  return ESP_OK;
+esp_err_t nvs_get_used_entry_count(nvs_handle_t handle, size_t* used_entries) {
+  return Storage().get_used_entry_count(handle, used_entries);
 }
 
 }  // extern "C"

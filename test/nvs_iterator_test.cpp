@@ -157,4 +157,38 @@ TEST(NvsIteratorTest, ErasePartitionClearsDataAndInvalidatesHandles) {
             nvs_open("erase_part", NVS_READONLY, &handle));
 }
 
+TEST(NvsIteratorTest, ReportsPhysicalEntryUsage) {
+  ASSERT_EQ(ESP_OK, nvs_flash_erase());
+  ASSERT_EQ(ESP_OK, nvs_flash_init());
+
+  nvs_handle_t handle = 0;
+  ASSERT_EQ(ESP_OK, nvs_open("stats", NVS_READWRITE, &handle));
+  ASSERT_EQ(ESP_OK, nvs_set_u32(handle, "scalar", 42));
+  ASSERT_EQ(ESP_OK,
+            nvs_set_str(handle, "string", std::string(40, 's').c_str()));
+  const std::array<uint8_t, 40> blob = {};
+  ASSERT_EQ(ESP_OK, nvs_set_blob(handle, "blob", blob.data(), blob.size()));
+
+  size_t used_entries = 0;
+  EXPECT_EQ(ESP_OK, nvs_get_used_entry_count(handle, &used_entries));
+  EXPECT_EQ(8u, used_entries);
+
+  nvs_stats_t stats;
+  ASSERT_EQ(ESP_OK, nvs_get_stats(nullptr, &stats));
+  EXPECT_EQ(1008u, stats.total_entries);
+  EXPECT_EQ(9u, stats.used_entries);
+  EXPECT_EQ(999u, stats.free_entries);
+  EXPECT_EQ(873u, stats.available_entries);
+  EXPECT_EQ(1u, stats.namespace_count);
+
+  nvs_close(handle);
+  used_entries = 123;
+  EXPECT_EQ(ESP_ERR_NVS_INVALID_HANDLE,
+            nvs_get_used_entry_count(handle, &used_entries));
+  EXPECT_EQ(0u, used_entries);
+
+  ASSERT_EQ(ESP_OK, nvs_flash_erase());
+  ASSERT_EQ(ESP_OK, nvs_flash_init());
+}
+
 } // namespace

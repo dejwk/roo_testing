@@ -36,11 +36,19 @@ class Nvs {
     Type type;
   };
 
+  struct Stats {
+    size_t used_entries;
+    size_t free_entries;
+    size_t available_entries;
+    size_t total_entries;
+    size_t namespace_count;
+  };
+
   Nvs(const std::string& path);
 
   ~Nvs();
 
-  esp_err_t init(const char* partition_name);
+  esp_err_t init(const char* partition_name, size_t partition_size = 0);
 
   esp_err_t deinit(const char* partition_name);
 
@@ -83,6 +91,9 @@ class Nvs {
                          int type, std::vector<EntryInfo>* entries);
   esp_err_t list_entries(nvs_handle_t handle, int type,
                          std::vector<EntryInfo>* entries);
+
+  esp_err_t get_stats(const char* partition_name, Stats* stats);
+  esp_err_t get_used_entry_count(nvs_handle_t handle, size_t* used_entries);
 
   esp_err_t commit();
 

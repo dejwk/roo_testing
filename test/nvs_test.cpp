@@ -21,7 +21,7 @@ std::string MakeTempFile() {
   return std::string(path);
 }
 
-}  // namespace
+} // namespace
 
 TEST(FakeEsp32NvsTest, RoundTripStorage) {
   std::string path = MakeTempFile();
@@ -49,6 +49,7 @@ TEST(FakeEsp32NvsTest, RoundTripStorage) {
 
   {
     Nvs nvs(path);
+    ASSERT_EQ(nvs.init("nvs"), 0);
     nvs_handle_t handle = 0;
     ASSERT_EQ(nvs.open("nvs", "settings", false, &handle), 0);
 
@@ -109,7 +110,7 @@ TEST(FakeEsp32NvsTest, RoundTripStorage) {
 }
 
 TEST(FakeEsp32NvsTest, LoadFromGoldenJson) {
-  const char* kGoldenJson = R"json({
+  const char *kGoldenJson = R"json({
   "partitions": {
     "nvs": {
       "name_spaces": {
@@ -141,6 +142,7 @@ TEST(FakeEsp32NvsTest, LoadFromGoldenJson) {
   }
 
   Nvs nvs(path);
+  ASSERT_EQ(nvs.init("nvs"), 0);
   nvs_handle_t handle = 0;
   ASSERT_EQ(nvs.open("nvs", "settings", false, &handle), 0);
 

@@ -34,12 +34,19 @@ esp_err_t nvs_flash_init_partition_ptr(const esp_partition_t* partition) {
   return Storage().init(partition->label);
 }
 
-esp_err_t nvs_flash_deinit(void) { return ESP_OK; }
-esp_err_t nvs_flash_deinit_partition(const char*) { return ESP_OK; }
-esp_err_t nvs_flash_erase(void) { return ESP_OK; }
-esp_err_t nvs_flash_erase_partition(const char*) { return ESP_OK; }
+esp_err_t nvs_flash_deinit(void) { return Storage().deinit(kDefaultPartition); }
+esp_err_t nvs_flash_deinit_partition(const char* partition_label) {
+  return Storage().deinit(partition_label);
+}
+esp_err_t nvs_flash_erase(void) {
+  return Storage().erase_partition(kDefaultPartition);
+}
+esp_err_t nvs_flash_erase_partition(const char* partition_label) {
+  return Storage().erase_partition(partition_label);
+}
 esp_err_t nvs_flash_erase_partition_ptr(const esp_partition_t* partition) {
-  return partition == nullptr ? ESP_ERR_INVALID_ARG : ESP_OK;
+  if (partition == nullptr) return ESP_ERR_INVALID_ARG;
+  return Storage().erase_partition(partition->label);
 }
 esp_err_t nvs_flash_secure_init(nvs_sec_cfg_t*) { return nvs_flash_init(); }
 esp_err_t nvs_flash_secure_init_partition(const char* partition,

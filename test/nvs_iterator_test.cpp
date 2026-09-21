@@ -1,4 +1,5 @@
 #include <nvs.h>
+#include <nvs_flash.h>
 
 #include <algorithm>
 #include <array>
@@ -118,6 +119,42 @@ TEST(NvsIteratorTest, ValidatesNamesAndInputPointers) {
   ASSERT_EQ(ESP_OK, nvs_erase_all(handle));
   ASSERT_EQ(ESP_OK, nvs_commit(handle));
   nvs_close(handle);
+}
+
+TEST(NvsIteratorTest, DeinitInvalidatesHandlesAndPreservesData) {
+  nvs_handle_t handle = 0;
+  ASSERT_EQ(ESP_OK, nvs_open("deinit_test", NVS_READWRITE, &handle));
+  ASSERT_EQ(ESP_OK, nvs_set_u32(handle, "value", 42));
+  ASSERT_EQ(ESP_OK, nvs_commit(handle));
+
+  ASSERT_EQ(ESP_OK, nvs_flash_deinit());
+  uint32_t value = 0;
+  EXPECT_EQ(ESP_ERR_NVS_INVALID_HANDLE, nvs_get_u32(handle, "value", &value));
+  EXPECT_EQ(ESP_ERR_NVS_NOT_INITIALIZED,
+            nvs_open("deinit_test", NVS_READONLY, &handle));
+
+  ASSERT_EQ(ESP_OK, nvs_flash_init());
+  ASSERT_EQ(ESP_OK, nvs_open("deinit_test", NVS_READONLY, &handle));
+  EXPECT_EQ(ESP_OK, nvs_get_u32(handle, "value", &value));
+  EXPECT_EQ(42u, value);
+  nvs_close(handle);
+}
+
+TEST(NvsIteratorTest, ErasePartitionClearsDataAndInvalidatesHandles) {
+  nvs_handle_t handle = 0;
+  ASSERT_EQ(ESP_OK, nvs_open("erase_part", NVS_READWRITE, &handle));
+  ASSERT_EQ(ESP_OK, nvs_set_u32(handle, "value", 42));
+  ASSERT_EQ(ESP_OK, nvs_commit(handle));
+
+  ASSERT_EQ(ESP_OK, nvs_flash_erase());
+  uint32_t value = 0;
+  EXPECT_EQ(ESP_ERR_NVS_INVALID_HANDLE, nvs_get_u32(handle, "value", &value));
+  EXPECT_EQ(ESP_ERR_NVS_NOT_INITIALIZED,
+            nvs_open("erase_part", NVS_READONLY, &handle));
+
+  ASSERT_EQ(ESP_OK, nvs_flash_init());
+  EXPECT_EQ(ESP_ERR_NVS_NOT_FOUND,
+            nvs_open("erase_part", NVS_READONLY, &handle));
 }
 
 } // namespace

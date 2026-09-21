@@ -708,6 +708,48 @@ class NvsImpl {
   esp_err_t init(const char* partition_name) {
     if (partition_name == nullptr) return ESP_ERR_INVALID_ARG;
     storage_.partitions[partition_name];
+    initialized_partitions_.insert(partition_name);
+    save();
+    return ESP_OK;
+  }
+
+  esp_err_t deinit(const char* partition_name) {
+    if (partition_name == nullptr) return ESP_ERR_INVALID_ARG;
+    auto initialized = initialized_partitions_.find(partition_name);
+    if (initialized == initialized_partitions_.end()) {
+      return ESP_ERR_NVS_NOT_INITIALIZED;
+    }
+    initialized_partitions_.erase(initialized);
+    for (auto handle = open_partitions_.begin();
+         handle != open_partitions_.end();) {
+      if (handle->second.partition_name == partition_name) {
+        handle = open_partitions_.erase(handle);
+      } else {
+        ++handle;
+      }
+    }
+    return ESP_OK;
+  }
+
+  esp_err_t erase_partition(const char* partition_name) {
+    if (partition_name == nullptr) return ESP_ERR_INVALID_ARG;
+    auto partition = storage_.partitions.find(partition_name);
+    if (partition == storage_.partitions.end()) {
+      return ESP_ERR_NVS_PART_NOT_FOUND;
+    }
+    if (initialized_partitions_.count(partition_name) != 0) {
+      deinit(partition_name);
+    } else {
+      for (auto handle = open_partitions_.begin();
+           handle != open_partitions_.end();) {
+        if (handle->second.partition_name == partition_name) {
+          handle = open_partitions_.erase(handle);
+        } else {
+          ++handle;
+        }
+      }
+    }
+    partition->second.name_spaces.clear();
     save();
     return ESP_OK;
   }
@@ -727,6 +769,9 @@ class NvsImpl {
       return ESP_ERR_INVALID_ARG;
     }
     if (!IsValidNvsName(name)) return ESP_ERR_NVS_INVALID_NAME;
+    if (initialized_partitions_.count(part_name) == 0) {
+      return ESP_ERR_NVS_NOT_INITIALIZED;
+    }
     if (storage_.partitions.find(part_name) == storage_.partitions.end()) {
       return ESP_ERR_NVS_PART_NOT_FOUND;
     }
@@ -870,6 +915,7 @@ class NvsImpl {
  private:
   NvsStorage storage_;
   std::string path_;
+  std::set<std::string> initialized_partitions_;
   std::map<int, Handle> open_partitions_;
   int next_id_;
 };
@@ -882,6 +928,14 @@ void Nvs::save() { impl_->save(); }
 
 esp_err_t Nvs::init(const char* partition_name) {
   return impl_->init(partition_name);
+}
+
+esp_err_t Nvs::deinit(const char* partition_name) {
+  return impl_->deinit(partition_name);
+}
+
+esp_err_t Nvs::erase_partition(const char* partition_name) {
+  return impl_->erase_partition(partition_name);
 }
 
 esp_err_t Nvs::open(const char* part_name, const char* name, bool readonly,

@@ -42,6 +42,10 @@ class Nvs {
 
   esp_err_t init(const char* partition_name);
 
+  esp_err_t deinit(const char* partition_name);
+
+  esp_err_t erase_partition(const char* partition_name);
+
   esp_err_t open(const char* part_name, const char* name, bool readonly,
                  nvs_handle_t* out_handle);
 

@@ -3,6 +3,7 @@
 #include <type_traits>
 
 #include "esp_event.h"
+#include "esp_netif.h"
 #include "esp_phy.h"
 #include "esp_private/wifi_os_adapter.h"
 #include "esp_smartconfig.h"
@@ -45,6 +46,34 @@ void CaptureStationEvent(void *arg, esp_event_base_t, int32_t event_id,
     return;
   }
   xSemaphoreGive(capture->event_received);
+}
+
+struct NetworkEventCapture {
+  SemaphoreHandle_t connected = nullptr;
+  SemaphoreHandle_t disconnected = nullptr;
+  SemaphoreHandle_t got_ip = nullptr;
+  SemaphoreHandle_t lost_ip = nullptr;
+  SemaphoreHandle_t scan_done = nullptr;
+};
+
+void CaptureNetworkEvent(void *arg, esp_event_base_t event_base,
+                         int32_t event_id, void *) {
+  auto *capture = static_cast<NetworkEventCapture *>(arg);
+  SemaphoreHandle_t semaphore = nullptr;
+  if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_CONNECTED) {
+    semaphore = capture->connected;
+  } else if (event_base == WIFI_EVENT &&
+             event_id == WIFI_EVENT_STA_DISCONNECTED) {
+    semaphore = capture->disconnected;
+  } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_SCAN_DONE) {
+    semaphore = capture->scan_done;
+  } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+    semaphore = capture->got_ip;
+  } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_LOST_IP) {
+    semaphore = capture->lost_ip;
+  }
+  if (semaphore != nullptr)
+    xSemaphoreGive(semaphore);
 }
 
 TEST(WifiCompatTest, DriverLifecycleIsExplicitAndResettable) {
@@ -268,6 +297,109 @@ TEST(WifiCompatTest, SupportsMaximumLengthSsidAndPassword) {
             ESP_OK);
   EXPECT_EQ(esp_event_loop_delete_default(), ESP_OK);
   vSemaphoreDelete(capture.event_received);
+}
+
+// Verifies scan, reconnect, netif, and environment lifetimes stay coherent.
+TEST(WifiCompatTest, MaintainsConnectionAndNetifStateAcrossOperations) {
+  using roo_testing::esp32::wifi::StationState;
+  using roo_testing_transducers::wifi::AccessPoint;
+  using roo_testing_transducers::wifi::Environment;
+  using roo_testing_transducers::wifi::MacAddress;
+
+  {
+    Environment temporary_environment;
+    temporary_environment.addAccessPoint(std::make_unique<AccessPoint>(
+        MacAddress(0x02, 0, 0, 0, 0, 5), "owned"));
+    FakeEsp32().setWifiEnvironment(temporary_environment);
+  }
+
+  ASSERT_EQ(esp_event_loop_create_default(), ESP_OK);
+  NetworkEventCapture capture;
+  capture.connected = xSemaphoreCreateBinary();
+  capture.disconnected = xSemaphoreCreateBinary();
+  capture.got_ip = xSemaphoreCreateBinary();
+  capture.lost_ip = xSemaphoreCreateBinary();
+  capture.scan_done = xSemaphoreCreateBinary();
+  ASSERT_NE(capture.connected, nullptr);
+  ASSERT_NE(capture.disconnected, nullptr);
+  ASSERT_NE(capture.got_ip, nullptr);
+  ASSERT_NE(capture.lost_ip, nullptr);
+  ASSERT_NE(capture.scan_done, nullptr);
+  ASSERT_EQ(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
+                                       CaptureNetworkEvent, &capture),
+            ESP_OK);
+  ASSERT_EQ(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID,
+                                       CaptureNetworkEvent, &capture),
+            ESP_OK);
+
+  roo_testing::esp32::wifi::Reset();
+  wifi_init_config_t init_config = WIFI_INIT_CONFIG_DEFAULT();
+  ASSERT_EQ(esp_wifi_init(&init_config), ESP_OK);
+  ASSERT_EQ(esp_wifi_set_mode(WIFI_MODE_STA), ESP_OK);
+  esp_netif_t *station_netif = esp_netif_create_default_wifi_sta();
+  ASSERT_NE(station_netif, nullptr);
+  EXPECT_FALSE(esp_netif_is_netif_up(station_netif));
+  ASSERT_EQ(esp_wifi_start(), ESP_OK);
+  EXPECT_TRUE(esp_netif_is_netif_up(station_netif));
+
+  wifi_config_t station_config = {};
+  memcpy(station_config.sta.ssid, "owned", sizeof("owned"));
+  ASSERT_EQ(esp_wifi_set_config(WIFI_IF_STA, &station_config), ESP_OK);
+  ASSERT_EQ(esp_wifi_connect(), ESP_OK);
+  ASSERT_EQ(xSemaphoreTake(capture.connected, pdMS_TO_TICKS(1000)), pdTRUE);
+  ASSERT_EQ(xSemaphoreTake(capture.got_ip, pdMS_TO_TICKS(1000)), pdTRUE);
+  auto state = roo_testing::esp32::wifi::GetState();
+  EXPECT_EQ(state.station, StationState::kGotIp);
+
+  esp_netif_ip_info_t ip_info = {};
+  ASSERT_EQ(esp_netif_get_ip_info(station_netif, &ip_info), ESP_OK);
+  EXPECT_NE(ip_info.ip.addr, 0U);
+
+  auto scan_environment = std::make_shared<Environment>();
+  scan_environment->setScanDurationMs(20);
+  FakeEsp32().setWifiEnvironment(scan_environment);
+  ASSERT_EQ(esp_wifi_scan_start(nullptr, false), ESP_OK);
+  state = roo_testing::esp32::wifi::GetState();
+  EXPECT_EQ(state.station, StationState::kGotIp);
+  EXPECT_EQ(esp_wifi_scan_start(nullptr, false), ESP_ERR_WIFI_STATE);
+  ASSERT_EQ(xSemaphoreTake(capture.scan_done, pdMS_TO_TICKS(1000)), pdTRUE);
+  state = roo_testing::esp32::wifi::GetState();
+  EXPECT_EQ(state.station, StationState::kGotIp);
+
+  wifi_ap_record_t connected_ap = {};
+  ASSERT_EQ(esp_wifi_sta_get_ap_info(&connected_ap), ESP_OK);
+  EXPECT_STREQ(reinterpret_cast<const char *>(connected_ap.ssid), "owned");
+
+  memset(&station_config, 0, sizeof(station_config));
+  memcpy(station_config.sta.ssid, "missing", sizeof("missing"));
+  ASSERT_EQ(esp_wifi_set_config(WIFI_IF_STA, &station_config), ESP_OK);
+  ASSERT_EQ(esp_wifi_connect(), ESP_OK);
+  ASSERT_EQ(xSemaphoreTake(capture.disconnected, pdMS_TO_TICKS(1000)), pdTRUE);
+  ASSERT_EQ(xSemaphoreTake(capture.lost_ip, pdMS_TO_TICKS(1000)), pdTRUE);
+  EXPECT_EQ(esp_wifi_sta_get_ap_info(&connected_ap),
+            ESP_ERR_WIFI_NOT_CONNECT);
+  state = roo_testing::esp32::wifi::GetState();
+  EXPECT_EQ(state.station, StationState::kIdle);
+  ASSERT_EQ(esp_netif_get_ip_info(station_netif, &ip_info), ESP_OK);
+  EXPECT_EQ(ip_info.ip.addr, 0U);
+  EXPECT_TRUE(esp_netif_is_netif_up(station_netif));
+
+  EXPECT_EQ(esp_wifi_stop(), ESP_OK);
+  EXPECT_FALSE(esp_netif_is_netif_up(station_netif));
+  EXPECT_EQ(esp_wifi_deinit(), ESP_OK);
+  esp_netif_destroy_default_wifi(station_netif);
+  EXPECT_EQ(esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID,
+                                         CaptureNetworkEvent),
+            ESP_OK);
+  EXPECT_EQ(esp_event_handler_unregister(IP_EVENT, ESP_EVENT_ANY_ID,
+                                         CaptureNetworkEvent),
+            ESP_OK);
+  EXPECT_EQ(esp_event_loop_delete_default(), ESP_OK);
+  vSemaphoreDelete(capture.connected);
+  vSemaphoreDelete(capture.disconnected);
+  vSemaphoreDelete(capture.got_ip);
+  vSemaphoreDelete(capture.lost_ip);
+  vSemaphoreDelete(capture.scan_done);
 }
 
 } // namespace

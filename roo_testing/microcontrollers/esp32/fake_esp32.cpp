@@ -65,13 +65,6 @@ FakeEsp32Board& FakeEsp32() {
   return *esp32;
 }
 
-namespace {
-roo_testing_transducers::wifi::Environment* empty_env() {
-  static roo_testing_transducers::wifi::Environment env;
-  return &env;
-}
-}  // namespace
-
 FakeEsp32Board::FakeEsp32Board()
     : gpio(40),
       in_matrix(),
@@ -106,7 +99,8 @@ FakeEsp32Board::FakeEsp32Board()
                             /*VSPID_IN_IDX*/ 65, this)},
       fs_root_(default_fs_root_path()),
       // time_([this]() { flush(); }),
-      wifi_env_(empty_env()) {
+      wifi_env_(
+          std::make_shared<roo_testing_transducers::wifi::Environment>()) {
   FLAGS_alsologtostderr = true;
   FLAGS_stderrthreshold = google::WARNING;
   attachUartDevice(*(new ConsoleUartDevice()), 1, 3);

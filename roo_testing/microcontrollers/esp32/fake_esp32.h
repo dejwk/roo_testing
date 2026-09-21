@@ -1,6 +1,8 @@
 #pragma once
 
 #include <map>
+#include <memory>
+#include <utility>
 
 #include "fake_esp32_adc.h"
 #include "fake_esp32_espnow.h"
@@ -125,12 +127,31 @@ class FakeEsp32Board {
   Esp32Adc& adc(int idx) { return adc_[idx]; }
   Esp32I2c& i2c(int idx) { return i2c_[idx]; }
 
-  void setWifiEnvironment(roo_testing_transducers::wifi::Environment& env) {
-    wifi_env_ = &env;
+  /// Stores an owned snapshot of the supplied WiFi environment.
+  void setWifiEnvironment(
+      const roo_testing_transducers::wifi::Environment& env) {
+    wifi_env_ =
+        std::make_shared<roo_testing_transducers::wifi::Environment>(env);
   }
 
+  /// Stores a shared environment for tests that update it dynamically.
+  void setWifiEnvironment(
+      std::shared_ptr<roo_testing_transducers::wifi::Environment> env) {
+    if (env == nullptr) {
+      env = std::make_shared<roo_testing_transducers::wifi::Environment>();
+    }
+    wifi_env_ = std::move(env);
+  }
+
+  /// Returns the current environment without extending its lifetime.
   const roo_testing_transducers::wifi::Environment& getWifiEnvironment() const {
     return *wifi_env_;
+  }
+
+  /// Retains the current environment while asynchronous work examines it.
+  std::shared_ptr<const roo_testing_transducers::wifi::Environment>
+  acquireWifiEnvironment() const {
+    return wifi_env_;
   }
 
  private:
@@ -154,7 +175,7 @@ class FakeEsp32Board {
   std::map<int8_t, FakeOneWireInterface*> onewire_buses_;
 
   std::string fs_root_;
-  roo_testing_transducers::wifi::Environment* wifi_env_;
+  std::shared_ptr<roo_testing_transducers::wifi::Environment> wifi_env_;
 };
 
 FakeEsp32Board& FakeEsp32();

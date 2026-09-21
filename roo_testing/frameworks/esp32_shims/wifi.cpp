@@ -14,6 +14,7 @@
 #include <memory>
 #include <mutex>
 #include <new>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -37,7 +38,7 @@ struct esp_netif_obj {
   int32_t get_ip_event = 0;
   int32_t lost_ip_event = 0;
   int route_priority = 100;
-  bool up = true;
+  bool up = false;
   esp_netif_dhcp_status_t dhcp_client = ESP_NETIF_DHCP_INIT;
   esp_netif_dhcp_status_t dhcp_server = ESP_NETIF_DHCP_INIT;
 };
@@ -45,7 +46,6 @@ struct esp_netif_obj {
 namespace {
 
 using AccessPoint = roo_testing_transducers::wifi::AccessPoint;
-using Connection = roo_testing_transducers::wifi::Connection;
 using MacAddress = roo_testing_transducers::wifi::MacAddress;
 using DriverState = roo_testing::esp32::wifi::DriverState;
 using StationState = roo_testing::esp32::wifi::StationState;
@@ -76,10 +76,16 @@ std::vector<wifi_ap_record_t> g_scan_results;
 std::vector<wifi_ap_record_t> g_pending_scan_results;
 uint64_t g_scan_generation = 0;
 bool g_scan_in_progress = false;
-std::unique_ptr<Connection> g_connection;
+std::optional<wifi_ap_record_t> g_connected_ap;
 esp_netif_t *g_default_netif = nullptr;
 esp_netif_t *g_station_netif = nullptr;
-std::vector<esp_netif_t *> g_netifs;
+esp_netif_t *g_ap_netif = nullptr;
+
+// Outlives Arduino global objects whose destructors release their netifs.
+std::vector<esp_netif_t *> &Netifs() {
+  static auto *netifs = new std::vector<esp_netif_t *>();
+  return *netifs;
+}
 
 bool HasStation(wifi_mode_t mode) {
   return mode == WIFI_MODE_STA || mode == WIFI_MODE_APSTA;
@@ -120,7 +126,13 @@ void ResetDriverLocked(DriverState driver_state) {
   g_scan_results.clear();
   g_pending_scan_results.clear();
   g_scan_in_progress = false;
-  g_connection.reset();
+  g_connected_ap.reset();
+  if (g_station_netif != nullptr) {
+    g_station_netif->ip_info = {};
+    g_station_netif->up = driver_state == DriverState::kStarted;
+  }
+  if (g_ap_netif != nullptr)
+    g_ap_netif->up = false;
 }
 
 constexpr wifi_osi_funcs_t MakeHostWifiOsiFuncs() {
@@ -181,8 +193,8 @@ wifi_ap_record_t ToRecord(const AccessPoint &ap) {
   return record;
 }
 
-AccessPoint *FindConfiguredAccessPoint() {
-  const auto &environment = FakeEsp32().getWifiEnvironment();
+AccessPoint *FindConfiguredAccessPoint(
+    const roo_testing_transducers::wifi::Environment &environment) {
   const std::string ssid = ReadStringField(g_station_config.sta.ssid,
                                            sizeof(g_station_config.sta.ssid));
   AccessPoint *found = nullptr;
@@ -211,6 +223,23 @@ void PostDisconnect(wifi_err_reason_t reason) {
                  portMAX_DELAY);
 }
 
+void PostLostIp() {
+  esp_event_post(IP_EVENT, IP_EVENT_STA_LOST_IP, nullptr, 0, portMAX_DELAY);
+}
+
+bool ClearStationIpLocked() {
+  if (g_station_netif == nullptr || g_station_netif->ip_info.ip.addr == 0)
+    return false;
+  g_station_netif->ip_info = {};
+  return true;
+}
+
+void AssignDhcpLeaseLocked() {
+  g_station_netif->ip_info.ip.addr = 0x6401A8C0U;      // 192.168.1.100
+  g_station_netif->ip_info.netmask.addr = 0x00FFFFFFU; // 255.255.255.0
+  g_station_netif->ip_info.gw.addr = 0x0101A8C0U;      // 192.168.1.1
+}
+
 esp_netif_t *NewNetif(const char *key, const char *description,
                       esp_netif_flags_t flags, int32_t get_ip_event = 0,
                       int32_t lost_ip_event = 0) {
@@ -221,11 +250,8 @@ esp_netif_t *NewNetif(const char *key, const char *description,
   netif->flags = flags;
   netif->get_ip_event = get_ip_event;
   netif->lost_ip_event = lost_ip_event;
-  netif->ip_info.ip.addr = 0x6401A8C0U;      // 192.168.1.100
-  netif->ip_info.netmask.addr = 0x00FFFFFFU; // 255.255.255.0
-  netif->ip_info.gw.addr = 0x0101A8C0U;      // 192.168.1.1
   esp_read_mac(netif->mac.data(), ESP_MAC_WIFI_STA);
-  g_netifs.push_back(netif);
+  Netifs().push_back(netif);
   if (g_default_netif == nullptr)
     g_default_netif = netif;
   return netif;
@@ -245,7 +271,6 @@ void CompleteAndPostScan(uint64_t generation) {
     g_scan_results = std::move(g_pending_scan_results);
     g_pending_scan_results.clear();
     g_scan_in_progress = false;
-    g_station_state = StationState::kIdle;
     result_count = static_cast<uint16_t>(g_scan_results.size());
   }
   wifi_event_sta_scan_done_t event = {};
@@ -275,6 +300,12 @@ namespace wifi {
 void Reset() {
   std::lock_guard<std::mutex> lock(g_mutex);
   ResetDriverLocked(DriverState::kUninitialized);
+  if (g_station_netif != nullptr) {
+    g_station_netif->up = false;
+    g_station_netif->ip_info = {};
+  }
+  if (g_ap_netif != nullptr)
+    g_ap_netif->up = false;
 }
 
 StateSnapshot GetState() {
@@ -322,6 +353,8 @@ esp_err_t esp_wifi_set_mode(wifi_mode_t mode) {
   if (!IsValidMode(mode)) return ESP_ERR_INVALID_ARG;
   wifi_mode_t previous_mode;
   bool started;
+  bool disconnected = false;
+  bool lost_ip = false;
   {
     std::lock_guard<std::mutex> lock(g_mutex);
     if (g_driver_state == DriverState::kUninitialized) {
@@ -334,12 +367,22 @@ esp_err_t esp_wifi_set_mode(wifi_mode_t mode) {
       ++g_scan_generation;
       g_scan_in_progress = false;
       g_pending_scan_results.clear();
-      g_connection.reset();
+      disconnected = g_connected_ap.has_value();
+      g_connected_ap.reset();
+      lost_ip = ClearStationIpLocked();
+      if (g_station_netif != nullptr)
+        g_station_netif->up = false;
       g_station_state = StationState::kDisabled;
     } else if (!HasStation(previous_mode)) {
+      if (g_station_netif != nullptr)
+        g_station_netif->up = started;
       g_station_state = StationState::kIdle;
     }
   }
+  if (disconnected)
+    PostDisconnect(WIFI_REASON_ASSOC_LEAVE);
+  if (lost_ip)
+    PostLostIp();
   if (started && HasStation(previous_mode) != HasStation(mode)) {
     esp_event_post(WIFI_EVENT, HasStation(mode) ? WIFI_EVENT_STA_START
                                                 : WIFI_EVENT_STA_STOP,
@@ -375,6 +418,10 @@ esp_err_t esp_wifi_start(void) {
     g_driver_state = DriverState::kStarted;
     g_station_state = HasStation(g_mode) ? StationState::kIdle
                                          : StationState::kDisabled;
+    if (HasStation(g_mode) && g_station_netif != nullptr)
+      g_station_netif->up = true;
+    if (HasAccessPoint(g_mode) && g_ap_netif != nullptr)
+      g_ap_netif->up = true;
     mode = g_mode;
   }
   if (HasStation(mode)) {
@@ -388,6 +435,8 @@ esp_err_t esp_wifi_start(void) {
 
 esp_err_t esp_wifi_stop(void) {
   wifi_mode_t mode;
+  bool disconnected;
+  bool lost_ip;
   {
     std::lock_guard<std::mutex> lock(g_mutex);
     if (g_driver_state == DriverState::kUninitialized) {
@@ -401,8 +450,18 @@ esp_err_t esp_wifi_stop(void) {
     ++g_scan_generation;
     g_scan_in_progress = false;
     g_pending_scan_results.clear();
-    g_connection.reset();
+    disconnected = g_connected_ap.has_value();
+    g_connected_ap.reset();
+    lost_ip = ClearStationIpLocked();
+    if (g_station_netif != nullptr)
+      g_station_netif->up = false;
+    if (g_ap_netif != nullptr)
+      g_ap_netif->up = false;
   }
+  if (disconnected)
+    PostDisconnect(WIFI_REASON_ASSOC_LEAVE);
+  if (lost_ip)
+    PostLostIp();
   if (HasStation(mode)) {
     esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_STOP, nullptr, 0, portMAX_DELAY);
   }
@@ -424,6 +483,8 @@ esp_err_t esp_wifi_clear_fast_connect(void) { return ESP_OK; }
 
 esp_err_t esp_wifi_connect(void) {
   AccessPoint *ap;
+  std::shared_ptr<const roo_testing_transducers::wifi::Environment> environment;
+  bool lost_previous_ip;
   {
     std::lock_guard<std::mutex> lock(g_mutex);
     if (g_driver_state == DriverState::kUninitialized)
@@ -431,13 +492,15 @@ esp_err_t esp_wifi_connect(void) {
     if (g_driver_state != DriverState::kStarted)
       return ESP_ERR_WIFI_NOT_STARTED;
     if (!HasStation(g_mode)) return ESP_ERR_WIFI_MODE;
-    if (g_station_state == StationState::kScanning ||
-        g_station_state == StationState::kConnecting) {
+    if (g_scan_in_progress || g_station_state == StationState::kConnecting) {
       return ESP_ERR_WIFI_STATE;
     }
     if (g_station_config.sta.ssid[0] == '\0') return ESP_ERR_WIFI_SSID;
+    g_connected_ap.reset();
+    lost_previous_ip = ClearStationIpLocked();
     g_station_state = StationState::kConnecting;
-    ap = FindConfiguredAccessPoint();
+    environment = FakeEsp32().acquireWifiEnvironment();
+    ap = FindConfiguredAccessPoint(*environment);
     if (ap == nullptr) {
       // Post outside the lock because handlers may call back into Wi-Fi APIs.
     } else {
@@ -454,6 +517,8 @@ esp_err_t esp_wifi_connect(void) {
       g_station_state = StationState::kIdle;
     }
     PostDisconnect(WIFI_REASON_NO_AP_FOUND);
+    if (lost_previous_ip)
+      PostLostIp();
     return ESP_OK;
   }
   if (ap == reinterpret_cast<AccessPoint *>(1)) {
@@ -462,14 +527,19 @@ esp_err_t esp_wifi_connect(void) {
       g_station_state = StationState::kIdle;
     }
     PostDisconnect(WIFI_REASON_AUTH_FAIL);
+    if (lost_previous_ip)
+      PostLostIp();
     return ESP_OK;
   }
+
+  if (lost_previous_ip)
+    PostLostIp();
 
   uint8_t mac[6];
   esp_read_mac(mac, ESP_MAC_WIFI_STA);
   {
     std::lock_guard<std::mutex> lock(g_mutex);
-    g_connection = ap->createConnection(MacAddress(mac));
+    g_connected_ap = ToRecord(*ap);
     g_station_state = StationState::kAssociated;
   }
   wifi_event_sta_connected_t connected = {};
@@ -482,22 +552,34 @@ esp_err_t esp_wifi_connect(void) {
                  sizeof(connected), portMAX_DELAY);
 
   ip_event_got_ip_t got_ip = {};
-  // The default netif may be the access point: Arduino creates it before the
-  // station netif. Deliver the IP event to the station that just connected.
-  got_ip.esp_netif = g_station_netif;
-  if (g_station_netif != nullptr)
-    got_ip.ip_info = g_station_netif->ip_info;
+  bool has_ip = false;
   {
     std::lock_guard<std::mutex> lock(g_mutex);
-    g_station_state = StationState::kGotIp;
+    // The default netif may be the access point: Arduino creates it before the
+    // station netif. Deliver the IP event to the station that just connected.
+    got_ip.esp_netif = g_station_netif;
+    if (g_station_netif != nullptr) {
+      g_station_netif->up = true;
+      if (g_station_netif->dhcp_client == ESP_NETIF_DHCP_STARTED &&
+          g_station_netif->ip_info.ip.addr == 0) {
+        AssignDhcpLeaseLocked();
+      }
+      got_ip.ip_info = g_station_netif->ip_info;
+      has_ip = got_ip.ip_info.ip.addr != 0;
+    }
+    if (has_ip)
+      g_station_state = StationState::kGotIp;
   }
-  esp_event_post(IP_EVENT, IP_EVENT_STA_GOT_IP, &got_ip, sizeof(got_ip),
-                 portMAX_DELAY);
+  if (has_ip) {
+    esp_event_post(IP_EVENT, IP_EVENT_STA_GOT_IP, &got_ip, sizeof(got_ip),
+                   portMAX_DELAY);
+  }
   return ESP_OK;
 }
 
 esp_err_t esp_wifi_disconnect(void) {
   bool connected;
+  bool lost_ip;
   {
     std::lock_guard<std::mutex> lock(g_mutex);
     if (g_driver_state == DriverState::kUninitialized) {
@@ -507,11 +589,15 @@ esp_err_t esp_wifi_disconnect(void) {
       return ESP_ERR_WIFI_NOT_STARTED;
     }
     if (!HasStation(g_mode)) return ESP_ERR_WIFI_MODE;
-    connected = g_connection != nullptr;
-    g_connection.reset();
+    connected = g_connected_ap.has_value();
+    g_connected_ap.reset();
+    lost_ip = ClearStationIpLocked();
     g_station_state = StationState::kIdle;
   }
-  if (connected) PostDisconnect(WIFI_REASON_ASSOC_LEAVE);
+  if (connected)
+    PostDisconnect(WIFI_REASON_ASSOC_LEAVE);
+  if (lost_ip)
+    PostLostIp();
   return ESP_OK;
 }
 
@@ -530,8 +616,8 @@ esp_err_t esp_wifi_scan_start(const wifi_scan_config_t *config, bool block) {
       return ESP_ERR_WIFI_STATE;
   }
   std::vector<wifi_ap_record_t> results;
-  const auto &environment = FakeEsp32().getWifiEnvironment();
-  for (const auto &entry : environment.access_points()) {
+  const auto environment = FakeEsp32().acquireWifiEnvironment();
+  for (const auto &entry : environment->access_points()) {
     const AccessPoint &ap = *entry.second;
     if (config != nullptr) {
       if (!ap.isVisible() && !config->show_hidden)
@@ -558,12 +644,11 @@ esp_err_t esp_wifi_scan_start(const wifi_scan_config_t *config, bool block) {
                                                   rhs.bssid, rhs.bssid + 6);
             });
   uint64_t generation;
-  const uint32_t duration_ms = environment.scanDurationMs();
+  const uint32_t duration_ms = environment->scanDurationMs();
   {
     std::lock_guard<std::mutex> lock(g_mutex);
     g_pending_scan_results = std::move(results);
     g_scan_in_progress = true;
-    g_station_state = StationState::kScanning;
     generation = ++g_scan_generation;
   }
   if (block) {
@@ -575,7 +660,6 @@ esp_err_t esp_wifi_scan_start(const wifi_scan_config_t *config, bool block) {
     if (completion == nullptr) {
       std::lock_guard<std::mutex> lock(g_mutex);
       g_scan_in_progress = false;
-      g_station_state = StationState::kIdle;
       g_pending_scan_results.clear();
       return ESP_ERR_NO_MEM;
     }
@@ -583,7 +667,6 @@ esp_err_t esp_wifi_scan_start(const wifi_scan_config_t *config, bool block) {
                     tskIDLE_PRIORITY + 2, nullptr) != pdPASS) {
       std::lock_guard<std::mutex> lock(g_mutex);
       g_scan_in_progress = false;
-      g_station_state = StationState::kIdle;
       g_pending_scan_results.clear();
       return ESP_ERR_NO_MEM;
     }
@@ -602,7 +685,6 @@ esp_err_t esp_wifi_scan_stop(void) {
     return ESP_OK;
   ++g_scan_generation;
   g_scan_in_progress = false;
-  g_station_state = StationState::kIdle;
   g_pending_scan_results.clear();
   return ESP_OK;
 }
@@ -674,9 +756,9 @@ esp_err_t esp_wifi_sta_get_ap_info(wifi_ap_record_t *info) {
   if (info == nullptr)
     return ESP_ERR_INVALID_ARG;
   std::lock_guard<std::mutex> lock(g_mutex);
-  if (g_connection == nullptr)
+  if (!g_connected_ap.has_value())
     return ESP_ERR_WIFI_NOT_CONNECT;
-  *info = ToRecord(g_connection->access_point());
+  *info = *g_connected_ap;
   return ESP_OK;
 }
 esp_err_t esp_wifi_sta_get_rssi(int *rssi) {
@@ -894,13 +976,15 @@ esp_netif_t *esp_netif_new(const esp_netif_config_t *config) {
 void esp_netif_destroy(esp_netif_t *netif) {
   if (netif == nullptr)
     return;
-  g_netifs.erase(std::remove(g_netifs.begin(), g_netifs.end(), netif),
-                 g_netifs.end());
+  auto &netifs = Netifs();
+  netifs.erase(std::remove(netifs.begin(), netifs.end(), netif), netifs.end());
   if (g_default_netif == netif) {
-    g_default_netif = g_netifs.empty() ? nullptr : g_netifs.front();
+    g_default_netif = netifs.empty() ? nullptr : netifs.front();
   }
   if (g_station_netif == netif)
     g_station_netif = nullptr;
+  if (g_ap_netif == netif)
+    g_ap_netif = nullptr;
   delete netif;
 }
 esp_netif_t *esp_netif_create_default_wifi_sta(void) {
@@ -908,12 +992,22 @@ esp_netif_t *esp_netif_create_default_wifi_sta(void) {
                              static_cast<esp_netif_flags_t>(
                                  ESP_NETIF_DHCP_CLIENT | ESP_NETIF_FLAG_AUTOUP),
                              IP_EVENT_STA_GOT_IP, IP_EVENT_STA_LOST_IP);
+  g_station_netif->dhcp_client = ESP_NETIF_DHCP_STARTED;
+  g_station_netif->up = g_driver_state == DriverState::kStarted &&
+                        HasStation(g_mode);
   return g_station_netif;
 }
 esp_netif_t *esp_netif_create_default_wifi_ap(void) {
-  return NewNetif("WIFI_AP_DEF", "ap",
-                  static_cast<esp_netif_flags_t>(ESP_NETIF_DHCP_SERVER |
-                                                 ESP_NETIF_FLAG_AUTOUP));
+  g_ap_netif = NewNetif("WIFI_AP_DEF", "ap",
+                        static_cast<esp_netif_flags_t>(ESP_NETIF_DHCP_SERVER |
+                                                       ESP_NETIF_FLAG_AUTOUP));
+  g_ap_netif->dhcp_server = ESP_NETIF_DHCP_STARTED;
+  g_ap_netif->ip_info.ip.addr = 0x0104A8C0U;      // 192.168.4.1
+  g_ap_netif->ip_info.netmask.addr = 0x00FFFFFFU; // 255.255.255.0
+  g_ap_netif->ip_info.gw.addr = 0x0104A8C0U;      // 192.168.4.1
+  g_ap_netif->up = g_driver_state == DriverState::kStarted &&
+                   HasAccessPoint(g_mode);
+  return g_ap_netif;
 }
 void esp_netif_destroy_default_wifi(void *netif) {
   esp_netif_destroy(static_cast<esp_netif_t *>(netif));
@@ -1085,9 +1179,10 @@ esp_ip6_addr_type_t esp_netif_ip6_get_addr_type(const esp_ip6_addr_t *address) {
 int esp_netif_get_netif_impl_index(esp_netif_t *netif) {
   if (netif == nullptr)
     return -1;
-  const auto it = std::find(g_netifs.begin(), g_netifs.end(), netif);
-  return it == g_netifs.end() ? -1
-                              : static_cast<int>(it - g_netifs.begin()) + 1;
+  const auto &netifs = Netifs();
+  const auto it = std::find(netifs.begin(), netifs.end(), netif);
+  return it == netifs.end() ? -1
+                            : static_cast<int>(it - netifs.begin()) + 1;
 }
 esp_err_t esp_netif_get_netif_impl_name(esp_netif_t *netif, char *name) {
   if (netif == nullptr || name == nullptr)
@@ -1104,7 +1199,7 @@ const char *esp_netif_get_desc(esp_netif_t *netif) {
 esp_netif_t *esp_netif_get_handle_from_ifkey(const char *key) {
   if (key == nullptr)
     return nullptr;
-  for (auto *netif : g_netifs) {
+  for (auto *netif : Netifs()) {
     if (netif->key == key)
       return netif;
   }
@@ -1123,15 +1218,16 @@ int esp_netif_set_route_prio(esp_netif_t *netif, int priority) {
   return 0;
 }
 esp_netif_t *esp_netif_next(esp_netif_t *current) {
-  if (g_netifs.empty())
+  auto &netifs = Netifs();
+  if (netifs.empty())
     return nullptr;
   if (current == nullptr)
-    return g_netifs.front();
-  auto it = std::find(g_netifs.begin(), g_netifs.end(), current);
-  if (it == g_netifs.end())
+    return netifs.front();
+  auto it = std::find(netifs.begin(), netifs.end(), current);
+  if (it == netifs.end())
     return nullptr;
   ++it;
-  return it == g_netifs.end() ? nullptr : *it;
+  return it == netifs.end() ? nullptr : *it;
 }
 esp_err_t esp_netif_napt_enable(esp_netif_t *netif) {
   return netif == nullptr ? ESP_ERR_INVALID_ARG : ESP_OK;

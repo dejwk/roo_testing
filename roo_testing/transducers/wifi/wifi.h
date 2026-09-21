@@ -91,9 +91,15 @@ class AccessPoint {
 public:
   AccessPoint(const MacAddress &mac, const std::string &ssid)
       : mac_(mac), channel_(11), ssid_(ssid), visible_(true),
-        auth_mode_(AUTH_OPEN), passwd_() {
+        auth_mode_(AUTH_OPEN), passwd_(), env_(nullptr) {
     setRSSI(kRssiStrong);
   }
+
+  /// Copies radio properties without copying active connections.
+  AccessPoint(const AccessPoint &other)
+      : mac_(other.mac_), channel_(other.channel_), rssi_(other.rssi_),
+        ssid_(other.ssid_), visible_(other.visible_),
+        auth_mode_(other.auth_mode_), passwd_(other.passwd_), env_(nullptr) {}
 
   const MacAddress &macAddress() const { return mac_; }
 
@@ -193,6 +199,15 @@ public:
       AccessPointMap;
 
   Environment() : scan_duration_ms_(1000), event_listener_(nullptr) {}
+
+  /// Copies access points and timing without borrowing the event listener.
+  Environment(const Environment &other)
+      : scan_duration_ms_(other.scan_duration_ms_),
+        event_listener_(nullptr) {
+    for (const auto &entry : other.aps_) {
+      addAccessPoint(std::make_unique<AccessPoint>(*entry.second));
+    }
+  }
 
   void addAccessPoint(std::unique_ptr<AccessPoint> access_point) {
     access_point->setEnvironment(this);

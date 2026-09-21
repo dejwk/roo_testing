@@ -657,6 +657,10 @@ static bool JsonToStorage(const JsonValue& root, NvsStorage* storage,
   return true;
 }
 
+static bool IsValidNvsName(const char* name) {
+  return name != nullptr && name[0] != '\0' && strlen(name) <= 15;
+}
+
 }  // namespace
 
 class NvsImpl {
@@ -702,6 +706,7 @@ class NvsImpl {
   }
 
   esp_err_t init(const char* partition_name) {
+    if (partition_name == nullptr) return ESP_ERR_INVALID_ARG;
     storage_.partitions[partition_name];
     save();
     return ESP_OK;
@@ -718,6 +723,10 @@ class NvsImpl {
 
   esp_err_t open(const char* part_name, const char* name, bool readonly,
                  nvs_handle_t* out_handle) {
+    if (part_name == nullptr || out_handle == nullptr) {
+      return ESP_ERR_INVALID_ARG;
+    }
+    if (!IsValidNvsName(name)) return ESP_ERR_NVS_INVALID_NAME;
     if (storage_.partitions.find(part_name) == storage_.partitions.end()) {
       return ESP_ERR_NVS_PART_NOT_FOUND;
     }
@@ -747,7 +756,7 @@ class NvsImpl {
     if (h.readonly) {
       return ESP_ERR_NVS_READ_ONLY;
     }
-    if (strlen(key) > 15) {
+    if (!IsValidNvsName(key)) {
       return ESP_ERR_NVS_INVALID_NAME;
     }
     storage_.partitions[h.partition_name].name_spaces[h.ns_name].entries[key] =
@@ -761,7 +770,7 @@ class NvsImpl {
       return ESP_ERR_NVS_INVALID_HANDLE;
     }
     Handle& h = open_partitions_[handle];
-    if (strlen(key) > 15) {
+    if (!IsValidNvsName(key)) {
       return ESP_ERR_NVS_INVALID_NAME;
     }
     auto& entries =
@@ -783,7 +792,7 @@ class NvsImpl {
       return ESP_ERR_NVS_INVALID_HANDLE;
     }
     Handle& h = open_partitions_[handle];
-    if (strlen(key) > 15) {
+    if (!IsValidNvsName(key)) {
       return ESP_ERR_NVS_INVALID_NAME;
     }
     auto& entries =
@@ -836,7 +845,7 @@ class NvsImpl {
     if (h.readonly) {
       return ESP_ERR_NVS_READ_ONLY;
     }
-    if (strlen(key) > 15) {
+    if (!IsValidNvsName(key)) {
       return ESP_ERR_NVS_INVALID_NAME;
     }
     storage_.partitions[h.partition_name].name_spaces[h.ns_name].entries.erase(
@@ -938,6 +947,7 @@ esp_err_t Nvs::set_u64(nvs_handle_t handle, const char* key, uint64_t value) {
 
 esp_err_t Nvs::set_str(nvs_handle_t handle, const char* key,
                        const char* value) {
+  if (value == nullptr) return ESP_ERR_INVALID_ARG;
   EntryValue val;
   val.type = Nvs::Type::STR;
   val.str_value = value;
@@ -946,13 +956,17 @@ esp_err_t Nvs::set_str(nvs_handle_t handle, const char* key,
 
 esp_err_t Nvs::set_blob(nvs_handle_t handle, const char* key, const void* value,
                         size_t length) {
+  if (value == nullptr && length != 0) return ESP_ERR_INVALID_ARG;
   EntryValue val;
   val.type = Nvs::Type::BLOB;
-  val.blob_value = std::string((const char*)value, length);
+  if (length != 0) {
+    val.blob_value.assign(static_cast<const char*>(value), length);
+  }
   return impl_->set(handle, key, std::move(val));
 }
 
 esp_err_t Nvs::get_i8(nvs_handle_t handle, const char* key, int8_t* value) {
+  if (value == nullptr) return ESP_ERR_INVALID_ARG;
   EntryValue val;
   esp_err_t err = impl_->get(handle, key, Nvs::Type::I8, val);
   if (err != ESP_OK) return err;
@@ -961,6 +975,7 @@ esp_err_t Nvs::get_i8(nvs_handle_t handle, const char* key, int8_t* value) {
 }
 
 esp_err_t Nvs::get_u8(nvs_handle_t handle, const char* key, uint8_t* value) {
+  if (value == nullptr) return ESP_ERR_INVALID_ARG;
   EntryValue val;
   esp_err_t err = impl_->get(handle, key, Nvs::Type::U8, val);
   if (err != ESP_OK) return err;
@@ -969,6 +984,7 @@ esp_err_t Nvs::get_u8(nvs_handle_t handle, const char* key, uint8_t* value) {
 }
 
 esp_err_t Nvs::get_i16(nvs_handle_t handle, const char* key, int16_t* value) {
+  if (value == nullptr) return ESP_ERR_INVALID_ARG;
   EntryValue val;
   esp_err_t err = impl_->get(handle, key, Nvs::Type::I16, val);
   if (err != ESP_OK) return err;
@@ -977,6 +993,7 @@ esp_err_t Nvs::get_i16(nvs_handle_t handle, const char* key, int16_t* value) {
 }
 
 esp_err_t Nvs::get_u16(nvs_handle_t handle, const char* key, uint16_t* value) {
+  if (value == nullptr) return ESP_ERR_INVALID_ARG;
   EntryValue val;
   esp_err_t err = impl_->get(handle, key, Nvs::Type::U16, val);
   if (err != ESP_OK) return err;
@@ -985,6 +1002,7 @@ esp_err_t Nvs::get_u16(nvs_handle_t handle, const char* key, uint16_t* value) {
 }
 
 esp_err_t Nvs::get_i32(nvs_handle_t handle, const char* key, int32_t* value) {
+  if (value == nullptr) return ESP_ERR_INVALID_ARG;
   EntryValue val;
   esp_err_t err = impl_->get(handle, key, Nvs::Type::I32, val);
   if (err != ESP_OK) return err;
@@ -993,6 +1011,7 @@ esp_err_t Nvs::get_i32(nvs_handle_t handle, const char* key, int32_t* value) {
 }
 
 esp_err_t Nvs::get_u32(nvs_handle_t handle, const char* key, uint32_t* value) {
+  if (value == nullptr) return ESP_ERR_INVALID_ARG;
   EntryValue val;
   esp_err_t err = impl_->get(handle, key, Nvs::Type::U32, val);
   if (err != ESP_OK) return err;
@@ -1001,6 +1020,7 @@ esp_err_t Nvs::get_u32(nvs_handle_t handle, const char* key, uint32_t* value) {
 }
 
 esp_err_t Nvs::get_i64(nvs_handle_t handle, const char* key, int64_t* value) {
+  if (value == nullptr) return ESP_ERR_INVALID_ARG;
   EntryValue val;
   esp_err_t err = impl_->get(handle, key, Nvs::Type::I64, val);
   if (err != ESP_OK) return err;
@@ -1009,6 +1029,7 @@ esp_err_t Nvs::get_i64(nvs_handle_t handle, const char* key, int64_t* value) {
 }
 
 esp_err_t Nvs::get_u64(nvs_handle_t handle, const char* key, uint64_t* value) {
+  if (value == nullptr) return ESP_ERR_INVALID_ARG;
   EntryValue val;
   esp_err_t err = impl_->get(handle, key, Nvs::Type::U64, val);
   if (err != ESP_OK) return err;
@@ -1018,27 +1039,41 @@ esp_err_t Nvs::get_u64(nvs_handle_t handle, const char* key, uint64_t* value) {
 
 esp_err_t Nvs::get_str(nvs_handle_t handle, const char* key, char* value,
                        size_t* length) {
+  if (length == nullptr) return ESP_ERR_NVS_INVALID_LENGTH;
   EntryValue val;
   esp_err_t err = impl_->get(handle, key, Nvs::Type::STR, val);
   if (err != ESP_OK) return err;
-  size_t actual = std::max(*length, val.str_value.size() + 1);
-  if (value != nullptr) {
-    memcpy(value, val.str_value.c_str(), actual);
+  const size_t required = val.str_value.size() + 1;
+  if (value == nullptr) {
+    *length = required;
+    return ESP_OK;
   }
-  *length = actual;
+  if (*length < required) {
+    *length = required;
+    return ESP_ERR_NVS_INVALID_LENGTH;
+  }
+  memcpy(value, val.str_value.c_str(), required);
+  *length = required;
   return ESP_OK;
 }
 
 esp_err_t Nvs::get_blob(nvs_handle_t handle, const char* key, char* value,
                         size_t* length) {
+  if (length == nullptr) return ESP_ERR_NVS_INVALID_LENGTH;
   EntryValue val;
   esp_err_t err = impl_->get(handle, key, Nvs::Type::BLOB, val);
   if (err != ESP_OK) return err;
-  size_t actual = std::max(*length, val.blob_value.size());
-  if (value != nullptr) {
-    memcpy(value, val.blob_value.c_str(), actual);
+  const size_t required = val.blob_value.size();
+  if (value == nullptr) {
+    *length = required;
+    return ESP_OK;
   }
-  *length = actual;
+  if (*length < required) {
+    *length = required;
+    return ESP_ERR_NVS_INVALID_LENGTH;
+  }
+  if (required != 0) memcpy(value, val.blob_value.data(), required);
+  *length = required;
   return ESP_OK;
 }
 

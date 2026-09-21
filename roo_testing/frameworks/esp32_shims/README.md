@@ -25,7 +25,7 @@ trees, then adjusted to ESP-IDF 6.0.2 / Arduino-ESP32 3.3.11 declarations.
 | I2C/SPI/UART | Transfers are forwarded to the matching `FakeEsp32` bus | IDF `hal/esp32/i2c.cpp`, modified Arduino I2C/SPI HAL, `tools/sdk/esp32/src/uart.cpp` |
 | NVS | IDF NVS handles and values use the existing fake persistent storage | `fake_esp32_nvs.cpp`, old NVS BUILD wiring |
 | OTA/partitions | OTA writes and partition operations are accepted/no-op; queries return no real flash partitions | `tools/sdk/esp32/src/esp_ota.cpp`, `esp_partition.cpp` |
-| Events | A synchronous, thread-safe host event loop implements the registration/posting subset used by Arduino networking | previously the in-tree IDF event component |
+| Events | The upstream ESP-IDF event component runs on the pthread-backed FreeRTOS Linux port, preserving queued delivery, payload ownership, timeouts, and dedicated-task loops | ESP-IDF `esp_event` component |
 | Wi-Fi/netif/DNS | Scan/connect events use the fake Wi-Fi environment; sockets remain native Linux sockets; unsupported radio/AP controls are safe no-ops | IDF `esp_wifi/esp_wifi.cpp` and modified Arduino WiFi sources |
 | ESP-NOW | Callbacks and payloads are forwarded to the fake ESP-NOW bus | IDF `esp_wifi/esp_now.cpp` |
 | Arduino runtime | Modern `EspClass` dependencies and Arduino HAL entry points are backed by the same services above | modified Arduino core/HAL sources |

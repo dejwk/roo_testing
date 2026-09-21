@@ -286,6 +286,20 @@ void esp_log_write(esp_log_level_t level, const char* tag, const char* format,
   va_end(args);
 }
 
+void esp_log_va(esp_log_config_t config, const char* tag, const char* format,
+                va_list args) {
+  esp_log_writev(static_cast<esp_log_level_t>(config.opts.log_level), tag,
+                 format, args);
+}
+
+void esp_log(esp_log_config_t config, const char* tag, const char* format,
+             ...) {
+  va_list args;
+  va_start(args, format);
+  esp_log_va(config, tag, format, args);
+  va_end(args);
+}
+
 void esp_log_level_set(const char*, esp_log_level_t level) {
   g_log_level.store(level);
 }

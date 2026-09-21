@@ -50,7 +50,6 @@ cc_library(
     name = "idf",
     srcs = [
         "esp_now.cpp",
-        "event.cpp",
         "//roo_testing/frameworks/esp-idf:components/esp_timer/src/esp_timer.c",
         "//roo_testing/frameworks/esp-idf:components/esp_timer/src/ets_timer_legacy.c",
         "//roo_testing/frameworks/esp-idf:components/esp_timer/src/esp_timer_init.c",
@@ -79,6 +78,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/esp-idf:headers",
+        "//roo_testing/frameworks/esp-idf:esp_event",
         ":esp_err_to_name",
         ":esp_timer_impl_host",
         ":esp_ringbuf",
@@ -142,6 +142,18 @@ cc_library(
     deps = [
         ":arduino",
         ":idf",
+    ],
+)
+
+cc_test(
+    name = "event_test",
+    size = "small",
+    srcs = ["event_test.cpp"],
+    linkstatic = 1,
+    deps = [
+        ":idf",
+        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "@googletest//:gtest",
     ],
 )
 

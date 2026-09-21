@@ -169,6 +169,27 @@ cc_library(
     ],
 )
 
+# ESP-IDF's event loop is platform-independent above its FreeRTOS primitives.
+# Build the upstream implementation against the pthread-backed Linux port so
+# host behavior retains the same queued delivery and handler semantics as the
+# device framework.
+cc_library(
+    name = "esp_event",
+    srcs = [
+        "components/esp_event/default_event_loop.c",
+        "components/esp_event/esp_event.c",
+        "components/esp_event/esp_event_private.c",
+    ],
+    hdrs = glob(["components/esp_event/private_include/**/*.h"]),
+    includes = ["components/esp_event/private_include"],
+    local_defines = ["CONFIG_LOG_VERSION=1"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":headers",
+        "//roo_testing/frameworks/esp-idf/components/freertos:freertos",
+    ],
+)
+
 # Only the Linux machine byte-order shim is portable to glibc. Exporting the
 # whole upstream components/linux/include directory would also shadow glibc's
 # sys/cdefs.h with the BSD compatibility version.

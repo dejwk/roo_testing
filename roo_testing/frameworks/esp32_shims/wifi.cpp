@@ -677,7 +677,12 @@ esp_err_t esp_wifi_connect(void) {
     }
     if (g_station_config.sta.ssid[0] == '\0') return ESP_ERR_WIFI_SSID;
     g_connected_ap.reset();
-    pending->lost_previous_ip = ClearStationIpLocked();
+    // A configured static address belongs to the interface, not the previous
+    // association. Only discard an old DHCP lease when starting a connection.
+    pending->lost_previous_ip =
+        g_station_netif != nullptr &&
+        g_station_netif->dhcp_client == ESP_NETIF_DHCP_STARTED &&
+        ClearStationIpLocked();
     g_station_state = StationState::kConnecting;
     pending->generation = ++g_connect_generation;
     pending->config = g_station_config;

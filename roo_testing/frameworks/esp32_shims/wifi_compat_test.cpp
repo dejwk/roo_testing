@@ -13,8 +13,8 @@
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
-#include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 #include "roo_testing/frameworks/esp32_shims/wifi_host.h"
+#include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 #include "roo_testing/transducers/wifi/wifi.h"
 #include "gtest/gtest.h"
 
@@ -204,11 +204,9 @@ TEST(WifiCompatTest, RejectsInvalidLifecycleAndModeCalls) {
   EXPECT_EQ(esp_wifi_scan_get_ap_num(&ap_count), ESP_ERR_WIFI_NOT_STARTED);
   EXPECT_EQ(esp_wifi_scan_get_ap_records(&ap_count, nullptr),
             ESP_ERR_WIFI_NOT_STARTED);
-  EXPECT_EQ(esp_wifi_scan_get_ap_record(&ap_record),
-            ESP_ERR_WIFI_NOT_STARTED);
+  EXPECT_EQ(esp_wifi_scan_get_ap_record(&ap_record), ESP_ERR_WIFI_NOT_STARTED);
   EXPECT_EQ(esp_wifi_clear_ap_list(), ESP_ERR_WIFI_NOT_STARTED);
-  EXPECT_EQ(esp_wifi_set_config(WIFI_IF_AP, &wifi_config),
-            ESP_ERR_WIFI_MODE);
+  EXPECT_EQ(esp_wifi_set_config(WIFI_IF_AP, &wifi_config), ESP_ERR_WIFI_MODE);
   EXPECT_EQ(esp_wifi_set_config(static_cast<wifi_interface_t>(WIFI_IF_MAX),
                                 &wifi_config),
             ESP_ERR_WIFI_IF);
@@ -221,8 +219,7 @@ TEST(WifiCompatTest, RejectsInvalidLifecycleAndModeCalls) {
   EXPECT_EQ(esp_wifi_connect(), ESP_ERR_WIFI_MODE);
   EXPECT_EQ(esp_wifi_scan_start(nullptr, false), ESP_ERR_WIFI_MODE);
   EXPECT_EQ(esp_wifi_clear_ap_list(), ESP_ERR_WIFI_MODE);
-  EXPECT_EQ(esp_wifi_set_config(WIFI_IF_STA, &wifi_config),
-            ESP_ERR_WIFI_MODE);
+  EXPECT_EQ(esp_wifi_set_config(WIFI_IF_STA, &wifi_config), ESP_ERR_WIFI_MODE);
   EXPECT_EQ(esp_wifi_set_config(WIFI_IF_AP, &wifi_config), ESP_OK);
 
   EXPECT_EQ(esp_wifi_stop(), ESP_OK);
@@ -495,8 +492,7 @@ TEST(WifiCompatTest, MaintainsConnectionAndNetifStateAcrossOperations) {
   ASSERT_EQ(esp_wifi_connect(), ESP_OK);
   ASSERT_EQ(xSemaphoreTake(capture.disconnected, pdMS_TO_TICKS(1000)), pdTRUE);
   ASSERT_EQ(xSemaphoreTake(capture.lost_ip, pdMS_TO_TICKS(1000)), pdTRUE);
-  EXPECT_EQ(esp_wifi_sta_get_ap_info(&connected_ap),
-            ESP_ERR_WIFI_NOT_CONNECT);
+  EXPECT_EQ(esp_wifi_sta_get_ap_info(&connected_ap), ESP_ERR_WIFI_NOT_CONNECT);
   state = roo_testing::esp32::wifi::GetState();
   EXPECT_EQ(state.station, StationState::kIdle);
   ASSERT_EQ(esp_netif_get_ip_info(station_netif, &ip_info), ESP_OK);
@@ -569,44 +565,42 @@ TEST(WifiCompatTest, DeliversLifecycleEventsInOrder) {
   memcpy(station_config.sta.ssid, "ordered", sizeof("ordered"));
   ASSERT_EQ(esp_wifi_set_config(WIFI_IF_STA, &station_config), ESP_OK);
   ASSERT_EQ(esp_wifi_connect(), ESP_OK);
-  ExpectOrderedEvents(
-      capture, {OrderedEvent::kConnected, OrderedEvent::kGotIp});
+  ExpectOrderedEvents(capture,
+                      {OrderedEvent::kConnected, OrderedEvent::kGotIp});
 
   ASSERT_EQ(esp_wifi_disconnect(), ESP_OK);
-  ExpectOrderedEvents(
-      capture, {OrderedEvent::kDisconnected, OrderedEvent::kLostIp});
+  ExpectOrderedEvents(capture,
+                      {OrderedEvent::kDisconnected, OrderedEvent::kLostIp});
 
   ASSERT_EQ(esp_wifi_connect(), ESP_OK);
-  ExpectOrderedEvents(
-      capture, {OrderedEvent::kConnected, OrderedEvent::kGotIp});
+  ExpectOrderedEvents(capture,
+                      {OrderedEvent::kConnected, OrderedEvent::kGotIp});
   ASSERT_EQ(esp_wifi_stop(), ESP_OK);
   ExpectOrderedEvents(capture, {OrderedEvent::kDisconnected,
-                                OrderedEvent::kLostIp,
-                                OrderedEvent::kStaStop});
+                                OrderedEvent::kLostIp, OrderedEvent::kStaStop});
 
   ASSERT_EQ(esp_wifi_start(), ESP_OK);
   ExpectOrderedEvents(capture, {OrderedEvent::kStaStart});
   ASSERT_EQ(esp_wifi_connect(), ESP_OK);
-  ExpectOrderedEvents(
-      capture, {OrderedEvent::kConnected, OrderedEvent::kGotIp});
+  ExpectOrderedEvents(capture,
+                      {OrderedEvent::kConnected, OrderedEvent::kGotIp});
 
   auto empty_environment = std::make_shared<Environment>();
   FakeEsp32().setWifiEnvironment(empty_environment);
   ASSERT_EQ(esp_wifi_connect(), ESP_OK);
-  ExpectOrderedEvents(
-      capture, {OrderedEvent::kDisconnected, OrderedEvent::kLostIp});
+  ExpectOrderedEvents(capture,
+                      {OrderedEvent::kDisconnected, OrderedEvent::kLostIp});
 
   empty_environment->addAccessPoint(std::make_unique<AccessPoint>(
       MacAddress(0x02, 0, 0, 0, 0, 8), "ordered"));
   ASSERT_EQ(esp_wifi_connect(), ESP_OK);
-  ExpectOrderedEvents(
-      capture, {OrderedEvent::kConnected, OrderedEvent::kGotIp});
+  ExpectOrderedEvents(capture,
+                      {OrderedEvent::kConnected, OrderedEvent::kGotIp});
 
   ASSERT_EQ(esp_wifi_set_mode(WIFI_MODE_AP), ESP_OK);
-  ExpectOrderedEvents(capture, {OrderedEvent::kDisconnected,
-                                OrderedEvent::kLostIp,
-                                OrderedEvent::kStaStop,
-                                OrderedEvent::kApStart});
+  ExpectOrderedEvents(capture,
+                      {OrderedEvent::kDisconnected, OrderedEvent::kLostIp,
+                       OrderedEvent::kStaStop, OrderedEvent::kApStart});
 
   EXPECT_EQ(esp_wifi_stop(), ESP_OK);
   EXPECT_EQ(esp_wifi_deinit(), ESP_OK);
@@ -678,8 +672,7 @@ TEST(WifiCompatTest, RunsScriptedConnectionTimingAndRadioChanges) {
             StationState::kAssociated);
   EXPECT_EQ(xSemaphoreTake(capture.got_ip, 0), pdFALSE);
   ASSERT_EQ(xSemaphoreTake(capture.got_ip, pdMS_TO_TICKS(1000)), pdTRUE);
-  EXPECT_EQ(roo_testing::esp32::wifi::GetState().station,
-            StationState::kGotIp);
+  EXPECT_EQ(roo_testing::esp32::wifi::GetState().station, StationState::kGotIp);
   ASSERT_EQ(esp_wifi_disconnect(), ESP_OK);
   ASSERT_EQ(xSemaphoreTake(capture.disconnected, pdMS_TO_TICKS(1000)), pdTRUE);
   ASSERT_EQ(xSemaphoreTake(capture.lost_ip, pdMS_TO_TICKS(1000)), pdTRUE);
@@ -720,8 +713,7 @@ TEST(WifiCompatTest, RunsScriptedConnectionTimingAndRadioChanges) {
   ASSERT_EQ(esp_wifi_disconnect(), ESP_OK);
   vTaskDelay(pdMS_TO_TICKS(120));
   EXPECT_EQ(xSemaphoreTake(capture.connected, 0), pdFALSE);
-  EXPECT_EQ(roo_testing::esp32::wifi::GetState().station,
-            StationState::kIdle);
+  EXPECT_EQ(roo_testing::esp32::wifi::GetState().station, StationState::kIdle);
 
   EXPECT_EQ(esp_wifi_stop(), ESP_OK);
   EXPECT_EQ(esp_wifi_deinit(), ESP_OK);
@@ -804,8 +796,8 @@ TEST(WifiCompatTest, ReportsScriptedConnectionOutcomes) {
   ASSERT_EQ(esp_wifi_disconnect(), ESP_OK);
   ASSERT_EQ(xSemaphoreTake(capture.disconnected, pdMS_TO_TICKS(1000)), pdTRUE);
 
-  environment->queueConnectionAttempt(ConnectionAttempt{
-      ConnectionOutcome::kBeaconTimeout, 0, 0, 20});
+  environment->queueConnectionAttempt(
+      ConnectionAttempt{ConnectionOutcome::kBeaconTimeout, 0, 0, 20});
   ASSERT_EQ(esp_wifi_connect(), ESP_OK);
   ASSERT_EQ(xSemaphoreTake(capture.connected, pdMS_TO_TICKS(1000)), pdTRUE);
   ASSERT_EQ(xSemaphoreTake(capture.got_ip, pdMS_TO_TICKS(1000)), pdTRUE);
@@ -839,3 +831,40 @@ TEST(WifiCompatTest, ReportsScriptedConnectionOutcomes) {
 }
 
 } // namespace
+
+// Verifies a stopped scan completes once and its delayed task cannot complete
+// a subsequent scan or produce a duplicate event.
+TEST(WifiCompatTest, StoppedScanDeliversCompletion) {
+  using namespace roo_testing_transducers::wifi;
+  auto environment = std::make_shared<Environment>();
+  environment->setScanDurationMs(300);
+  FakeEsp32().setWifiEnvironment(environment);
+  roo_testing::esp32::wifi::Reset();
+  ASSERT_EQ(esp_event_loop_create_default(), ESP_OK);
+  NetworkEventCapture capture;
+  capture.scan_done = xSemaphoreCreateBinary();
+  ASSERT_NE(capture.scan_done, nullptr);
+  ASSERT_EQ(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_SCAN_DONE,
+                                       CaptureNetworkEvent, &capture),
+            ESP_OK);
+  wifi_init_config_t init_config = WIFI_INIT_CONFIG_DEFAULT();
+  ASSERT_EQ(esp_wifi_init(&init_config), ESP_OK);
+  ASSERT_EQ(esp_wifi_set_mode(WIFI_MODE_STA), ESP_OK);
+  ASSERT_EQ(esp_wifi_start(), ESP_OK);
+  ASSERT_EQ(esp_wifi_scan_start(nullptr, false), ESP_OK);
+  ASSERT_EQ(esp_wifi_scan_stop(), ESP_OK);
+  EXPECT_EQ(xSemaphoreTake(capture.scan_done, pdMS_TO_TICKS(100)), pdTRUE);
+  ASSERT_EQ(esp_wifi_scan_stop(), ESP_OK);
+  EXPECT_EQ(xSemaphoreTake(capture.scan_done, pdMS_TO_TICKS(50)), pdFALSE);
+  ASSERT_EQ(esp_wifi_scan_start(nullptr, false), ESP_OK);
+  EXPECT_EQ(xSemaphoreTake(capture.scan_done, pdMS_TO_TICKS(270)), pdFALSE);
+  EXPECT_EQ(xSemaphoreTake(capture.scan_done, pdMS_TO_TICKS(200)), pdTRUE);
+  EXPECT_EQ(xSemaphoreTake(capture.scan_done, pdMS_TO_TICKS(100)), pdFALSE);
+  EXPECT_EQ(esp_wifi_stop(), ESP_OK);
+  EXPECT_EQ(esp_wifi_deinit(), ESP_OK);
+  EXPECT_EQ(esp_event_handler_unregister(WIFI_EVENT, WIFI_EVENT_SCAN_DONE,
+                                         CaptureNetworkEvent),
+            ESP_OK);
+  EXPECT_EQ(esp_event_loop_delete_default(), ESP_OK);
+  vSemaphoreDelete(capture.scan_done);
+}

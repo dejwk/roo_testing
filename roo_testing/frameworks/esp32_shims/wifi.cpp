@@ -18,8 +18,8 @@
 #include <string>
 #include <vector>
 
-#include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 #include "roo_testing/frameworks/esp32_shims/wifi_host.h"
+#include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 
 ESP_EVENT_DEFINE_BASE(WIFI_EVENT);
 ESP_EVENT_DEFINE_BASE(IP_EVENT);
@@ -110,7 +110,7 @@ void ResetDriverLocked(DriverState driver_state) {
                         ? StationState::kDisabled
                         : StationState::kIdle;
   g_mode = driver_state == DriverState::kUninitialized ? WIFI_MODE_NULL
-                                                        : WIFI_MODE_STA;
+                                                       : WIFI_MODE_STA;
   g_station_config = {};
   g_ap_config = {};
   g_smartconfig_started = false;
@@ -490,9 +490,9 @@ StateSnapshot GetState() {
   return {g_driver_state, g_station_state, g_mode};
 }
 
-}  // namespace wifi
-}  // namespace esp32
-}  // namespace roo_testing
+} // namespace wifi
+} // namespace esp32
+} // namespace roo_testing
 
 extern "C" {
 
@@ -505,7 +505,8 @@ const wpa_crypto_funcs_t g_wifi_default_wpa_crypto_funcs =
     MakeHostWpaCryptoFuncs();
 
 esp_err_t esp_wifi_init(const wifi_init_config_t *config) {
-  if (config == nullptr) return ESP_ERR_INVALID_ARG;
+  if (config == nullptr)
+    return ESP_ERR_INVALID_ARG;
   std::lock_guard<std::mutex> lock(g_mutex);
   if (g_driver_state != DriverState::kUninitialized) {
     return ESP_ERR_WIFI_INIT_STATE;
@@ -527,7 +528,8 @@ esp_err_t esp_wifi_deinit(void) {
 }
 
 esp_err_t esp_wifi_set_mode(wifi_mode_t mode) {
-  if (!IsValidMode(mode)) return ESP_ERR_INVALID_ARG;
+  if (!IsValidMode(mode))
+    return ESP_ERR_INVALID_ARG;
   wifi_mode_t previous_mode;
   bool started;
   bool disconnected = false;
@@ -562,13 +564,15 @@ esp_err_t esp_wifi_set_mode(wifi_mode_t mode) {
   if (lost_ip)
     PostLostIp();
   if (started && HasStation(previous_mode) != HasStation(mode)) {
-    esp_event_post(WIFI_EVENT, HasStation(mode) ? WIFI_EVENT_STA_START
-                                                : WIFI_EVENT_STA_STOP,
+    esp_event_post(WIFI_EVENT,
+                   HasStation(mode) ? WIFI_EVENT_STA_START
+                                    : WIFI_EVENT_STA_STOP,
                    nullptr, 0, portMAX_DELAY);
   }
   if (started && HasAccessPoint(previous_mode) != HasAccessPoint(mode)) {
-    esp_event_post(WIFI_EVENT, HasAccessPoint(mode) ? WIFI_EVENT_AP_START
-                                                    : WIFI_EVENT_AP_STOP,
+    esp_event_post(WIFI_EVENT,
+                   HasAccessPoint(mode) ? WIFI_EVENT_AP_START
+                                        : WIFI_EVENT_AP_STOP,
                    nullptr, 0, portMAX_DELAY);
   }
   return ESP_OK;
@@ -591,11 +595,13 @@ esp_err_t esp_wifi_start(void) {
     if (g_driver_state == DriverState::kUninitialized) {
       return ESP_ERR_WIFI_NOT_INIT;
     }
-    if (g_mode == WIFI_MODE_NULL) return ESP_ERR_WIFI_MODE;
-    if (g_driver_state == DriverState::kStarted) return ESP_OK;
+    if (g_mode == WIFI_MODE_NULL)
+      return ESP_ERR_WIFI_MODE;
+    if (g_driver_state == DriverState::kStarted)
+      return ESP_OK;
     g_driver_state = DriverState::kStarted;
-    g_station_state = HasStation(g_mode) ? StationState::kIdle
-                                         : StationState::kDisabled;
+    g_station_state =
+        HasStation(g_mode) ? StationState::kIdle : StationState::kDisabled;
     if (HasStation(g_mode) && g_station_netif != nullptr)
       g_station_netif->up = true;
     if (HasAccessPoint(g_mode) && g_ap_netif != nullptr)
@@ -620,11 +626,12 @@ esp_err_t esp_wifi_stop(void) {
     if (g_driver_state == DriverState::kUninitialized) {
       return ESP_ERR_WIFI_NOT_INIT;
     }
-    if (g_driver_state == DriverState::kStopped) return ESP_OK;
+    if (g_driver_state == DriverState::kStopped)
+      return ESP_OK;
     mode = g_mode;
     g_driver_state = DriverState::kStopped;
-    g_station_state = HasStation(mode) ? StationState::kIdle
-                                       : StationState::kDisabled;
+    g_station_state =
+        HasStation(mode) ? StationState::kIdle : StationState::kDisabled;
     ++g_scan_generation;
     ++g_connect_generation;
     g_scan_in_progress = false;
@@ -661,8 +668,8 @@ esp_err_t esp_wifi_restore(void) {
 esp_err_t esp_wifi_clear_fast_connect(void) { return ESP_OK; }
 
 esp_err_t esp_wifi_connect(void) {
-  std::unique_ptr<PendingConnection> pending(
-      new (std::nothrow) PendingConnection());
+  std::unique_ptr<PendingConnection> pending(new (std::nothrow)
+                                                 PendingConnection());
   if (pending == nullptr)
     return ESP_ERR_NO_MEM;
   {
@@ -671,11 +678,13 @@ esp_err_t esp_wifi_connect(void) {
       return ESP_ERR_WIFI_NOT_INIT;
     if (g_driver_state != DriverState::kStarted)
       return ESP_ERR_WIFI_NOT_STARTED;
-    if (!HasStation(g_mode)) return ESP_ERR_WIFI_MODE;
+    if (!HasStation(g_mode))
+      return ESP_ERR_WIFI_MODE;
     if (g_scan_in_progress || g_station_state == StationState::kConnecting) {
       return ESP_ERR_WIFI_STATE;
     }
-    if (g_station_config.sta.ssid[0] == '\0') return ESP_ERR_WIFI_SSID;
+    if (g_station_config.sta.ssid[0] == '\0')
+      return ESP_ERR_WIFI_SSID;
     g_connected_ap.reset();
     // A configured static address belongs to the interface, not the previous
     // association. Only discard an old DHCP lease when starting a connection.
@@ -723,7 +732,8 @@ esp_err_t esp_wifi_disconnect(void) {
     if (g_driver_state != DriverState::kStarted) {
       return ESP_ERR_WIFI_NOT_STARTED;
     }
-    if (!HasStation(g_mode)) return ESP_ERR_WIFI_MODE;
+    if (!HasStation(g_mode))
+      return ESP_ERR_WIFI_MODE;
     ++g_connect_generation;
     connected = g_connected_ap.has_value();
     g_connected_ap.reset();
@@ -747,8 +757,7 @@ esp_err_t esp_wifi_scan_start(const wifi_scan_config_t *config, bool block) {
     if (g_mode != WIFI_MODE_STA && g_mode != WIFI_MODE_APSTA) {
       return ESP_ERR_WIFI_MODE;
     }
-    if (g_station_state == StationState::kConnecting ||
-        g_scan_in_progress)
+    if (g_station_state == StationState::kConnecting || g_scan_in_progress)
       return ESP_ERR_WIFI_STATE;
   }
   std::vector<wifi_ap_record_t> results;
@@ -812,16 +821,27 @@ esp_err_t esp_wifi_scan_start(const wifi_scan_config_t *config, bool block) {
 }
 
 esp_err_t esp_wifi_scan_stop(void) {
-  std::lock_guard<std::mutex> lock(g_mutex);
-  if (g_driver_state == DriverState::kUninitialized)
-    return ESP_ERR_WIFI_NOT_INIT;
-  if (g_driver_state != DriverState::kStarted)
-    return ESP_ERR_WIFI_NOT_STARTED;
-  if (!g_scan_in_progress)
-    return ESP_OK;
-  ++g_scan_generation;
-  g_scan_in_progress = false;
-  g_pending_scan_results.clear();
+  {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (g_driver_state == DriverState::kUninitialized) {
+      return ESP_ERR_WIFI_NOT_INIT;
+    }
+    if (g_driver_state != DriverState::kStarted) {
+      return ESP_ERR_WIFI_NOT_STARTED;
+    }
+    if (!g_scan_in_progress)
+      return ESP_OK;
+    ++g_scan_generation;
+    g_scan_in_progress = false;
+    g_pending_scan_results.clear();
+    g_scan_results.clear();
+  }
+  // IDF reports completion for an explicitly stopped scan as well. Invalidate
+  // the delayed completion above so it cannot finish a subsequent scan.
+  wifi_event_sta_scan_done_t event = {};
+  event.status = 1;
+  esp_event_post(WIFI_EVENT, WIFI_EVENT_SCAN_DONE, &event, sizeof(event),
+                 portMAX_DELAY);
   return ESP_OK;
 }
 esp_err_t esp_wifi_scan_get_ap_num(uint16_t *number) {
@@ -1159,8 +1179,8 @@ esp_netif_t *esp_netif_create_default_wifi_sta(void) {
                                  ESP_NETIF_DHCP_CLIENT | ESP_NETIF_FLAG_AUTOUP),
                              IP_EVENT_STA_GOT_IP, IP_EVENT_STA_LOST_IP);
   g_station_netif->dhcp_client = ESP_NETIF_DHCP_STARTED;
-  g_station_netif->up = g_driver_state == DriverState::kStarted &&
-                        HasStation(g_mode);
+  g_station_netif->up =
+      g_driver_state == DriverState::kStarted && HasStation(g_mode);
   return g_station_netif;
 }
 esp_netif_t *esp_netif_create_default_wifi_ap(void) {
@@ -1171,8 +1191,8 @@ esp_netif_t *esp_netif_create_default_wifi_ap(void) {
   g_ap_netif->ip_info.ip.addr = 0x0104A8C0U;      // 192.168.4.1
   g_ap_netif->ip_info.netmask.addr = 0x00FFFFFFU; // 255.255.255.0
   g_ap_netif->ip_info.gw.addr = 0x0104A8C0U;      // 192.168.4.1
-  g_ap_netif->up = g_driver_state == DriverState::kStarted &&
-                   HasAccessPoint(g_mode);
+  g_ap_netif->up =
+      g_driver_state == DriverState::kStarted && HasAccessPoint(g_mode);
   return g_ap_netif;
 }
 void esp_netif_destroy_default_wifi(void *netif) {
@@ -1347,8 +1367,7 @@ int esp_netif_get_netif_impl_index(esp_netif_t *netif) {
     return -1;
   const auto &netifs = Netifs();
   const auto it = std::find(netifs.begin(), netifs.end(), netif);
-  return it == netifs.end() ? -1
-                            : static_cast<int>(it - netifs.begin()) + 1;
+  return it == netifs.end() ? -1 : static_cast<int>(it - netifs.begin()) + 1;
 }
 esp_err_t esp_netif_get_netif_impl_name(esp_netif_t *netif, char *name) {
   if (netif == nullptr || name == nullptr)

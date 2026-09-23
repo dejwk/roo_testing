@@ -351,6 +351,108 @@ TEST(WifiCompatTest, ScanFiltersSortsAndConsumesResults) {
 }
 
 // Verifies fixed-width IDF fields do not require spare null-terminator bytes.
+TEST(WifiCompatTest, ReportsNegotiatedSecurityWithoutChangingAdvertisedMode) {
+  using namespace roo_testing_transducers::wifi;
+  struct Case {
+    AuthMode advertised;
+    std::optional<AuthMode> scripted;
+    wifi_auth_mode_t expected;
+  };
+  for (const auto &c : {
+           Case{AUTH_WPA_WPA2_PSK, std::nullopt, WIFI_AUTH_WPA2_PSK},
+           Case{AUTH_WPA2_WPA3_PSK, std::nullopt, WIFI_AUTH_WPA3_PSK},
+           Case{AUTH_WPA3_PSK, std::nullopt, WIFI_AUTH_WPA3_PSK},
+           Case{AUTH_WPA2_WPA3_PSK, AUTH_WPA2_PSK, WIFI_AUTH_WPA2_PSK},
+           Case{AUTH_WPA2_WPA3_PSK, AUTH_OPEN, WIFI_AUTH_OPEN}}) {
+    auto environment = std::make_shared<Environment>();
+    auto ap = std::make_unique<AccessPoint>(MacAddress(2, 0, 0, 0, 2, 1), "mixed");
+    ap->setAuthMode(c.advertised)->setPasswd("password");
+    environment->addAccessPoint(std::move(ap));
+    ConnectionAttempt attempt;
+    attempt.negotiated_auth_mode = c.scripted;
+    environment->queueConnectionAttempt(attempt);
+    FakeEsp32().setWifiEnvironment(environment);
+    ASSERT_EQ(esp_event_loop_create_default(), ESP_OK);
+    StationEventCapture capture;
+    capture.event_received = xSemaphoreCreateBinary();
+    ASSERT_NE(capture.event_received, nullptr);
+    ASSERT_EQ(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
+                                        CaptureStationEvent, &capture), ESP_OK);
+    roo_testing::esp32::wifi::Reset();
+    wifi_init_config_t init = WIFI_INIT_CONFIG_DEFAULT();
+    ASSERT_EQ(esp_wifi_init(&init), ESP_OK);
+    ASSERT_EQ(esp_wifi_set_mode(WIFI_MODE_STA), ESP_OK);
+    ASSERT_EQ(esp_wifi_start(), ESP_OK);
+    // Scans retain the router's advertised mode.
+    ASSERT_EQ(esp_wifi_scan_start(nullptr, true), ESP_OK);
+    wifi_ap_record_t record = {};
+    uint16_t count = 1;
+    ASSERT_EQ(esp_wifi_scan_get_ap_records(&count, &record), ESP_OK);
+    ASSERT_EQ(count, 1);
+    EXPECT_EQ(record.authmode, static_cast<wifi_auth_mode_t>(c.advertised));
+    wifi_config_t config = {};
+    memcpy(config.sta.ssid, "mixed", 5);
+    memcpy(config.sta.password, "password", 8);
+    ASSERT_EQ(esp_wifi_set_config(WIFI_IF_STA, &config), ESP_OK);
+    for (int i = 0; i < 2; ++i) {
+      ASSERT_EQ(esp_wifi_connect(), ESP_OK);
+      ASSERT_EQ(xSemaphoreTake(capture.event_received, pdMS_TO_TICKS(1000)), pdTRUE);
+      // Script applies once; the next attempt uses default negotiation again.
+      const auto default_mode = c.advertised == AUTH_WPA_WPA2_PSK
+                                    ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_WPA3_PSK;
+      EXPECT_EQ(capture.connected.authmode, i == 0 ? c.expected : default_mode);
+      ASSERT_EQ(esp_wifi_disconnect(), ESP_OK);
+      ASSERT_EQ(xSemaphoreTake(capture.event_received, pdMS_TO_TICKS(1000)), pdTRUE);
+    }
+    EXPECT_EQ(esp_wifi_stop(), ESP_OK);
+    EXPECT_EQ(esp_wifi_deinit(), ESP_OK);
+    EXPECT_EQ(esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID,
+                                          CaptureStationEvent), ESP_OK);
+    EXPECT_EQ(esp_event_loop_delete_default(), ESP_OK);
+    vSemaphoreDelete(capture.event_received);
+  }
+}
+
+TEST(WifiCompatTest, RejectsUnspecifiedDnsAndClearsServersWhenResettingStation) {
+  ASSERT_EQ(esp_netif_init(), ESP_OK);
+  auto *netif = esp_netif_create_default_wifi_sta();
+  ASSERT_NE(netif, nullptr);
+  esp_netif_dns_info_t dns = {};
+  dns.ip.type = ESP_IPADDR_TYPE_V4;
+  dns.ip.u_addr.ip4.addr = 0x01010101;
+  ASSERT_EQ(esp_netif_set_dns_info(netif, ESP_NETIF_DNS_MAIN, &dns), ESP_OK);
+  auto invalid = dns;
+  invalid.ip.u_addr.ip4.addr = 0;
+  EXPECT_EQ(esp_netif_set_dns_info(netif, ESP_NETIF_DNS_MAIN, &invalid),
+            ESP_ERR_ESP_NETIF_INVALID_PARAMS);
+  invalid.ip.type = ESP_IPADDR_TYPE_V6;
+  EXPECT_EQ(esp_netif_set_dns_info(netif, ESP_NETIF_DNS_MAIN, &invalid),
+            ESP_ERR_ESP_NETIF_INVALID_PARAMS);
+  esp_netif_dns_info_t read = {};
+  ASSERT_EQ(esp_netif_get_dns_info(netif, ESP_NETIF_DNS_MAIN, &read), ESP_OK);
+  EXPECT_EQ(read.ip.u_addr.ip4.addr, dns.ip.u_addr.ip4.addr);
+  // A real IPv6 DNS address is accepted, too.
+  invalid.ip.u_addr.ip6.addr[3] = 1;
+  EXPECT_EQ(esp_netif_set_dns_info(netif, ESP_NETIF_DNS_BACKUP, &invalid), ESP_OK);
+  ASSERT_EQ(esp_netif_set_dns_info(netif, ESP_NETIF_DNS_FALLBACK, &dns), ESP_OK);
+  ASSERT_EQ(esp_netif_dhcpc_stop(netif), ESP_OK);
+  esp_netif_ip_info_t ip = {};
+  ASSERT_EQ(esp_netif_set_ip_info(netif, &ip), ESP_OK);
+  for (auto slot : {ESP_NETIF_DNS_MAIN, ESP_NETIF_DNS_BACKUP}) {
+    ASSERT_EQ(esp_netif_get_dns_info(netif, slot, &read), ESP_OK);
+    EXPECT_EQ(read.ip.u_addr.ip4.addr, 0u);
+    ASSERT_EQ(esp_netif_set_dns_info(netif, slot, &dns), ESP_OK);
+  }
+  ASSERT_EQ(esp_netif_dhcpc_start(netif), ESP_OK);
+  for (auto slot : {ESP_NETIF_DNS_MAIN, ESP_NETIF_DNS_BACKUP}) {
+    ASSERT_EQ(esp_netif_get_dns_info(netif, slot, &read), ESP_OK);
+    EXPECT_EQ(read.ip.u_addr.ip4.addr, 0u);
+  }
+  ASSERT_EQ(esp_netif_get_dns_info(netif, ESP_NETIF_DNS_FALLBACK, &read), ESP_OK);
+  EXPECT_EQ(read.ip.u_addr.ip4.addr, dns.ip.u_addr.ip4.addr);
+  esp_netif_destroy_default_wifi(netif);
+}
+
 TEST(WifiCompatTest, SupportsMaximumLengthSsidAndPassword) {
   using roo_testing_transducers::wifi::AccessPoint;
   using roo_testing_transducers::wifi::Environment;

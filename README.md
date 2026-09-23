@@ -316,7 +316,8 @@ available waveforms and analysis helpers.
 * SPI, emulated at pin level, accurately modeling bus speeds
 * I2C
 * UART, including host console devices and a bidirectional `FakeUartCable`
-* Networking and the station-mode Wi-Fi path
+* Networking and the station-mode Wi-Fi path; see the
+  [Wi-Fi simulation reference](doc/wifi_simulation.md)
 * FreeRTOS API, simulated ISR context, and the supported ESP-IDF interrupt
   allocation APIs
 * Emulated manual or host-synchronized time, one-shot alarms, and ESP-IDF

@@ -99,6 +99,9 @@
 #define CONFIG_LOG_TAG_LEVEL_IMPL_NONE 1
 #define CONFIG_LOG_TAG_LEVEL_IMPL 0
 
+/* Host Wi-Fi models WPA3 modes and negotiation, not SAE cryptography. */
+#define CONFIG_ESP_WIFI_ENABLE_WPA3_SAE 1
+
 /* Wi-Fi buffer choices required by IDF 6's public initialization macro.
  * These are the Kconfig defaults for the classic ESP32 profile. */
 #define CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM 10

@@ -324,13 +324,24 @@ wifi_err_reason_t ResolveAssociation(
   return WIFI_REASON_UNSPECIFIED;
 }
 
-void PostConnected(const AccessPoint &ap) {
+wifi_auth_mode_t NegotiatedAuth(const AccessPoint &ap,
+                               const ConnectionAttempt &attempt) {
+  if (attempt.negotiated_auth_mode)
+    return ToAuthMode(*attempt.negotiated_auth_mode);
+  switch (ToAuthMode(ap.auth_mode())) {
+    case WIFI_AUTH_WPA_WPA2_PSK: return WIFI_AUTH_WPA2_PSK;
+    case WIFI_AUTH_WPA2_WPA3_PSK: return WIFI_AUTH_WPA3_PSK;
+    default: return ToAuthMode(ap.auth_mode());
+  }
+}
+
+void PostConnected(const AccessPoint &ap, const ConnectionAttempt &attempt) {
   wifi_event_sta_connected_t connected = {};
   CopyMac(ap.macAddress(), connected.bssid);
   connected.ssid_len = static_cast<uint8_t>(
       CopyStringField(ap.ssid(), connected.ssid, sizeof(connected.ssid)));
   connected.channel = static_cast<uint8_t>(ap.channel());
-  connected.authmode = ToAuthMode(ap.auth_mode());
+  connected.authmode = NegotiatedAuth(ap, attempt);
   esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED, &connected,
                  sizeof(connected), portMAX_DELAY);
 }
@@ -374,7 +385,7 @@ void CompleteConnection(PendingConnection *pending) {
     g_connected_ap = ToRecord(*ap);
     g_station_state = StationState::kAssociated;
   }
-  PostConnected(*ap);
+  PostConnected(*ap, attempt);
 
   if (attempt.outcome == ConnectionOutcome::kDhcpTimeout)
     return;
@@ -1246,6 +1257,12 @@ esp_err_t esp_netif_set_ip_info(esp_netif_t *netif,
                                 const esp_netif_ip_info_t *info) {
   if (netif == nullptr || info == nullptr)
     return ESP_ERR_INVALID_ARG;
+  if (netif->flags & ESP_NETIF_DHCP_CLIENT) {
+    if (netif->dhcp_client != ESP_NETIF_DHCP_STOPPED)
+      return ESP_ERR_ESP_NETIF_DHCP_NOT_STOPPED;
+    netif->dns[ESP_NETIF_DNS_MAIN] = {};
+    netif->dns[ESP_NETIF_DNS_BACKUP] = {};
+  }
   netif->ip_info = *info;
   return ESP_OK;
 }
@@ -1270,6 +1287,10 @@ esp_err_t esp_netif_get_mac(esp_netif_t *netif, uint8_t mac[]) {
 esp_err_t esp_netif_dhcpc_start(esp_netif_t *netif) {
   if (netif == nullptr)
     return ESP_ERR_INVALID_ARG;
+  if (netif->dhcp_client == ESP_NETIF_DHCP_STARTED)
+    return ESP_ERR_ESP_NETIF_DHCP_ALREADY_STARTED;
+  netif->dns[ESP_NETIF_DNS_MAIN] = {};
+  netif->dns[ESP_NETIF_DNS_BACKUP] = {};
   netif->dhcp_client = ESP_NETIF_DHCP_STARTED;
   return ESP_OK;
 }
@@ -1312,8 +1333,21 @@ esp_err_t esp_netif_dhcps_option(esp_netif_t *netif,
 }
 esp_err_t esp_netif_set_dns_info(esp_netif_t *netif, esp_netif_dns_type_t type,
                                  esp_netif_dns_info_t *dns) {
-  if (netif == nullptr || dns == nullptr || type >= ESP_NETIF_DNS_MAX) {
-    return ESP_ERR_INVALID_ARG;
+  if (netif == nullptr || dns == nullptr || type < ESP_NETIF_DNS_MAIN ||
+      type >= ESP_NETIF_DNS_MAX) {
+    return ESP_ERR_ESP_NETIF_INVALID_PARAMS;
+  }
+  // ESP-IDF rejects unspecified DNS addresses; clearing happens when station
+  // IP settings are reset or DHCP is started, not through this setter.
+  if (dns->ip.type == ESP_IPADDR_TYPE_V4) {
+    if (dns->ip.u_addr.ip4.addr == 0)
+      return ESP_ERR_ESP_NETIF_INVALID_PARAMS;
+  } else if (dns->ip.type == ESP_IPADDR_TYPE_V6) {
+    const auto &addr = dns->ip.u_addr.ip6.addr;
+    if ((addr[0] | addr[1] | addr[2] | addr[3]) == 0)
+      return ESP_ERR_ESP_NETIF_INVALID_PARAMS;
+  } else {
+    return ESP_ERR_ESP_NETIF_INVALID_PARAMS;
   }
   netif->dns[type] = *dns;
   return ESP_OK;

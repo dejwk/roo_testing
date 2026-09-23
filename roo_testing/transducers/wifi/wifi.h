@@ -7,6 +7,7 @@
 #include <functional>
 #include <inttypes.h>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -83,7 +84,9 @@ enum AuthMode {
   AUTH_WPA_PSK,
   AUTH_WPA2_PSK,
   AUTH_WPA_WPA2_PSK,
-  AUTH_WPA2_ENTERPRISE
+  AUTH_WPA2_ENTERPRISE,
+  AUTH_WPA3_PSK,
+  AUTH_WPA2_WPA3_PSK
 };
 
 class Connection;
@@ -205,6 +208,11 @@ struct ConnectionAttempt {
   uint32_t association_delay_ms = 0;
   uint32_t dhcp_delay_ms = 0;
   uint32_t connected_duration_ms = 0;
+  /// Override the mode reported at association for this attempt only. By
+  /// default mixed APs negotiate their stronger constituent protocol. This
+  /// also permits deliberately inconsistent reports for client fault tests;
+  /// authentication cryptography is not simulated.
+  std::optional<AuthMode> negotiated_auth_mode = std::nullopt;
 };
 
 class ConnectionEventListener {

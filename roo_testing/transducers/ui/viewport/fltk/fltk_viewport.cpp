@@ -1,3 +1,4 @@
+#include <glog/logging.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -381,13 +382,23 @@ void MyWindow::on_close_cb(Fl_Widget* w, void* /*data*/) { abort(); }
 
 /*****************************************************************************/
 
+void FltkViewport::validateRect(int16_t x0, int16_t y0, int16_t x1,
+                                int16_t y1) const {
+  CHECK(width() > 0 && height() > 0 && x0 >= 0 && y0 >= 0 && x0 <= x1 &&
+        y0 <= y1 && x1 < width() && y1 < height())
+      << "Invalid viewport rectangle (" << x0 << "," << y0 << ")..(" << x1
+      << "," << y1 << ") for " << width() << "x" << height() << " display";
+}
+
 void FltkViewport::fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
                             uint32_t color_argb) {
+  validateRect(x0, y0, x1, y1);
   queue_->push(createFillRectMsg(x0, y0, x1, y1, color_argb));
 }
 
 void FltkViewport::drawRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
                             const uint32_t* color_argb) {
+  validateRect(x0, y0, x1, y1);
   queue_->push(createDrawRectMsg(x0, y0, x1, y1, color_argb));
 }
 
@@ -617,6 +628,8 @@ DeviceManager* manager() {
 }
 
 void FltkViewport::init(int16_t width, int16_t height) {
+  CHECK(width > 0 && height > 0)
+      << "Invalid viewport dimensions " << width << "x" << height;
   Viewport::init(width, height);
   manager()->addDevice(queue_, options_);
   queue_->push(createInitDisplayMsg(width, height));

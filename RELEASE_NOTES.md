@@ -1,3 +1,14 @@
+# roo_testing 2.3.0
+
+- Fix Wi-Fi scan cancellation to emit a completion event, preventing controller timeouts and subsequent “Wi-Fi is not ready” errors.
+- Add WPA3 and mixed WPA2/WPA3 simulation, with negotiated authentication reporting and per-attempt overrides.
+- Improve ESP-IDF DNS and DHCP compatibility: validate DNS addresses, require DHCP to stop before setting static IP information, and preserve fallback DNS when clearing primary and secondary entries.
+- Make FLTK viewports fail immediately with diagnostics for invalid dimensions or drawing rectangles.
+
+No uncommitted dependency upgrades were present in the working tree.
+
+---
+
 # roo_testing 2.2.0
 
 ### Added

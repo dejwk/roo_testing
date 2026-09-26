@@ -119,7 +119,7 @@ void FakeIli9341Spi::handleData() {
       break;
     }
     case 0x2B: {  // PASET
-      if (buf_size_ < 2) return;
+      if (buf_size_ < 4) return;
       y0_ = (buf_[0] << 8) + buf_[1];
       y1_ = (buf_[2] << 8) + buf_[3];
       cmd_done_ = true;

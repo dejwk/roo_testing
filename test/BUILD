@@ -623,3 +623,15 @@ cc_test(
         "//roo_testing/microcontrollers/esp32:core",
     ],
 )
+
+cc_test(
+    name = "ili9341spi_test",
+    size = "small",
+    srcs = ["ili9341spi_test.cpp"],
+    deps = [
+        "//roo_testing/buses/spi",
+        "//roo_testing/devices/display/ili9341:spi",
+        "//roo_testing/transducers/ui/viewport",
+        "@googletest//:gtest_main",
+    ],
+)

@@ -295,7 +295,7 @@ is added.
 ## Implementation Plan
 
 Authoring reference: follow this repository's
-[C++ code-authoring guidance](../.github/instructions/embedded-cpp-code-authoring.instructions.md).
+[C++ code-authoring guidance](../.github/instructions/general-cpp-code-authoring-instructions.md).
 
 The completed [emulated-time clock implementation](emulated_time_clock.md#implementation-plan)
 is a prerequisite.

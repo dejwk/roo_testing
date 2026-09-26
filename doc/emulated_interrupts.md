@@ -338,7 +338,7 @@ host semantics.
 ## Implementation Plan
 
 Follow the repository's
-[embedded C++ authoring guidance](../.github/instructions/embedded-cpp-code-authoring.instructions.md).
+[embedded C++ authoring guidance](../.github/instructions/general-cpp-code-authoring-instructions.md).
 
 ### Phase 1: FreeRTOS ISR bookkeeping
 

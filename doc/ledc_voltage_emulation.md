@@ -651,7 +651,7 @@ pretending to succeed.
 ## Implementation Plan
 
 Authoring reference: follow this repository's
-[C++ code-authoring guidance](../.github/instructions/embedded-cpp-code-authoring.instructions.md).
+[C++ code-authoring guidance](../.github/instructions/general-cpp-code-authoring-instructions.md).
 
 Dependencies: complete the
 [periodic-signal implementation](periodic_voltage_signals.md#implementation-plan)

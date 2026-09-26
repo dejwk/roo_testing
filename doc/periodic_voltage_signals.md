@@ -411,7 +411,7 @@ implemented shape or interim fallback.
 ## Implementation Plan
 
 Authoring reference: follow this repository's
-[C++ code-authoring guidance](../.github/instructions/embedded-cpp-code-authoring.instructions.md)
+[C++ code-authoring guidance](../.github/instructions/general-cpp-code-authoring-instructions.md)
 and adjacent voltage, GPIO, and test conventions.
 
 ### Phase 1: Signal values, sampling, and analysis

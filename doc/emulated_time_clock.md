@@ -199,7 +199,7 @@ selects manual mode through its dependency on
 ## Implementation Plan
 
 Authoring reference: follow this repository's
-[C++ code-authoring guidance](../.github/instructions/embedded-cpp-code-authoring.instructions.md).
+[C++ code-authoring guidance](../.github/instructions/general-cpp-code-authoring-instructions.md).
 
 ### Phase 1: Scheduler-safe host locking
 

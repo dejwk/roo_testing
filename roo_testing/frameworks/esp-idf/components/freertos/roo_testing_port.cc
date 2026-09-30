@@ -5,15 +5,25 @@
 // that the kernel needs.  The scheduler and pthread implementation continue to
 // come directly from FreeRTOS-Kernel/portable/linux/port.c.
 
+#include <unistd.h>
+
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
 #include <limits>
-#include <unistd.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "roo_testing/host_event/host_event_endpoint.h"
+
+namespace {
+
+// pthread cancellation runs signal handlers and forced unwinding on the task's
+// stack. PTHREAD_STACK_MIN only permits thread creation; it is too small for
+// that shutdown path, especially with sanitizer instrumentation.
+constexpr size_t kSchedulerStackDepth = 64 * 1024 / sizeof(StackType_t);
+
+}  // namespace
 
 extern "C" {
 
@@ -56,10 +66,12 @@ void vPortYieldOtherCore(BaseType_t core_id) { (void)core_id; }
 void vApplicationGetIdleTaskMemory(StaticTask_t** tcb, StackType_t** stack,
                                    uint32_t* stack_size) {
   static StaticTask_t idle_tcb;
-  static StackType_t idle_stack[configMINIMAL_STACK_SIZE];
+  static StackType_t idle_stack[configMINIMAL_STACK_SIZE > kSchedulerStackDepth
+                                    ? configMINIMAL_STACK_SIZE
+                                    : kSchedulerStackDepth];
   *tcb = &idle_tcb;
   *stack = idle_stack;
-  *stack_size = configMINIMAL_STACK_SIZE;
+  *stack_size = sizeof(idle_stack) / sizeof(idle_stack[0]);
 }
 #endif
 
@@ -67,15 +79,18 @@ void vApplicationGetIdleTaskMemory(StaticTask_t** tcb, StackType_t** stack,
 void vApplicationGetTimerTaskMemory(StaticTask_t** tcb, StackType_t** stack,
                                     uint32_t* stack_size) {
   static StaticTask_t timer_tcb;
-  static StackType_t timer_stack[configTIMER_TASK_STACK_DEPTH];
+  static StackType_t
+      timer_stack[configTIMER_TASK_STACK_DEPTH > kSchedulerStackDepth
+                      ? configTIMER_TASK_STACK_DEPTH
+                      : kSchedulerStackDepth];
   *tcb = &timer_tcb;
   *stack = timer_stack;
-  *stack_size = configTIMER_TASK_STACK_DEPTH;
+  *stack_size = sizeof(timer_stack) / sizeof(timer_stack[0]);
 }
 #endif
 
 void __attribute__((weak)) vApplicationStackOverflowHook(TaskHandle_t task,
-                                                          char* task_name) {
+                                                         char* task_name) {
   (void)task;
   std::fprintf(stderr, "FreeRTOS stack overflow in task %s\n",
                task_name == nullptr ? "<unknown>" : task_name);

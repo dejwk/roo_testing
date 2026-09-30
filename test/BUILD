@@ -635,3 +635,15 @@ cc_test(
         "@googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "freertos_posix_scheduler_shutdown_test",
+    size = "small",
+    srcs = ["freertos_posix_scheduler_shutdown_test.cpp"],
+    linkstatic = 1,
+    linkopts = [
+        "-Wl,--wrap=vApplicationGetIdleTaskMemory",
+        "-Wl,--wrap=vApplicationGetTimerTaskMemory",
+    ],
+    deps = ["//roo_testing/frameworks/esp-idf/components/freertos"],
+)

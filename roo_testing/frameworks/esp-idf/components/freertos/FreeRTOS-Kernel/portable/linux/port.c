@@ -251,27 +251,10 @@ BaseType_t xPortStartScheduler( void )
     xTimerTask = xTimerGetTimerDaemonTaskHandle();
 #endif
 
-#if ( INCLUDE_xTaskGetIdleTaskHandle == 1 ) && ( configUSE_TIMERS == 1 )
-    /* Keep the FreeRTOS buffers as the actual pthread stacks: stack sizing and
-     * overflow behaviour are part of the Linux port's useful fidelity. Thread
-     * cleanup can reclaim a terminating custom stack at host-page granularity,
-     * including port metadata at the top of an adjacent lower-address stack.
-     * Tear down from lower to higher metadata addresses so any such reclaimed
-     * bytes belong only to a pthread that has already been joined. */
-    if ( ( uintptr_t ) prvGetThreadFromTask( xIdleTask ) <
-         ( uintptr_t ) prvGetThreadFromTask( xTimerTask ) )
-    {
-        vPortCancelThread( xIdleTask );
-        vPortCancelThread( xTimerTask );
-    }
-    else
-    {
-        vPortCancelThread( xTimerTask );
-        vPortCancelThread( xIdleTask );
-    }
-#elif ( configUSE_TIMERS == 1 )
+#if ( configUSE_TIMERS == 1 )
     vPortCancelThread( xTimerTask );
-#elif ( INCLUDE_xTaskGetIdleTaskHandle == 1 )
+#endif
+#if ( INCLUDE_xTaskGetIdleTaskHandle == 1 )
     vPortCancelThread( xIdleTask );
 #endif
 

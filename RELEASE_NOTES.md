@@ -1,3 +1,11 @@
+# roo_testing 2.3.1
+
+- Fix FreeRTOS host scheduler shutdown crashes by increasing idle and timer task stacks to at least 64 KiB, preventing stack overflow during pthread cancellation, including under AddressSanitizer.
+- Fix ILI9341 SPI emulation to apply page addresses only after receiving all four `PASET` bytes, preserving the previous address when a command is interrupted.
+- Add regression tests for scheduler shutdown stack safety and partial SPI page-address transfers.
+
+---
+
 # roo_testing 2.3.0
 
 - Fix Wi-Fi scan cancellation to emit a completion event, preventing controller timeouts and subsequent “Wi-Fi is not ready” errors.

@@ -173,6 +173,16 @@ TEST(WifiCompatTest, DriverLifecycleIsExplicitAndResettable) {
   EXPECT_EQ(state.mode, WIFI_MODE_NULL);
 }
 
+// Verifies the country-code shim keeps the two-letter code terminated even
+// when the caller supplies a longer string.
+TEST(WifiCompatTest, CountryCodeIsTerminated) {
+  char code[3] = {};
+  EXPECT_EQ(ESP_ERR_INVALID_ARG, esp_wifi_set_country_code(nullptr, false));
+  ASSERT_EQ(ESP_OK, esp_wifi_set_country_code("POL", false));
+  ASSERT_EQ(ESP_OK, esp_wifi_get_country_code(code));
+  EXPECT_STREQ("PO", code);
+}
+
 // Verifies core APIs reject calls in invalid lifecycle and interface states.
 TEST(WifiCompatTest, RejectsInvalidLifecycleAndModeCalls) {
   roo_testing::esp32::wifi::Reset();

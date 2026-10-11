@@ -1038,15 +1038,14 @@ esp_err_t esp_wifi_get_country(wifi_country_t *country) {
   *country = g_country;
   return ESP_OK;
 }
-esp_err_t esp_wifi_set_country_code(const char *country, bool) {
-  if (country == nullptr)
-    return ESP_ERR_INVALID_ARG;
-  strncpy(g_country.cc, country, sizeof(g_country.cc));
+esp_err_t esp_wifi_set_country_code(const char* country, bool) {
+  if (country == nullptr) return ESP_ERR_INVALID_ARG;
+  strncpy(g_country.cc, country, sizeof(g_country.cc) - 1);
+  g_country.cc[sizeof(g_country.cc) - 1] = '\0';
   return ESP_OK;
 }
-esp_err_t esp_wifi_get_country_code(char *country) {
-  if (country == nullptr)
-    return ESP_ERR_INVALID_ARG;
+esp_err_t esp_wifi_get_country_code(char* country) {
+  if (country == nullptr) return ESP_ERR_INVALID_ARG;
   memcpy(country, g_country.cc, sizeof(g_country.cc));
   return ESP_OK;
 }

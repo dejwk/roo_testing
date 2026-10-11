@@ -189,7 +189,10 @@ bool FakeOneWireBaseDevice::read_bit() {
           }
           return address_bit;
         }
-        default: { assert(false); }
+        default: {
+          assert(false);
+          return true;  // An invalid command releases the shared bus.
+        }
       }
     }
     case FUNCTION_COMMAND_DATA_EXCHANGE: {
@@ -197,7 +200,10 @@ bool FakeOneWireBaseDevice::read_bit() {
       ++bits_sent_;
       return result;
     }
-    default: { assert(false); }
+    default: {
+      assert(false);
+      return true;
+    }
   }
 }
 

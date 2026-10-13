@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package roo.comms;
+package roo.testing.comms;
 
 enum RealmId {
   kUnspecifiedRealm = 0;

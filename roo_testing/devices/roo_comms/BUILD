@@ -1,6 +1,7 @@
 load("@protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
 load("@protobuf//bazel:proto_library.bzl", "proto_library")
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
 proto_library(
     name = "roo_comms_proto",
@@ -35,5 +36,15 @@ cc_library(
         "//roo_testing/sys",
         "//roo_testing/transducers/temperature",
         "@glog",
+    ],
+)
+
+cc_test(
+    name = "wire_compatibility_test",
+    size = "small",
+    srcs = ["wire_compatibility_test.cpp"],
+    deps = [
+        ":roo_comms_cc_proto",
+        "@googletest//:gtest_main",
     ],
 )

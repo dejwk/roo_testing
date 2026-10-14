@@ -20,7 +20,8 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/buses/esp_now",
-        # "//roo_testing/transducers/voltage",
+        ":roo_comms_cc_proto",
+        "//roo_testing/sys",
         "@glog",
     ],
 )
@@ -55,6 +56,17 @@ cc_test(
     srcs = ["environmental_sensor_test.cpp"],
     deps = [
         ":environmental_sensor",
+        "//:arduino_gtest_main",
+        "//roo_testing/microcontrollers/esp32",
+    ],
+)
+
+cc_test(
+    name = "relay_test",
+    size = "small",
+    srcs = ["relay_test.cpp"],
+    deps = [
+        ":relay",
         "//:arduino_gtest_main",
         "//roo_testing/microcontrollers/esp32",
     ],

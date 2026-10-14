@@ -48,3 +48,14 @@ cc_test(
         "@googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "environmental_sensor_test",
+    size = "small",
+    srcs = ["environmental_sensor_test.cpp"],
+    deps = [
+        ":environmental_sensor",
+        "//:arduino_gtest_main",
+        "//roo_testing/microcontrollers/esp32",
+    ],
+)

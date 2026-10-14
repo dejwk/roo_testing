@@ -1,5 +1,6 @@
 #include "roo_testing/devices/roo_comms/environmental_sensor.h"
 
+#include <cmath>
 #include <cstring>
 
 #include "glog/logging.h"
@@ -9,6 +10,9 @@ namespace {
 
 static const unsigned char kControlMagic[] = {'r',  'o',  'o',  0x0,
                                               0xE1, 0xB2, 0x88, 0x99};
+
+static const unsigned char kDataMagic[] = {'r',  'o',  'o',  0x00,
+                                           0x5E, 0x0C, 0x15, 0x03};
 
 roo::testing::comms::HomeAutomationDeviceDescriptor
 BuildHomeAutomationDescriptor() {
@@ -59,7 +63,23 @@ void FakeRooEnvironmentalSensor::update() {
           break;
         }
         case kPaired: {
-          // Send periodic sensor updates...
+          roo::testing::comms::DataMessage msg;
+          auto* readings = msg.mutable_environmental_sensor_readings();
+          const double temperature = thermometer_ == nullptr
+                                         ? std::nan("")
+                                         : thermometer_->read().AsC();
+          if (std::isfinite(temperature)) {
+            readings->mutable_aht20()->set_temperature_celsius(temperature);
+            readings->mutable_bmp280()->set_temperature_celsius(temperature);
+          }
+          // No humidity or pressure transducers are attached to this fake.
+          // Leave those optional readings absent instead of inventing values.
+          std::string payload;
+          CHECK(msg.SerializeToString(&payload));
+          std::string packet(reinterpret_cast<const char*>(kDataMagic),
+                             sizeof(kDataMagic));
+          packet.append(payload);
+          respond(packet.data(), packet.size());
           break;
         }
       }

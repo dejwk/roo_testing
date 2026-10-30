@@ -1,3 +1,15 @@
+# roo_testing 2.4.0
+
+- Add host-backed ESP-IDF LittleFS mount, unmount, format, and mount-status APIs; capacity and usage reporting remain placeholders.
+- Add a four-channel ESP-NOW relay fake with discovery, pairing, masked writes, state reports, and change callbacks.
+- Publish periodic AHT20/BMP280 temperature readings from paired environmental sensor fakes, leaving unavailable readings absent.
+- Move roo_comms protobuf types to `roo::testing::comms` to avoid application class-name clashes while preserving wire compatibility.
+- Support hidden borders and address offsets in ST77xx display emulation, and fix mirrored-coordinate off-by-one errors.
+- Store `nvs.txt` in the workspace during `bazel run`, with the current directory as fallback.
+- Fix Wi-Fi country-code null termination and undefined fake OneWire read results when assertions are disabled.
+
+---
+
 # roo_testing 2.3.1
 
 - Fix FreeRTOS host scheduler shutdown crashes by increasing idle and timer task stacks to at least 64 KiB, preventing stack overflow during pthread cancellation, including under AddressSanitizer.

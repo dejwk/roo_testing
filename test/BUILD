@@ -647,3 +647,13 @@ cc_test(
     ],
     deps = ["//roo_testing/frameworks/esp-idf/components/freertos"],
 )
+
+cc_test(
+    name = "nvs_path_test",
+    size = "small",
+    srcs = ["nvs_path_test.cpp"],
+    deps = [
+        "//roo_testing/microcontrollers/esp32:nvs_path",
+        "@googletest//:gtest_main",
+    ],
+)

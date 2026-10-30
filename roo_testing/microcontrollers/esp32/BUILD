@@ -39,3 +39,9 @@ cc_library(
     hdrs = ["fake_esp32_nvs.h"],
     visibility = ["//visibility:public"],
 )
+
+cc_library(
+    name = "nvs_path",
+    hdrs = ["nvs_path.h"],
+    visibility = ["//visibility:public"],
+)

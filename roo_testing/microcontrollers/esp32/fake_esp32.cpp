@@ -10,6 +10,7 @@
 #include <set>
 
 #include "glog/logging.h"
+#include "nvs_path.h"
 
 Esp32InMatrix::Esp32InMatrix() {
   std::fill(&signal_to_pin_[0], &signal_to_pin_[256], kMatrixDetachInUndefPin);
@@ -42,16 +43,6 @@ std::string resolve_fs_root_path(std::string path) {
   return std::string(workspace) + "/" + path;
 }
 
-std::string default_nvs_file() {
-  char cwd[PATH_MAX];
-  if (getcwd(cwd, sizeof(cwd)) != nullptr) {
-    return std::string(cwd) + "/nvs.txt";
-  } else {
-    LOG(ERROR) << "getcwd() failed";
-    return "";
-  }
-}
-
 }  // namespace
 
 FakeEsp32Board* CreateEsp32Board() {
@@ -69,7 +60,7 @@ FakeEsp32Board::FakeEsp32Board()
     : gpio(40),
       in_matrix(),
       out_matrix(),
-      nvs(default_nvs_file()),
+      nvs(roo_testing::internal::DefaultNvsPath()),
       reg_(*this),
       uart_{Esp32UartInterface(0, "uart0", /* U0TXD_OUT_IDX*/ 14,
                                /* U0RXD_IN_IDX*/ 14, this),

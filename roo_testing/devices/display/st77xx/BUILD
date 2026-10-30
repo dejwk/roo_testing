@@ -11,3 +11,15 @@ cc_library(
         "@glog",
     ],
 )
+
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+
+cc_test(
+    name = "st77xx_test",
+    size = "small",
+    srcs = ["st77xx_test.cpp"],
+    deps = [
+        ":spi",
+        "@googletest//:gtest_main",
+    ],
+)

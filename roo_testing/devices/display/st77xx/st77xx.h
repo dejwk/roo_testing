@@ -7,9 +7,12 @@
 
 class FakeSt77xxSpi : public SimpleFakeSpiDevice {
  public:
-  FakeSt77xxSpi(roo_testing_transducers::Viewport& viewport,
-                int16_t width, int16_t height,
-                const std::string& name = "display_ST7XX")
+  /// Creates a visible panel with optional symmetric controller-RAM padding.
+  /// @p x_padding and @p y_padding describe hidden pixels on each edge in
+  /// native panel coordinates; rotations are applied across the full RAM.
+  FakeSt77xxSpi(roo_testing_transducers::Viewport& viewport, int16_t width,
+                int16_t height, const std::string& name = "display_ST7XX",
+                int16_t x_padding = 0, int16_t y_padding = 0)
       : SimpleFakeSpiDevice(name),
         dc_(name + ":DC"),
         rst_(name + ":RESET"),
@@ -17,6 +20,8 @@ class FakeSt77xxSpi : public SimpleFakeSpiDevice {
         mad_ctl_(0),
         width_(width),
         height_(height),
+        x_padding_(x_padding),
+        y_padding_(y_padding),
         is_reset_(true),
         is_inverted_(false),
         cmd_done_(true),
@@ -65,6 +70,8 @@ class FakeSt77xxSpi : public SimpleFakeSpiDevice {
 
   int16_t width_;
   int16_t height_;
+  int16_t x_padding_;
+  int16_t y_padding_;
 
   int16_t x0_, y0_, x1_, y1_, x_cursor_, y_cursor_;
   bool is_reset_;

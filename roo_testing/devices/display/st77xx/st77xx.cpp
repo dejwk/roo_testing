@@ -190,19 +190,25 @@ void FakeSt77xxSpi::writeColor(uint16_t color) {
   uint32_t argb = 0xFF000000 | (r << 16) | (g << 8) | b;
   if (is_inverted_) argb ^= 0x00FFFFFF;
 
-  uint16_t x = x_cursor_;
-  uint16_t y = y_cursor_;
+  int32_t x = x_cursor_;
+  int32_t y = y_cursor_;
 
   if (mad_ctl_.mv()) {
     std::swap(x, y);
   }
   if (mad_ctl_.my()) {
-    y = height_ - y;
+    y = height_ + 2 * y_padding_ - 1 - y;
   }
   if (mad_ctl_.mx()) {
-    x = width_ - x;
+    x = width_ + 2 * x_padding_ - 1 - x;
   }
-  viewport_.fillRect(x, y, x, y, argb);
+  // Controller addresses include hidden RAM borders. Only visible pixels
+  // reach the viewport, after undoing MADCTL over the full RAM dimensions.
+  x -= x_padding_;
+  y -= y_padding_;
+  if (x >= 0 && y >= 0 && x < width_ && y < height_) {
+    viewport_.fillRect(x, y, x, y, argb);
+  }
   if (x_cursor_ < x1_) {
     ++x_cursor_;
     return;

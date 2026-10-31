@@ -63,6 +63,7 @@ cc_library(
         "nvs.cpp",
         "ota_partition.cpp",
         "sntp_host.cpp",
+        "sntp_netif.cpp",
         "wifi.cpp",
         "//roo_testing/frameworks/esp-idf:components/esp_timer/src/esp_timer.c",
         "//roo_testing/frameworks/esp-idf:components/esp_timer/src/esp_timer_init.c",
@@ -72,6 +73,7 @@ cc_library(
         "esp_timer_host.h",
         "shim_internal.h",
         "sntp_host.h",
+        "sntp_internal.h",
         "wifi_host.h",
     ],
     copts = [
@@ -327,3 +329,23 @@ cc_test(
         "//roo_testing/system:manual_time_mode",
     ],
 )
+
+[
+    cc_test(
+        name = name,
+        size = "small",
+        srcs = ["netif_sntp_test.cpp"],
+        deps = [
+            ":idf",
+            "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+            "@googletest//:gtest",
+        ] + mode,
+    )
+    for name, mode in [
+        (
+            "netif_sntp_test",
+            ["//roo_testing/system:manual_time_mode"],
+        ),
+        ("netif_sntp_auto_test", []),
+    ]
+]

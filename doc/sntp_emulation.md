@@ -1,7 +1,7 @@
 # SNTP emulation
 
-Status: Implementation in progress. Stages 1-3 provide the clock bridge, shared
-client, and Arduino integration; esp-netif and release coverage follow.
+Status: Implementation in progress. Stages 1-4 provide the clock bridge, shared
+client, Arduino and esp-netif integration; release/profile coverage follows.
 
 ## Objective
 
@@ -349,6 +349,11 @@ Timeout returns `ESP_ERR_TIMEOUT`; missing initialization/wait support returns
 `ESP_ERR_INVALID_STATE`. Deinit must unblock existing waiters with invalid-state
 results and retire their synchronization storage only after those waiters exit.
 Deinit from a notification callback must not wait for that same callback.
+
+Notification registrations carry monotonically increasing tags. An already
+claimed notification from a retired registration cannot attach to a newly
+initialized adapter session. Retired session storage remains owned until its
+callbacks and waiters exit.
 
 The low-level and esp-netif APIs control one global client. Document that
 applications choose one configuration/notification owner rather than treating

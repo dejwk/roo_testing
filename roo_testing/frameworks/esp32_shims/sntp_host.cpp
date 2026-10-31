@@ -1,4 +1,5 @@
 #define ESP_LWIP_COMPONENT_BUILD 1
+#include "esp_netif_sntp.h"
 #include "esp_sntp.h"
 #undef SNTP_OPMODE_POLL
 #include <sys/time.h>
@@ -13,6 +14,7 @@
 #include "glog/logging.h"
 #include "lwip/apps/sntp.h"
 #include "roo_testing/frameworks/esp32_shims/sntp_host.h"
+#include "roo_testing/frameworks/esp32_shims/sntp_internal.h"
 #include "roo_testing/frameworks/posix_time/posix_time.h"
 #include "roo_testing/system/timer.h"
 #include "roo_testing/system/wall_clock.h"
@@ -38,6 +40,7 @@ struct Client {
   int64_t deadline = 0;
   uint32_t interval_ms = kDefaultIntervalMs;
   sntp_sync_time_cb_t callback = nullptr;
+  uint64_t registration = 0;
   sntp_sync_status_t status = SNTP_SYNC_STATUS_RESET;
   bool enabled = false;
   bool resetting = false;
@@ -45,6 +48,7 @@ struct Client {
 };
 Client client;
 thread_local unsigned notification_depth = 0;
+thread_local uint64_t notification_registration = 0;
 
 /// Serializes short task-side state operations; never held across user code.
 class ClientLock {
@@ -112,13 +116,20 @@ void PublishTime(struct timeval* tv) {
       static_cast<__int128>(tv->tv_sec) * 1000000 + tv->tv_usec;
   CHECK(micros >= INT64_MIN && micros <= INT64_MAX);
   sntp_sync_time_cb_t callback;
+  uint64_t registration;
   {
     ClientLock lock;
     CHECK(roo_testing::system::SetUnixTimeMicros(static_cast<int64_t>(micros)));
     client.status = SNTP_SYNC_STATUS_COMPLETED;
     callback = client.callback;
+    registration = client.registration;
   }
-  if (callback != nullptr) callback(tv);
+  if (callback != nullptr) {
+    const uint64_t previous = notification_registration;
+    notification_registration = registration;
+    callback(tv);
+    notification_registration = previous;
+  }
 }
 
 /// Treats each timer wake as a poll of authoritative current state, not old
@@ -159,11 +170,21 @@ Server& ServerAt(unsigned index) {
 }  // namespace
 
 namespace roo_testing::esp32_shims {
+uint64_t InstallSntpNotificationForHost(sntp_sync_time_cb_t callback) {
+  ClientLock lock;
+  CHECK_NE(client.registration, UINT64_MAX);
+  client.callback = callback;
+  return ++client.registration;
+}
+
+uint64_t CurrentSntpNotificationForHost() { return notification_registration; }
+
 void InitializeSntpForHost() {
   if (client.mutex == nullptr) {
     client.mutex = xSemaphoreCreateMutexStatic(&client.mutex_storage);
     CHECK(client.mutex != nullptr);
   }
+  InitializeNetifSntpForHost();
 }
 
 esp_err_t ShutdownSntpForHost() {
@@ -203,6 +224,7 @@ esp_err_t ConfigureServer(const ServerBehavior& behavior) {
 
 void Reset() {
   CHECK_EQ(notification_depth, 0u) << "Cannot reset inside SNTP delivery";
+  esp_netif_sntp_deinit();
   {
     ClientLock lock;
     CHECK(!client.resetting);
@@ -243,8 +265,7 @@ void __attribute__((weak)) sntp_sync_time(struct timeval* tv) {
 }
 
 void sntp_set_time_sync_notification_cb(sntp_sync_time_cb_t callback) {
-  ClientLock lock;
-  client.callback = callback;
+  roo_testing::esp32_shims::InstallSntpNotificationForHost(callback);
 }
 
 sntp_sync_status_t sntp_get_sync_status() {

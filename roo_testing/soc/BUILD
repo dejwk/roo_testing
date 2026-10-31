@@ -20,11 +20,45 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 
-# Framework and emulator targets depend on this stable label.  A future SoC
-# implementation gets a new concrete target and platform; :target must not be
-# changed until its headers, Arduino variant, shims, and behavior agree.
+# Framework and emulator targets share this platform-selected profile.
 alias(
     name = "target",
-    actual = ":esp32",
+    actual = select({
+        "//roo_testing/platforms:is_esp32s3": ":esp32s3",
+        "//roo_testing/platforms:is_esp32c3": ":esp32c3",
+        "//conditions:default": ":esp32",
+    }),
+    visibility = ["//visibility:public"],
+)
+
+profile_guard(
+    name = "esp32s3_platform_guard",
+    environment = "The roo_testing ESP32S3 SoC profile",
+    required_constraints = ["//roo_testing/platforms:esp32s3"],
+)
+
+cc_library(
+    name = "esp32s3",
+    srcs = ["esp32s3_profile_contract.cc"],
+    hdrs = ["include/roo_testing/soc_profile.h"],
+    copts = ["-Werror"],
+    data = [":esp32s3_platform_guard"],
+    strip_include_prefix = "include",
+    visibility = ["//visibility:public"],
+)
+
+profile_guard(
+    name = "esp32c3_platform_guard",
+    environment = "The roo_testing ESP32C3 SoC profile",
+    required_constraints = ["//roo_testing/platforms:esp32c3"],
+)
+
+cc_library(
+    name = "esp32c3",
+    srcs = ["esp32c3_profile_contract.cc"],
+    hdrs = ["include/roo_testing/soc_profile.h"],
+    copts = ["-Werror"],
+    data = [":esp32c3_platform_guard"],
+    strip_include_prefix = "include",
     visibility = ["//visibility:public"],
 )

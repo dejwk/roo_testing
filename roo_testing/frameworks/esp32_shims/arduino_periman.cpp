@@ -1,12 +1,13 @@
-#include "esp32-hal-periman.h"
-
 #include <array>
 #include <mutex>
 #include <string>
 
+#include "esp32-hal-periman.h"
+#include "roo_testing/microcontrollers/esp32/soc_traits.h"
+
 namespace {
 
-constexpr size_t kPinCount = 40;
+constexpr size_t kPinCount = SOC_GPIO_PIN_COUNT;
 
 struct PinAssignment {
   peripheral_bus_type_t type = ESP32_BUS_TYPE_INIT;
@@ -38,37 +39,58 @@ extern "C" {
 
 const char* perimanGetTypeName(peripheral_bus_type_t type) {
   switch (type) {
-    case ESP32_BUS_TYPE_INIT: return "INIT";
-    case ESP32_BUS_TYPE_GPIO: return "GPIO";
-    case ESP32_BUS_TYPE_UART_RX: return "UART_RX";
-    case ESP32_BUS_TYPE_UART_TX: return "UART_TX";
-    case ESP32_BUS_TYPE_UART_CTS: return "UART_CTS";
-    case ESP32_BUS_TYPE_UART_RTS: return "UART_RTS";
+    case ESP32_BUS_TYPE_INIT:
+      return "INIT";
+    case ESP32_BUS_TYPE_GPIO:
+      return "GPIO";
+    case ESP32_BUS_TYPE_UART_RX:
+      return "UART_RX";
+    case ESP32_BUS_TYPE_UART_TX:
+      return "UART_TX";
+    case ESP32_BUS_TYPE_UART_CTS:
+      return "UART_CTS";
+    case ESP32_BUS_TYPE_UART_RTS:
+      return "UART_RTS";
 #if SOC_ADC_SUPPORTED
-    case ESP32_BUS_TYPE_ADC_ONESHOT: return "ADC_ONESHOT";
-    case ESP32_BUS_TYPE_ADC_CONT: return "ADC_CONT";
+    case ESP32_BUS_TYPE_ADC_ONESHOT:
+      return "ADC_ONESHOT";
+    case ESP32_BUS_TYPE_ADC_CONT:
+      return "ADC_CONT";
 #endif
 #if SOC_LEDC_SUPPORTED
-    case ESP32_BUS_TYPE_LEDC: return "LEDC";
+    case ESP32_BUS_TYPE_LEDC:
+      return "LEDC";
 #endif
 #if SOC_I2C_SUPPORTED
-    case ESP32_BUS_TYPE_I2C_MASTER_SDA: return "I2C_MASTER_SDA";
-    case ESP32_BUS_TYPE_I2C_MASTER_SCL: return "I2C_MASTER_SCL";
-    case ESP32_BUS_TYPE_I2C_SLAVE_SDA: return "I2C_SLAVE_SDA";
-    case ESP32_BUS_TYPE_I2C_SLAVE_SCL: return "I2C_SLAVE_SCL";
+    case ESP32_BUS_TYPE_I2C_MASTER_SDA:
+      return "I2C_MASTER_SDA";
+    case ESP32_BUS_TYPE_I2C_MASTER_SCL:
+      return "I2C_MASTER_SCL";
+    case ESP32_BUS_TYPE_I2C_SLAVE_SDA:
+      return "I2C_SLAVE_SDA";
+    case ESP32_BUS_TYPE_I2C_SLAVE_SCL:
+      return "I2C_SLAVE_SCL";
 #endif
 #if SOC_GPSPI_SUPPORTED
-    case ESP32_BUS_TYPE_SPI_MASTER_SCK: return "SPI_MASTER_SCK";
-    case ESP32_BUS_TYPE_SPI_MASTER_MISO: return "SPI_MASTER_MISO";
-    case ESP32_BUS_TYPE_SPI_MASTER_MOSI: return "SPI_MASTER_MOSI";
-    case ESP32_BUS_TYPE_SPI_MASTER_SS: return "SPI_MASTER_SS";
+    case ESP32_BUS_TYPE_SPI_MASTER_SCK:
+      return "SPI_MASTER_SCK";
+    case ESP32_BUS_TYPE_SPI_MASTER_MISO:
+      return "SPI_MASTER_MISO";
+    case ESP32_BUS_TYPE_SPI_MASTER_MOSI:
+      return "SPI_MASTER_MOSI";
+    case ESP32_BUS_TYPE_SPI_MASTER_SS:
+      return "SPI_MASTER_SS";
 #endif
-    case ESP32_BUS_TYPE_MAX: return "INVALID";
-    default: return "PERIPHERAL";
+    case ESP32_BUS_TYPE_MAX:
+      return "INVALID";
+    default:
+      return "PERIPHERAL";
   }
 }
 
-bool perimanPinIsValid(uint8_t pin) { return pin < kPinCount; }
+bool perimanPinIsValid(uint8_t pin) {
+  return roo_testing::soc::IsValidPin(pin);
+}
 
 bool perimanSetPinBus(uint8_t pin, peripheral_bus_type_t type, void* bus,
                       int8_t bus_number, int8_t bus_channel) {
@@ -86,8 +108,7 @@ bool perimanSetPinBus(uint8_t pin, peripheral_bus_type_t type, void* bus,
   }
   if (callback != nullptr && !callback(previous_bus)) return false;
   std::lock_guard<std::mutex> lock(perimanMutex());
-  pinAssignments()[pin] =
-      PinAssignment{type, bus, bus_number, bus_channel, {}};
+  pinAssignments()[pin] = PinAssignment{type, bus, bus_number, bus_channel, {}};
   return true;
 }
 

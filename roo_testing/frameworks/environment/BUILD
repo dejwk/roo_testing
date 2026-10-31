@@ -43,9 +43,8 @@ cc_library(
 # under the Arduino frontend, even though both frontends expose ESP-IDF APIs.
 profile_guard(
     name = "idf_platform_guard",
-    environment = "The roo_testing IDF-only ESP32 environment",
+    environment = "The roo_testing IDF-only environment",
     required_constraints = [
-        "//roo_testing/platforms:esp32",
         "//roo_testing/platforms:esp_idf",
         "//roo_testing/platforms:idf",
         "//roo_testing/platforms:roo_testing",
@@ -61,10 +60,9 @@ cc_library(
 
 profile_guard(
     name = "arduino_platform_guard",
-    environment = "The roo_testing Arduino ESP32 environment",
+    environment = "The roo_testing Arduino environment",
     required_constraints = [
         "//roo_testing/platforms:arduino",
-        "//roo_testing/platforms:esp32",
         "//roo_testing/platforms:esp_idf",
         "//roo_testing/platforms:roo_testing",
     ],

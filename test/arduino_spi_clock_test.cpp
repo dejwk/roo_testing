@@ -1,10 +1,9 @@
-#include "Arduino.h"
-#include "SPI.h"
-
 #include <array>
 #include <chrono>
 #include <cstdint>
 
+#include "Arduino.h"
+#include "SPI.h"
 #include "gtest/gtest.h"
 #include "roo_testing/buses/spi/fake_spi.h"
 #include "roo_testing/microcontrollers/esp32/fake_esp32.h"
@@ -15,7 +14,8 @@ class ClockRecordingSpiDevice : public SimpleFakeSpiDevice {
  public:
   ClockRecordingSpiDevice() : SimpleFakeSpiDevice("Arduino SPI clock test") {}
 
-  void transfer(const FakeSpiInterface& spi, uint8_t*, uint16_t bit_count) override {
+  void transfer(const FakeSpiInterface& spi, uint8_t*,
+                uint16_t bit_count) override {
     frequency = spi.clkHz();
     bits = bit_count;
   }
@@ -36,16 +36,20 @@ TEST(ArduinoSpiClockTest, MatchesUpstreamDividedClockEncoding) {
   EXPECT_LE(spiClockDivToFrequency(nullptr, non_divisible_divider),
             kNonDivisibleFrequency);
 
-  constexpr int kClock = 18;
-  constexpr int kMiso = 19;
-  constexpr int kMosi = 23;
-  constexpr int kChipSelect = 5;
+  constexpr int kClock = 4;
+  constexpr int kMiso = 5;
+  constexpr int kMosi = 6;
+  constexpr int kChipSelect = 7;
 
   ClockRecordingSpiDevice device;
   FakeEsp32().attachSpiDevice(device, kClock, kMiso, kMosi);
   FakeEsp32().gpio.attachOutput(kChipSelect, device.cs());
 
+#if CONFIG_IDF_TARGET_ESP32
   SPIClass spi(VSPI);
+#else
+  SPIClass spi(FSPI);
+#endif
   ASSERT_TRUE(spi.begin(kClock, kMiso, kMosi, kChipSelect));
   pinMode(kChipSelect, OUTPUT);
   digitalWrite(kChipSelect, LOW);

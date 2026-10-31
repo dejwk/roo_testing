@@ -40,9 +40,16 @@ TEST(IdfSdCompatTest, MountsAndUnmountsHostDirectories) {
   EXPECT_EQ(ESP_OK, esp_vfs_fat_sdspi_mount(spi_root.path(), &host, &spi_slot,
                                             &config, &spi_card));
   ASSERT_NE(nullptr, spi_card);
+#if SOC_SDMMC_HOST_SUPPORTED
   EXPECT_EQ(ESP_OK, esp_vfs_fat_sdmmc_mount(mmc_root.path(), &host, &mmc_slot,
                                             &config, &mmc_card));
   ASSERT_NE(nullptr, mmc_card);
+#else
+  EXPECT_EQ(ESP_ERR_NOT_SUPPORTED,
+            esp_vfs_fat_sdmmc_mount(mmc_root.path(), &host, &mmc_slot, &config,
+                                    &mmc_card));
+  EXPECT_EQ(nullptr, mmc_card);
+#endif
 
   sdmmc_card_t* duplicate = nullptr;
   EXPECT_EQ(ESP_ERR_INVALID_STATE,
@@ -51,7 +58,9 @@ TEST(IdfSdCompatTest, MountsAndUnmountsHostDirectories) {
   EXPECT_EQ(nullptr, duplicate);
 
   EXPECT_EQ(ESP_OK, esp_vfs_fat_sdcard_unmount(spi_root.path(), spi_card));
+#if SOC_SDMMC_HOST_SUPPORTED
   EXPECT_EQ(ESP_OK, esp_vfs_fat_sdcard_unmount(mmc_root.path(), mmc_card));
+#endif
 }
 
 TEST(IdfSdCompatTest, RejectsMissingDirectoriesAndInvalidArguments) {

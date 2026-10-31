@@ -174,9 +174,10 @@ bool ledcSetClockSource(ledc_clk_cfg_t source) {
 
 bool ledcAttachChannel(uint8_t pin, uint32_t frequency, uint8_t resolution,
                        uint8_t channel) {
-  if (pin >= kPins || channel >= channels.size() || resolution == 0 ||
-      resolution > 20)
+  if (!roo_testing::soc::IsOutputPin(pin) || channel >= channels.size() ||
+      resolution == 0 || resolution > SOC_LEDC_TIMER_BIT_WIDTH) {
     return false;
+  }
   if (pin_channel[pin] >= 0) ledcDetach(pin);
   auto& state = channels[channel];
   if (state.attached && state.pin < pin_channel.size()) {
@@ -214,7 +215,9 @@ bool ledcWrite(uint8_t pin, uint32_t duty) {
 }
 bool ledcWriteChannel(uint8_t channel, uint32_t duty) {
   if (channel >= channels.size() || !channels[channel].attached ||
-      FadeActive(channel)) return false;
+      FadeActive(channel)) {
+    return false;
+  }
   channels[channel].duty = duty;
   Publish(channels[channel]);
   return true;
@@ -258,8 +261,10 @@ bool ledcDetach(uint8_t pin) {
 uint32_t ledcChangeFrequency(uint8_t pin, uint32_t frequency,
                              uint8_t resolution) {
   Channel* state = forPin(pin);
-  if (!state || resolution == 0 || resolution > 20 ||
-      FadeActive(pin_channel[pin])) return 0;
+  if (!state || resolution == 0 || resolution > SOC_LEDC_TIMER_BIT_WIDTH ||
+      FadeActive(pin_channel[pin])) {
+    return 0;
+  }
   state->frequency = frequency;
   state->resolution = resolution;
   state->carrier_origin_us = system_time_get_micros();

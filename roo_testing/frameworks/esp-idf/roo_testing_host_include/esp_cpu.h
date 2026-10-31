@@ -12,7 +12,8 @@
 #include "sdkconfig.h"
 #include "soc/soc_caps.h"
 
-#if !defined(ROO_TESTING_SOC_ESP32)
+#if !defined(ROO_TESTING_SOC_ESP32) && !defined(ROO_TESTING_SOC_ESP32S3) && \
+    !defined(ROO_TESTING_SOC_ESP32C3)
 #error "Add a CPU host shim before enabling another roo_testing SoC profile"
 #endif
 
@@ -105,8 +106,8 @@ static inline bool esp_cpu_intr_has_handler(int intr_num) {
   return false;
 }
 static inline void esp_cpu_intr_set_handler(int intr_num,
-                                             esp_cpu_intr_handler_t handler,
-                                             void* handler_arg) {
+                                            esp_cpu_intr_handler_t handler,
+                                            void* handler_arg) {
   (void)intr_num;
   (void)handler;
   (void)handler_arg;
@@ -116,9 +117,7 @@ static inline void* esp_cpu_intr_get_handler_arg(int intr_num) {
   return NULL;
 }
 static inline void esp_cpu_intr_enable(uint32_t intr_mask) { (void)intr_mask; }
-static inline void esp_cpu_intr_disable(uint32_t intr_mask) {
-  (void)intr_mask;
-}
+static inline void esp_cpu_intr_disable(uint32_t intr_mask) { (void)intr_mask; }
 static inline uint32_t esp_cpu_intr_get_enabled_mask(void) { return 0; }
 static inline void esp_cpu_intr_edge_ack(int intr_num) { (void)intr_num; }
 
@@ -152,8 +151,8 @@ static inline intptr_t esp_cpu_get_call_addr(intptr_t return_address) {
   return return_address - 3;
 }
 static inline bool esp_cpu_compare_and_set(volatile uint32_t* address,
-                                            uint32_t compare_value,
-                                            uint32_t new_value) {
+                                           uint32_t compare_value,
+                                           uint32_t new_value) {
   if (address == NULL) return false;
   return __atomic_compare_exchange_n(address, &compare_value, new_value, false,
                                      __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);

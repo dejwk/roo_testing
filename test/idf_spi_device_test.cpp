@@ -1,9 +1,8 @@
-#include "driver/spi_master.h"
-
 #include <algorithm>
 #include <cstdint>
 #include <vector>
 
+#include "driver/spi_master.h"
 #include "gtest/gtest.h"
 #include "roo_testing/buses/spi/fake_spi.h"
 #include "roo_testing/microcontrollers/esp32/fake_esp32.h"
@@ -44,10 +43,10 @@ void CountCallback(spi_transaction_t* transaction) {
 }
 
 TEST(IdfSpiDeviceTest, RoutesTransactionsThroughAttachedFakeDevice) {
-  constexpr int kClock = 18;
-  constexpr int kMiso = 19;
-  constexpr int kMosi = 23;
-  constexpr int kChipSelect = 5;
+  constexpr int kClock = 4;
+  constexpr int kMiso = 5;
+  constexpr int kMosi = 6;
+  constexpr int kChipSelect = 7;
 
   // FakeEsp32 owns attachment relationships for the lifetime of the process.
   // Keep this device alive accordingly.
@@ -101,17 +100,15 @@ TEST(IdfSpiDeviceTest, RoutesTransactionsThroughAttachedFakeDevice) {
   EXPECT_TRUE(std::all_of(fake_device->frequencies.begin(),
                           fake_device->frequencies.end(),
                           [](uint32_t value) { return value == 10'000'000; }));
-  EXPECT_TRUE(std::all_of(fake_device->modes.begin(),
-                          fake_device->modes.end(),
-                          [](SpiDataMode value) { return value == kSpiMode3; }));
-  EXPECT_TRUE(std::all_of(fake_device->orders.begin(),
-                          fake_device->orders.end(),
-                          [](SpiBitOrder value) {
-                            return value == kSpiMsbFirst;
-                          }));
-  EXPECT_EQ((std::vector<uint8_t>{0xfe, 0xdc, 0xba, 0x98}),
-            (std::vector<uint8_t>(transaction.rx_data,
-                                  transaction.rx_data + 4)));
+  EXPECT_TRUE(
+      std::all_of(fake_device->modes.begin(), fake_device->modes.end(),
+                  [](SpiDataMode value) { return value == kSpiMode3; }));
+  EXPECT_TRUE(
+      std::all_of(fake_device->orders.begin(), fake_device->orders.end(),
+                  [](SpiBitOrder value) { return value == kSpiMsbFirst; }));
+  EXPECT_EQ(
+      (std::vector<uint8_t>{0xfe, 0xdc, 0xba, 0x98}),
+      (std::vector<uint8_t>(transaction.rx_data, transaction.rx_data + 4)));
   EXPECT_EQ(2, callback_count);
   EXPECT_FALSE(fake_device->isSelected());
 

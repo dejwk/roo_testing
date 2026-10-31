@@ -5,4 +5,5 @@ cc_library(
     srcs = ["fake_i2c.cpp"],
     hdrs = ["fake_i2c.h"],
     visibility = ["//visibility:public"],
+    deps = ["//roo_testing/frameworks/esp-idf:headers"],
 )

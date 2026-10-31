@@ -67,8 +67,12 @@ extern "C" esp_err_t esp_vfs_fat_sdmmc_mount(
     const char* base_path, const sdmmc_host_t* host_config,
     const void* slot_config, const esp_vfs_fat_mount_config_t* mount_config,
     sdmmc_card_t** out_card) {
+#if SOC_SDMMC_HOST_SUPPORTED
   return MountHostSd(base_path, host_config, slot_config, mount_config,
                      out_card);
+#else
+  return ESP_ERR_NOT_SUPPORTED;
+#endif
 }
 
 extern "C" esp_err_t esp_vfs_fat_sdspi_mount(
@@ -164,6 +168,7 @@ extern "C" bool sdspi_host_check_buffer_alignment(int slot, const void* buffer,
   return true;
 }
 
+#if SOC_SDMMC_HOST_SUPPORTED
 extern "C" esp_err_t sdmmc_host_init(void) { return ESP_OK; }
 
 extern "C" esp_err_t sdmmc_host_init_slot(
@@ -277,3 +282,5 @@ extern "C" esp_err_t sdmmc_host_get_state(sdmmc_host_state_t* state) {
   state->num_of_init_slots = 1;
   return ESP_OK;
 }
+
+#endif  // SOC_SDMMC_HOST_SUPPORTED

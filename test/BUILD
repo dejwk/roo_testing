@@ -17,6 +17,7 @@ cc_test(
         "arduino_environment_contract.h",
         "emulator_environment_test.cpp",
         "idf_environment_contract.h",
+        "//test/profile:esp32_idf_environment_contract.h",
     ],
     copts = ["-Werror"],
     deps = ["//:environment"],
@@ -29,6 +30,7 @@ cc_test(
         "arduino_environment_contract.h",
         "idf_environment_contract.h",
         "idf_environment_test.cpp",
+        "//test/profile:esp32_idf_environment_contract.h",
     ],
     copts = ["-Werror"],
     deps = ["//roo_testing/frameworks/esp-idf:headers"],
@@ -41,6 +43,7 @@ cc_test(
         "arduino_environment_contract.h",
         "idf_environment_contract.h",
         "soc_environment_test.cpp",
+        "//test/profile:esp32_idf_environment_contract.h",
     ],
     copts = ["-Werror"],
     deps = ["//roo_testing/soc:target"],
@@ -53,6 +56,7 @@ cc_test(
         "arduino_environment_contract.h",
         "arduino_environment_test.cpp",
         "idf_environment_contract.h",
+        "//test/profile:esp32_idf_environment_contract.h",
     ],
     copts = ["-Werror"],
     linkstatic = 1,
@@ -67,6 +71,7 @@ cc_test(
         "arduino_environment_contract.h",
         "arduino_main_environment_test.cpp",
         "idf_environment_contract.h",
+        "//test/profile:esp32_idf_environment_contract.h",
     ],
     copts = ["-Werror"],
     linkstatic = 1,
@@ -80,6 +85,7 @@ cc_test(
         "arduino_environment_contract.h",
         "arduino_gtest_environment_test.cpp",
         "idf_environment_contract.h",
+        "//test/profile:esp32_idf_environment_contract.h",
     ],
     copts = ["-Werror"],
     linkstatic = 1,
@@ -183,8 +189,8 @@ cc_test(
     srcs = ["idf_ledc_test.cpp"],
     linkstatic = 1,
     deps = [
-        "//roo_testing/frameworks/esp32_shims:idf",
         "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "//roo_testing/frameworks/esp32_shims:idf",
     ],
 )
 
@@ -388,8 +394,8 @@ cc_test(
 cc_test(
     name = "time_mode_auto_static_initialization_test",
     size = "small",
-    linkstatic = 1,
     srcs = ["time_mode_auto_static_initialization_test.cpp"],
+    linkstatic = 1,
     deps = [
         "//roo_testing/system:timer",
         "@googletest//:gtest_main",
@@ -399,8 +405,8 @@ cc_test(
 cc_test(
     name = "time_mode_manual_static_initialization_test",
     size = "small",
-    linkstatic = 1,
     srcs = ["time_mode_manual_static_initialization_test.cpp"],
+    linkstatic = 1,
     deps = [
         "//roo_testing/system:manual_time_mode",
         "//roo_testing/system:timer",
@@ -411,8 +417,8 @@ cc_test(
 cc_test(
     name = "time_publication_test",
     size = "small",
-    linkstatic = 1,
     srcs = ["time_publication_test.cpp"],
+    linkstatic = 1,
     deps = [
         "//roo_testing/system:manual_time_mode",
         "//roo_testing/system:timer",
@@ -423,8 +429,8 @@ cc_test(
 cc_test(
     name = "system_time_alarms_test",
     size = "small",
-    linkstatic = 1,
     srcs = ["system_time_alarms_test.cpp"],
+    linkstatic = 1,
     deps = [
         "//roo_testing/system:manual_time_mode",
         "//roo_testing/system:timer",
@@ -435,8 +441,8 @@ cc_test(
 cc_test(
     name = "system_time_auto_alarms_test",
     size = "small",
-    linkstatic = 1,
     srcs = ["system_time_auto_alarms_test.cpp"],
+    linkstatic = 1,
     deps = [
         "//roo_testing/system:timer",
         "@googletest//:gtest_main",
@@ -446,8 +452,8 @@ cc_test(
 cc_test(
     name = "system_time_alarm_lifecycle_test",
     size = "small",
-    linkstatic = 1,
     srcs = ["system_time_alarm_lifecycle_test.cpp"],
+    linkstatic = 1,
     deps = [
         "//roo_testing/system:timer",
         "@googletest//:gtest_main",
@@ -457,7 +463,11 @@ cc_test(
 cc_test(
     name = "soc_profile_test",
     size = "small",
-    srcs = ["soc_profile_test.cpp"],
+    srcs = [
+        "idf_environment_contract.h",
+        "soc_profile_test.cpp",
+        "//test/profile:esp32_idf_environment_contract.h",
+    ],
     linkstatic = 1,
     deps = [
         "//roo_testing/frameworks/esp-idf:headers",
@@ -610,13 +620,13 @@ cc_test(
 
 cc_test(
     name = "idf_i2c_device_test",
+    size = "small",
+    srcs = ["idf_i2c_device_test.cpp"],
+    linkstatic = True,
     target_compatible_with = select({
         "//roo_testing/platforms:is_idf": [],
         "//conditions:default": ["@platforms//:incompatible"],
     }),
-    size = "small",
-    srcs = ["idf_i2c_device_test.cpp"],
-    linkstatic = True,
     deps = [
         "//:esp_idf_gtest_main",
         "//roo_testing/frameworks/esp32_shims:idf",
@@ -640,11 +650,11 @@ cc_test(
     name = "freertos_posix_scheduler_shutdown_test",
     size = "small",
     srcs = ["freertos_posix_scheduler_shutdown_test.cpp"],
-    linkstatic = 1,
     linkopts = [
         "-Wl,--wrap=vApplicationGetIdleTaskMemory",
         "-Wl,--wrap=vApplicationGetTimerTaskMemory",
     ],
+    linkstatic = 1,
     deps = ["//roo_testing/frameworks/esp-idf/components/freertos"],
 )
 
@@ -656,4 +666,23 @@ cc_test(
         "//roo_testing/microcontrollers/esp32:nvs_path",
         "@googletest//:gtest_main",
     ],
+)
+
+cc_test(
+    name = "soc_peripheral_test",
+    size = "small",
+    srcs = ["soc_peripheral_test.cpp"],
+    linkstatic = True,
+    local_defines = select({
+        "//roo_testing/platforms:is_esp32s3": ["ROO_EXPECTED_MODEL=2"],
+        "//roo_testing/platforms:is_esp32c3": ["ROO_EXPECTED_MODEL=3"],
+        "//conditions:default": ["ROO_EXPECTED_MODEL=1"],
+    }),
+    deps = ["//roo_testing/microcontrollers/esp32:core"] + select({
+        "//roo_testing/platforms:is_arduino": [
+            "//:arduino",
+            "//:arduino_gtest_main",
+        ],
+        "//conditions:default": ["//:esp_idf_gtest_main"],
+    }),
 )

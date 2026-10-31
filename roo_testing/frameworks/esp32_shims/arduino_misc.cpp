@@ -18,7 +18,7 @@
 namespace {
 arduino_panic_handler_t panic_handler = nullptr;
 void* panic_arg = nullptr;
-uint32_t cpu_frequency_mhz = 240;
+uint32_t cpu_frequency_mhz = CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ;
 bool bluetooth_started = false;
 bool ble_memory_released = false;
 bool classic_memory_released = false;
@@ -145,7 +145,11 @@ bool setCpuFrequencyMhz(uint32_t frequency) {
   return true;
 }
 const char* getSupportedCpuFrequencyMhz(uint8_t) {
+#if CONFIG_IDF_TARGET_ESP32C3
+  return "160,80,40,20,10";
+#else
   return "240,160,80,40,20,10";
+#endif
 }
 const char* getClockSourceName(uint8_t) { return "host"; }
 uint32_t getCpuFrequencyMhz() { return cpu_frequency_mhz; }

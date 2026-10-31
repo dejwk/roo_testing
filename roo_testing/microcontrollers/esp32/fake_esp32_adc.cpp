@@ -25,7 +25,10 @@ uint8_t Esp32Adc::getAttenuation(uint8_t channel) {
 }
 
 int16_t Esp32Adc::convert(int channel) {
+  if (channel < 0 || channel >= static_cast<int>(channel_to_pin_.size()))
+    return 0;
   int8_t pin = channel_to_pin_[channel];
+  if (pin < 0) return 0;
   float voltage = board_.gpio.get(pin).read();
   int16_t value = 0;
   switch (attenuation_[channel]) {
@@ -85,7 +88,7 @@ int16_t Esp32Adc::convert(int channel) {
     }
   }
   // Add noise.
-  int16_t offset = rand() / (RAND_MAX / 16) - (RAND_MAX / 32);
+  int16_t offset = rand() % 17 - 8;
   value += offset;
   if (value < 0) value = 0;
   if (value > 4095) value = 4095;

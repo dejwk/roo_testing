@@ -2,9 +2,13 @@
 
 #include <stdint.h>
 
+#include "esp_bit_defs.h"
+#include "soc/soc_caps.h"
+
 class Esp32GpioOutW1tc {
  public:
   uint32_t operator=(uint32_t val) const;
+
  private:
   uint32_t dummy;
 };
@@ -12,6 +16,7 @@ class Esp32GpioOutW1tc {
 class Esp32GpioOutW1ts {
  public:
   uint32_t operator=(uint32_t val) const;
+
  private:
   uint32_t dummy;
 };
@@ -19,6 +24,7 @@ class Esp32GpioOutW1ts {
 class Esp32GpioOut1W1tc {
  public:
   uint32_t operator=(uint32_t val) const;
+
  private:
   uint32_t dummy;
 };
@@ -26,6 +32,7 @@ class Esp32GpioOut1W1tc {
 class Esp32GpioOut1W1ts {
  public:
   uint32_t operator=(uint32_t val) const;
+
  private:
   uint32_t dummy;
 };
@@ -64,9 +71,7 @@ class Esp32GpioIn {
     return Esp32GpioInReadSpec() & sel;
   }
 
-  explicit operator uint32_t() const {
-    return uint32_t(Esp32GpioInReadSpec());
-  }
+  explicit operator uint32_t() const { return uint32_t(Esp32GpioInReadSpec()); }
 
  private:
   uint32_t dummy;
@@ -74,9 +79,12 @@ class Esp32GpioIn {
 
 class Esp32GpioIn1ReadSpec {
  public:
-  Esp32GpioIn1ReadSpec() : mask(0x000000FF), shift(0) {}
+  Esp32GpioIn1ReadSpec()
+      : mask(static_cast<uint32_t>(uint64_t{SOC_GPIO_VALID_GPIO_MASK} >> 32)),
+        shift(0) {}
 
-  Esp32GpioIn1ReadSpec(uint32_t mask, int8_t shift) : mask(mask), shift(shift) {}
+  Esp32GpioIn1ReadSpec(uint32_t mask, int8_t shift)
+      : mask(mask), shift(shift) {}
 
   Esp32GpioIn1ReadSpec operator>>(uint32_t shift) const {
     int8_t newshift = this->shift + shift;
@@ -112,4 +120,28 @@ class Esp32GpioIn1 {
 
  private:
   uint32_t dummy;
+};
+
+/// Intercepts both scalar and union-style GPIO output register assignments.
+template <typename Proxy>
+struct Esp32GpioWriteRegister {
+  /// Drives the GPIO proxy using a write-one-to-set or write-one-to-clear mask.
+  uint32_t operator=(uint32_t value) const { return val.operator=(value); }
+
+  Proxy val;
+};
+
+/// Samples both scalar and union-style GPIO input register expressions.
+template <typename Proxy>
+struct Esp32GpioReadRegister {
+  /// Defers a shifted input sample to the underlying GPIO proxy.
+  auto operator>>(uint32_t shift) const { return val >> shift; }
+
+  /// Defers a masked input sample to the underlying GPIO proxy.
+  auto operator&(uint32_t mask) const { return val & mask; }
+
+  /// Samples the current GPIO input levels.
+  explicit operator uint32_t() const { return static_cast<uint32_t>(val); }
+
+  Proxy val;
 };

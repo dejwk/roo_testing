@@ -14,7 +14,8 @@
 #error "The global build profile must define the Arduino architecture"
 #endif
 
-#ifndef ARDUINO_ESP32_DEV
+#if !defined(ARDUINO_ESP32_DEV) && !defined(ARDUINO_ESP32S3_DEV) && \
+    !defined(ARDUINO_ESP32C3_DEV)
 #error "The global build profile must define the Arduino board"
 #endif
 
@@ -31,7 +32,7 @@
 #endif
 
 static_assert(ARDUINO_ARCH_ESP32 == 1);
-static_assert(ARDUINO_ESP32_DEV == 1);
+
 static_assert(CORE_DEBUG_LEVEL == 5);
 static_assert(CONFIG_AUTOSTART_ARDUINO == 1);
 static_assert(CONFIG_ARDUINO_LOOP_STACK_SIZE == 8192);
@@ -47,5 +48,7 @@ static_assert(ARDUINO_USB_DFU_ON_BOOT == 0);
 static_assert(ARDUINO_USB_MSC_ON_BOOT == 0);
 static_assert(ARDUINO_USB_MODE == 0);
 static_assert(ARDUINO_USB_ON_BOOT == 0);
-static_assert(RooTestingEnvironmentStringEquals(ARDUINO_BOARD, "ESP32_DEV"));
-static_assert(RooTestingEnvironmentStringEquals(ARDUINO_VARIANT, "esp32"));
+static_assert(RooTestingEnvironmentStringEquals(ARDUINO_BOARD,
+                                                ROO_EXPECTED_BOARD));
+static_assert(RooTestingEnvironmentStringEquals(ARDUINO_VARIANT,
+                                                ROO_EXPECTED_SOC));

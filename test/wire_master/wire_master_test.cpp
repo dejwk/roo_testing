@@ -1,5 +1,4 @@
 #include "Wire.h"
-
 #include "gtest/gtest.h"
 #include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 
@@ -9,13 +8,13 @@ class RegisterDevice : public FakeI2cDevice {
  public:
   RegisterDevice() : FakeI2cDevice("wire-master-test", 0x42) {}
 
-  Result write(const uint8_t *buffer, uint16_t size, bool, uint16_t) override {
+  Result write(const uint8_t* buffer, uint16_t size, bool, uint16_t) override {
     if (size != 1) return I2C_ERROR_DEV;
     value_ = buffer[0];
     return I2C_ERROR_OK;
   }
 
-  Result read(uint8_t *buffer, uint16_t size, bool, uint16_t) override {
+  Result read(uint8_t* buffer, uint16_t size, bool, uint16_t) override {
     if (size != 1) return I2C_ERROR_DEV;
     buffer[0] = value_;
     return I2C_ERROR_OK;
@@ -29,10 +28,10 @@ class RegisterDevice : public FakeI2cDevice {
 
 TEST(WireMasterTest, StartsAndStopsWithUnsupportedSlavePathLinked) {
   RegisterDevice device;
-  FakeEsp32().attachI2cDevice(device, 21, 22);
+  FakeEsp32().attachI2cDevice(device, 4, 5);
 
   TwoWire wire(0);
-  ASSERT_TRUE(wire.begin(21, 22, 100000));
+  ASSERT_TRUE(wire.begin(4, 5, 100000));
   EXPECT_EQ(wire.getClock(), 100000U);
 
   wire.beginTransmission(0x42);

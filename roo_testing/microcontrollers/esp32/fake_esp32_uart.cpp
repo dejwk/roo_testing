@@ -17,14 +17,14 @@ Esp32UartInterface::Esp32UartInterface(int idx, const std::string& name,
     : idx_(idx), tx_signal_(tx_signal), rx_signal_(rx_signal), esp32_(esp32) {}
 
 size_t Esp32UartInterface::write(const uint8_t* buf, size_t size) {
-  // Find the device to communicate with.
-  for (const auto& i : esp32_->uart_devices()) {
-    if (i.second.tx < 0) continue;
-    if (esp32_->out_matrix.signal_for_pin(i.second.tx) != tx_signal_) continue;
-    FakeUartDevice* dev = i.first;
-    return dev->write(buf, size);
+  size_t written = 0;
+  for (const auto& attached : esp32_->uart_devices()) {
+    if (attached.second.tx < 0) continue;
+    if (esp32_->out_matrix.signal_for_pin(attached.second.tx) != tx_signal_)
+      continue;
+    written = std::max(written, attached.first->write(buf, size));
   }
-  return 0;
+  return written;
 }
 
 size_t Esp32UartInterface::availableForWrite() {

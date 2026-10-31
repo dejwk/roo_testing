@@ -22,9 +22,13 @@ std::string hex32(uint32_t val) {
 // the addresses in the range 0x60000000-0x6003FFFF refer to the same content as
 // 0x3ff40000-0x3ff7ffff.
 constexpr uint32_t remap(uint32_t addr) {
+#if !CONFIG_IDF_TARGET_ESP32
+  return addr;
+#else
   return (addr >= 0x60000000 && addr <= 0x6003ffff)
              ? addr - (0x60000000 - 0x3ff40000)
              : addr;
+#endif
 }
 
 }  // namespace
@@ -36,7 +40,14 @@ EspReg::EspReg(FakeEsp32Board& board) : board_(board) {
 uint32_t& EspReg::reg(uint32_t addr) {
   DCHECK((addr & 3) == 0) << "Addr " << hex32(addr)
                           << " is not aligned to 4 bytes";
-  return ((uint32_t*)buf_)[(remap(addr) - 0x3FF00000) >> 2];
+#if CONFIG_IDF_TARGET_ESP32
+  constexpr uint32_t base = 0x3FF00000;
+#else
+  constexpr uint32_t base = 0x60000000;
+#endif
+  CHECK_GE(remap(addr), base);
+  CHECK_LT(remap(addr) - base, sizeof(buf_));
+  return ((uint32_t*)buf_)[(remap(addr) - base) >> 2];
 }
 
 void EspReg::write(uint32_t addr, uint32_t mask, uint32_t val) {
@@ -48,11 +59,13 @@ void EspReg::write(uint32_t addr, uint32_t mask, uint32_t val) {
       board_.i2c(0).writeTxFifo((uint8_t)val);
       break;
     }
+#if SOC_I2C_NUM > 1
     case remap(0x6002701C): {
       board_.i2c(1).writeTxFifo((uint8_t)val);
       break;
     }
 
+#endif
     default:
       break;
   }

@@ -92,7 +92,7 @@ TEST(IdfLedcTest, MovesAndDeconfiguresOutputsWithoutLeavingOldPinDriven) {
   ASSERT_EQ(ESP_OK, ledc_timer_config(&timer));
 
   ledc_channel_config_t channel{};
-  channel.gpio_num = 20;
+  channel.gpio_num = 6;
   channel.speed_mode = LEDC_LOW_SPEED_MODE;
   channel.channel = LEDC_CHANNEL_2;
   channel.timer_sel = LEDC_TIMER_2;
@@ -101,7 +101,7 @@ TEST(IdfLedcTest, MovesAndDeconfiguresOutputsWithoutLeavingOldPinDriven) {
   channel.gpio_num = 21;
   ASSERT_EQ(ESP_OK, ledc_channel_config(&channel));
 
-  const auto old_signal = FakeEsp32().gpio.get(20).lastSignal();
+  const auto old_signal = FakeEsp32().gpio.get(6).lastSignal();
   ASSERT_TRUE(old_signal.has_value());
   EXPECT_EQ(roo_testing_transducers::VoltageSignalKind::kConstant,
             old_signal->kind());
@@ -131,7 +131,7 @@ TEST(IdfLedcTest, InstallsAndStartsAnEspIdfFade) {
   timer.freq_hz = 1000;
   ASSERT_EQ(ESP_OK, ledc_timer_config(&timer));
   ledc_channel_config_t channel{};
-  channel.gpio_num = 22;
+  channel.gpio_num = 4;
   channel.speed_mode = LEDC_LOW_SPEED_MODE;
   channel.channel = LEDC_CHANNEL_3;
   channel.timer_sel = LEDC_TIMER_3;
@@ -139,12 +139,10 @@ TEST(IdfLedcTest, InstallsAndStartsAnEspIdfFade) {
   ASSERT_EQ(ESP_OK, ledc_channel_config(&channel));
 
   ASSERT_EQ(ESP_OK, ledc_fade_func_install(0));
-  ASSERT_EQ(ESP_OK,
-            ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3, 4,
-                                    100));
-  ASSERT_EQ(ESP_OK,
-            ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3,
-                            LEDC_FADE_NO_WAIT));
+  ASSERT_EQ(ESP_OK, ledc_set_fade_with_time(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3,
+                                            4, 100));
+  ASSERT_EQ(ESP_OK, ledc_fade_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3,
+                                    LEDC_FADE_NO_WAIT));
   EXPECT_EQ(2U, ledc_get_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_3));
   ledc_fade_func_uninstall();
 }

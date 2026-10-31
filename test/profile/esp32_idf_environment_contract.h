@@ -1,72 +1,64 @@
 #pragma once
 
-// Canonical macros shared by ESP-IDF-only and Arduino builds on the classic
-// ESP32 emulator profile. Keep this synchronized with
-// .roo_testing/bazelrc/esp32/base.bazelrc.
-
-#ifndef ROO_TESTING
-#error "ROO_TESTING is absent from an unrelated target"
-#endif
-#if ROO_TESTING != 1
-#error "ROO_TESTING has the wrong value"
-#endif
-
-#ifndef ESP_PLATFORM
-#error "ESP_PLATFORM is absent from an unrelated target"
-#endif
-#if ESP_PLATFORM != 1
-#error "ESP_PLATFORM has the wrong value"
+#if !defined(ROO_TESTING) || ROO_TESTING != 1 || !defined(ESP_PLATFORM) || \
+    ESP_PLATFORM != 1 || !defined(ESP32) || ESP32 != 1
+#error "Missing global emulator/framework identity"
 #endif
 #ifndef IDF_VER
-#error "IDF_VER is absent from an unrelated target"
+#error "Missing framework version"
 #endif
-
-#ifndef CONFIG_IDF_FIRMWARE_CHIP_ID
-#error "CONFIG_IDF_FIRMWARE_CHIP_ID is absent from an unrelated target"
+#if (defined(CONFIG_IDF_TARGET_ESP32) + defined(CONFIG_IDF_TARGET_ESP32S3) + \
+     defined(CONFIG_IDF_TARGET_ESP32C3)) != 1
+#error "Select exactly one supported chip"
 #endif
-#if CONFIG_IDF_FIRMWARE_CHIP_ID != 0x0000
-#error "CONFIG_IDF_FIRMWARE_CHIP_ID has the wrong value"
+#if (defined(ROO_TESTING_SOC_ESP32) + defined(ROO_TESTING_SOC_ESP32S3) + \
+     defined(ROO_TESTING_SOC_ESP32C3)) != 1
+#error "Select exactly one typed chip identity"
 #endif
-#ifndef CONFIG_IDF_TARGET
-#error "CONFIG_IDF_TARGET is absent from an unrelated target"
+#if defined(CONFIG_IDF_TARGET_LINUX) || \
+    defined(ROO_TESTING_FREERTOS_POSIX_BACKEND)
+#error "Private host backend identity leaked"
 #endif
-#ifndef CONFIG_IDF_TARGET_ARCH
-#error "CONFIG_IDF_TARGET_ARCH is absent from an unrelated target"
+#if defined(CONFIG_IDF_TARGET_ESP32)
+#if CONFIG_IDF_TARGET_ESP32 != 1 || !defined(ROO_TESTING_SOC_ESP32) || \
+    ROO_TESTING_SOC_ESP32 != 1 || CONFIG_IDF_FIRMWARE_CHIP_ID != 0x0000
+#error "Inconsistent chip identity"
 #endif
-#ifndef CONFIG_IDF_TARGET_ARCH_XTENSA
-#error "CONFIG_IDF_TARGET_ARCH_XTENSA is absent from an unrelated target"
+#if !defined(CONFIG_IDF_TARGET_ARCH_XTENSA) || \
+    CONFIG_IDF_TARGET_ARCH_XTENSA != 1 ||      \
+    defined(CONFIG_IDF_TARGET_ARCH_RISCV)
+#error "Inconsistent architecture"
 #endif
-#if CONFIG_IDF_TARGET_ARCH_XTENSA != 1
-#error "CONFIG_IDF_TARGET_ARCH_XTENSA has the wrong value"
+#define ROO_EXPECTED_SOC "esp32"
+#define ROO_EXPECTED_ARCH "xtensa"
+#define ROO_EXPECTED_BOARD "ESP32_DEV"
+#define ROO_EXPECTED_CORES 2
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+#if CONFIG_IDF_TARGET_ESP32S3 != 1 || !defined(ROO_TESTING_SOC_ESP32S3) || \
+    ROO_TESTING_SOC_ESP32S3 != 1 || CONFIG_IDF_FIRMWARE_CHIP_ID != 0x0009
+#error "Inconsistent chip identity"
 #endif
-#ifndef CONFIG_IDF_TARGET_ESP32
-#error "CONFIG_IDF_TARGET_ESP32 is absent from an unrelated target"
+#if !defined(CONFIG_IDF_TARGET_ARCH_XTENSA) || \
+    CONFIG_IDF_TARGET_ARCH_XTENSA != 1 ||      \
+    defined(CONFIG_IDF_TARGET_ARCH_RISCV)
+#error "Inconsistent architecture"
 #endif
-#if CONFIG_IDF_TARGET_ESP32 != 1
-#error "CONFIG_IDF_TARGET_ESP32 has the wrong value"
+#define ROO_EXPECTED_SOC "esp32s3"
+#define ROO_EXPECTED_ARCH "xtensa"
+#define ROO_EXPECTED_BOARD "ESP32S3_DEV"
+#define ROO_EXPECTED_CORES 2
+#elif defined(CONFIG_IDF_TARGET_ESP32C3)
+#if CONFIG_IDF_TARGET_ESP32C3 != 1 || !defined(ROO_TESTING_SOC_ESP32C3) || \
+    ROO_TESTING_SOC_ESP32C3 != 1 || CONFIG_IDF_FIRMWARE_CHIP_ID != 0x0005
+#error "Inconsistent chip identity"
 #endif
-#ifndef ESP32
-#error "ESP32 is absent from an unrelated target"
+#if !defined(CONFIG_IDF_TARGET_ARCH_RISCV) || \
+    CONFIG_IDF_TARGET_ARCH_RISCV != 1 ||      \
+    defined(CONFIG_IDF_TARGET_ARCH_XTENSA)
+#error "Inconsistent architecture"
 #endif
-#if ESP32 != 1
-#error "ESP32 has the wrong value"
-#endif
-#ifndef ROO_TESTING_SOC
-#error "ROO_TESTING_SOC is absent from an unrelated target"
-#endif
-#ifndef ROO_TESTING_SOC_ESP32
-#error "ROO_TESTING_SOC_ESP32 is absent from an unrelated target"
-#endif
-#if ROO_TESTING_SOC_ESP32 != 1
-#error "ROO_TESTING_SOC_ESP32 has the wrong value"
-#endif
-
-#if defined(CONFIG_IDF_TARGET_LINUX) || defined(CONFIG_IDF_TARGET_ARCH_RISCV) || \
-    defined(CONFIG_IDF_TARGET_ESP32C2) || defined(CONFIG_IDF_TARGET_ESP32C3) || \
-    defined(CONFIG_IDF_TARGET_ESP32C5) || defined(CONFIG_IDF_TARGET_ESP32C6) || \
-    defined(CONFIG_IDF_TARGET_ESP32C61) || defined(CONFIG_IDF_TARGET_ESP32H2) || \
-    defined(CONFIG_IDF_TARGET_ESP32H21) || defined(CONFIG_IDF_TARGET_ESP32H4) || \
-    defined(CONFIG_IDF_TARGET_ESP32P4) || defined(CONFIG_IDF_TARGET_ESP32S2) || \
-    defined(CONFIG_IDF_TARGET_ESP32S3)
-#error "The global compiler profile contains contradictory target macros"
+#define ROO_EXPECTED_SOC "esp32c3"
+#define ROO_EXPECTED_ARCH "riscv"
+#define ROO_EXPECTED_BOARD "ESP32C3_DEV"
+#define ROO_EXPECTED_CORES 1
 #endif

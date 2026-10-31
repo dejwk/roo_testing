@@ -26,6 +26,7 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "roo_testing/microcontrollers/esp32/soc_traits.h"
 #include "roo_testing/system/timer.h"
 #include "shim_internal.h"
 
@@ -53,6 +54,9 @@ constexpr size_t kReportedHeapSize = 64U * 1024U * 1024U;
 }  // namespace
 
 extern "C" {
+
+// The host has no USB PHY clock to acquire or release.
+void phy_bbpll_en_usb(bool) {}
 
 uint32_t esp_random(void) {
   thread_local std::mt19937 generator(std::random_device{}());
@@ -108,10 +112,12 @@ void ets_install_uart_printf(void) {}
 void ets_write_char_uart(char c) { fputc(c, stdout); }
 void esp_rom_route_intr_matrix(int, uint32_t, uint32_t) {}
 void intr_matrix_set(int, uint32_t, uint32_t) {}
-uint32_t esp_rom_get_cpu_ticks_per_us(void) { return 240; }
+uint32_t esp_rom_get_cpu_ticks_per_us(void) {
+  return CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ;
+}
 void esp_rom_set_cpu_ticks_per_us(uint32_t) {}
 void ets_update_cpu_frequency(uint32_t) {}
-uint32_t ets_get_cpu_frequency(void) { return 240; }
+uint32_t ets_get_cpu_frequency(void) { return CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ; }
 
 void esp_rom_gpio_pad_select_gpio(uint32_t) {}
 void esp_rom_gpio_pad_pullup_only(uint32_t) {}
@@ -123,11 +129,20 @@ const char* esp_get_idf_version(void) { return IDF_VER; }
 void esp_chip_info(esp_chip_info_t* info) {
   if (info == nullptr) return;
   *info = {
+#if CONFIG_IDF_TARGET_ESP32S3
+      .model = CHIP_ESP32S3,
+#elif CONFIG_IDF_TARGET_ESP32C3
+      .model = CHIP_ESP32C3,
+#else
       .model = CHIP_ESP32,
-      .features = CHIP_FEATURE_WIFI_BGN | CHIP_FEATURE_BT | CHIP_FEATURE_BLE,
+#endif
+      .features = CHIP_FEATURE_WIFI_BGN | CHIP_FEATURE_BLE,
       .revision = 300,
-      .cores = 2,
+      .cores = SOC_CPU_CORES_NUM,
   };
+#if CONFIG_IDF_TARGET_ESP32
+  info->features |= CHIP_FEATURE_BT;
+#endif
 }
 
 esp_err_t esp_base_mac_addr_set(const uint8_t* mac) {

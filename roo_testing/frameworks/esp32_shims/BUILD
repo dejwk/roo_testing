@@ -20,7 +20,7 @@ cc_library(
     ],
     deps = [
         "//roo_testing/frameworks/esp-idf:headers",
-        "//roo_testing/frameworks/esp-idf/components/freertos:freertos",
+        "//roo_testing/frameworks/esp-idf/components/freertos",
     ],
 )
 
@@ -28,10 +28,13 @@ cc_library(
 cc_library(
     name = "esp_timer_impl_host",
     srcs = [
-        "//roo_testing/frameworks/esp-idf:components/esp_timer/src/esp_timer_impl_common.c",
         "esp_timer_impl_host.cpp",
+        "//roo_testing/frameworks/esp-idf:components/esp_timer/src/esp_timer_impl_common.c",
     ],
-    copts = ["-Werror", "-Wno-error=format"],
+    copts = [
+        "-Werror",
+        "-Wno-error=format",
+    ],
     local_defines = [
         "CONFIG_ESP_TIMER_ISR_AFFINITY_CPU0=1",
         "CONFIG_LOG_VERSION=1",
@@ -39,7 +42,7 @@ cc_library(
     visibility = ["//roo_testing/frameworks/esp32_shims:__pkg__"],
     deps = [
         "//roo_testing/frameworks/esp-idf:headers",
-        "//roo_testing/frameworks/esp-idf/components/freertos:freertos",
+        "//roo_testing/frameworks/esp-idf/components/freertos",
         "//roo_testing/frameworks/esp_idf_support:interrupts",
         "//roo_testing/system:timer",
         "@glog",
@@ -50,9 +53,6 @@ cc_library(
     name = "idf",
     srcs = [
         "esp_now.cpp",
-        "//roo_testing/frameworks/esp-idf:components/esp_timer/src/esp_timer.c",
-        "//roo_testing/frameworks/esp-idf:components/esp_timer/src/ets_timer_legacy.c",
-        "//roo_testing/frameworks/esp-idf:components/esp_timer/src/esp_timer_init.c",
         "esp_timer_host_etm.cpp",
         "esp_timer_host_lifecycle.cpp",
         "idf_core.cpp",
@@ -63,13 +63,19 @@ cc_library(
         "nvs.cpp",
         "ota_partition.cpp",
         "wifi.cpp",
+        "//roo_testing/frameworks/esp-idf:components/esp_timer/src/esp_timer.c",
+        "//roo_testing/frameworks/esp-idf:components/esp_timer/src/esp_timer_init.c",
+        "//roo_testing/frameworks/esp-idf:components/esp_timer/src/ets_timer_legacy.c",
     ],
     hdrs = [
         "esp_timer_host.h",
         "shim_internal.h",
         "wifi_host.h",
     ],
-    copts = ["-Werror", "-Wno-error=format"],
+    copts = [
+        "-Werror",
+        "-Wno-error=format",
+    ],
     linkstatic = 1,
     local_defines = [
         "CONFIG_ESP_TIMER_ISR_AFFINITY_CPU0=1",
@@ -77,14 +83,14 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        "//roo_testing/frameworks/esp-idf:headers",
-        "//roo_testing/frameworks/esp-idf:esp_event",
         ":esp_err_to_name",
-        ":esp_timer_impl_host",
         ":esp_ringbuf",
-        "//roo_testing/frameworks/esp-idf/components/freertos:freertos",
-        "//roo_testing/frameworks/esp_idf_support:interrupts",
+        ":esp_timer_impl_host",
         ":ledc_fade_engine",
+        "//roo_testing/frameworks/esp-idf:esp_event",
+        "//roo_testing/frameworks/esp-idf:headers",
+        "//roo_testing/frameworks/esp-idf/components/freertos",
+        "//roo_testing/frameworks/esp_idf_support:interrupts",
         "//roo_testing/microcontrollers/esp32:core",
         "//roo_testing/sys",
         "//roo_testing/system:timer",
@@ -100,7 +106,6 @@ cc_library(
         "arduino_gpio.cpp",
         "arduino_i2c.cpp",
         "arduino_ledc.cpp",
-        "arduino_log.cpp",
         "arduino_misc.cpp",
         "arduino_periman.cpp",
         "arduino_spi.cpp",
@@ -111,11 +116,13 @@ cc_library(
     linkstatic = 1,
     visibility = ["//visibility:public"],
     deps = [
+        ":arduino_logging",
         ":idf",
         ":ledc_fade_engine",
         "//roo_testing/frameworks/arduino-esp32/cores/esp32:headers",
+        "//roo_testing/frameworks/arduino-esp32/cores/esp32:string",
         "//roo_testing/frameworks/esp-idf:headers",
-        "//roo_testing/frameworks/esp-idf/components/freertos:freertos",
+        "//roo_testing/frameworks/esp-idf/components/freertos",
         "//roo_testing/microcontrollers/esp32:core",
         "//roo_testing/system:timer",
         "@glog",
@@ -268,4 +275,12 @@ cc_test(
         "//roo_testing/transducers/wifi",
         "@googletest//:gtest",
     ],
+)
+
+# Logging is shared by portable String code and the Arduino HAL shims.
+cc_library(
+    name = "arduino_logging",
+    srcs = ["arduino_log.cpp"],
+    visibility = ["//visibility:public"],
+    deps = ["//roo_testing/frameworks/arduino-esp32/cores/esp32:headers"],
 )

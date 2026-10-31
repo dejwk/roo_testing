@@ -6,7 +6,7 @@ cc_library(
     includes = ["."],
     visibility = ["//visibility:public"],
     deps = [
-        "//roo_testing/frameworks/arduino-esp32/variants:esp32",
+        "//roo_testing/frameworks/arduino-esp32/variants:target",
         "//roo_testing/frameworks/environment:arduino",
         "//roo_testing/frameworks/esp-idf:headers",
         "//roo_testing/microcontrollers/esp32:core",
@@ -29,12 +29,10 @@ cc_library(
         "StreamString.cpp",
         "StringUtils.cpp",
         "WMath.cpp",
-        "WString.cpp",
         "base64.cpp",
         "cbuf.cpp",
         "libb64/cdecode.c",
         "libb64/cencode.c",
-        "stdlib_noniso.c",
         "wiring_pulse.c",
         "wiring_shift.c",
     ],
@@ -42,6 +40,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":headers",
+        ":string",
         "//roo_testing/frameworks/esp-idf",
         "//roo_testing/frameworks/esp32_shims:arduino",
         "//roo_testing/frameworks/esp32_shims:idf",
@@ -76,4 +75,20 @@ alias(
     name = "gtest_main",
     actual = "//roo_testing/frameworks/arduino_support:gtest_main",
     visibility = ["//visibility:public"],
+)
+
+# String is also used by Arduino HAL facades such as EspClass. Keeping its
+# implementation below those facades in the dependency graph avoids archive
+# ordering depending on which String methods a sketch happens to call.
+cc_library(
+    name = "string",
+    srcs = [
+        "WString.cpp",
+        "stdlib_noniso.c",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":headers",
+        "//roo_testing/frameworks/esp32_shims:arduino_logging",
+    ],
 )

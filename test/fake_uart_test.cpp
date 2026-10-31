@@ -49,13 +49,13 @@ TEST(FakeUartCable, TransfersInBothDirectionsAndNotifiesTheReceiver) {
 TEST(FakeEsp32Uart, DataNotificationUsesTheReceivingPin) {
   FakeUartCable cable;
   auto& board = FakeEsp32();
-  board.attachUartDevice(cable.end_b(), /*tx=*/-1, /*rx=*/26);
-  board.in_matrix.assign(26, board.uart(2).rx_signal(), false);
+  board.attachUartDevice(cable.end_b(), /*tx=*/-1, /*rx=*/4);
+  board.in_matrix.assign(4, board.uart(SOC_UART_NUM - 1).rx_signal(), false);
 
   notified_uart = -1;
   const uint8_t data = 42;
   ASSERT_EQ(cable.end_a().write(&data, 1), size_t{1});
-  EXPECT_EQ(notified_uart, 2);
+  EXPECT_EQ(notified_uart, SOC_UART_NUM - 1);
 }
 
 }  // namespace

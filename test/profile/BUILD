@@ -28,7 +28,10 @@ cc_library(
 cc_test(
     name = "global_environment_test",
     size = "small",
-    srcs = ["global_environment_test.cc"],
+    srcs = [
+        "esp32_idf_environment_contract.h",
+        "global_environment_test.cc",
+    ],
     copts = ["-Werror"],
     deps = [
         ":unrelated_c",
@@ -87,7 +90,10 @@ cc_library(
 cc_test(
     name = "idf_global_environment_test",
     size = "small",
-    srcs = ["idf_global_environment_test.cc"],
+    srcs = [
+        "esp32_idf_environment_contract.h",
+        "idf_global_environment_test.cc",
+    ],
     copts = ["-Werror"],
     tags = ["manual"],
     deps = [
@@ -205,3 +211,8 @@ platform(
 )
 
 exports_files(["verify_profile.sh"])
+
+exports_files(
+    ["esp32_idf_environment_contract.h"],
+    visibility = ["//test:__pkg__"],
+)

@@ -1,5 +1,7 @@
 #include <cstring>
 
+#include "test/profile/esp32_idf_environment_contract.h"
+
 extern "C" const char* roo_testing_unrelated_c_idf_version(void);
 extern "C" const char* roo_testing_unrelated_c_idf_target(void);
 extern "C" const char* roo_testing_unrelated_c_idf_arch(void);
@@ -25,17 +27,17 @@ bool Is(const char* actual, const char* expected) {
 int main() {
   const bool c_environment_is_exact =
       Is(roo_testing_unrelated_c_idf_version(), "v6.0.2") &&
-      Is(roo_testing_unrelated_c_idf_target(), "esp32") &&
-      Is(roo_testing_unrelated_c_idf_arch(), "xtensa") &&
-      Is(roo_testing_unrelated_c_soc(), "esp32") &&
-      Is(roo_testing_unrelated_c_board(), "ESP32_DEV") &&
-      Is(roo_testing_unrelated_c_variant(), "esp32");
+      Is(roo_testing_unrelated_c_idf_target(), ROO_EXPECTED_SOC) &&
+      Is(roo_testing_unrelated_c_idf_arch(), ROO_EXPECTED_ARCH) &&
+      Is(roo_testing_unrelated_c_soc(), ROO_EXPECTED_SOC) &&
+      Is(roo_testing_unrelated_c_board(), ROO_EXPECTED_BOARD) &&
+      Is(roo_testing_unrelated_c_variant(), ROO_EXPECTED_SOC);
   const bool cpp_environment_is_exact =
       Is(roo_testing_unrelated_cpp_idf_version(), "v6.0.2") &&
-      Is(roo_testing_unrelated_cpp_idf_target(), "esp32") &&
-      Is(roo_testing_unrelated_cpp_idf_arch(), "xtensa") &&
-      Is(roo_testing_unrelated_cpp_soc(), "esp32") &&
-      Is(roo_testing_unrelated_cpp_board(), "ESP32_DEV") &&
-      Is(roo_testing_unrelated_cpp_variant(), "esp32");
+      Is(roo_testing_unrelated_cpp_idf_target(), ROO_EXPECTED_SOC) &&
+      Is(roo_testing_unrelated_cpp_idf_arch(), ROO_EXPECTED_ARCH) &&
+      Is(roo_testing_unrelated_cpp_soc(), ROO_EXPECTED_SOC) &&
+      Is(roo_testing_unrelated_cpp_board(), ROO_EXPECTED_BOARD) &&
+      Is(roo_testing_unrelated_cpp_variant(), ROO_EXPECTED_SOC);
   return c_environment_is_exact && cpp_environment_is_exact ? 0 : 1;
 }

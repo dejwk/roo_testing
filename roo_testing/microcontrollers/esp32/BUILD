@@ -13,7 +13,10 @@ cc_library(
 
 cc_library(
     name = "core",
-    srcs = glob(["*.cpp"], exclude = ["*_test.cpp"]),
+    srcs = glob(
+        ["*.cpp"],
+        exclude = ["*_test.cpp"],
+    ),
     hdrs = glob(["*.h"]),
     linkstatic = 1,
     visibility = ["//visibility:public"],
@@ -24,6 +27,7 @@ cc_library(
         "//roo_testing/buses/onewire",
         "//roo_testing/buses/spi",
         "//roo_testing/buses/uart",
+        "//roo_testing/frameworks/esp-idf:headers",
         "//roo_testing/soc:target",
         "//roo_testing/sys",
         "//roo_testing/system:timer",

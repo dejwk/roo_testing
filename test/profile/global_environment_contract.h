@@ -20,11 +20,18 @@
 #ifndef ARDUINO_BOARD
 #error "ARDUINO_BOARD is absent from an unrelated target"
 #endif
-#ifndef ARDUINO_ESP32_DEV
-#error "ARDUINO_ESP32_DEV is absent from an unrelated target"
+#if defined(CONFIG_IDF_TARGET_ESP32)
+#if !defined(ARDUINO_ESP32_DEV) || ARDUINO_ESP32_DEV != 1
+#error "Missing board identity"
 #endif
-#if ARDUINO_ESP32_DEV != 1
-#error "ARDUINO_ESP32_DEV has the wrong value"
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+#if !defined(ARDUINO_ESP32S3_DEV) || ARDUINO_ESP32S3_DEV != 1
+#error "Missing board identity"
+#endif
+#elif defined(CONFIG_IDF_TARGET_ESP32C3)
+#if !defined(ARDUINO_ESP32C3_DEV) || ARDUINO_ESP32C3_DEV != 1
+#error "Missing board identity"
+#endif
 #endif
 #ifndef ARDUINO_VARIANT
 #error "ARDUINO_VARIANT is absent from an unrelated target"

@@ -102,7 +102,7 @@ TEST(IdfI2c, TransactionsAndLifecycle) {
 
   // Selecting other pins must not resolve the previously attached device.
   config.sda_io_num = GPIO_NUM_21;
-  config.scl_io_num = GPIO_NUM_22;
+  config.scl_io_num = GPIO_NUM_4;
   ASSERT_EQ(ESP_OK, i2c_new_master_bus(&config, &bus));
   EXPECT_EQ(ESP_ERR_NOT_FOUND, i2c_master_probe(bus, 0x68, 10));
   EXPECT_EQ(ESP_OK, i2c_del_master_bus(bus));
@@ -119,9 +119,11 @@ TEST(IdfI2c, AllocationAndArgumentValidation) {
   EXPECT_EQ(ESP_ERR_INVALID_ARG, i2c_new_master_bus(nullptr, &first));
   ASSERT_EQ(ESP_OK, i2c_new_master_bus(&config, &first));
   config.sda_io_num = GPIO_NUM_21;
-  config.scl_io_num = GPIO_NUM_22;
+  config.scl_io_num = GPIO_NUM_4;
+#if SOC_I2C_NUM > 1
   ASSERT_EQ(ESP_OK, i2c_new_master_bus(&config, &second));
   EXPECT_NE(first, second);
+#endif
   EXPECT_EQ(ESP_ERR_NOT_FOUND, i2c_new_master_bus(&config, &extra));
   EXPECT_EQ(ESP_ERR_INVALID_ARG, i2c_master_get_bus_handle(2, &extra));
   i2c_device_config_t device_config{};
@@ -132,7 +134,11 @@ TEST(IdfI2c, AllocationAndArgumentValidation) {
   EXPECT_EQ(ESP_ERR_INVALID_ARG,
             i2c_master_bus_add_device(first, &device_config, &device));
   EXPECT_EQ(ESP_OK, i2c_del_master_bus(first));
+#if SOC_I2C_NUM > 1
   EXPECT_EQ(ESP_OK, i2c_del_master_bus(second));
+#else
+  EXPECT_EQ(nullptr, second);
+#endif
   config.i2c_port = 0;
   config.scl_io_num = config.sda_io_num;
   EXPECT_EQ(ESP_ERR_INVALID_ARG, i2c_new_master_bus(&config, &extra));

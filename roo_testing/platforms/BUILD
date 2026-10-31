@@ -107,3 +107,107 @@ config_setting(
         ":roo_testing",
     ],
 )
+
+constraint_value(
+    name = "esp32s3",
+    constraint_setting = ":soc",
+)
+
+platform(
+    name = "arduino_esp32s3",
+    constraint_values = [
+        ":arduino",
+        ":esp32s3",
+        ":esp_idf",
+        ":roo_testing",
+    ],
+    parents = ["@platforms//host:host"],
+)
+
+platform(
+    name = "idf_esp32s3",
+    constraint_values = [
+        ":esp32s3",
+        ":esp_idf",
+        ":idf",
+        ":roo_testing",
+    ],
+    parents = ["@platforms//host:host"],
+)
+
+config_setting(
+    name = "is_esp32s3",
+    constraint_values = [":esp32s3"],
+)
+
+config_setting(
+    name = "is_arduino_esp32s3",
+    constraint_values = [
+        ":arduino",
+        ":esp32s3",
+        ":esp_idf",
+        ":roo_testing",
+    ],
+)
+
+config_setting(
+    name = "is_idf_esp32s3",
+    constraint_values = [
+        ":esp32s3",
+        ":esp_idf",
+        ":idf",
+        ":roo_testing",
+    ],
+)
+
+constraint_value(
+    name = "esp32c3",
+    constraint_setting = ":soc",
+)
+
+platform(
+    name = "arduino_esp32c3",
+    constraint_values = [
+        ":arduino",
+        ":esp32c3",
+        ":esp_idf",
+        ":roo_testing",
+    ],
+    parents = ["@platforms//host:host"],
+)
+
+platform(
+    name = "idf_esp32c3",
+    constraint_values = [
+        ":esp32c3",
+        ":esp_idf",
+        ":idf",
+        ":roo_testing",
+    ],
+    parents = ["@platforms//host:host"],
+)
+
+config_setting(
+    name = "is_esp32c3",
+    constraint_values = [":esp32c3"],
+)
+
+config_setting(
+    name = "is_arduino_esp32c3",
+    constraint_values = [
+        ":arduino",
+        ":esp32c3",
+        ":esp_idf",
+        ":roo_testing",
+    ],
+)
+
+config_setting(
+    name = "is_idf_esp32c3",
+    constraint_values = [
+        ":esp32c3",
+        ":esp_idf",
+        ":idf",
+        ":roo_testing",
+    ],
+)

@@ -106,7 +106,12 @@ TEST(GpioRegisterInterceptTest, OutputSetClearAreInterceptedForLowBank) {
 }
 
 TEST(GpioRegisterInterceptTest, OutputSetClearAreInterceptedForHighBank) {
+#if SOC_GPIO_PIN_COUNT > 32
+#if CONFIG_IDF_TARGET_ESP32S3
+  constexpr int kPin = 48;
+#else
   constexpr int kPin = 33;
+#endif
 
   SimpleDigitalSink sink("gpio33_sink");
   FakeEsp32().gpio.attachOutput(kPin, sink);
@@ -116,11 +121,20 @@ TEST(GpioRegisterInterceptTest, OutputSetClearAreInterceptedForHighBank) {
 
   GPIO.out1_w1tc.val = (1UL << (kPin - 32));
   EXPECT_TRUE(sink.isLow());
+#else
+  GPIO.out1_w1ts.val = UINT32_MAX;
+  GPIO.out1_w1tc.val = UINT32_MAX;
+  EXPECT_EQ(0U, static_cast<uint32_t>(GPIO.in1.val));
+#endif
 }
 
 TEST(GpioRegisterInterceptTest, InputReadsComeFromAttachedSources) {
   constexpr int kLowBankPin = 2;
+#if SOC_GPIO_PIN_COUNT > 32
   constexpr int kHighBankPin = 34;
+#else
+  constexpr int kHighBankPin = 3;
+#endif
 
   ConstVoltage low_bank_src("low_bank", VoltageDigitalHigh());
   ConstVoltage high_bank_src("high_bank", VoltageDigitalLow());
@@ -130,14 +144,18 @@ TEST(GpioRegisterInterceptTest, InputReadsComeFromAttachedSources) {
 
   EXPECT_NE(0u, ((uint32_t)GPIO.in & (1UL << kLowBankPin)));
 
+#if SOC_GPIO_PIN_COUNT > 32
   uint32_t high_bank_bits = (uint32_t)GPIO.in1.val;
   EXPECT_EQ(0u, high_bank_bits & (1UL << (kHighBankPin - 32)));
 
+#endif
   high_bank_src.setDigitalLow();
   low_bank_src.setDigitalLow();
   EXPECT_EQ(0u, ((uint32_t)GPIO.in & (1UL << kLowBankPin)));
 
+#if SOC_GPIO_PIN_COUNT > 32
   high_bank_src.set(kDigitalHigh);
   high_bank_bits = (uint32_t)GPIO.in1.val;
   EXPECT_NE(0u, high_bank_bits & (1UL << (kHighBankPin - 32)));
+#endif
 }

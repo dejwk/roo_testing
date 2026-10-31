@@ -13,12 +13,6 @@
 #if ARDUINO_ARCH_ESP32 != 1
 #error "ARDUINO_ARCH_ESP32 has an unsupported value"
 #endif
-#ifndef ARDUINO_ESP32_DEV
-#error "The roo_testing Arduino profile must define ARDUINO_ESP32_DEV"
-#endif
-#if ARDUINO_ESP32_DEV != 1
-#error "ARDUINO_ESP32_DEV has an unsupported value"
-#endif
 #ifndef ARDUINO_BOARD
 #error "The roo_testing Arduino profile must define ARDUINO_BOARD"
 #endif
@@ -128,10 +122,28 @@ constexpr bool StringEquals(const char* lhs, const char* rhs) {
   return *lhs == *rhs;
 }
 
-static_assert(StringEquals(ARDUINO_BOARD, "ESP32_DEV"),
-              "ARDUINO_BOARD does not match the emulated board");
-static_assert(StringEquals(ARDUINO_VARIANT, "esp32"),
-              "ARDUINO_VARIANT does not match the imported variant");
+#if defined(CONFIG_IDF_TARGET_ESP32)
+#ifndef ARDUINO_ESP32_DEV
+#error "Missing Arduino board identity"
+#endif
+static_assert(ARDUINO_ESP32_DEV == 1);
+static_assert(StringEquals(ARDUINO_BOARD, "ESP32_DEV"));
+static_assert(StringEquals(ARDUINO_VARIANT, "esp32"));
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
+#ifndef ARDUINO_ESP32S3_DEV
+#error "Missing Arduino board identity"
+#endif
+static_assert(ARDUINO_ESP32S3_DEV == 1);
+static_assert(StringEquals(ARDUINO_BOARD, "ESP32S3_DEV"));
+static_assert(StringEquals(ARDUINO_VARIANT, "esp32s3"));
+#elif defined(CONFIG_IDF_TARGET_ESP32C3)
+#ifndef ARDUINO_ESP32C3_DEV
+#error "Missing Arduino board identity"
+#endif
+static_assert(ARDUINO_ESP32C3_DEV == 1);
+static_assert(StringEquals(ARDUINO_BOARD, "ESP32C3_DEV"));
+static_assert(StringEquals(ARDUINO_VARIANT, "esp32c3"));
+#endif
 
 }  // namespace
 

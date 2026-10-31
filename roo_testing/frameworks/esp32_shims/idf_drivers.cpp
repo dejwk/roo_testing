@@ -1,22 +1,21 @@
-#include "driver/gpio.h"
-#include "driver/i2c.h"
-#include "driver/spi_master.h"
-#include "driver/uart.h"
-#include "esp_rom_gpio.h"
-
 #include <algorithm>
 #include <array>
 #include <cstring>
 #include <memory>
 #include <vector>
 
+#include "driver/gpio.h"
+#include "driver/i2c.h"
+#include "driver/spi_master.h"
+#include "driver/uart.h"
+#include "esp_rom_gpio.h"
 #include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 #include "roo_testing/microcontrollers/esp32/fake_esp32_spi_struct.h"
 
 namespace {
 
 constexpr bool ValidGpio(gpio_num_t gpio) {
-  return static_cast<int>(gpio) >= 0 && static_cast<int>(gpio) < 40;
+  return roo_testing::soc::IsValidPin(gpio);
 }
 
 struct UartState {
@@ -29,13 +28,13 @@ struct UartState {
 
 std::array<UartState, UART_NUM_MAX> g_uart;
 
-constexpr std::array<uint8_t, UART_NUM_MAX> kUartTxSignals = {14, 17, 198};
-constexpr std::array<uint8_t, UART_NUM_MAX> kUartRxSignals = {14, 17, 198};
+constexpr auto kUartTxSignals = roo_testing::soc::kUartTxSignals;
+constexpr auto kUartRxSignals = roo_testing::soc::kUartRxSignals;
 
-constexpr size_t kSpiHostCount = 3;
-constexpr std::array<uint8_t, kSpiHostCount> kSpiClockSignals = {0, 8, 63};
-constexpr std::array<uint8_t, kSpiHostCount> kSpiMisoSignals = {1, 9, 64};
-constexpr std::array<uint8_t, kSpiHostCount> kSpiMosiSignals = {2, 10, 65};
+constexpr size_t kSpiHostCount = SOC_SPI_PERIPH_NUM;
+constexpr auto kSpiClockSignals = roo_testing::soc::kSpiClockSignals;
+constexpr auto kSpiMisoSignals = roo_testing::soc::kSpiMisoSignals;
+constexpr auto kSpiMosiSignals = roo_testing::soc::kSpiMosiSignals;
 
 struct SpiBusState {
   bool initialized = false;
@@ -68,9 +67,8 @@ class IdfSpiInterface : public FakeSpiInterface {
  public:
   IdfSpiInterface(const spi_device_t& device, const spi_transaction_t& trans)
       : FakeSpiInterface("esp-idf spi master"),
-        frequency_(trans.override_freq_hz != 0
-                       ? trans.override_freq_hz
-                       : device.config.clock_speed_hz),
+        frequency_(trans.override_freq_hz != 0 ? trans.override_freq_hz
+                                               : device.config.clock_speed_hz),
         mode_(static_cast<SpiDataMode>(device.config.mode & 0x3)),
         order_((device.config.flags & SPI_DEVICE_TXBIT_LSBFIRST) != 0
                    ? kSpiLsbFirst
@@ -88,9 +86,9 @@ class IdfSpiInterface : public FakeSpiInterface {
 
 void SetChipSelect(spi_device_t& device, bool active) {
   if (!ValidGpio(static_cast<gpio_num_t>(device.config.spics_io_num))) return;
-  const bool positive =
-      (device.config.flags & SPI_DEVICE_POSITIVE_CS) != 0;
-  FakeEsp32().gpio.get(device.config.spics_io_num)
+  const bool positive = (device.config.flags & SPI_DEVICE_POSITIVE_CS) != 0;
+  FakeEsp32()
+      .gpio.get(device.config.spics_io_num)
       .digitalWrite(active == positive ? roo_testing_transducers::kDigitalHigh
                                        : roo_testing_transducers::kDigitalLow);
   device.cs_active = active;
@@ -169,16 +167,14 @@ void TransferPhase(spi_device_t& device, const spi_transaction_t& trans,
   }
 }
 
-size_t CommandBits(const spi_device_t& device,
-                   const spi_transaction_t& trans) {
+size_t CommandBits(const spi_device_t& device, const spi_transaction_t& trans) {
   if ((trans.flags & SPI_TRANS_VARIABLE_CMD) == 0) {
     return device.config.command_bits;
   }
   return reinterpret_cast<const spi_transaction_ext_t&>(trans).command_bits;
 }
 
-size_t AddressBits(const spi_device_t& device,
-                   const spi_transaction_t& trans) {
+size_t AddressBits(const spi_device_t& device, const spi_transaction_t& trans) {
   if ((trans.flags & SPI_TRANS_VARIABLE_ADDR) == 0) {
     return device.config.address_bits;
   }
@@ -192,11 +188,9 @@ size_t DummyBits(const spi_device_t& device, const spi_transaction_t& trans) {
   return reinterpret_cast<const spi_transaction_ext_t&>(trans).dummy_bits;
 }
 
-esp_err_t TransferTransaction(spi_device_t& device,
-                              spi_transaction_t& trans,
+esp_err_t TransferTransaction(spi_device_t& device, spi_transaction_t& trans,
                               bool force_keep_cs = false) {
-  const bool lsb_first =
-      (device.config.flags & SPI_DEVICE_TXBIT_LSBFIRST) != 0;
+  const bool lsb_first = (device.config.flags & SPI_DEVICE_TXBIT_LSBFIRST) != 0;
   if (device.config.pre_cb != nullptr) device.config.pre_cb(&trans);
   if (!device.cs_active) SetChipSelect(device, true);
 
@@ -232,8 +226,8 @@ esp_err_t TransferTransaction(spi_device_t& device,
     TransferPhase(device, trans, tx, rx, std::max(trans.length, rx_bits));
   }
 
-  const bool keep_cs = force_keep_cs ||
-                       (trans.flags & SPI_TRANS_CS_KEEP_ACTIVE) != 0;
+  const bool keep_cs =
+      force_keep_cs || (trans.flags & SPI_TRANS_CS_KEEP_ACTIVE) != 0;
   if (!keep_cs) SetChipSelect(device, false);
   if (device.config.post_cb != nullptr) device.config.post_cb(&trans);
   return ESP_OK;
@@ -243,7 +237,8 @@ esp_err_t TransferTransaction(spi_device_t& device,
 
 extern "C" {
 
-void esp_rom_gpio_connect_in_signal(uint32_t gpio, uint32_t signal, bool invert) {
+void esp_rom_gpio_connect_in_signal(uint32_t gpio, uint32_t signal,
+                                    bool invert) {
   FakeEsp32().in_matrix.assign(gpio, signal, invert);
 }
 
@@ -262,7 +257,16 @@ void gpio_matrix_out(uint32_t gpio, uint32_t signal, bool out_invert,
 }
 
 esp_err_t gpio_config(const gpio_config_t* config) {
-  return config == nullptr ? ESP_ERR_INVALID_ARG : ESP_OK;
+  if (config == nullptr || config->pin_bit_mask == 0 ||
+      (config->pin_bit_mask & ~uint64_t{SOC_GPIO_VALID_GPIO_MASK}) != 0) {
+    return ESP_ERR_INVALID_ARG;
+  }
+  if ((config->mode & GPIO_MODE_DEF_OUTPUT) != 0 &&
+      (config->pin_bit_mask & ~uint64_t{SOC_GPIO_VALID_OUTPUT_GPIO_MASK}) !=
+          0) {
+    return ESP_ERR_INVALID_ARG;
+  }
+  return ESP_OK;
 }
 esp_err_t gpio_reset_pin(gpio_num_t gpio) {
   return ValidGpio(gpio) ? ESP_OK : ESP_ERR_INVALID_ARG;
@@ -277,7 +281,7 @@ esp_err_t gpio_intr_disable(gpio_num_t gpio) {
   return ValidGpio(gpio) ? ESP_OK : ESP_ERR_INVALID_ARG;
 }
 esp_err_t gpio_set_level(gpio_num_t gpio, uint32_t level) {
-  if (!ValidGpio(gpio)) return ESP_ERR_INVALID_ARG;
+  if (!roo_testing::soc::IsOutputPin(gpio)) return ESP_ERR_INVALID_ARG;
   FakeEsp32().gpio.get(gpio).digitalWrite(
       level == 0 ? roo_testing_transducers::kDigitalLow
                  : roo_testing_transducers::kDigitalHigh);
@@ -287,7 +291,11 @@ int gpio_get_level(gpio_num_t gpio) {
   if (!ValidGpio(gpio)) return 0;
   return FakeEsp32().gpio.get(gpio).read() > 1.7F;
 }
-esp_err_t gpio_set_direction(gpio_num_t gpio, gpio_mode_t) {
+esp_err_t gpio_set_direction(gpio_num_t gpio, gpio_mode_t mode) {
+  if ((mode & GPIO_MODE_DEF_OUTPUT) != 0 &&
+      !roo_testing::soc::IsOutputPin(gpio)) {
+    return ESP_ERR_INVALID_ARG;
+  }
   return ValidGpio(gpio) ? ESP_OK : ESP_ERR_INVALID_ARG;
 }
 esp_err_t gpio_input_enable(gpio_num_t gpio) {
@@ -392,7 +400,7 @@ esp_err_t _uart_set_pin6(uart_port_t port, int tx_pin, int rx_pin, int, int,
                          int, int) {
   if (!ValidUart(port)) return ESP_ERR_INVALID_ARG;
   if (tx_pin != UART_PIN_NO_CHANGE) {
-    if (!ValidGpio(static_cast<gpio_num_t>(tx_pin))) {
+    if (!roo_testing::soc::IsOutputPin(tx_pin)) {
       return ESP_ERR_INVALID_ARG;
     }
     FakeEsp32().out_matrix.assign(tx_pin, kUartTxSignals[port], false, false);
@@ -465,8 +473,8 @@ esp_err_t uart_wait_tx_done(uart_port_t port, uint32_t) {
 }
 int uart_write_bytes(uart_port_t port, const void* source, size_t size) {
   if (!ValidUart(port) || (source == nullptr && size != 0)) return -1;
-  return static_cast<int>(FakeEsp32().uart(port).write(
-      static_cast<const uint8_t*>(source), size));
+  return static_cast<int>(
+      FakeEsp32().uart(port).write(static_cast<const uint8_t*>(source), size));
 }
 int uart_write_bytes_with_break(uart_port_t port, const void* source,
                                 size_t size, int) {
@@ -475,8 +483,8 @@ int uart_write_bytes_with_break(uart_port_t port, const void* source,
 int uart_read_bytes(uart_port_t port, void* destination, uint32_t length,
                     uint32_t) {
   if (!ValidUart(port) || (destination == nullptr && length != 0)) return -1;
-  return static_cast<int>(FakeEsp32().uart(port).read(
-      static_cast<uint8_t*>(destination), length));
+  return static_cast<int>(
+      FakeEsp32().uart(port).read(static_cast<uint8_t*>(destination), length));
 }
 esp_err_t uart_flush(uart_port_t port) {
   return ValidUart(port) ? ESP_OK : ESP_ERR_INVALID_ARG;
@@ -494,57 +502,67 @@ esp_err_t uart_get_buffered_data_len(uart_port_t port, size_t* size) {
   return ESP_OK;
 }
 
-esp_err_t i2c_driver_install(i2c_port_t port, i2c_mode_t, size_t, size_t,
-                             int) {
-  return static_cast<unsigned>(port) < 2 ? ESP_OK : ESP_ERR_INVALID_ARG;
+esp_err_t i2c_driver_install(i2c_port_t port, i2c_mode_t, size_t, size_t, int) {
+  return static_cast<unsigned>(port) < SOC_I2C_NUM ? ESP_OK
+                                                   : ESP_ERR_INVALID_ARG;
 }
 esp_err_t i2c_driver_delete(i2c_port_t port) {
-  return static_cast<unsigned>(port) < 2 ? ESP_OK : ESP_ERR_INVALID_ARG;
+  return static_cast<unsigned>(port) < SOC_I2C_NUM ? ESP_OK
+                                                   : ESP_ERR_INVALID_ARG;
 }
 esp_err_t i2c_param_config(i2c_port_t port, const i2c_config_t* config) {
-  return static_cast<unsigned>(port) < 2 && config != nullptr
+  return static_cast<unsigned>(port) < SOC_I2C_NUM && config != nullptr
              ? ESP_OK
              : ESP_ERR_INVALID_ARG;
 }
 esp_err_t i2c_reset_tx_fifo(i2c_port_t port) {
-  if (static_cast<unsigned>(port) >= 2) return ESP_ERR_INVALID_ARG;
+  if (static_cast<unsigned>(port) >= SOC_I2C_NUM) return ESP_ERR_INVALID_ARG;
   FakeEsp32().i2c(port).resetTxFifo();
   return ESP_OK;
 }
 esp_err_t i2c_reset_rx_fifo(i2c_port_t port) {
-  return static_cast<unsigned>(port) < 2 ? ESP_OK : ESP_ERR_INVALID_ARG;
+  return static_cast<unsigned>(port) < SOC_I2C_NUM ? ESP_OK
+                                                   : ESP_ERR_INVALID_ARG;
 }
 esp_err_t i2c_set_pin(i2c_port_t port, gpio_num_t, gpio_num_t, bool, bool,
                       i2c_mode_t) {
-  return static_cast<unsigned>(port) < 2 ? ESP_OK : ESP_ERR_INVALID_ARG;
+  return static_cast<unsigned>(port) < SOC_I2C_NUM ? ESP_OK
+                                                   : ESP_ERR_INVALID_ARG;
 }
 esp_err_t i2c_master_write_to_device(i2c_port_t port, uint8_t address,
                                      const uint8_t* data, size_t size,
                                      TickType_t timeout) {
-  if (static_cast<unsigned>(port) >= 2) return ESP_ERR_INVALID_ARG;
+  if (static_cast<unsigned>(port) >= SOC_I2C_NUM) return ESP_ERR_INVALID_ARG;
   return FakeEsp32().i2c(port).write(address, data, size, timeout);
 }
 esp_err_t i2c_master_read_from_device(i2c_port_t port, uint8_t address,
                                       uint8_t* data, size_t size,
                                       TickType_t timeout) {
-  if (static_cast<unsigned>(port) >= 2) return ESP_ERR_INVALID_ARG;
+  if (static_cast<unsigned>(port) >= SOC_I2C_NUM) return ESP_ERR_INVALID_ARG;
   return FakeEsp32().i2c(port).read(address, data, size, timeout);
 }
 esp_err_t i2c_master_write_read_device(i2c_port_t port, uint8_t address,
                                        const uint8_t* write_buffer,
                                        size_t write_size, uint8_t* read_buffer,
                                        size_t read_size, TickType_t timeout) {
-  esp_err_t result = i2c_master_write_to_device(
-      port, address, write_buffer, write_size, timeout);
-  return result == ESP_OK
-             ? i2c_master_read_from_device(port, address, read_buffer,
-                                           read_size, timeout)
-             : result;
+  esp_err_t result = i2c_master_write_to_device(port, address, write_buffer,
+                                                write_size, timeout);
+  return result == ESP_OK ? i2c_master_read_from_device(
+                                port, address, read_buffer, read_size, timeout)
+                          : result;
 }
 
 esp_err_t spi_bus_initialize(spi_host_device_t host,
                              const spi_bus_config_t* config, spi_dma_chan_t) {
   if (!ValidSpiHost(host) || config == nullptr) return ESP_ERR_INVALID_ARG;
+  if ((config->sclk_io_num != -1 &&
+       !roo_testing::soc::IsOutputPin(config->sclk_io_num)) ||
+      (config->mosi_io_num != -1 &&
+       !roo_testing::soc::IsOutputPin(config->mosi_io_num)) ||
+      (config->miso_io_num != -1 &&
+       !roo_testing::soc::IsValidPin(config->miso_io_num))) {
+    return ESP_ERR_INVALID_ARG;
+  }
   SpiBusState& bus = g_spi_buses[host];
   if (bus.initialized) return ESP_ERR_INVALID_STATE;
   bus.config = *config;

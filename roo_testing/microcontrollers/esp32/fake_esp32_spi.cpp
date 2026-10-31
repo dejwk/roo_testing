@@ -1,8 +1,5 @@
 #include "fake_esp32_spi.h"
 
-#include "fake_esp32.h"
-#include "roo_testing/system/timer.h"
-
 #include <limits.h>
 #include <unistd.h>
 
@@ -10,6 +7,9 @@
 #include <cstring>
 #include <random>
 #include <set>
+
+#include "fake_esp32.h"
+#include "roo_testing/system/timer.h"
 
 // #include "esp32-hal-spi.h"
 #include "glog/logging.h"
@@ -511,7 +511,7 @@ namespace {
 
 }  // namespace
 
-volatile SpiDevType SPI0;                                      /* SPI0 IS FOR INTERNAL USE*/
+volatile SpiDevType SPI0; /* SPI0 IS FOR INTERNAL USE*/
 volatile SpiDevType SPI1;
 volatile SpiDevType SPI2;
 volatile SpiDevType SPI3;
@@ -521,28 +521,27 @@ namespace {
 uint32_t getApbFrequency() { return 80 * 1000 * 1000; }
 
 typedef union {
-    uint32_t value;
-    struct {
-            uint32_t clkcnt_l:       6;                     /*it must be equal to spi_clkcnt_N.*/
-            uint32_t clkcnt_h:       6;                     /*it must be floor((spi_clkcnt_N+1)/2-1).*/
-            uint32_t clkcnt_n:       6;                     /*it is the divider of spi_clk. So spi_clk frequency is system/(spi_clkdiv_pre+1)/(spi_clkcnt_N+1)*/
-#if CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32S3
-            uint32_t clkdiv_pre:     4;                     /*it is pre-divider of spi_clk.*/
-            uint32_t reserved:       9;  					/*reserved*/
-#else
-            uint32_t clkdiv_pre:    13;                     /*it is pre-divider of spi_clk.*/
-#endif
-            uint32_t clk_equ_sysclk: 1;                     /*1: spi_clk is eqaul to system 0: spi_clk is divided from system clock.*/
-    };
+  uint32_t value;
+  struct {
+    uint32_t clkcnt_l : 6; /*it must be equal to spi_clkcnt_N.*/
+    uint32_t clkcnt_h : 6; /*it must be floor((spi_clkcnt_N+1)/2-1).*/
+    uint32_t clkcnt_n : 6; /*it is the divider of spi_clk. So spi_clk frequency
+                              is system/(spi_clkdiv_pre+1)/(spi_clkcnt_N+1)*/
+    // Matches the host SpiDevType clock proxy on every chip.
+    uint32_t clkdiv_pre : 13;
+
+    uint32_t clk_equ_sysclk : 1; /*1: spi_clk is eqaul to system 0: spi_clk is
+                                    divided from system clock.*/
+  };
 } spiClk_t;
 
-#define ClkRegToFreq(reg) (apb_freq / (((reg)->clkdiv_pre + 1) * ((reg)->clkcnt_n + 1)))
+#define ClkRegToFreq(reg) \
+  (apb_freq / (((reg)->clkdiv_pre + 1) * ((reg)->clkcnt_n + 1)))
 
-uint32_t spiClockDivToFrequency(uint32_t clockDiv)
-{
-    uint32_t apb_freq = getApbFrequency();
-    spiClk_t reg = { clockDiv };
-    return ClkRegToFreq(&reg);
+uint32_t spiClockDivToFrequency(uint32_t clockDiv) {
+  uint32_t apb_freq = getApbFrequency();
+  spiClk_t reg = {clockDiv};
+  return ClkRegToFreq(&reg);
 }
 
 }  // namespace

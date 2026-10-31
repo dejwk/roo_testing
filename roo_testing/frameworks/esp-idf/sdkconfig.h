@@ -14,9 +14,13 @@
 #define CONFIG_IDF_CMAKE 1
 #include "roo_testing/soc_profile.h"
 
-/* Classic ESP32 has two physical cores. The host scheduler remains
+/* Physical core count follows the chip. The host scheduler remains
  * intentionally single-core through CONFIG_FREERTOS_NUMBER_OF_CORES below. */
+#if CONFIG_IDF_TARGET_ESP32C3
+#define CONFIG_SOC_CPU_CORES_NUM 1
+#else
 #define CONFIG_SOC_CPU_CORES_NUM 2
+#endif
 #define CONFIG_ESP_SYSTEM_SINGLE_CORE_MODE 1
 
 /* Compiler settings consumed by common ESP-IDF headers. */
@@ -35,7 +39,11 @@
 #define CONFIG_FREERTOS_NO_AFFINITY 0x7fffffff
 #define CONFIG_FREERTOS_HZ 1000
 #define CONFIG_FREERTOS_TICK_RATE_HZ CONFIG_FREERTOS_HZ
+#if CONFIG_IDF_TARGET_ESP32C3
+#define CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ 160
+#else
 #define CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ 240
+#endif
 #define CONFIG_FREERTOS_MAX_TASK_NAME_LEN 16
 #define CONFIG_FREERTOS_IDLE_TASK_STACKSIZE 4096
 #define CONFIG_FREERTOS_ISR_STACKSIZE 1536

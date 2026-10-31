@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <map>
 #include <memory>
 #include <utility>
@@ -19,17 +20,18 @@
 #include "roo_testing/buses/spi/fake_spi.h"
 #include "roo_testing/buses/uart/fake_uart.h"
 #include "roo_testing/transducers/wifi/wifi.h"
+#include "soc_traits.h"
 
-static constexpr uint16_t kMatrixDetachOutSig = 0x100;
+static constexpr uint16_t kMatrixDetachOutSig = SIG_GPIO_OUT_IDX;
 
 // Fake pin # that acts as always low when attached to an input.
-static constexpr uint8_t kMatrixDetachInLowPin = 0x30;
+static constexpr uint8_t kMatrixDetachInLowPin = GPIO_MATRIX_CONST_ZERO_INPUT;
 
 // Fake pin # that acts as always high when attached to an input.
-static constexpr uint8_t kMatrixDetachInHighPin = 0x38;
+static constexpr uint8_t kMatrixDetachInHighPin = GPIO_MATRIX_CONST_ONE_INPUT;
 
 // Fake pin # that acts as undefined (low-impedance) when attached to an input.
-static constexpr uint8_t kMatrixDetachInUndefPin = 0x34;
+static constexpr uint8_t kMatrixDetachInUndefPin = 0xFF;
 
 class Esp32InMatrix {
  public:
@@ -53,7 +55,7 @@ class Esp32OutMatrix {
   uint16_t signal_for_pin(uint8_t pin) const { return pin_to_signal_[pin]; }
 
  private:
-  uint16_t pin_to_signal_[40];
+  uint16_t pin_to_signal_[SOC_GPIO_PIN_COUNT];
   std::map<uint8_t, uint8_t> signal_to_pins_;
 };
 
@@ -162,9 +164,9 @@ class FakeEsp32Board {
 
   EspReg reg_;
 
-  Esp32UartInterface uart_[3];
+  std::array<Esp32UartInterface, SOC_UART_NUM> uart_;
   Esp32Adc adc_[2];
-  Esp32I2c i2c_[2];
+  std::array<Esp32I2c, SOC_I2C_NUM> i2c_;
   Esp32SpiInterface spi[4];
   EspNowInterface esp_now_;
 

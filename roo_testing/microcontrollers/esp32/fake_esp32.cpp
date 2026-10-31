@@ -17,7 +17,8 @@ Esp32InMatrix::Esp32InMatrix() {
 }
 
 Esp32OutMatrix::Esp32OutMatrix() {
-  std::fill(&pin_to_signal_[0], &pin_to_signal_[40], kMatrixDetachInUndefPin);
+  std::fill(&pin_to_signal_[0], &pin_to_signal_[SOC_GPIO_PIN_COUNT],
+            kMatrixDetachOutSig);
 }
 
 namespace {
@@ -57,45 +58,63 @@ FakeEsp32Board& FakeEsp32() {
 }
 
 FakeEsp32Board::FakeEsp32Board()
-    : gpio(40),
+    : gpio(SOC_GPIO_PIN_COUNT),
       in_matrix(),
       out_matrix(),
       nvs(roo_testing::internal::DefaultNvsPath()),
       reg_(*this),
-      uart_{Esp32UartInterface(0, "uart0", /* U0TXD_OUT_IDX*/ 14,
-                               /* U0RXD_IN_IDX*/ 14, this),
-            Esp32UartInterface(1, "uart1", /* U0TXD_OUT_IDX*/ 17,
-                               /* U0RXD_IN_IDX*/ 17, this),
-            Esp32UartInterface(2, "uart2", /* U0TXD_OUT_IDX*/ 198,
-                               /* U0RXD_IN_IDX*/ 198, this)},
-      // i2c{FakeI2cInterface("i2c0"), FakeI2cInterface("i2c1")},
-      adc_{Esp32Adc(*this, {36, 37, 38, 39, 32, 33, 34, 35, -1, -1}),
-           Esp32Adc(*this, {4, 0, 2, 15, 13, 12, 14, 27, 25, 26})},
-      i2c_{
-          Esp32I2c(*this, "i2c0", /*I2CEXT0_SDA_*_IDX*/ 30,
-                   /*I2CEXT0_SCL_*_IDX8*/ 29),
-          Esp32I2c(*this, "i2c1", /*I2CEXT1_SDA_*_IDX*/ 96,
-                   /*I2CEXT1_SCL_*_IDX8*/ 95),
+      uart_{{
+          Esp32UartInterface(0, "uart0", roo_testing::soc::kUartTxSignals[0],
+                             roo_testing::soc::kUartRxSignals[0], this),
+          Esp32UartInterface(1, "uart1", roo_testing::soc::kUartTxSignals[1],
+                             roo_testing::soc::kUartRxSignals[1], this),
+#if SOC_UART_NUM > 2
+          Esp32UartInterface(2, "uart2", roo_testing::soc::kUartTxSignals[2],
+                             roo_testing::soc::kUartRxSignals[2], this),
+#endif
+      }},
+      adc_{Esp32Adc(*this, {roo_testing::soc::kAdcPins[0].begin(),
+                            roo_testing::soc::kAdcPins[0].end()}),
+           Esp32Adc(*this, {roo_testing::soc::kAdcPins[1].begin(),
+                            roo_testing::soc::kAdcPins[1].end()})},
+      i2c_{{
+          Esp32I2c(*this, "i2c0", roo_testing::soc::kI2cSdaSignals[0],
+                   roo_testing::soc::kI2cSclSignals[0]),
+#if SOC_I2C_NUM > 1
+          Esp32I2c(*this, "i2c1", roo_testing::soc::kI2cSdaSignals[1],
+                   roo_testing::soc::kI2cSclSignals[1]),
+#endif
+      }},
+      spi{
+          Esp32SpiInterface(SPI0, "spi0(internal)",
+                            roo_testing::soc::kSpiClockSignals[0],
+                            roo_testing::soc::kSpiMisoSignals[0],
+                            roo_testing::soc::kSpiMosiSignals[0], this),
+          Esp32SpiInterface(SPI1, "spi1(internal)",
+                            roo_testing::soc::kSpiClockSignals[0],
+                            roo_testing::soc::kSpiMisoSignals[0],
+                            roo_testing::soc::kSpiMosiSignals[0], this),
+          Esp32SpiInterface(SPI2, "spi2", roo_testing::soc::kSpiClockSignals[1],
+                            roo_testing::soc::kSpiMisoSignals[1],
+                            roo_testing::soc::kSpiMosiSignals[1], this),
+#if SOC_SPI_PERIPH_NUM > 2
+          Esp32SpiInterface(SPI3, "spi3", roo_testing::soc::kSpiClockSignals[2],
+                            roo_testing::soc::kSpiMisoSignals[2],
+                            roo_testing::soc::kSpiMosiSignals[2], this),
+#else
+          Esp32SpiInterface(SPI3, "unsupported spi3", 0, 0, 0, this),
+#endif
       },
-      spi{Esp32SpiInterface(SPI0, "spi0(internal)", /*SPICLK_OUT_IDX*/ 0,
-                            /*SPIQ_OUT_IDX*/ 1, /*SPID_IN_IDX*/ 2, this),
-          Esp32SpiInterface(SPI1, "spi1(FSPI)", /*SPICLK_OUT_IDX*/ 0,
-                            /*SPIQ_OUT_IDX*/ 1,
-                            /*SPID_IN_IDX*/ 2, this),
-          Esp32SpiInterface(SPI2, "spi2(HSPI)", /*HSPICLK_OUT_IDX*/ 8,
-                            /*HSPIQ_OUT_IDX*/ 9,
-                            /*HSPID_IN_IDX*/ 10, this),
-          Esp32SpiInterface(SPI3, "spi3(VSPI)", /*VSPICLK_OUT_IDX*/ 63,
-                            /*VSPIQ_OUT_IDX*/ 64,
-                            /*VSPID_IN_IDX*/ 65, this)},
       fs_root_(default_fs_root_path()),
       // time_([this]() { flush(); }),
       wifi_env_(
           std::make_shared<roo_testing_transducers::wifi::Environment>()) {
   FLAGS_alsologtostderr = true;
   FLAGS_stderrthreshold = google::WARNING;
-  attachUartDevice(*(new ConsoleUartDevice()), 1, 3);
-  out_matrix.assign(1, 14, false, false);
+  attachUartDevice(*(new ConsoleUartDevice()), roo_testing::soc::kConsoleTx,
+                   roo_testing::soc::kConsoleRx);
+  out_matrix.assign(roo_testing::soc::kConsoleTx,
+                    roo_testing::soc::kUartTxSignals[0], false, false);
 }
 
 void FakeEsp32Board::attachUartDevice(FakeUartDevice& dev, int8_t tx,
@@ -119,18 +138,11 @@ void FakeEsp32Board::notifyUartDataAvailable(const FakeUartDevice* source) {
   if (rx_pin < 0) {
     return;
   }
-  int idx = -1;
-  if (in_matrix.pin_for_signal(uart_[0].rx_signal()) == rx_pin) {
-    idx = 0;
-  } else if (in_matrix.pin_for_signal(uart_[1].rx_signal()) == rx_pin) {
-    idx = 1;
-  } else if (in_matrix.pin_for_signal(uart_[2].rx_signal()) == rx_pin) {
-    idx = 2;
+  for (Esp32UartInterface& uart : uart_) {
+    if (in_matrix.pin_for_signal(uart.rx_signal()) == rx_pin) {
+      uart.notifyDataAvailable();
+    }
   }
-  if (idx < 0) {
-    return;
-  }
-  uart_[idx].notifyDataAvailable();
 }
 
 void FakeEsp32Board::attachI2cDevice(FakeI2cDevice& dev, int8_t sda,
@@ -169,6 +181,11 @@ void FakeEsp32Board::set_fs_root(std::string fs_root) {
 }
 
 void Esp32InMatrix::assign(uint32_t gpio, uint32_t signal_idx, bool inv) {
+  if (signal_idx >= 256) return;
+  if (!roo_testing::soc::IsValidPin(gpio) && gpio != kMatrixDetachInLowPin &&
+      gpio != kMatrixDetachInHighPin && gpio != kMatrixDetachInUndefPin) {
+    return;
+  }
   uint8_t old_pin = signal_to_pin_[signal_idx];
   signal_to_pin_[signal_idx] = gpio;
   pin_to_signals_.erase(old_pin);
@@ -179,10 +196,11 @@ void Esp32InMatrix::assign(uint32_t gpio, uint32_t signal_idx, bool inv) {
 
 void Esp32OutMatrix::assign(uint32_t gpio, uint32_t signal_idx, bool out_inv,
                             bool oen_inv) {
+  if (!roo_testing::soc::IsOutputPin(gpio)) return;
   uint16_t old_signal = pin_to_signal_[gpio];
   signal_to_pins_.erase(old_signal);
   pin_to_signal_[gpio] = signal_idx;
-  if (gpio == kMatrixDetachOutSig) {
+  if (signal_idx == kMatrixDetachOutSig) {
     signal_to_pins_.erase(signal_idx);
   } else {
     signal_to_pins_[signal_idx] = gpio;

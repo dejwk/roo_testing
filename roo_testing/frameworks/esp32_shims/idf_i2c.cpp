@@ -70,7 +70,7 @@ bool IsValidDevice(i2c_master_dev_handle_t device) {
 }
 
 bool IsValidPin(gpio_num_t pin) {
-  return pin >= 0 && pin < SOC_GPIO_PIN_COUNT && GPIO_IS_VALID_OUTPUT_GPIO(pin);
+  return roo_testing::soc::IsOutputPin(pin) && GPIO_IS_VALID_OUTPUT_GPIO(pin);
 }
 
 // The emulated device protocol stores timeout milliseconds in 16 bits.

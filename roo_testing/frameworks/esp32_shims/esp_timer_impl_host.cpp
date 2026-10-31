@@ -20,6 +20,11 @@ extern "C" {
 #endif
 
 namespace {
+#if CONFIG_IDF_TARGET_ESP32
+constexpr int kTimerInterruptSource = ETS_TG0_LACT_LEVEL_INTR_SOURCE;
+#else
+constexpr int kTimerInterruptSource = ETS_SYSTIMER_TARGET0_INTR_SOURCE;
+#endif
 
 constexpr uint64_t kDisarmedCompare = std::numeric_limits<uint64_t>::max();
 
@@ -48,7 +53,7 @@ void DeliverCompare(uint64_t generation) {
     raise_interrupt = true;
   }
   if (raise_interrupt) {
-    roo_testing::esp_idf::raiseInterruptSource(ETS_TG0_LACT_LEVEL_INTR_SOURCE);
+    roo_testing::esp_idf::raiseInterruptSource(kTimerInterruptSource);
   }
 }
 
@@ -83,7 +88,7 @@ esp_err_t esp_timer_impl_init(intr_handler_t alarm_handler) {
 
   intr_handle_t handle = nullptr;
   esp_err_t err =
-      esp_intr_alloc(ETS_TG0_LACT_LEVEL_INTR_SOURCE, ESP_INTR_FLAG_INTRDISABLED,
+      esp_intr_alloc(kTimerInterruptSource, ESP_INTR_FLAG_INTRDISABLED,
                      TimerInterrupt, nullptr, &handle);
   if (err != ESP_OK) return err;
   err = esp_intr_enable(handle);

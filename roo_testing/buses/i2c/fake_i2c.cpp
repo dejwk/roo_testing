@@ -1,5 +1,7 @@
 #include "fake_i2c.h"
 
+#include "soc/soc_caps.h"
+
 FakeI2cInterface::~FakeI2cInterface() {
   for (auto& i : devices_) {
     if (i.second.owned) {
@@ -19,16 +21,20 @@ FakeI2cDevice* FakeI2cInterface::getDevice(uint16_t address) const {
 }
 
 FakeI2cInterface* getI2cInterface(uint8_t i2c_num) {
-  // The classic ESP32 exposes two I2C controllers. Keep these objects alive
+  // Keep the selected chip's controller objects alive
   // for the process lifetime so legacy devices can attach once and retrieve
   // the same emulated bus on every subsequent access.
   static FakeI2cInterface i2c0("i2c0");
+#if SOC_I2C_NUM > 1
   static FakeI2cInterface i2c1("i2c1");
+#endif
   switch (i2c_num) {
     case 0:
       return &i2c0;
+#if SOC_I2C_NUM > 1
     case 1:
       return &i2c1;
+#endif
     default:
       return nullptr;
   }

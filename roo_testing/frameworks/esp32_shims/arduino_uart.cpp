@@ -1,9 +1,8 @@
-#include "esp32-hal-uart.h"
-#include "esp32-hal-periman.h"
-#include "driver/uart.h"
-
 #include <array>
 
+#include "driver/uart.h"
+#include "esp32-hal-periman.h"
+#include "esp32-hal-uart.h"
 #include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 
 struct uart_struct_t {
@@ -29,13 +28,14 @@ struct uart_struct_t {
 };
 
 namespace {
-constexpr std::array<uint8_t, SOC_UART_NUM> kTxSignals = {14, 17, 198};
-constexpr std::array<uint8_t, SOC_UART_NUM> kRxSignals = {14, 17, 198};
+constexpr auto kTxSignals = roo_testing::soc::kUartTxSignals;
+constexpr auto kRxSignals = roo_testing::soc::kUartRxSignals;
 std::array<uart_t, SOC_UART_NUM> buses = [] {
   std::array<uart_t, SOC_UART_NUM> result{};
   for (uint8_t i = 0; i < result.size(); ++i) {
     result[i].number = i;
-    result[i].rx_pin = result[i].tx_pin = result[i].cts_pin = result[i].rts_pin = -1;
+    result[i].rx_pin = result[i].tx_pin = result[i].cts_pin =
+        result[i].rts_pin = -1;
     result[i].clock_source = UART_SCLK_DEFAULT;
     result[i].mode = UART_MODE_UART;
   }
@@ -55,11 +55,11 @@ bool _testUartBegin(uint8_t uart_nr, uint32_t baudrate, uint32_t config,
                    tx_buffer_size, inverted, fifo_threshold) != nullptr;
 }
 
-uart_t *uartBegin(uint8_t number, uint32_t baudrate, uint32_t config,
+uart_t* uartBegin(uint8_t number, uint32_t baudrate, uint32_t config,
                   int8_t rx_pin, int8_t tx_pin, uint32_t, uint32_t,
                   bool inverted, uint8_t fifo_threshold) {
   if (!valid(number) || baudrate == 0) return nullptr;
-  uart_t &uart = buses[number];
+  uart_t& uart = buses[number];
   if (uart.event_queue == nullptr) {
     uart.event_queue = xQueueCreate(20, sizeof(uart_event_t));
     if (uart.event_queue == nullptr) return nullptr;
@@ -68,7 +68,8 @@ uart_t *uartBegin(uint8_t number, uint32_t baudrate, uint32_t config,
   uart.baud_rate = baudrate;
   uart.config = config;
   uart.fifo_threshold = fifo_threshold;
-  uart.inversion_mask = inverted ? UART_SIGNAL_RXD_INV | UART_SIGNAL_TXD_INV : 0;
+  uart.inversion_mask =
+      inverted ? UART_SIGNAL_RXD_INV | UART_SIGNAL_TXD_INV : 0;
   if (!uartSetPins(number, rx_pin, tx_pin, -1, -1)) {
     uart.installed = false;
     return nullptr;
@@ -78,7 +79,7 @@ uart_t *uartBegin(uint8_t number, uint32_t baudrate, uint32_t config,
 
 void uartEnd(uint8_t number) {
   if (!valid(number)) return;
-  uart_t &uart = buses[number];
+  uart_t& uart = buses[number];
   if (uart.rx_pin >= 0) perimanClearPinBus(uart.rx_pin);
   if (uart.tx_pin >= 0) perimanClearPinBus(uart.tx_pin);
   if (uart.cts_pin >= 0) perimanClearPinBus(uart.cts_pin);
@@ -91,79 +92,114 @@ void uartEnd(uint8_t number) {
   }
 }
 
-void uartGetEventQueue(uart_t *uart, QueueHandle_t *queue) {
+void uartGetEventQueue(uart_t* uart, QueueHandle_t* queue) {
   if (queue) *queue = uart && uart->installed ? uart->event_queue : nullptr;
 }
 
-uint32_t uartAvailable(uart_t *uart) {
+uint32_t uartAvailable(uart_t* uart) {
   return uart && uart->installed
-             ? FakeEsp32().uart(uart->number).availableForRead() + (uart->has_peek ? 1 : 0)
+             ? FakeEsp32().uart(uart->number).availableForRead() +
+                   (uart->has_peek ? 1 : 0)
              : 0;
 }
-uint32_t uartAvailableForWrite(uart_t *uart) {
-  return uart && uart->installed ? FakeEsp32().uart(uart->number).availableForWrite() : 0;
+uint32_t uartAvailableForWrite(uart_t* uart) {
+  return uart && uart->installed
+             ? FakeEsp32().uart(uart->number).availableForWrite()
+             : 0;
 }
-size_t uartReadBytes(uart_t *uart, uint8_t *buffer, size_t size, uint32_t) {
+size_t uartReadBytes(uart_t* uart, uint8_t* buffer, size_t size, uint32_t) {
   if (!uart || !uart->installed || (!buffer && size)) return 0;
   size_t count = 0;
   if (uart->has_peek && size) {
     buffer[count++] = uart->peek;
     uart->has_peek = false;
   }
-  return count + FakeEsp32().uart(uart->number).read(buffer + count, size - count);
+  return count +
+         FakeEsp32().uart(uart->number).read(buffer + count, size - count);
 }
-uint8_t uartRead(uart_t *uart) {
+uint8_t uartRead(uart_t* uart) {
   uint8_t value = 0;
   uartReadBytes(uart, &value, 1, 0);
   return value;
 }
-uint8_t uartPeek(uart_t *uart) {
+uint8_t uartPeek(uart_t* uart) {
   if (!uart || !uart->installed) return 0;
-  if (!uart->has_peek) uart->has_peek = FakeEsp32().uart(uart->number).read(&uart->peek, 1) == 1;
+  if (!uart->has_peek)
+    uart->has_peek = FakeEsp32().uart(uart->number).read(&uart->peek, 1) == 1;
   return uart->has_peek ? uart->peek : 0;
 }
 
-void uartWrite(uart_t *uart, uint8_t value) { uartWriteBuf(uart, &value, 1); }
-void uartWriteBuf(uart_t *uart, const uint8_t *data, size_t length) {
-  if (uart && uart->installed && data) FakeEsp32().uart(uart->number).write(data, length);
+void uartWrite(uart_t* uart, uint8_t value) { uartWriteBuf(uart, &value, 1); }
+void uartWriteBuf(uart_t* uart, const uint8_t* data, size_t length) {
+  if (uart && uart->installed && data)
+    FakeEsp32().uart(uart->number).write(data, length);
 }
-void uartFlush(uart_t *) { FakeEsp32().flush(); }
-void uartFlushTxOnly(uart_t *uart, bool) { uartFlush(uart); }
+void uartFlush(uart_t*) { FakeEsp32().flush(); }
+void uartFlushTxOnly(uart_t* uart, bool) { uartFlush(uart); }
 
-bool uartSetBaudRate(uart_t *uart, uint32_t baudrate) {
+bool uartSetBaudRate(uart_t* uart, uint32_t baudrate) {
   if (!uart || !uart->installed || !baudrate) return false;
   uart->baud_rate = baudrate;
   return true;
 }
-uint32_t uartGetBaudRate(uart_t *uart) { return uart ? uart->baud_rate : 0; }
-bool uartPinSignalInversion(uart_t *uart, uint32_t mask, bool inverted) {
+uint32_t uartGetBaudRate(uart_t* uart) { return uart ? uart->baud_rate : 0; }
+bool uartPinSignalInversion(uart_t* uart, uint32_t mask, bool inverted) {
   if (!uart) return false;
-  if (inverted) uart->inversion_mask |= mask; else uart->inversion_mask &= ~mask;
+  if (inverted)
+    uart->inversion_mask |= mask;
+  else
+    uart->inversion_mask &= ~mask;
   return true;
 }
-bool uartSetRxInvert(uart_t *uart, bool invert) { return uartPinSignalInversion(uart, UART_SIGNAL_RXD_INV, invert); }
-bool uartSetTxInvert(uart_t *uart, bool invert) { return uartPinSignalInversion(uart, UART_SIGNAL_TXD_INV, invert); }
-bool uartSetCtsInvert(uart_t *uart, bool invert) { return uartPinSignalInversion(uart, UART_SIGNAL_CTS_INV, invert); }
-bool uartSetRtsInvert(uart_t *uart, bool invert) { return uartPinSignalInversion(uart, UART_SIGNAL_RTS_INV, invert); }
-bool uartSetRxTimeout(uart_t *uart, uint8_t timeout) { if (!uart) return false; uart->rx_timeout = timeout; return true; }
-bool uartSetRxFIFOFull(uart_t *uart, uint8_t threshold) { if (!uart) return false; uart->fifo_threshold = threshold; return true; }
-void uartSetFastReading(uart_t *uart) { if (uart) uart->rx_timeout = 0; }
-void uartSetDebug(uart_t *uart) { debug_uart = uart ? uart->number : -1; }
+bool uartSetRxInvert(uart_t* uart, bool invert) {
+  return uartPinSignalInversion(uart, UART_SIGNAL_RXD_INV, invert);
+}
+bool uartSetTxInvert(uart_t* uart, bool invert) {
+  return uartPinSignalInversion(uart, UART_SIGNAL_TXD_INV, invert);
+}
+bool uartSetCtsInvert(uart_t* uart, bool invert) {
+  return uartPinSignalInversion(uart, UART_SIGNAL_CTS_INV, invert);
+}
+bool uartSetRtsInvert(uart_t* uart, bool invert) {
+  return uartPinSignalInversion(uart, UART_SIGNAL_RTS_INV, invert);
+}
+bool uartSetRxTimeout(uart_t* uart, uint8_t timeout) {
+  if (!uart) return false;
+  uart->rx_timeout = timeout;
+  return true;
+}
+bool uartSetRxFIFOFull(uart_t* uart, uint8_t threshold) {
+  if (!uart) return false;
+  uart->fifo_threshold = threshold;
+  return true;
+}
+void uartSetFastReading(uart_t* uart) {
+  if (uart) uart->rx_timeout = 0;
+}
+void uartSetDebug(uart_t* uart) { debug_uart = uart ? uart->number : -1; }
 int uartGetDebug() { return debug_uart; }
-bool uartIsDriverInstalled(uart_t *uart) { return uart && uart->installed; }
+bool uartIsDriverInstalled(uart_t* uart) { return uart && uart->installed; }
 
-bool uartSetPins(uint8_t number, int8_t rx_pin, int8_t tx_pin,
-                 int8_t cts_pin, int8_t rts_pin) {
-  if (!valid(number)) return false;
-  uart_t &uart = buses[number];
+bool uartSetPins(uint8_t number, int8_t rx_pin, int8_t tx_pin, int8_t cts_pin,
+                 int8_t rts_pin) {
+  if (!valid(number) ||
+      (rx_pin >= 0 && !roo_testing::soc::IsValidPin(rx_pin)) ||
+      (tx_pin >= 0 && !roo_testing::soc::IsOutputPin(tx_pin)) ||
+      (cts_pin >= 0 && !roo_testing::soc::IsValidPin(cts_pin)) ||
+      (rts_pin >= 0 && !roo_testing::soc::IsOutputPin(rts_pin))) {
+    return false;
+  }
+  uart_t& uart = buses[number];
   if (rx_pin >= 0) {
-    if (uart.rx_pin >= 0 && uart.rx_pin != rx_pin) perimanClearPinBus(uart.rx_pin);
+    if (uart.rx_pin >= 0 && uart.rx_pin != rx_pin)
+      perimanClearPinBus(uart.rx_pin);
     uart.rx_pin = rx_pin;
     FakeEsp32().in_matrix.assign(rx_pin, kRxSignals[number], false);
     perimanSetPinBus(rx_pin, ESP32_BUS_TYPE_UART_RX, &uart, number, -1);
   }
   if (tx_pin >= 0) {
-    if (uart.tx_pin >= 0 && uart.tx_pin != tx_pin) perimanClearPinBus(uart.tx_pin);
+    if (uart.tx_pin >= 0 && uart.tx_pin != tx_pin)
+      perimanClearPinBus(uart.tx_pin);
     uart.tx_pin = tx_pin;
     FakeEsp32().out_matrix.assign(tx_pin, kTxSignals[number], false, false);
     perimanSetPinBus(tx_pin, ESP32_BUS_TYPE_UART_TX, &uart, number, -1);
@@ -179,15 +215,25 @@ bool uartSetPins(uint8_t number, int8_t rx_pin, int8_t tx_pin,
   return true;
 }
 
-int8_t uart_get_RxPin(uint8_t number) { return valid(number) ? buses[number].rx_pin : -1; }
-int8_t uart_get_TxPin(uint8_t number) { return valid(number) ? buses[number].tx_pin : -1; }
-bool uartSetHwFlowCtrlMode(uart_t *uart, uart_hw_flowcontrol_t mode, uint8_t) { if (!uart) return false; uart->flow_control = mode; return true; }
-bool uartSetMode(uart_t *uart, uart_mode_t mode) { if (!uart) return false; uart->mode = mode; return true; }
-bool uartSetIrdaDirection(uart_t *uart,
-                          esp32_uart_irda_direction_t direction) {
+int8_t uart_get_RxPin(uint8_t number) {
+  return valid(number) ? buses[number].rx_pin : -1;
+}
+int8_t uart_get_TxPin(uint8_t number) {
+  return valid(number) ? buses[number].tx_pin : -1;
+}
+bool uartSetHwFlowCtrlMode(uart_t* uart, uart_hw_flowcontrol_t mode, uint8_t) {
+  if (!uart) return false;
+  uart->flow_control = mode;
+  return true;
+}
+bool uartSetMode(uart_t* uart, uart_mode_t mode) {
+  if (!uart) return false;
+  uart->mode = mode;
+  return true;
+}
+bool uartSetIrdaDirection(uart_t* uart, esp32_uart_irda_direction_t direction) {
   if (!uart || !valid(uart->number) || uart->mode != UART_MODE_IRDA ||
-      (direction != ESP32_UART_IRDA_RX &&
-       direction != ESP32_UART_IRDA_TX)) {
+      (direction != ESP32_UART_IRDA_RX && direction != ESP32_UART_IRDA_TX)) {
     return false;
   }
   // Pulse encoding is not emulated, but retain the selected direction and the
@@ -195,7 +241,11 @@ bool uartSetIrdaDirection(uart_t *uart,
   uart->irda_direction = direction;
   return true;
 }
-bool uartSetClockSource(uint8_t number, uart_sclk_t source) { if (!valid(number)) return false; buses[number].clock_source = source; return true; }
+bool uartSetClockSource(uint8_t number, uart_sclk_t source) {
+  if (!valid(number)) return false;
+  buses[number].clock_source = source;
+  return true;
+}
 bool uartEnableRxInternalPull(uint8_t number, bool enable) {
   if (!valid(number) || buses[number].installed) return false;
   // The host GPIO model does not need an electrical pull before pins are
@@ -203,12 +253,18 @@ bool uartEnableRxInternalPull(uint8_t number, bool enable) {
   buses[number].rx_internal_pull = enable;
   return true;
 }
-void uartStartDetectBaudrate(uart_t *) {}
-unsigned long uartDetectBaudrate(uart_t *uart) { return uart ? uart->baud_rate : 0; }
-void uart_internal_loopback(uint8_t number, int8_t rx_pin) { if (valid(number)) uartSetPins(number, rx_pin, buses[number].tx_pin, -1, -1); }
-void uart_internal_hw_flow_ctrl_loopback(uint8_t number, int8_t cts_pin) { if (valid(number)) uartSetPins(number, -1, -1, cts_pin, cts_pin); }
+void uartStartDetectBaudrate(uart_t*) {}
+unsigned long uartDetectBaudrate(uart_t* uart) {
+  return uart ? uart->baud_rate : 0;
+}
+void uart_internal_loopback(uint8_t number, int8_t rx_pin) {
+  if (valid(number)) uartSetPins(number, rx_pin, buses[number].tx_pin, -1, -1);
+}
+void uart_internal_hw_flow_ctrl_loopback(uint8_t number, int8_t cts_pin) {
+  if (valid(number)) uartSetPins(number, -1, -1, cts_pin, cts_pin);
+}
 void uart_send_break(uint8_t) {}
-int uart_send_msg_with_break(uint8_t number, uint8_t *message, size_t size) {
+int uart_send_msg_with_break(uint8_t number, uint8_t* message, size_t size) {
   if (!valid(number) || !buses[number].installed) return -1;
   uartWriteBuf(&buses[number], message, size);
   return static_cast<int>(size);
@@ -216,7 +272,7 @@ int uart_send_msg_with_break(uint8_t number, uint8_t *message, size_t size) {
 uint16_t uart_get_max_rx_timeout(uint8_t) { return 127; }
 void uart_notify_data_available(uint8_t number) {
   if (!valid(number)) return;
-  uart_t &uart = buses[number];
+  uart_t& uart = buses[number];
   if (!uart.installed || uart.event_queue == nullptr) return;
   uart_event_t event{};
   event.type = UART_DATA;

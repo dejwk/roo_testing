@@ -123,3 +123,29 @@ cc_library(
         ":esp_idf",
     ],
 )
+
+profile_guard(
+    name = "pico_sdk_platform_guard",
+    environment = "The roo_testing Pico SDK environment",
+    required_constraints = [
+        "//roo_testing/platforms:pico_sdk",
+        "//roo_testing/platforms:roo_testing",
+        "//roo_testing/platforms:rp2040",
+    ],
+)
+
+cc_library(
+    name = "pico_sdk",
+    srcs = ["pico_sdk_profile_contract.cc"],
+    copts = ["-Werror"],
+    data = [":pico_sdk_platform_guard"],
+    local_defines = select({
+        "//roo_testing/platforms:is_pico": ["ROO_TESTING_EXPECT_PICO_FRONTEND=1"],
+        "//conditions:default": [],
+    }),
+    visibility = ["//visibility:public"],
+    deps = [
+        ":emulator",
+        "//roo_testing/soc:target",
+    ],
+)

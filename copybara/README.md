@@ -4,6 +4,8 @@ Copybara owns the upstream portions of these stable source trees:
 
 - `roo_testing/frameworks/arduino-esp32`
 - `roo_testing/frameworks/esp-idf`
+- `roo_testing/frameworks/pico-sdk`
+- `roo_testing/frameworks/arduino-pico`
 
 The current pins are Arduino-ESP32 3.3.11 at
 `189089bb76e74978dc95abebefdad42b0d421ba9` and ESP-IDF 6.0.2 at
@@ -37,7 +39,8 @@ use partial fetch because none of its submodules are imported.
 
 ## Prerequisites
 
-Install a current Copybara weekly release and Java 21 or newer. Either put the
+Install a Copybara weekly release and its matching Java runtime. The v20261026
+release used for Pico validation requires Java 25. Either put the
 `copybara` executable on `PATH`, set `COPYBARA_BIN` to its path, or set
 `COPYBARA_JAR` to a Copybara deploy jar. Git credentials are not needed when
 using `import.sh`, because it overrides the destination with the current local
@@ -114,3 +117,33 @@ pinned revision, reapplies the roo_testing change, and captures it with
 Do not put Bazel overlays in patches. BUILD files remain ordinary destination
 files so they can evolve independently of upstream source and survive every
 Copybara refresh.
+
+## Pico source pair
+
+Pico integration stage 2 adds `pico-sdk` and `arduino-pico` import actions, also
+included in `all` after the existing ESP32 pair. Pins in `versions.bara.sky`
+select Arduino-Pico 6.3.1 and exactly its Pico SDK gitlink, version 2.3.1. Update
+them together and verify the gitlink before importing. Run the SDK workflow
+before the Arduino workflow. Their independent origin labels are
+`PicoSdk-Origin-RevId` and `ArduinoPico-Origin-RevId`.
+
+The SDK allowlist imports common base/time sources, host sources, and the Pico
+board header. Only the host platform and timer implementations are compiled.
+Arduino imports stage the RP2040 core, SPI/Wire libraries, and original Pico
+variant plus release metadata. Core API, FreeRTOS, USB, networking, and other
+submodules are not fetched in this stage. The tracked API files under
+`cores/rp2040/api` are included with the core; the separate root API submodule
+is not fetched. There is no
+nested second SDK copy under Arduino-Pico.
+
+The initial source trees were materialized from the immutable upstream source
+archives, checked against these allowlists and patched with the recorded series.
+The stage commit carries both origin labels to seed subsequent Copybara imports.
+Destination-owned BUILD overlays and `roo_testing_host_include` survive refreshes;
+upstream BUILD/Bzlmod files remain excluded. See the
+[Pico support matrix](../roo_testing/frameworks/pico_support/README.md) for compiled
+sources, exact macros/header roots, patches, and interim behavior.
+
+Both new workflows were also exported to isolated folders with Copybara
+v20261026 and compared byte-for-byte with the imported files, excluding only
+the destination-owned overlays.

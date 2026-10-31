@@ -5,7 +5,7 @@
 #endif
 
 #if (defined(ROO_TESTING_SOC_ESP32) + defined(ROO_TESTING_SOC_ESP32S3) + \
-     defined(ROO_TESTING_SOC_ESP32C3)) != 1
+     defined(ROO_TESTING_SOC_ESP32C3) + defined(ROO_TESTING_SOC_RP2040)) != 1
 #error "Select exactly one supported roo_testing SoC"
 #endif
 
@@ -13,12 +13,14 @@
 namespace roo_testing::soc {
 
 /// Identifies the emulated chip, independently of the native execution host.
-enum class Model { kEsp32, kEsp32S3, kEsp32C3 };
+enum class Model { kEsp32, kEsp32S3, kEsp32C3, kRp2040 };
 
 #if defined(ROO_TESTING_SOC_ESP32S3)
 inline constexpr Model kModel = Model::kEsp32S3;
 #elif defined(ROO_TESTING_SOC_ESP32C3)
 inline constexpr Model kModel = Model::kEsp32C3;
+#elif defined(ROO_TESTING_SOC_RP2040)
+inline constexpr Model kModel = Model::kRp2040;
 #else
 inline constexpr Model kModel = Model::kEsp32;
 #endif

@@ -53,6 +53,14 @@ The code is based on the Espressif ESP32 Arduino framework, instrumented to inte
 
 The code does not emulate Xtensa or RISC-V instructions. Your sketch simply compiles and runs on your computer's architecture. This works because the Espressif framework is implemented in standard, portable C/C++.
 
+## Native Pico SDK foundation
+
+An SDK-only RP2040 backend is available through
+`--config=roo_testing_pico_rp2040` and `@roo_testing//:pico_sdk`. It currently
+supports native stdio and host uptime; Arduino-Pico and peripheral integration
+remain subsequent stages. See the [Pico support matrix](roo_testing/frameworks/pico_support/README.md)
+for setup, pinned sources, supported APIs, and the temporary host-clock boundary.
+
 ## Emulated SoC identity
 
 Host builds support **ESP32**, **ESP32-S3**, and **ESP32-C3** through both

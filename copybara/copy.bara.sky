@@ -1,4 +1,4 @@
-"""Imports the supported ESP32 framework surface into roo_testing.
+"""Imports the supported ESP32 and Pico framework surfaces into roo_testing.
 
 The imported trees remain at stable, unversioned paths. Bazel BUILD files and
 roo_testing shims are destination-owned; upstream-only source changes belong in
@@ -9,6 +9,10 @@ load(
     "versions",
     "ARDUINO_ESP32_REV",
     "ARDUINO_ESP32_VERSION",
+    "ARDUINO_PICO_REV",
+    "ARDUINO_PICO_VERSION",
+    "PICO_SDK_REV",
+    "PICO_SDK_VERSION",
     "ESP_IDF_REV",
     "ESP_IDF_VERSION",
 )
@@ -310,4 +314,79 @@ core.workflow(
     ],
     mode = "SQUASH",
     custom_rev_id = "EspIdf-Origin-RevId",
+)
+
+# Keep the core staged for Arduino integration; SDK-only builds never compile it.
+ARDUINO_PICO_DESTINATION = "roo_testing/frameworks/arduino-pico"
+PICO_SDK_DESTINATION = "roo_testing/frameworks/pico-sdk"
+
+ARDUINO_PICO_ORIGIN_FILES = glob(
+    [
+        "LICENSE",
+        "README.md",
+        ".gitmodules",
+        "boards.txt",
+        "platform.txt",
+        "programmers.txt",
+        "cores/rp2040/**",
+        "libraries/SPI/**",
+        "libraries/Wire/**",
+        "variants/rpipico/**",
+    ],
+    exclude = COMMON_EXCLUDES,
+)
+
+PICO_SDK_ORIGIN_FILES = glob(
+    [
+        "LICENSE.TXT",
+        "README.md",
+        "pico_sdk_version.cmake",
+        "src/boards/include/boards/pico.h",
+        "src/common/pico_base_headers/**",
+        "src/common/pico_time/**",
+        "src/host/**",
+    ],
+    exclude = COMMON_EXCLUDES,
+)
+
+core.workflow(
+    name = "pico_sdk",
+    description = "Import Pico SDK %s pinned by Arduino-Pico" % PICO_SDK_VERSION,
+    origin = git.origin(
+        url = "https://github.com/raspberrypi/pico-sdk.git",
+        ref = PICO_SDK_REV,
+        partial_fetch = True,
+        submodules = "NO",
+    ),
+    destination = destination(),
+    authoring = authoring.pass_thru("Copybara <copybara@localhost>"),
+    origin_files = PICO_SDK_ORIGIN_FILES,
+    destination_files = destination_files(PICO_SDK_DESTINATION),
+    transformations = [
+        patch.apply(series = "patches/pico-sdk/series"),
+        core.move("", PICO_SDK_DESTINATION),
+    ],
+    mode = "SQUASH",
+    custom_rev_id = "PicoSdk-Origin-RevId",
+)
+
+core.workflow(
+    name = "arduino_pico",
+    description = "Import Arduino-Pico %s at its pinned revision" % ARDUINO_PICO_VERSION,
+    origin = git.origin(
+        url = "https://github.com/earlephilhower/arduino-pico.git",
+        ref = ARDUINO_PICO_REV,
+        partial_fetch = True,
+        submodules = "NO",
+    ),
+    destination = destination(),
+    authoring = authoring.pass_thru("Copybara <copybara@localhost>"),
+    origin_files = ARDUINO_PICO_ORIGIN_FILES,
+    destination_files = destination_files(ARDUINO_PICO_DESTINATION),
+    transformations = [
+        patch.apply(series = "patches/arduino-pico/series", validation_level = "OPTIONAL_SERIES"),
+        core.move("", ARDUINO_PICO_DESTINATION),
+    ],
+    mode = "SQUASH",
+    custom_rev_id = "ArduinoPico-Origin-RevId",
 )

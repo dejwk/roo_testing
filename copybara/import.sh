@@ -8,7 +8,7 @@ config="$script_dir/copy.bara.sky"
 
 usage() {
   command_name="$(basename -- "$0")"
-  echo "Usage: $command_name [--dry-run] [--force] <validate|arduino-esp32|esp-idf|all>"
+  echo "Usage: $command_name [--dry-run] [--force] <validate|arduino-esp32|esp-idf|pico-sdk|arduino-pico|all>"
   echo
   echo "COPYBARA_BIN may name a Copybara executable. Alternatively, set COPYBARA_JAR"
   echo "to a Copybara deploy jar and the script will invoke it with java -jar."
@@ -68,8 +68,14 @@ case "$action" in
   esp-idf)
     workflows=(esp_idf)
     ;;
+  pico-sdk)
+    workflows=(pico_sdk)
+    ;;
+  arduino-pico)
+    workflows=(arduino_pico)
+    ;;
   all)
-    workflows=(esp_idf arduino_esp32)
+    workflows=(esp_idf arduino_esp32 pico_sdk arduino_pico)
     ;;
   *)
     echo "Unknown action: $action" >&2

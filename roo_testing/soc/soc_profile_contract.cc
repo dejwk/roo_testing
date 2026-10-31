@@ -20,4 +20,10 @@ static_assert(std::string_view(ROO_TESTING_SOC) == "esp32s3");
 #endif
 static_assert(ROO_TESTING_SOC_ESP32C3 == 1);
 static_assert(std::string_view(ROO_TESTING_SOC) == "esp32c3");
+#elif defined(ROO_TESTING_EXPECT_SOC_RP2040)
+#ifndef ROO_TESTING_SOC_RP2040
+#error "Typed identity does not match selected SoC platform"
+#endif
+static_assert(ROO_TESTING_SOC_RP2040 == 1);
+static_assert(std::string_view(ROO_TESTING_SOC) == "rp2040");
 #endif

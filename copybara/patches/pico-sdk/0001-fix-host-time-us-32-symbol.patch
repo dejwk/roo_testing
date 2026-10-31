@@ -1,0 +1,13 @@
+--- a/src/host/hardware_timer/timer.c
++++ b/src/host/hardware_timer/timer.c
+@@ -53,8 +53,8 @@
+ #endif
+ }
+ 
+-PICO_WEAK_FUNCTION_DEF(timer_us_32)
+-uint32_t PICO_WEAK_FUNCTION_IMPL_NAME(timer_us_32)() {
++PICO_WEAK_FUNCTION_DEF(time_us_32)
++uint32_t PICO_WEAK_FUNCTION_IMPL_NAME(time_us_32)() {
+     return (uint32_t) time_us_64();
+ }
+ 

@@ -58,3 +58,9 @@ backend capability requirements, SoC mismatches, and missing/contradictory
 runtime macros. C runtime contracts and C++ selection probes run across all six
 existing profiles, alongside global environment and frontend selections.
 No fixture provides a supported new framework implementation.
+
+The full verifier also runs the [SDK-only Pico checks](../pico/verify_pico.py)
+after the six ESP32 profiles. They validate native C/C++ SDK probes, dependency
+and compile-action isolation, symbol uniqueness, explicit unsupported behavior,
+profile failures, and ASAN. The six-profile helper remains unchanged until the
+later Arduino-Pico matrix integration stage.

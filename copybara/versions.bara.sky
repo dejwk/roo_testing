@@ -12,3 +12,9 @@ ARDUINO_ESP32_REV = "189089bb76e74978dc95abebefdad42b0d421ba9"
 # ESP-IDF release in that declared compatibility range.
 ESP_IDF_VERSION = "6.0.2"
 ESP_IDF_REV = "7101770dc6db2667b3c477cc31365dd1acd6db4e"
+
+# Arduino-Pico 6.3.1 pins this exact Pico SDK gitlink (SDK version 2.3.1).
+ARDUINO_PICO_VERSION = "6.3.1"
+ARDUINO_PICO_REV = "53f1d8ee31a9565a15731c5aad8a6297bdf70144"
+PICO_SDK_VERSION = "2.3.1"
+PICO_SDK_REV = "079c6f39023649b154152db30f1d781e884879bc"

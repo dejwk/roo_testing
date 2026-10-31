@@ -404,6 +404,11 @@ Proposed commit message:
 
 ### 2. Import and prove a minimal native Pico SDK build
 
+Implemented: pinned source pair, SDK-only profile, native C/C++ probes, and
+isolation/failure validation. See the
+[current support matrix](../roo_testing/frameworks/pico_support/README.md) for the
+host-clock boundary that stage 3 will replace.
+
 Pin matching upstream sources, add Copybara rules and BUILD overlays, and add
 the SDK-only RP2040 profile with `:pico_sdk`. Build a stdio/uptime probe using
 the SDK host platform and native compiler. Record exact macro/header selection

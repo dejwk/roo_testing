@@ -243,3 +243,5 @@ for soc in esp32s3 esp32c3; do
 done
 
 echo "roo_testing six global compiler profiles verified"
+
+python3 test/pico/verify_pico.py

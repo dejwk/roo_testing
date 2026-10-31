@@ -24,6 +24,7 @@ alias(
     name = "target",
     actual = select({
         "//roo_testing/platforms:is_esp32s3": ":esp32s3",
+        "//roo_testing/platforms:is_rp2040": ":identity",
         "//roo_testing/platforms:is_esp32c3": ":esp32c3",
         "//conditions:default": ":esp32",
     }),
@@ -72,14 +73,22 @@ cc_library(
     copts = ["-Werror"],
     data = select({
         "//roo_testing/platforms:is_esp32s3": [":esp32s3_platform_guard"],
+        "//roo_testing/platforms:is_rp2040": [":rp2040_platform_guard"],
         "//roo_testing/platforms:is_esp32c3": [":esp32c3_platform_guard"],
         "//conditions:default": [":esp32_platform_guard"],
     }),
     local_defines = select({
         "//roo_testing/platforms:is_esp32s3": ["ROO_TESTING_EXPECT_SOC_ESP32S3=1"],
+        "//roo_testing/platforms:is_rp2040": ["ROO_TESTING_EXPECT_SOC_RP2040=1"],
         "//roo_testing/platforms:is_esp32c3": ["ROO_TESTING_EXPECT_SOC_ESP32C3=1"],
         "//conditions:default": ["ROO_TESTING_EXPECT_SOC_ESP32=1"],
     }),
     strip_include_prefix = "include",
     visibility = ["//visibility:public"],
+)
+
+profile_guard(
+    name = "rp2040_platform_guard",
+    environment = "The roo_testing RP2040 SoC profile",
+    required_constraints = ["//roo_testing/platforms:rp2040"],
 )

@@ -1,0 +1,31 @@
+--- a/src/host/hardware_timer/timer.c
++++ b/src/host/hardware_timer/timer.c
+@@ -85,23 +85,18 @@
+ #endif
+ }
+ 
+-static uint8_t claimed_alarms;
+-
++// The roo_testing host foundation does not expose hardware alarms yet.
+ void hardware_alarm_claim(uint alarm_num) {
+-    assert(!(claimed_alarms & (1u << alarm_num)));
+-    claimed_alarms |= 1u << alarm_num;
++    panic_unsupported();
+ }
+ 
+ void hardware_alarm_unclaim(uint alarm_num) {
+-    assert(claimed_alarms & (1u << alarm_num));
+-    claimed_alarms &= ~(1u << alarm_num);
++    panic_unsupported();
+ }
+ 
+ int hardware_alarm_claim_unused(bool required) {
+-    int alarm_id = claimed_alarms ? __builtin_clz(~claimed_alarms) : 1;
+-    if (alarm_id >= NUM_ALARMS) return -1;
+-    claimed_alarms |= 1u << alarm_id;
+-    return alarm_id;
++    if (required) panic_unsupported();
++    return -1;
+ }
+ 
+ PICO_WEAK_FUNCTION_DEF(hardware_alarm_set_callback)

@@ -25,8 +25,9 @@ selected configuration in layers:
   ESP32-specific board, variant, USB, and logging values. The Arduino-ESP32 core
   requires this target rather than relying on generic Arduino identity.
 
-The six supported profiles still select the same ESP32 implementations.
-Separating identity does not add a Pico backend or a public bare-metal profile.
+The six ESP32 profiles still select the same implementations. Generic identity
+alone does not provide a runnable backend; the SDK-only Pico backend is
+documented below.
 The identity-only platform in `test/profile` proves that generic Arduino and SoC
 contracts do not imply ESP-IDF capability or framework implementation headers.
 
@@ -116,8 +117,8 @@ Runtime is independent of frontend and SoC. The `:freertos` and `:bare_metal`
 values belong to the `:runtime` constraint setting. Their compiler counterparts
 are `ROO_TESTING_RUNTIME_FREERTOS=1` and `ROO_TESTING_RUNTIME_BARE_METAL=1`.
 All six existing profiles select FreeRTOS; both C and C++ actions receive that
-identity from each chip's canonical base fragment. The bare-metal value reserves
-a truthful runtime identity for the subsequent Pico backend. It does not change
+identity from each chip's canonical base fragment. The bare-metal value selects
+the SDK-only RP2040 backend. It does not change
 roo_threads selection in this phase.
 
 A runtime constraint without its matching macro, both macros together, a value
@@ -126,3 +127,12 @@ application runtime capability, not ESP-IDF availability or native worker-thread
 existence. Runtime contracts do not export defines or introduce scheduler links.
 Refresh vendored base fragments when adopting this change; old copies omit the
 new mandatory runtime identity and fail its compile contract.
+
+## Pico SDK capability
+
+`:pico_sdk` requires Pico SDK capability, RP2040 identity, emulator identity,
+and a matching runtime. It validates native host SDK macros independently of
+frontend; later Arduino-Pico builds will share this capability. The SDK-only
+`:pico_rp2040` platform selects the Pico frontend and bare-metal runtime. ESP32
+framework targets keep their hard capability guards and reject that platform.
+See the [SDK support matrix](../pico_support/README.md) for stage-2 API limits.

@@ -33,5 +33,20 @@ Use `:is_freertos` and `:is_bare_metal` for runtime-dependent selections.
 Neither implies a framework frontend, SoC, or ESP-IDF capability. A platform
 must pair its runtime constraint with the matching global compiler identity;
 see the [environment contract](../frameworks/environment/README.md#runtime-identity).
-Bare-metal identity is available for contract fixtures and later backends; this
-phase adds no public bare-metal or Pico platform.
+Bare-metal identity is used by contract fixtures and the SDK-only RP2040
+platform described below.
+
+## SDK-only RP2040 profile
+
+`--config=roo_testing_pico_rp2040` selects `:pico_rp2040`, combining `:pico`
+frontend, `:pico_sdk` capability, `:rp2040` SoC, `:bare_metal` runtime, and
+`:roo_testing` environment. Public settings `:is_pico`, `:is_pico_sdk`, and
+`:is_rp2040` select these dimensions independently. The Pico SDK capability is
+separate from ESP-IDF capability; adding Pico does not alter existing settings.
+
+The wrapper recognizes explicit Pico profiles and rejects mixing them with
+Arduino or IDF profiles. Arduino ESP32 remains the interactive default. The
+six-profile helper retains its existing ESP32 matrix in this stage; run the
+[Pico verifier](../../test/pico/verify_pico.py) separately. The full profile
+verifier invokes it after the ESP32 checks. See the
+[SDK support matrix](../frameworks/pico_support/README.md) for the current subset.

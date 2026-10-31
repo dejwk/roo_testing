@@ -147,3 +147,19 @@ test_suite(
         "//test/profile:idf_select_test",
     ],
 )
+
+# SDK applications supply ordinary main(); no ESP-IDF or Arduino startup.
+cc_library(
+    name = "pico_sdk",
+    visibility = ["//visibility:public"],
+    deps = ["//roo_testing/frameworks/pico-sdk:pico_sdk"],
+)
+
+test_suite(
+    name = "pico_tests",
+    tags = ["manual"],
+    tests = [
+        "//test/pico:sdk_probe_c",
+        "//test/pico:sdk_probe_cpp",
+    ],
+)

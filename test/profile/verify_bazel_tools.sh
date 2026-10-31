@@ -112,6 +112,16 @@ assert_lines \
   arg=--config=asan arg=//... end
 [[ ! -s "${stderr_log}" ]] || fail "explicit IDF ASAN build printed a default notice"
 
+invoke_wrapper build --config=roo_testing_pico_rp2040 //:target
+assert_lines \
+  call skip= arg=build arg=--config=roo_testing_pico_rp2040 arg=//:target end
+[[ ! -s "${stderr_log}" ]] || fail "explicit Pico profile printed a default notice"
+
+invoke_wrapper test --config roo_testing_pico_rp2040 //:target
+assert_lines \
+  call skip= arg=test arg=--config arg=roo_testing_pico_rp2040 arg=//:target end
+[[ ! -s "${stderr_log}" ]] || fail "split Pico profile printed a default notice"
+
 invoke_wrapper build --config=roo_testing_idf_esp32s3 //:target
 assert_lines \
   call skip= arg=build arg=--config=roo_testing_idf_esp32s3 arg=//:target end
@@ -234,6 +244,16 @@ set -e
 [[ ! -s "${capture}" ]] || fail "distinct Arduino profiles reached Bazel"
 grep -Fq 'select exactly one frontend/SoC profile' "${stderr_log}" ||
   fail "distinct Arduino profiles did not explain the error"
+
+for other_profile in roo_testing_arduino_esp32 roo_testing_idf_esp32; do
+  : >"${capture}"
+  set +e
+  invoke_wrapper build --config=roo_testing_pico_rp2040 "--config=${other_profile}" //:target
+  status=$?
+  set -e
+  [[ ${status} -eq 2 ]] || fail "mixed Pico profiles returned ${status}"
+  [[ ! -s "${capture}" ]] || fail "mixed Pico profiles reached Bazel"
+done
 
 # Direct invocation takes the recursion-safe fallback and marks the nested
 # Bazelisk invocation so that it will not rediscover the wrapper.

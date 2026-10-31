@@ -8,8 +8,9 @@ host; Xtensa and RISC-V identity describes the firmware target, not host instruc
 | ESP32 | `:esp32` | Xtensa | 2 | `esp32` |
 | ESP32-S3 | `:esp32s3` | Xtensa | 2 | `esp32s3` |
 | ESP32-C3 | `:esp32c3` | RISC-V | 1 | `esp32c3` |
+| RP2040 | `:rp2040` | Arm (firmware only) | 2 | Not exposed yet |
 
-For each chip, select `--config=roo_testing_arduino_<soc>` or
+For each ESP32-family chip, select `--config=roo_testing_arduino_<soc>` or
 `--config=roo_testing_idf_<soc>`. Import the matching `base.bazelrc` and frontend
 fragment from `.roo_testing/bazelrc/<soc>/` into the root workspace first.
 Classic ESP32 remains the wrapper default. `test_all_profiles` tests all six
@@ -28,7 +29,7 @@ The emulator shares SoC traits across GPIO, matrix routing, UART, SPI, I2C, ADC,
 LEDC, and chip-information shims. Missing GPIOs and controllers are rejected.
 C3 has no SDMMC host; SDSPI and host filesystem facilities remain available.
 
-All profiles retain the single-core pthread-backed FreeRTOS scheduler.
+The six ESP32 profiles retain the single-core pthread-backed FreeRTOS scheduler.
 The Linux backend identity is private to its own translation units. Memory,
 analog conversion, clocks, and peripheral timing retain the emulator's existing
 approximations. This support does not add USB, Bluetooth radio, or other new
@@ -41,3 +42,9 @@ that these agree with the platform. ESP-IDF identity checks and `kIdfTarget` /
 `soc_profile.h` only when `ESP_PLATFORM` is defined. Existing ESP-IDF consumers
 retain the constants through their original include and `:target` dependency.
 Generic identity alone grants neither ESP-IDF capability nor a runnable backend.
+
+RP2040 uses the SDK-only `roo_testing_pico_rp2040` profile. `Model::kRp2040`
+identifies the physical chip while the compiler retains native host architecture.
+For RP2040, `:target` selects the generic `:identity` contract and does not expose
+IDF constants. The initial Pico
+profile has a bare-metal runtime.

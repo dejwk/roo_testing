@@ -240,3 +240,47 @@ config_setting(
         ":roo_testing",
     ],
 )
+
+constraint_setting(name = "pico_sdk_capability")
+
+constraint_value(
+    name = "pico_sdk",
+    constraint_setting = ":pico_sdk_capability",
+)
+
+constraint_value(
+    name = "pico",
+    constraint_setting = ":framework_frontend",
+)
+
+constraint_value(
+    name = "rp2040",
+    constraint_setting = ":soc",
+)
+
+platform(
+    name = "pico_rp2040",
+    constraint_values = [
+        ":bare_metal",
+        ":pico",
+        ":pico_sdk",
+        ":roo_testing",
+        ":rp2040",
+    ],
+    parents = ["@platforms//host:host"],
+)
+
+config_setting(
+    name = "is_pico",
+    constraint_values = [":pico"],
+)
+
+config_setting(
+    name = "is_pico_sdk",
+    constraint_values = [":pico_sdk"],
+)
+
+config_setting(
+    name = "is_rp2040",
+    constraint_values = [":rp2040"],
+)

@@ -90,10 +90,19 @@ cc_library(
         "CONFIG_IDF_TARGET_LINUX=1",
         "ROO_TESTING_FREERTOS_POSIX_BACKEND=1",
     ],
-    alwayslink = 1,
     visibility = ["//visibility:public"],
     deps = [
         ":freertos_posix_port",
         ":include",
     ],
+    alwayslink = 1,
+)
+
+# Isolated host-wait regression coverage without linking the scheduler runtime.
+cc_library(
+    name = "native_wait_test_support",
+    testonly = True,
+    srcs = ["FreeRTOS-Kernel/portable/linux/utils/wait_for_event.c"],
+    hdrs = ["FreeRTOS-Kernel/portable/linux/utils/wait_for_event.h"],
+    visibility = ["//roo_testing/frameworks/posix_time:__pkg__"],
 )

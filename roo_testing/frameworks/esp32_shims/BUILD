@@ -93,6 +93,7 @@ cc_library(
         "//roo_testing/frameworks/esp-idf:headers",
         "//roo_testing/frameworks/esp-idf/components/freertos",
         "//roo_testing/frameworks/esp_idf_support:interrupts",
+        "//roo_testing/frameworks/posix_time",
         "//roo_testing/frameworks/posix_time:host_time",
         "//roo_testing/microcontrollers/esp32:core",
         "//roo_testing/sys",
@@ -314,3 +315,15 @@ cc_library(
         ),
     ]
 ]
+
+cc_test(
+    name = "arduino_sntp_test",
+    size = "small",
+    srcs = ["arduino_sntp_test.cpp"],
+    target_compatible_with = ["//roo_testing/platforms:arduino"],
+    deps = [
+        ":arduino",
+        "//:arduino_gtest_main",
+        "//roo_testing/system:manual_time_mode",
+    ],
+)

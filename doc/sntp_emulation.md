@@ -1,7 +1,7 @@
 # SNTP emulation
 
-Status: Implementation in progress. Stages 1-2 supply the isolated UTC bridge
-and shared SNTP client; Arduino/esp-netif integration follows.
+Status: Implementation in progress. Stages 1-3 provide the clock bridge, shared
+client, and Arduino integration; esp-netif and release coverage follow.
 
 ## Objective
 

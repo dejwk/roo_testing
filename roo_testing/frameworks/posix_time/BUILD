@@ -49,3 +49,16 @@ cc_library(
     hdrs = ["posix_time.h"],
     visibility = ["//visibility:public"],
 )
+
+cc_test(
+    name = "native_wait_clock_test",
+    size = "small",
+    srcs = [
+        "native_wait_clock_test.cpp",
+    ],
+    deps = [
+        ":posix_time",
+        "//roo_testing/frameworks/esp-idf/components/freertos:native_wait_test_support",
+        "@googletest//:gtest_main",
+    ],
+)

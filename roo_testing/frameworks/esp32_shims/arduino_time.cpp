@@ -3,13 +3,14 @@
 
 #include "esp32-hal.h"
 #include "esp_netif.h"
+#include "esp_sntp.h"
 
 namespace {
-void setTimeZone(long offset, int daylight) {
+void SetTimeZone(long offset, int daylight) {
   char standard[32] = {};
   char summer[32] = "DST";
   char zone[64] = {};
-  if (offset % 3600) {
+  if (offset % 3600 != 0) {
     snprintf(standard, sizeof(standard), "UTC%ld:%02ld:%02ld", offset / 3600,
              labs((offset % 3600) / 60), labs(offset % 60));
   } else {
@@ -17,7 +18,7 @@ void setTimeZone(long offset, int daylight) {
   }
   if (daylight != 3600) {
     const long dst = offset - daylight;
-    if (dst % 3600) {
+    if (dst % 3600 != 0) {
       snprintf(summer, sizeof(summer), "DST%ld:%02ld:%02ld", dst / 3600,
                labs((dst % 3600) / 60), labs(dst % 60));
     } else {
@@ -28,23 +29,36 @@ void setTimeZone(long offset, int daylight) {
   setenv("TZ", zone, 1);
   tzset();
 }
+// All frontends use the same client; configuration alone does not set UTC.
+void ConfigureSntp(const char* server1, const char* server2,
+                   const char* server3) {
+  esp_sntp_stop();
+  esp_sntp_setoperatingmode(ESP_SNTP_OPMODE_POLL);
+  esp_sntp_setservername(0, server1);
+  esp_sntp_setservername(1, server2);
+  esp_sntp_setservername(2, server3);
+  esp_sntp_init();
+}
 }  // namespace
 
 extern "C" {
 
-void configTime(long gmt_offset, int daylight_offset, const char *, const char *,
-                const char *) {
+void configTime(long gmt_offset, int daylight_offset, const char* server1,
+                const char* server2, const char* server3) {
   esp_netif_init();
-  setTimeZone(-gmt_offset, daylight_offset);
+  SetTimeZone(-gmt_offset, daylight_offset);
+  ConfigureSntp(server1, server2, server3);
 }
 
-void configTzTime(const char *tz, const char *, const char *, const char *) {
+void configTzTime(const char* tz, const char* server1, const char* server2,
+                  const char* server3) {
   esp_netif_init();
   if (tz != nullptr) setenv("TZ", tz, 1);
   tzset();
+  ConfigureSntp(server1, server2, server3);
 }
 
-bool getLocalTime(struct tm *info, uint32_t timeout_ms) {
+bool getLocalTime(struct tm* info, uint32_t timeout_ms) {
   if (info == nullptr) return false;
   const unsigned long start = millis();
   do {

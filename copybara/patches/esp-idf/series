@@ -4,3 +4,4 @@
 0003-deliver-simulated-linux-interrupts.patch
 0004-stabilize-linux-scheduler-shutdown.patch
 0005-use-portable-uint64-formats-in-esp-timer.patch
+0006-keep-native-waits-on-host-monotonic-clock.patch

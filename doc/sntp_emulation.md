@@ -1,7 +1,7 @@
 # SNTP emulation
 
-Status: Implementation in progress. Stage 1 supplies the isolated clock/bridge;
-framework integration follows in later stages.
+Status: Implementation in progress. Stages 1-2 supply the isolated UTC bridge
+and shared SNTP client; Arduino/esp-netif integration follows.
 
 ## Objective
 
@@ -317,6 +317,8 @@ create duplicate `esp_sntp_*` definitions for names that are macros.
 After each response or silent attempt, schedule the next attempt using the
 configured update interval. Large manual-time jumps coalesce missed polls:
 perform at most the currently due attempt, then choose a future deadline.
+This applies to lag/pump jumps; dispatching delays can visit intervening
+deadlines according to the existing alarm-service contract.
 Do not replay unbounded missed callbacks. This deliberately does not model
 lwIP's retry backoff, startup jitter, packet filtering, or server failover.
 

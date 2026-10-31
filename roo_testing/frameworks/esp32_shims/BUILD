@@ -62,6 +62,7 @@ cc_library(
         "idf_sd.cpp",
         "nvs.cpp",
         "ota_partition.cpp",
+        "sntp_host.cpp",
         "wifi.cpp",
         "//roo_testing/frameworks/esp-idf:components/esp_timer/src/esp_timer.c",
         "//roo_testing/frameworks/esp-idf:components/esp_timer/src/esp_timer_init.c",
@@ -70,6 +71,7 @@ cc_library(
     hdrs = [
         "esp_timer_host.h",
         "shim_internal.h",
+        "sntp_host.h",
         "wifi_host.h",
     ],
     copts = [
@@ -91,9 +93,11 @@ cc_library(
         "//roo_testing/frameworks/esp-idf:headers",
         "//roo_testing/frameworks/esp-idf/components/freertos",
         "//roo_testing/frameworks/esp_idf_support:interrupts",
+        "//roo_testing/frameworks/posix_time:host_time",
         "//roo_testing/microcontrollers/esp32:core",
         "//roo_testing/sys",
         "//roo_testing/system:timer",
+        "//roo_testing/system:wall_clock",
         "@glog",
     ],
 )
@@ -284,3 +288,29 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = ["//roo_testing/frameworks/arduino-esp32/cores/esp32:headers"],
 )
+
+[
+    cc_test(
+        name = name,
+        size = "small",
+        srcs = [source],
+        deps = [
+            ":idf",
+            "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+            "@googletest//:gtest",
+        ] + mode,
+    )
+    for name, source, mode in [
+        (
+            "sntp_host_test",
+            "sntp_host_test.cpp",
+            ["//roo_testing/system:manual_time_mode"],
+        ),
+        ("sntp_auto_test", "sntp_host_test.cpp", []),
+        (
+            "sntp_override_test",
+            "sntp_override_test.cpp",
+            ["//roo_testing/system:manual_time_mode"],
+        ),
+    ]
+]

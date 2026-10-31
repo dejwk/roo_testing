@@ -64,6 +64,7 @@ ESP_IDF_COMPONENTS = [
     "esp_driver_touch_sens",
     "esp_driver_tsens",
     "esp_driver_uart",
+    "esp_driver_usb_serial_jtag",
     "esp_eth",
     "esp_event",
     "esp_hal_ana_conv",
@@ -162,11 +163,10 @@ COMMON_EXCLUDES = [
     "**/*.zip",
 ]
 
-# ESP32 is the emulated target. Generic code and the Xtensa/Linux ports remain
-# eligible, while source dedicated to another Espressif chip is omitted.
-NON_ESP32_TARGET_EXCLUDES = [
+# Import all supported SoCs and retain the host Linux backend. Other chips
+# remain excluded.
+UNSUPPORTED_TARGET_EXCLUDES = [
     "**/esp32c2/**",
-    "**/esp32c3/**",
     "**/esp32c5/**",
     "**/esp32c6/**",
     "**/esp32c61/**",
@@ -175,7 +175,6 @@ NON_ESP32_TARGET_EXCLUDES = [
     "**/esp32h4/**",
     "**/esp32p4/**",
     "**/esp32s2/**",
-    "**/esp32s3/**",
     "**/esp32s31/**",
 ]
 
@@ -192,8 +191,10 @@ ARDUINO_ORIGIN_FILES = glob(
         "platform.txt",
         "programmers.txt",
         "variants/esp32/**",
+        "variants/esp32s3/**",
+        "variants/esp32c3/**",
     ] + ["libraries/%s/**" % library for library in ARDUINO_LIBRARIES],
-    exclude = COMMON_EXCLUDES + NON_ESP32_TARGET_EXCLUDES,
+    exclude = COMMON_EXCLUDES + UNSUPPORTED_TARGET_EXCLUDES,
 )
 
 ESP_IDF_ORIGIN_FILES = glob(
@@ -204,7 +205,7 @@ ESP_IDF_ORIGIN_FILES = glob(
         "README.md",
         "sdkconfig.rename",
     ] + ["components/%s/**" % component for component in ESP_IDF_COMPONENTS],
-    exclude = COMMON_EXCLUDES + NON_ESP32_TARGET_EXCLUDES,
+    exclude = COMMON_EXCLUDES + UNSUPPORTED_TARGET_EXCLUDES,
 )
 
 # BUILD files are maintained as a destination overlay. Copybara must neither

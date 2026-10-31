@@ -14,10 +14,10 @@ so 6.0.2 is the newest stable ESP-IDF release in its supported range.
 ## Ownership boundary
 
 The import is intentionally narrower than either upstream repository. It keeps
-the ESP32 core, the Arduino libraries exposed by roo_testing, the default ESP32
-variant, and the ESP-IDF components required by those APIs. Upstream examples,
+the ESP32 core, the Arduino libraries exposed by roo_testing, the generic ESP32, ESP32-S3, and ESP32-C3
+variants, and the ESP-IDF components required by those APIs. Upstream examples,
 tests, bulk documentation trees, precompiled target artifacts, and source
-dedicated to other Espressif chips are excluded in `copy.bara.sky`.
+dedicated to unsupported Espressif chips are excluded in `copy.bara.sky`.
 
 Bazel `BUILD`, `BUILD.bazel`, and `.bzl` files under the imported trees are
 destination-owned overlays. The host `sdkconfig.h`, deliberately named

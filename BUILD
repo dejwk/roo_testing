@@ -118,6 +118,7 @@ test_suite(
         "//test/legacy_sd_headers:legacy_sd_headers_test",
         "//test/profile:arduino_select_test",
         "//test/profile:global_environment_test",
+        "//test/profile:runtime_selection_test",
         "//test/wire_master:wire_master_test",
     ],
 )

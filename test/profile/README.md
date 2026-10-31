@@ -41,3 +41,20 @@ It preserves the user's home rc (and its disk cache), suppressing only the
 roo_testing workspace rc when exercising the mutually exclusive IDF profile.
 Real interactive defaulting requires Bazelisk 1.21.0 or newer; direct Bazel
 invocations select a frontend explicitly.
+
+## Generic identity and runtime boundaries
+
+Run the focused phase-1 checks independently with:
+
+```sh
+./test/profile/verify_identity.sh
+```
+
+The full verifier also invokes them. An identity-only test platform declares
+Arduino, a known SoC, and bare-metal runtime without ESP-IDF capability. The
+fixture compiles generic Arduino/SoC contracts and verifies that no IDF or
+Arduino-ESP32 dependency is selected. Negative checks assert diagnostic text for
+backend capability requirements, SoC mismatches, and missing/contradictory
+runtime macros. C runtime contracts and C++ selection probes run across all six
+existing profiles, alongside global environment and frontend selections.
+No fixture provides a supported new framework implementation.

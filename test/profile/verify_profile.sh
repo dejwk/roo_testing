@@ -18,6 +18,7 @@ mkdir -p "${test_root}" "${repository_cache}"
 cd "${workspace}"
 
 ./test/profile/verify_bazel_tools.sh
+./test/profile/verify_identity.sh
 
 run_bazel() {
   "${bazel_bin}" --output_user_root="${test_root}/configured" "$@"
@@ -112,6 +113,7 @@ expect_failure "roo_testing platform without its compiler profile" \
   --platforms=//roo_testing/platforms:arduino_esp32
 
 base_definitions=(
+  ROO_TESTING_RUNTIME_FREERTOS
   ROO_TESTING
   ESP_PLATFORM
   IDF_VER
@@ -211,7 +213,7 @@ for soc in esp32s3 esp32c3; do
     arch=XTENSA
     [[ "${soc}" != esp32c3 ]] || arch=RISCV
     soc_upper="${soc^^}"
-    definitions=(ROO_TESTING ESP_PLATFORM IDF_VER CONFIG_IDF_FIRMWARE_CHIP_ID CONFIG_IDF_TARGET CONFIG_IDF_TARGET_ARCH "CONFIG_IDF_TARGET_ARCH_${arch}" "CONFIG_IDF_TARGET_${soc_upper}" ESP32 ROO_TESTING_SOC "ROO_TESTING_SOC_${soc_upper}")
+    definitions=(ROO_TESTING_RUNTIME_FREERTOS ROO_TESTING ESP_PLATFORM IDF_VER CONFIG_IDF_FIRMWARE_CHIP_ID CONFIG_IDF_TARGET CONFIG_IDF_TARGET_ARCH "CONFIG_IDF_TARGET_ARCH_${arch}" "CONFIG_IDF_TARGET_${soc_upper}" ESP32 ROO_TESTING_SOC "ROO_TESTING_SOC_${soc_upper}")
     for language in c cpp; do
       target="unrelated_${language}"
       [[ "${frontend}" != idf ]] || target="idf_${target}"

@@ -30,6 +30,29 @@ constraint_value(
     constraint_setting = ":framework_frontend",
 )
 
+# Application runtime is independent of framework frontend and SoC.
+constraint_setting(name = "runtime")
+
+constraint_value(
+    name = "bare_metal",
+    constraint_setting = ":runtime",
+)
+
+constraint_value(
+    name = "freertos",
+    constraint_setting = ":runtime",
+)
+
+config_setting(
+    name = "is_bare_metal",
+    constraint_values = [":bare_metal"],
+)
+
+config_setting(
+    name = "is_freertos",
+    constraint_values = [":freertos"],
+)
+
 constraint_setting(name = "soc")
 
 constraint_value(
@@ -47,6 +70,7 @@ platform(
         ":arduino",
         ":esp32",
         ":esp_idf",
+        ":freertos",
         ":roo_testing",
     ],
     parents = ["@platforms//host:host"],
@@ -58,6 +82,7 @@ platform(
         ":esp32",
         ":esp_idf",
         ":idf",
+        ":freertos",
         ":roo_testing",
     ],
     parents = ["@platforms//host:host"],
@@ -119,6 +144,7 @@ platform(
         ":arduino",
         ":esp32s3",
         ":esp_idf",
+        ":freertos",
         ":roo_testing",
     ],
     parents = ["@platforms//host:host"],
@@ -130,6 +156,7 @@ platform(
         ":esp32s3",
         ":esp_idf",
         ":idf",
+        ":freertos",
         ":roo_testing",
     ],
     parents = ["@platforms//host:host"],
@@ -171,6 +198,7 @@ platform(
         ":arduino",
         ":esp32c3",
         ":esp_idf",
+        ":freertos",
         ":roo_testing",
     ],
     parents = ["@platforms//host:host"],
@@ -182,6 +210,7 @@ platform(
         ":esp32c3",
         ":esp_idf",
         ":idf",
+        ":freertos",
         ":roo_testing",
     ],
     parents = ["@platforms//host:host"],

@@ -9,6 +9,8 @@ natively, then add independent public constraints:
 * `:esp_idf` says ESP-IDF APIs are available in both profiles;
 * mutually exclusive `:idf` and `:arduino` values select the framework
   frontend;
+* mutually exclusive `:bare_metal` and `:freertos` values select application
+  runtime; all six current profiles use FreeRTOS;
 * mutually exclusive `:esp32`, `:esp32s3`, and `:esp32c3` select SoC behavior.
 
 Public `config_setting` targets (`:is_roo_testing`, `:is_esp_idf`, `:is_idf`,
@@ -26,3 +28,10 @@ named bazelrc profiles own compiler identity and select these platforms.
 A future SoC gets a new `constraint_value`, platform, and named compiler
 profile. It must also supply matching headers, Arduino variant/pins, shims, and
 emulated peripheral behavior before it is advertised.
+
+Use `:is_freertos` and `:is_bare_metal` for runtime-dependent selections.
+Neither implies a framework frontend, SoC, or ESP-IDF capability. A platform
+must pair its runtime constraint with the matching global compiler identity;
+see the [environment contract](../frameworks/environment/README.md#runtime-identity).
+Bare-metal identity is available for contract fixtures and later backends; this
+phase adds no public bare-metal or Pico platform.

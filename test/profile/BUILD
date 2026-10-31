@@ -216,3 +216,50 @@ exports_files(
     ["esp32_idf_environment_contract.h"],
     visibility = ["//test:__pkg__"],
 )
+
+# Identity-only fixture, not a supported board/framework implementation.
+platform(
+    name = "generic_arduino_identity",
+    constraint_values = [
+        "//roo_testing/platforms:arduino",
+        "//roo_testing/platforms:bare_metal",
+        "//roo_testing/platforms:esp32",
+        "//roo_testing/platforms:roo_testing",
+    ],
+    parents = ["@platforms//host:host"],
+)
+
+cc_library(
+    name = "unexpected_idf_selection",
+    srcs = ["unexpected_idf_selection.cc"],
+    tags = ["manual"],
+)
+
+cc_test(
+    name = "generic_identity_test",
+    size = "small",
+    srcs = ["generic_identity_test.cc"],
+    copts = ["-Werror"],
+    tags = ["manual"],
+    deps = [
+        "//roo_testing/frameworks/environment:arduino",
+        "//roo_testing/soc:identity",
+    ] + select({
+        "//roo_testing/platforms:is_esp_idf": [":unexpected_idf_selection"],
+        "//conditions:default": [],
+    }),
+)
+
+cc_test(
+    name = "runtime_selection_test",
+    size = "small",
+    srcs = ["runtime_selection_test.cc"],
+    copts = ["-Werror"],
+    local_defines = select({
+        "//roo_testing/platforms:is_freertos": ["EXPECT_FREERTOS=1"],
+        "//roo_testing/platforms:is_bare_metal": ["EXPECT_BARE_METAL=1"],
+    }),
+    deps = ["//roo_testing/frameworks/environment:emulator"],
+)
+
+exports_files(["verify_identity.sh"])

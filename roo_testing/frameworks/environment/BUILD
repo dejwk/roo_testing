@@ -16,6 +16,7 @@ cc_library(
     copts = ["-Werror"],
     data = [":emulator_platform_guard"],
     visibility = ["//visibility:public"],
+    deps = [":runtime"],
 )
 
 profile_guard(
@@ -35,6 +36,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":emulator",
+        ":freertos",
         "//roo_testing/soc:target",
     ],
 )
@@ -63,7 +65,6 @@ profile_guard(
     environment = "The roo_testing Arduino environment",
     required_constraints = [
         "//roo_testing/platforms:arduino",
-        "//roo_testing/platforms:esp_idf",
         "//roo_testing/platforms:roo_testing",
     ],
 )
@@ -74,5 +75,51 @@ cc_library(
     copts = ["-Werror"],
     data = [":arduino_platform_guard"],
     visibility = ["//visibility:public"],
-    deps = [":esp_idf"],
+    deps = [":emulator"],
+)
+
+# A runtime target validates identity only; it does not link a scheduler.
+profile_guard(
+    name = "freertos_platform_guard",
+    environment = "The roo_testing FreeRTOS runtime",
+    required_constraints = ["//roo_testing/platforms:freertos"],
+)
+
+profile_guard(
+    name = "bare_metal_platform_guard",
+    environment = "The roo_testing bare-metal runtime",
+    required_constraints = ["//roo_testing/platforms:bare_metal"],
+)
+
+cc_library(
+    name = "runtime",
+    srcs = ["runtime_profile_contract.c"],
+    copts = ["-Werror"],
+    data = select({
+        "//roo_testing/platforms:is_bare_metal": [":bare_metal_platform_guard"],
+        "//conditions:default": [":freertos_platform_guard"],
+    }),
+    local_defines = select({
+        "//roo_testing/platforms:is_bare_metal": ["ROO_TESTING_EXPECT_BARE_METAL=1"],
+        "//conditions:default": ["ROO_TESTING_EXPECT_FREERTOS=1"],
+    }),
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "freertos",
+    data = [":freertos_platform_guard"],
+    visibility = ["//visibility:public"],
+    deps = [":runtime"],
+)
+
+cc_library(
+    name = "arduino_esp32",
+    srcs = ["arduino_esp32_profile_contract.cc"],
+    copts = ["-Werror"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":arduino",
+        ":esp_idf",
+    ],
 )

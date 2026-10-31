@@ -4,6 +4,11 @@
     ESP_PLATFORM != 1 || !defined(ESP32) || ESP32 != 1
 #error "Missing global emulator/framework identity"
 #endif
+#if !defined(ROO_TESTING_RUNTIME_FREERTOS) || \
+    ROO_TESTING_RUNTIME_FREERTOS != 1 ||      \
+    defined(ROO_TESTING_RUNTIME_BARE_METAL)
+#error "Missing or contradictory FreeRTOS application runtime identity"
+#endif
 #ifndef IDF_VER
 #error "Missing framework version"
 #endif

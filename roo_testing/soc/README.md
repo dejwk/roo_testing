@@ -16,10 +16,11 @@ Classic ESP32 remains the wrapper default. `test_all_profiles` tests all six
 combinations sequentially and stops at the first failure.
 
 The profiles publish identity macros globally to C and C++ dependencies.
-`//roo_testing/soc:target` selects a concrete contract and exports
-`roo_testing/soc_profile.h`, including `Model::kEsp32`, `Model::kEsp32S3`, and
-`Model::kEsp32C3`. Platform guards and compile contracts reject mismatched,
-unsupported, and mixed selections.
+`//roo_testing/soc:identity` validates framework-independent chip macros and
+exports `roo_testing/soc_profile.h`, including `Model::kEsp32`, `Model::kEsp32S3`, and
+`Model::kEsp32C3`. `//roo_testing/soc:target` preserves the concrete ESP-IDF
+contract selection for the six supported profiles. Platform guards and compile
+contracts reject mismatched, unsupported, and mixed selections.
 
 Each Arduino frontend uses the generic Dev Module variant. USB boot features
 remain disabled; console I/O uses UART0 and that variant's default TX/RX pins.
@@ -32,3 +33,11 @@ The Linux backend identity is private to its own translation units. Memory,
 analog conversion, clocks, and peripheral timing retain the emulator's existing
 approximations. This support does not add USB, Bluetooth radio, or other new
 peripheral implementations merely because their hardware capability macros exist.
+
+The generic header requires only the selected `ROO_TESTING_SOC` name and one
+supported `ROO_TESTING_SOC_*` value. Its framework-independent contract checks
+that these agree with the platform. ESP-IDF identity checks and `kIdfTarget` /
+`kIdfArchitecture` live in `roo_testing/esp_idf_soc_profile.h`, included by
+`soc_profile.h` only when `ESP_PLATFORM` is defined. Existing ESP-IDF consumers
+retain the constants through their original include and `:target` dependency.
+Generic identity alone grants neither ESP-IDF capability nor a runnable backend.

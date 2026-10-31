@@ -7,7 +7,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/arduino-esp32/variants:target",
-        "//roo_testing/frameworks/environment:arduino",
+        "//roo_testing/frameworks/environment:arduino_esp32",
         "//roo_testing/frameworks/esp-idf:headers",
         "//roo_testing/microcontrollers/esp32:core",
     ],

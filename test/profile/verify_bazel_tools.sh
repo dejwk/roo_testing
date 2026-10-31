@@ -246,23 +246,21 @@ env -u BAZEL_REAL \
   "${wrapper}" version
 assert_lines call skip=true arg=version end
 
-# The two-profile helper forwards every argument, selects profiles explicitly,
-# and stops immediately when the first invocation fails.
+# The six-profile helper forwards arguments and runs each profile once.
 : >"${capture}"
 : >"${stderr_log}"
 ROO_TESTING_BAZEL="${self}" \
 ROO_TESTING_FAKE_BAZEL=1 \
 ROO_TESTING_FAKE_CAPTURE="${capture}" \
   "${profile_helper}" //... --config=asan --test_output=errors 2>"${stderr_log}"
-assert_lines \
-  call skip= arg=test arg=--config=roo_testing_arduino_esp32 arg=//... \
-  arg=--config=asan arg=--test_output=errors end \
-  call skip= arg=test arg=--config=roo_testing_idf_esp32 arg=//... \
-  arg=--config=asan arg=--test_output=errors end
-grep -Fq 'testing the Arduino ESP32 profile' "${stderr_log}" ||
-  fail "helper omitted Arduino notice"
-grep -Fq 'testing the ESP-IDF ESP32 profile' "${stderr_log}" ||
-  fail "helper omitted IDF notice"
+expected=()
+for soc in esp32 esp32s3 esp32c3; do
+  for frontend in arduino idf; do
+    expected+=(call skip= arg=test "arg=--config=roo_testing_${frontend}_${soc}" arg=//... arg=--config=asan arg=--test_output=errors end)
+    grep -Fq "testing ${frontend} ${soc}." "${stderr_log}" || fail "helper omitted ${frontend} ${soc} notice"
+  done
+done
+assert_lines "${expected[@]}"
 
 : >"${capture}"
 set +e

@@ -28,10 +28,14 @@ run_bazel() {
 # and does not add its Arduino default. The user's home rc remains active.
 run_idf_bazel() {
   "${bazel_bin}" \
-    --output_user_root="${test_root}/idf-configured" \
+    --output_user_root="${test_root}/configured" \
     --noworkspace_rc \
     --bazelrc="${workspace}/.roo_testing/bazelrc/esp32/base.bazelrc" \
     --bazelrc="${workspace}/.roo_testing/bazelrc/esp32/idf.bazelrc" \
+    --bazelrc="${workspace}/.roo_testing/bazelrc/esp32s3/base.bazelrc" \
+    --bazelrc="${workspace}/.roo_testing/bazelrc/esp32s3/idf.bazelrc" \
+    --bazelrc="${workspace}/.roo_testing/bazelrc/esp32c3/base.bazelrc" \
+    --bazelrc="${workspace}/.roo_testing/bazelrc/esp32c3/idf.bazelrc" \
     "$@" \
     --repository_cache="${repository_cache}" \
     --registry=https://raw.githubusercontent.com/dejwk/roo-registry/main/ \
@@ -40,7 +44,7 @@ run_idf_bazel() {
 
 run_without_profile() {
   "${bazel_bin}" \
-    --output_user_root="${test_root}/without-profile" \
+    --output_user_root="${test_root}/configured" \
     --noworkspace_rc \
     "$@" \
     --repository_cache="${repository_cache}" \
@@ -57,9 +61,7 @@ expect_failure() {
   fi
 }
 
-run_bazel test \
-  //test/profile:global_environment_test \
-  //test/profile:arduino_select_test
+run_bazel test //:all_tests
 
 run_idf_bazel test //:idf_tests --config=roo_testing_idf_esp32
 
@@ -198,4 +200,44 @@ for example in gpio onewire rtc_ds3231_i2c simple tft_display tft_touch; do
     "examples/${example}/.roo_testing/bazelrc/esp32/arduino.bazelrc"
 done
 
-echo "roo_testing global compiler profile verified"
+# Additional SoCs must satisfy the same contracts in both frontends.
+for soc in esp32s3 esp32c3; do
+  run_bazel test //:all_tests "--config=roo_testing_arduino_${soc}"
+  run_idf_bazel test //:idf_tests "--config=roo_testing_idf_${soc}"
+  run_bazel build //test/profile:user_copt_probe "--config=roo_testing_arduino_${soc}" \
+    --copt=-DROO_TESTING_USER_COPT_PROBE=73
+  for frontend in arduino idf; do
+    run_bazel build //test/profile:asan_profile_probe "--config=roo_testing_${frontend}_${soc}" --config=asan
+    arch=XTENSA
+    [[ "${soc}" != esp32c3 ]] || arch=RISCV
+    soc_upper="${soc^^}"
+    definitions=(ROO_TESTING ESP_PLATFORM IDF_VER CONFIG_IDF_FIRMWARE_CHIP_ID CONFIG_IDF_TARGET CONFIG_IDF_TARGET_ARCH "CONFIG_IDF_TARGET_ARCH_${arch}" "CONFIG_IDF_TARGET_${soc_upper}" ESP32 ROO_TESTING_SOC "ROO_TESTING_SOC_${soc_upper}")
+    for language in c cpp; do
+      target="unrelated_${language}"
+      [[ "${frontend}" != idf ]] || target="idf_${target}"
+      aquery_log="${test_root}/${soc}-${frontend}-${language}.aquery"
+      run_bazel aquery "mnemonic('(Cpp|C)Compile', //test/profile:${target})" \
+        "--config=roo_testing_${frontend}_${soc}" --include_commandline >"${aquery_log}"
+      for definition in "${definitions[@]}"; do
+        count="$( { grep -F -o -- "-D${definition}=" "${aquery_log}" || true; } | wc -l)"
+        [[ "${count}" -eq 1 ]] || { echo "Incorrect ${definition} count for ${soc}/${frontend}/${language}" >&2; exit 1; }
+      done
+      if [[ "${frontend}" == arduino ]]; then
+        grep -Fq -- "-DARDUINO_${soc_upper}_DEV=1" "${aquery_log}"
+      elif grep -Eq -- '-D(ARDUINO[^=]*|CORE_DEBUG_LEVEL)=' "${aquery_log}"; then
+        echo "Arduino identity leaked into IDF" >&2; exit 1
+      fi
+    done
+    expect_failure "mismatched SoC platform and macros" \
+      run_bazel build //roo_testing/soc:target "--config=roo_testing_${frontend}_${soc}" \
+      --platforms=//roo_testing/platforms:idf_esp32
+  done
+  for example in gpio onewire rtc_ds3231_i2c simple tft_display tft_touch; do
+    for fragment in base arduino idf; do
+      cmp ".roo_testing/bazelrc/${soc}/${fragment}.bazelrc" \
+        "examples/${example}/.roo_testing/bazelrc/${soc}/${fragment}.bazelrc"
+    done
+  done
+done
+
+echo "roo_testing six global compiler profiles verified"

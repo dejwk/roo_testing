@@ -2,12 +2,11 @@
 
 #ifdef ROO_TESTING
 
-#include "roo_testing/microcontrollers/esp32/fake_esp32.h"
-
 #include "roo_testing/buses/gpio/fake_gpio.h"
 #include "roo_testing/buses/spi/fake_spi.h"
 #include "roo_testing/devices/display/ili9486/ili9486spi.h"
 #include "roo_testing/devices/touch/xpt2046/xpt2046spi.h"
+#include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 #include "roo_testing/transducers/ui/viewport/flex_viewport.h"
 #include "roo_testing/transducers/ui/viewport/fltk/fltk_viewport.h"
 
@@ -23,13 +22,12 @@ struct Emulator {
       : viewport(),
         flexViewport(viewport, 2),
         display(flexViewport),
-        touch(flexViewport,
-              FakeXpt2046Spi::Calibration(322, 196, 3899, 3691)) {
-    FakeEsp32().attachSpiDevice(display, 18, 19, 23);
+        touch(flexViewport, FakeXpt2046Spi::Calibration(322, 196, 3899, 3691)) {
+    FakeEsp32().attachSpiDevice(display, SCK, MISO, MOSI);
     FakeEsp32().gpio.attachOutput(5, display.cs());
     FakeEsp32().gpio.attachOutput(2, display.dc());
     FakeEsp32().gpio.attachOutput(4, display.rst());
-    FakeEsp32().attachSpiDevice(touch, 18, 19, 23);
+    FakeEsp32().attachSpiDevice(touch, SCK, MISO, MOSI);
     FakeEsp32().gpio.attachOutput(15, touch.cs());
   }
 } emulator;
@@ -53,7 +51,7 @@ int16_t x, y;
 bool was_touched;
 
 void setup() {
-  // SPI.begin(18, 19, 23, -1);
+  // SPI.begin(SCK, MISO, MOSI, -1);
   SPI.begin();
   Serial.begin(9600);
   display.init(color::DarkGray);

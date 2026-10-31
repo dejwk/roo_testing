@@ -7,6 +7,9 @@ prove the shared ESP-IDF capability and mutually exclusive `is_idf` and
 `is_arduino` selections. IDF smoke tests exercise the stable
 `//:esp_idf_main` and `//:esp_idf_gtest_main` entry points.
 
+The complete profile matrix covers ESP32, ESP32-S3, and ESP32-C3 under both
+frontends, with sequential Bazel runs and per-chip peripheral regressions.
+
 The Arduino positives run in the normal root suite. IDF positives are manual so
 the Arduino-default wildcard does not analyze them. Run both frontend matrices,
 configuration-boundary checks, composition probes, and action-command-line
@@ -19,7 +22,7 @@ checks with:
 This also runs `verify_bazel_tools.sh`, whose fake-Bazel checks cover nested
 Bazelisk wrapper discovery settings, argument forwarding, startup-option and
 `--` parsing, explicit and future frontend configs, disabled rc loading,
-mixed-profile rejection, and the two-profile helper's fail-fast behavior.
+mixed-profile rejection, and the six-profile helper's fail-fast behavior.
 The profile matrix also runs the public `roo_arduino_example` fixture, verifies
 that its public target is a native `cc_binary`, and requires it to be
 incompatible under the IDF-only frontend.

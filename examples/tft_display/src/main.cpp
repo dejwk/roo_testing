@@ -19,9 +19,8 @@
 
 #ifdef ROO_TESTING
 
-#include "roo_testing/microcontrollers/esp32/fake_esp32.h"
-
 #include "roo_testing/devices/display/ili9486/ili9486spi.h"
+#include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 #include "roo_testing/transducers/ui/viewport/flex_viewport.h"
 #include "roo_testing/transducers/ui/viewport/fltk/fltk_viewport.h"
 
@@ -34,11 +33,8 @@ struct Emulator {
 
   FakeIli9486Spi display;
 
-  Emulator()
-      : viewport(),
-        flexViewport(viewport, 1),
-        display(flexViewport) {
-    FakeEsp32().attachSpiDevice(display, 18, 19, 23);
+  Emulator() : viewport(), flexViewport(viewport, 1), display(flexViewport) {
+    FakeEsp32().attachSpiDevice(display, SCK, MISO, MOSI);
     FakeEsp32().gpio.attachOutput(5, display.cs());
     FakeEsp32().gpio.attachOutput(2, display.dc());
     FakeEsp32().gpio.attachOutput(4, display.rst());
@@ -50,8 +46,8 @@ struct Emulator {
 #include "roo_display.h"
 #include "roo_display/font/font.h"
 #include "roo_display/font/font_adafruit_fixed_5x7.h"
-#include "roo_display/ui/text_label.h"
 #include "roo_display/shape/basic.h"
+#include "roo_display/ui/text_label.h"
 
 using namespace roo_display;
 
@@ -202,9 +198,9 @@ class ScreenPrinter {
   void println(const std::string& s) {
     DrawingContext dc(display);
     dc.setTransformation(Transformation()
-                        .translate(0, font.metrics().glyphYMax())
-                        .scale(scale_, scale_)
-                        .translate(x_, y_));
+                             .translate(0, font.metrics().glyphYMax())
+                             .scale(scale_, scale_)
+                             .translate(x_, y_));
     dc.draw(StringViewLabel(s, font, color_));
     y_ += font.metrics().linespace() * scale_;
   }

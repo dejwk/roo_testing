@@ -2,15 +2,12 @@
 
 #ifdef ROO_TESTING
 
-#include "roo_testing/microcontrollers/esp32/fake_esp32.h"
-
 #include "roo_testing/devices/clock/ds3231/ds3231.h"
+#include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 
 struct Emulator {
   FakeDs3231 rtc;
-  Emulator() {
-    FakeEsp32().attachI2cDevice(rtc, 21, 22);
-  }
+  Emulator() { FakeEsp32().attachI2cDevice(rtc, SDA, SCL); }
 } emulator;
 
 #endif

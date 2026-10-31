@@ -2,11 +2,10 @@
 
 #ifdef ROO_TESTING
 
-#include "roo_testing/microcontrollers/esp32/fake_esp32.h"
-
 #include "roo_testing/buses/onewire/OneWire.h"
 #include "roo_testing/buses/onewire/fake_onewire.h"
 #include "roo_testing/devices/onewire/thermometer/thermometer.h"
+#include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 
 using namespace roo_testing_transducers;
 
@@ -32,7 +31,11 @@ FakeOneWire oneWire(&fake_onewire);
 // conditionally replace it with "fake_onewire.h".
 
 #include "OneWire.h"
+#if CONFIG_IDF_TARGET_ESP32
 OneWire oneWire(25);
+#else
+OneWire oneWire(4);
+#endif
 
 #endif
 

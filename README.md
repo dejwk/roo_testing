@@ -51,22 +51,35 @@ bazel run :main
 
 The code is based on the Espressif ESP32 Arduino framework, instrumented to intercept hardware- or interface-level events and couple them with simulated implementations.
 
-The code does not emulate the Xtensa microprocessors. Your sketch simply compiles and runs on your computer's architecture. This works because the Espressif framework is implemented in standard, portable C/C++.
+The code does not emulate Xtensa or RISC-V instructions. Your sketch simply compiles and runs on your computer's architecture. This works because the Espressif framework is implemented in standard, portable C/C++.
 
 ## Emulated SoC identity
 
-Host builds currently emulate the classic dual-core Xtensa **ESP32** through
-either an ESP-IDF-only frontend or Arduino's generic **ESP32 Dev Module**
-frontend. The
-[`//roo_testing/platforms`](roo_testing/platforms/README.md) package records the
-emulator, ESP-IDF capability, mutually exclusive frontend, and concrete SoC as
-independent constraints. A matching named Bazel profile supplies its canonical
-macro set to every C and C++ compile action.
+Host builds support **ESP32**, **ESP32-S3**, and **ESP32-C3** through both
+Arduino and ESP-IDF-only frontends. Each Arduino profile uses the generic Dev
+Module variant with USB boot features disabled and a UART console. Classic
+ESP32 remains the default.
 
-Linux is the execution host, not the target exposed to application code. Other
-Espressif families are not selectable yet: advertising ESP32-C3, ESP32-S3, or
-another SoC must wait for matching headers, Arduino pins, shims, and
-`FakeEsp32` behavior.
+The [platforms](roo_testing/platforms/README.md) define independent frontend
+and SoC constraints. Matching Bazel profiles supply identity macros globally
+and select the chip's headers, pin maps, and existing peripheral models.
+For example, use `--config=roo_testing_arduino_esp32s3` or
+`--config=roo_testing_idf_esp32c3` after importing their matching rc fragments.
+See [SoC profiles](roo_testing/soc/README.md) for the support boundaries.
+
+Linux is the execution host. All profiles retain the single-core host scheduler;
+reported physical core counts and target architecture reflect the selected chip.
+
+For S3 or C3, import all three matching fragments, then select one frontend:
+
+```text
+import %workspace%/.roo_testing/bazelrc/esp32s3/base.bazelrc
+import %workspace%/.roo_testing/bazelrc/esp32s3/arduino.bazelrc
+import %workspace%/.roo_testing/bazelrc/esp32s3/idf.bazelrc
+```
+
+Replace `esp32s3` with `esp32c3` for C3. Existing classic-only client workspaces
+can keep their current configuration until they opt into the additional chips.
 
 ### Enable the build profile in the root workspace
 
@@ -81,6 +94,8 @@ workspace. The SoC-first layout keeps future profiles incremental:
   bin/test_all_profiles
   bazelrc/common/asan.bazelrc
   bazelrc/esp32/{base,arduino,idf}.bazelrc
+  bazelrc/esp32s3/{base,arduino,idf}.bazelrc
+  bazelrc/esp32c3/{base,arduino,idf}.bazelrc
 ```
 
 Import the common ASAN fragment, the shared base, and every frontend that the
@@ -96,12 +111,10 @@ For ESP-IDF only, import `asan.bazelrc`, `base.bazelrc`, and `idf.bazelrc`.
 Mixed workspaces import all four fragments. They include canonical source URLs
 so vendored copies can be audited and refreshed.
 
-An Arduino-only root may safely keep
-`build --config=roo_testing_arduino_esp32` in `.bazelrc`, because it has no
-alternative frontend to select. It may instead use the wrapper below for the
-same notification and layout as mixed roots. A mixed root must use the wrapper
-or select a profile explicitly; it must not install an unconditional rc
-default.
+A root supporting only classic ESP32 with Arduino may keep
+`build --config=roo_testing_arduino_esp32` in `.bazelrc`. Roots supporting
+multiple SoCs or frontends must use the wrapper or select a profile explicitly
+without an unconditional rc default.
 
 To make Arduino the interactive default without contaminating an explicit IDF
 invocation, use **Bazelisk 1.21.0 or newer** and vendor these root settings:
@@ -123,11 +136,11 @@ bazel test ... --config=roo_testing_idf_esp32
 ```
 
 An unconditional `build --config=roo_testing_arduino_esp32` in `.bazelrc`
-cannot provide this behavior. Bazel expands a command-line IDF config in
+cannot provide this behavior. Bazel expands a command-line SoC/frontend config in
 addition to the rc default, and repeatable `--copt` values have no reset
 operation, leaving both macro sets on the compiler command line. The wrapper
 chooses the default before rc expansion instead. It leaves explicit profiles
-untouched, rejects two explicit frontend profiles, and does not inject a
+untouched, rejects two distinct explicit profiles, and does not inject a
 default when workspace rc loading is disabled. Invoking the Bazel binary
 directly or setting `BAZELISK_SKIP_WRAPPER=true` bypasses this convenience and
 therefore requires an explicit profile.
@@ -139,11 +152,15 @@ without Starlark transitions:
 .roo_testing/bin/test_all_profiles ... --test_output=errors
 ```
 
-With no arguments, the helper tests `...`. It runs Arduino first and IDF
-second, forwards the same target patterns and options to both, and stops on the
-first failure. The standalone Arduino examples vendor the base and Arduino
-fragments plus the nested wrapper, so their plain Bazel commands use the same
-announced default. An rc file cannot import an `@roo_testing//...` label because
+The helper requires importing all three fragments (`base`, `arduino`, and
+`idf`) for each of the three SoCs into the root `.bazelrc`.
+
+With no arguments, the helper tests `...`. It runs Arduino and then IDF for
+ESP32, ESP32-S3, and ESP32-C3, forwarding the same target patterns and options
+to all six runs and stopping on the first failure. Targets must support the
+selected profiles or declare their platform compatibility. The standalone
+Arduino examples vendor the configuration fragments and nested wrapper, so
+their plain Bazel commands use the same announced default. An rc file cannot import an `@roo_testing//...` label because
 repository resolution happens after rc parsing.
 
 ### AddressSanitizer builds and tests
@@ -166,8 +183,8 @@ bazel test ... --config=roo_testing_idf_esp32 --config=asan \
   --test_output=errors
 ```
 
-To test both emulated frontends under ASAN, pass the config through the existing
-two-profile helper:
+To test all six profiles under ASAN, pass the config through the existing
+six-profile helper:
 
 ```sh
 .roo_testing/bin/test_all_profiles ... --config=asan --test_output=errors
@@ -331,8 +348,8 @@ available waveforms and analysis helpers.
 
 ## Limitations (call for contributors!)
 
-* Arduino and ESP-IDF-only frontends are supported for the classic ESP32; other
-  Espressif SoCs are not yet selectable.
+* Arduino and ESP-IDF-only frontends support ESP32, ESP32-S3, and ESP32-C3.
+  New chip-specific peripherals such as USB are not emulated.
 * Wi-Fi is incomplete; the station mode is the supported path, while many
   radio and AP controls are no-ops. Networking uses the host connection, so an
   emulated device has network access whenever its computer does.

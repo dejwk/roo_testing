@@ -1,5 +1,17 @@
 #include <Arduino.h>
 
+#if CONFIG_IDF_TARGET_ESP32
+constexpr uint8_t kInputPin = 33;
+constexpr uint8_t kGroundPin = 34;
+constexpr uint8_t kVccPin = 35;
+constexpr uint8_t kAnalogPin = 36;
+#else
+constexpr uint8_t kInputPin = 5;
+constexpr uint8_t kGroundPin = 6;
+constexpr uint8_t kVccPin = 7;
+constexpr uint8_t kAnalogPin = 1;
+#endif
+
 #ifdef ROO_TESTING
 
 #include "roo_testing/microcontrollers/esp32/fake_esp32.h"
@@ -25,13 +37,13 @@ SimpleDigitalSink trigger = SimpleDigitalSink::WithSignalCallback(
 // Here we attach signals to ESP32 pins.
 struct Emulator {
   Emulator() {
-    FakeEsp32().gpio.attachInput(33, digital_input);
-    FakeEsp32().gpio.attachInput(34, Ground());
-    FakeEsp32().gpio.attachInput(35, Vcc33());
-    FakeEsp32().gpio.attachInput(36, sawtooth);
+    FakeEsp32().gpio.attachInput(kInputPin, digital_input);
+    FakeEsp32().gpio.attachInput(kGroundPin, Ground());
+    FakeEsp32().gpio.attachInput(kVccPin, Vcc33());
+    FakeEsp32().gpio.attachInput(kAnalogPin, sawtooth);
 
-    // When this pin gets written to, we update the value attached to pin 33.
-    // Essentially, the pin #4 is 'soldered' to pin #33.
+    // When this pin gets written to, we update the value attached to the input
+    // pin. Essentially, the pin #4 is 'soldered' to the input pin.
     FakeEsp32().gpio.attachOutput(4, trigger);
   }
 } emulator;
@@ -43,10 +55,10 @@ void setup() {
   pinMode(2, OUTPUT);
   pinMode(4, OUTPUT);
 
-  pinMode(33, INPUT);
-  pinMode(34, INPUT);
-  pinMode(35, INPUT);
-  pinMode(36, ANALOG);
+  pinMode(kInputPin, INPUT);
+  pinMode(kGroundPin, INPUT);
+  pinMode(kVccPin, INPUT);
+  pinMode(kAnalogPin, ANALOG);
 }
 
 void loop() {
@@ -57,17 +69,17 @@ void loop() {
   Serial.println();
 
   // Now we're updating the value on the pin that is 'soldered'
-  // (via the trigger attachment) to pin #33, so it will change
+  // (via the trigger attachment) to the input pin, so it will change
   // the digital readout we see in the following line.
   digitalWrite(4, digitalRead(4) == HIGH ? LOW : HIGH);
   Serial.printf("digital value on pin #4: %d\n", digitalRead(4));
 
   // The same value should be now on the input:
-  Serial.printf("digital input:           %d\n", digitalRead(33));
+  Serial.printf("digital input:           %d\n", digitalRead(kInputPin));
 
   Serial.println();
-  Serial.printf("ground: %d\n", digitalRead(34));
-  Serial.printf("VCC: %d\n", digitalRead(35));
-  Serial.printf("analog input: %d\n", analogRead(36));
+  Serial.printf("ground: %d\n", digitalRead(kGroundPin));
+  Serial.printf("VCC: %d\n", digitalRead(kVccPin));
+  Serial.printf("analog input: %d\n", analogRead(kAnalogPin));
   delay(1000);
 }

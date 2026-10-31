@@ -1,0 +1,17 @@
+--- a/src/common/pico_time/include/pico/time.h
++++ b/src/common/pico_time/include/pico/time.h
+@@ -111,11 +111,9 @@
+ static inline absolute_time_t delayed_by_us(const absolute_time_t t, uint64_t us) {
+     absolute_time_t t2;
+     uint64_t base = to_us_since_boot(t);
+-    uint64_t delayed = base + us;
+-    if ((int64_t)delayed < 0) {
+-        // absolute_time_t (to allow for signed time deltas) is never greater than INT64_MAX which == at_the_end_of_time
+-        delayed = INT64_MAX;
+-    }
++    // Keep signed time deltas representable: INT64_MAX is at_the_end_of_time.
++    // Clamp before adding, including delays that overflow uint64_t itself.
++    uint64_t delayed = us > (uint64_t)INT64_MAX - base ? INT64_MAX : base + us;
+     update_us_since_boot(&t2, delayed);
+     return t2;
+ }

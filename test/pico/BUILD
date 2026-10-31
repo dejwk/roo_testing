@@ -46,10 +46,78 @@ cc_test(
 )
 
 cc_binary(
-    name = "unsupported_sleep_probe",
-    srcs = ["unsupported_sleep_probe.c"],
+    name = "unsupported_alarm_pool_probe",
+    srcs = ["unsupported_alarm_pool_probe.c"],
     tags = ["manual"],
     deps = ["//:pico_sdk"],
 )
 
 exports_files(["verify_pico.py"])
+
+cc_test(
+    name = "time_manual_test",
+    size = "small",
+    srcs = [
+        "time_manual_test.cpp",
+        "time_test.cpp",
+    ],
+    copts = [
+        "-Werror",
+        "-fno-exceptions",
+    ],
+    linkstatic = True,
+    local_defines = ["PICO_TEST_AUTO=0"],
+    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    deps = [
+        "//:pico_gtest_main",
+        "//roo_testing/system:manual_time_mode",
+    ],
+)
+
+cc_test(
+    name = "time_auto_test",
+    size = "small",
+    srcs = [
+        "time_auto_test.cpp",
+        "time_test.cpp",
+    ],
+    copts = [
+        "-Werror",
+        "-fno-exceptions",
+    ],
+    linkstatic = True,
+    local_defines = ["PICO_TEST_AUTO=1"],
+    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    deps = ["//:pico_gtest_main"],
+)
+
+cc_test(
+    name = "runner_manual_test",
+    size = "small",
+    srcs = ["runner_test.cpp"],
+    copts = [
+        "-Werror",
+        "-fno-exceptions",
+    ],
+    linkstatic = True,
+    local_defines = ["PICO_TEST_AUTO=0"],
+    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    deps = [
+        "//:pico_gtest_main",
+        "//roo_testing/system:manual_time_mode",
+    ],
+)
+
+cc_test(
+    name = "runner_auto_test",
+    size = "small",
+    srcs = ["runner_test.cpp"],
+    copts = [
+        "-Werror",
+        "-fno-exceptions",
+    ],
+    linkstatic = True,
+    local_defines = ["PICO_TEST_AUTO=1"],
+    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    deps = ["//:pico_gtest_main"],
+)

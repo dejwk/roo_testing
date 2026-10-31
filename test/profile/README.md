@@ -64,3 +64,8 @@ after the six ESP32 profiles. They validate native C/C++ SDK probes, dependency
 and compile-action isolation, symbol uniqueness, explicit unsupported behavior,
 profile failures, and ASAN. The six-profile helper remains unchanged until the
 later Arduino-Pico matrix integration stage.
+
+Pico stage 3 adds clock/runner tests in separate manual and auto executables.
+The Pico verifier also checks the optional opaque timestamp ABI and intentional
+GoogleTest failure results after pending alarm captures are destroyed. Shared
+clock/alarm regressions remain ordinary framework-independent test targets.

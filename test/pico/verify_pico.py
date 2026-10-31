@@ -52,6 +52,7 @@ def CheckIsolation():
                 "PICO_NO_HARDWARE", "PICO_RP2040", "PICO_RP2350",
                 "PICO_PLATFORM_STRING", "PICO_BOARD")
     sdk_sources = set()
+    shared_time_sources = set()
     actions = json.loads(raw)["actions"]
     for action in actions:
         if action["mnemonic"] != "CppCompile":
@@ -68,11 +69,16 @@ def CheckIsolation():
         source = args[args.index("-c") + 1]
         if source.endswith((".S", ".s", ".asm")):
             raise RuntimeError(f"Device assembly entered the native build: {source}")
+        for clock_source in ("roo_testing/system/timer.cpp",
+                             "roo_testing/frameworks/pico_support/time.cpp"):
+            if source.endswith(clock_source):
+                shared_time_sources.add(clock_source)
         if "/frameworks/pico-sdk/" in source:
             sdk_sources.add(source.split("/frameworks/pico-sdk/", 1)[1])
-    if sdk_sources != {"src/host/hardware_timer/timer.c",
-                       "src/host/pico_platform/platform_base.c"}:
+    if sdk_sources != {"src/host/pico_platform/platform_base.c"}:
         raise RuntimeError(f"Unexpected SDK implementation sources: {sdk_sources}")
+    if len(shared_time_sources) != 2:
+        raise RuntimeError(f"Pico did not select the shared clock adapter: {shared_time_sources}")
 
 
 def CheckBinary():
@@ -107,8 +113,9 @@ def CheckFailures():
     """Require backend guards and compile contracts to reject mixed profiles."""
     for profile in ("--config=roo_testing_arduino_esp32",
                     "--config=roo_testing_idf_esp32"):
-        RunBazel("build", "//:pico_sdk", profile=profile, succeeds=False,
-                 diagnostic="requires target-platform constraint(s)")
+        for target in ("//:pico_sdk", "//:pico_gtest_main"):
+            RunBazel("build", target, profile=profile, succeeds=False,
+                     diagnostic="requires target-platform constraint(s)")
     for target in ("//:arduino", "//:esp_idf_main"):
         RunBazel("build", target, succeeds=False,
                  diagnostic="requires target-platform constraint(s)")
@@ -120,8 +127,25 @@ def CheckFailures():
         ("--copt=-UROO_TESTING_RUNTIME_BARE_METAL", "Select exactly one roo_testing application runtime"),
     ):
         RunBazel("build", "//:pico_sdk", option, succeeds=False, diagnostic=diagnostic)
-    RunBazel("build", "//test/pico:unsupported_sleep_probe", succeeds=False,
-             diagnostic="undefined reference to `sleep_us'")
+    RunBazel("build", "//test/pico:unsupported_alarm_pool_probe", succeeds=False,
+             diagnostic="undefined reference to `alarm_pool_init_default'")
+
+
+def CheckRunnerResults():
+    """Execute intentional failures in isolated runner processes after cleanup."""
+    for mode in ("manual", "auto"):
+        target = f"//test/pico:runner_{mode}_test"
+        RunBazel("build", target)
+        output = RunBazel("cquery", target, "--output=files")
+        binary = ROOT / next(line for line in output.splitlines()
+                             if line.endswith(f"/runner_{mode}_test"))
+        result = subprocess.run(
+            [str(binary), "--gtest_also_run_disabled_tests",
+             "--gtest_filter=PicoRunnerTest.DISABLED_PropagatesFailure"],
+            capture_output=True, text=True, timeout=20)
+        if result.returncode != 1 or "Intentional Pico runner" not in result.stdout:
+            raise RuntimeError("Runner lost its test result or failed cleanup:\n"
+                               + result.stdout + result.stderr)
 
 
 def Main():
@@ -137,6 +161,10 @@ def Main():
     CheckIsolation()
     CheckBinary()
     CheckFailures()
+    CheckRunnerResults()
+    print(RunBazel("test", "//test/pico:time_manual_test",
+                   "--copt=-DPICO_OPAQUE_ABSOLUTE_TIME_T=1",
+                   "--test_output=errors"), end="")
     print(RunBazel("test", "//:pico_tests", "--config=asan", "--test_output=errors"), end="")
     print("Pico SDK native probes, isolation, explicit failures, and ASAN verified")
     return 0

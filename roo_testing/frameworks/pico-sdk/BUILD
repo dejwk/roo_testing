@@ -27,10 +27,12 @@ cc_library(
 cc_library(
     name = "pico_sdk",
     srcs = [
-        "src/host/hardware_timer/timer.c",
         "src/host/pico_platform/platform_base.c",
     ],
     linkstatic = True,
     visibility = ["//visibility:public"],
-    deps = [":headers"],
+    deps = [
+        ":headers",
+        "//roo_testing/frameworks/pico_support:time",
+    ],
 )

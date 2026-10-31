@@ -429,6 +429,12 @@ Proposed commit message:
 
 ### 3. Unify time and SDK test lifecycle
 
+Implemented: SDK time uses the shared emulated clock, `:pico_gtest_main` owns
+test shutdown, and manual/auto examples and tests cover conversion, sentinels,
+static initialization, opaque timestamps, and result propagation. The
+[support matrix](../roo_testing/frameworks/pico_support/README.md) documents
+finite clock limits and the manual busy-wait behavior.
+
 Implement supported SDK time/sleep operations using the emulator clock and add
 `:pico_gtest_main`. Add manual and auto-time examples, conversion/sentinel tests,
 static-initialization tests, and clean process shutdown tests.

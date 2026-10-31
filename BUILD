@@ -159,7 +159,18 @@ test_suite(
     name = "pico_tests",
     tags = ["manual"],
     tests = [
+        "//test/pico:runner_auto_test",
+        "//test/pico:runner_manual_test",
         "//test/pico:sdk_probe_c",
         "//test/pico:sdk_probe_cpp",
+        "//test/pico:time_auto_test",
+        "//test/pico:time_manual_test",
     ],
+)
+
+# Native Pico test runner owns shutdown of the shared clock/alarm service.
+cc_library(
+    name = "pico_gtest_main",
+    visibility = ["//visibility:public"],
+    deps = ["//roo_testing/frameworks/pico_support:gtest_main"],
 )

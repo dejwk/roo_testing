@@ -128,7 +128,8 @@ before the Arduino workflow. Their independent origin labels are
 `PicoSdk-Origin-RevId` and `ArduinoPico-Origin-RevId`.
 
 The SDK allowlist imports common base/time sources, host sources, and the Pico
-board header. Only the host platform and timer implementations are compiled.
+board header. Stage 2 compiled the host platform and timer; stage 3 compiles only the host
+platform and uses the destination-owned shared-clock adapter for time.
 Arduino imports stage the RP2040 core, SPI/Wire libraries, and original Pico
 variant plus release metadata. Core API, FreeRTOS, USB, networking, and other
 submodules are not fetched in this stage. The tracked API files under

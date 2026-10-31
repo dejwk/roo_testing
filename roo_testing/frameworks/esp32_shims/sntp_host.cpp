@@ -14,8 +14,8 @@
 #include "glog/logging.h"
 #include "lwip/apps/sntp.h"
 #include "roo_testing/frameworks/esp32_shims/sntp_host.h"
-#include "roo_testing/frameworks/esp32_shims/sntp_internal.h"
-#include "roo_testing/frameworks/posix_time/posix_time.h"
+#include "roo_testing/frameworks/esp32_shims/sntp_netif.h"
+#include "roo_testing/frameworks/posix_time/host_time.h"
 #include "roo_testing/system/timer.h"
 #include "roo_testing/system/wall_clock.h"
 
@@ -198,9 +198,18 @@ esp_err_t ShutdownSntpForHost() {
   }
   if (timer == nullptr) return ESP_OK;
   const esp_err_t result = esp_timer_delete(timer);
-  // The ESP timer task owns deferred handle destruction.
-  vTaskDelay(1);
-  return result;
+  if (result != ESP_OK) return result;
+  // Deletion is a due event in the ordered ESP timer list. In manual mode a
+  // task delay alone does not dispatch its hardware compare. Pump due work,
+  // then let the timer task consume it before the runner deinitializes timers.
+  // Once the list has no due head, our already-due delete has been processed;
+  // never inspect the retired handle itself.
+  for (unsigned i = 0; i < 1000; ++i) {
+    ProcessSystemTimeAlarms();
+    if (esp_timer_get_next_alarm() > esp_timer_get_time()) return ESP_OK;
+    vTaskDelay(1);
+  }
+  return ESP_ERR_TIMEOUT;
 }
 }  // namespace roo_testing::esp32_shims
 

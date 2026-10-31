@@ -172,4 +172,12 @@ TEST_F(SntpTest, CoalescesLagJump) {
   vTaskDelay(1);
   EXPECT_EQ(1, calls.load());
 }
+// Verifies shutdown drains deferred deletion even when uptime is manual/frozen.
+TEST_F(SntpTest, RepeatedTimerRetirement) {
+  for (int i = 0; i < 10; ++i) {
+    esp_sntp_init();
+    esp_sntp_stop();
+    ASSERT_EQ(ESP_OK, roo_testing::esp32_shims::ShutdownSntpForHost());
+  }
+}
 }  // namespace

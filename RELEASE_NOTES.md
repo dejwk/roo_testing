@@ -1,5 +1,7 @@
 # Unreleased
 
+- Emulate immediate SNTP synchronization through Arduino, raw/ESP SNTP, and esp-netif APIs, with task-context notifications, controllable virtual servers, cold-boot process-local UTC, and isolated host-monotonic scheduler waits.
+
 - Support ESP32-S3 and ESP32-C3 in both Arduino and ESP-IDF host profiles, using the existing pinned framework versions and generic Dev Module variants.
 - Match GPIO masks, matrix routing, controller counts, ADC channels, LEDC limits, and chip identity to the selected SoC; retain classic ESP32 as the default.
 - Test all six SoC/frontend combinations sequentially with `test_all_profiles`, and extend CI and profile validation accordingly.

@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include "esp_err.h"
+#include "esp_sntp.h"
 
 namespace roo_testing::esp32::sntp {
 /// Chooses real host UTC or an explicitly anchored server timeline.
@@ -29,6 +30,14 @@ void Reset();
 }  // namespace roo_testing::esp32::sntp
 
 namespace roo_testing::esp32_shims {
+/// Registers an adapter notification and returns its unique registration tag.
+uint64_t InstallSntpNotificationForHost(sntp_sync_time_cb_t callback);
+
+/// Returns the registration tag captured for this thread's current
+/// notification. Zero outside delivery; nested notifications restore the
+/// previous tag.
+uint64_t CurrentSntpNotificationForHost();
+
 /// Initializes SNTP task synchronization before application tasks start using
 /// it.
 void InitializeSntpForHost();

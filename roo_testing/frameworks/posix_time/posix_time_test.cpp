@@ -1,10 +1,9 @@
-#include "roo_testing/frameworks/posix_time/posix_time.h"
-
 #include <errno.h>
 #include <gtest/gtest.h>
 #include <sys/time.h>
 #include <time.h>
 
+#include "roo_testing/frameworks/posix_time/host_time.h"
 #include "roo_testing/system/timer.h"
 #include "roo_testing/system/wall_clock.h"
 

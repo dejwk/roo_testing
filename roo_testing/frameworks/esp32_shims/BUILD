@@ -73,7 +73,7 @@ cc_library(
         "esp_timer_host.h",
         "shim_internal.h",
         "sntp_host.h",
-        "sntp_internal.h",
+        "sntp_netif.h",
         "wifi_host.h",
     ],
     copts = [
@@ -349,3 +349,41 @@ cc_test(
         ("netif_sntp_auto_test", []),
     ]
 ]
+
+cc_test(
+    name = "sntp_raw_test",
+    size = "small",
+    srcs = [
+        "sntp_raw_probe.c",
+        "sntp_raw_test.cpp",
+    ],
+    deps = [
+        ":idf",
+        "//roo_testing/frameworks/arduino_support:freertos_gtest_main",
+        "//roo_testing/system:manual_time_mode",
+        "@googletest//:gtest",
+    ],
+)
+
+cc_test(
+    name = "sntp_unsupported_test",
+    size = "small",
+    srcs = ["sntp_unsupported_test.cpp"],
+    deps = [
+        ":idf",
+        "@googletest//:gtest_main",
+    ],
+)
+
+test_suite(
+    name = "sntp_tests",
+    tests = [
+        ":netif_sntp_auto_test",
+        ":netif_sntp_test",
+        ":sntp_auto_test",
+        ":sntp_host_test",
+        ":sntp_override_test",
+        ":sntp_raw_test",
+        ":sntp_unsupported_test",
+    ],
+)

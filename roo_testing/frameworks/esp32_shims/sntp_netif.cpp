@@ -1,3 +1,5 @@
+#include "roo_testing/frameworks/esp32_shims/sntp_netif.h"
+
 #include <memory>
 
 #include "esp_event.h"
@@ -5,7 +7,7 @@
 #include "esp_sntp.h"
 #include "freertos/semphr.h"
 #include "glog/logging.h"
-#include "roo_testing/frameworks/esp32_shims/sntp_internal.h"
+#include "roo_testing/frameworks/esp32_shims/sntp_host.h"
 
 ESP_EVENT_DEFINE_BASE(NETIF_SNTP_EVENT);
 

@@ -4,7 +4,6 @@ load("@rules_cc//cc:cc_test.bzl", "cc_test")
 cc_library(
     name = "posix_time",
     srcs = ["posix_time.cpp"],
-    hdrs = ["posix_time.h"],
     copts = ["-fno-exceptions"],
     linkopts = ["-Wl,--wrap=" + name for name in [
         "gettimeofday",
@@ -46,7 +45,7 @@ cc_library(
 cc_library(
     name = "host_time",
     srcs = ["host_time.cpp"],
-    hdrs = ["posix_time.h"],
+    hdrs = ["host_time.h"],
     visibility = ["//visibility:public"],
 )
 

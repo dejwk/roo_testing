@@ -339,6 +339,9 @@ available waveforms and analysis helpers.
   allocation APIs
 * Emulated manual or host-synchronized time, one-shot alarms, and ESP-IDF
   `esp_timer`
+* SNTP synchronization, cold-boot process-local UTC, and controllable virtual
+  server responses; see the [SNTP reference](doc/sntp_reference.md) and
+  [Arduino/IDF examples](examples/sntp/README.md)
 * ESP-IDF and Arduino LEDC PWM output and linear fades; see the
   [LEDC emulation reference](doc/ledc_voltage_emulation.md)
 * SPIFFS and LittleFS, mounting a local directory

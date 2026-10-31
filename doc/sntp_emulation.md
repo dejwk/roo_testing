@@ -1,7 +1,8 @@
 # SNTP emulation
 
-Status: Implementation in progress. Stages 1-4 provide the clock bridge, shared
-client, Arduino and esp-netif integration; release/profile coverage follows.
+Status: Stages 1-5 implemented and validated. The roo_time consumer migration
+uses a local override; published dependency updates follow release.
+See [the SNTP reference](sntp_reference.md) for the implemented API contract.
 
 ## Objective
 
@@ -289,9 +290,10 @@ stop, drain already-claimed delivery, and clear configuration/status/callbacks.
 Require exclusive test ownership while resetting; do not reset uptime or the
 wall clock implicitly.
 
-Add an explicit SNTP shutdown hook before `ShutdownEspTimerForHost()` in test
-runners. It prevents new work, drains delivery, and releases the timer before
-the underlying timer/alarm services stop. Do not rely on static destruction
+The host timer lifecycle invokes SNTP shutdown before deinitializing the ESP
+timer service. It prevents new work, drains delivery, and deletes the timer.
+Deferred deletion is explicitly pumped/drained before shutdown; merely delaying
+a task does not advance manual emulated time. Do not rely on static destruction
 order. Ordinary never-returning sketch runners keep their process-teardown
 behavior.
 

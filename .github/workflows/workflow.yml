@@ -38,13 +38,16 @@ jobs:
 
     - name: Build
       run: |
-        bazel build :all \
+        bazel build :all //examples/sntp/... \
           --config=roo_testing_arduino_${{ matrix.soc }} \
           ${{ env.BAZEL_SYMBOLIZE_FLAGS }}
 
     - name: Test
       run: |
         bazel test :all \
+          //roo_testing/frameworks/esp32_shims:sntp_tests \
+          //roo_testing/frameworks/esp32_shims:arduino_sntp_test \
+          //roo_testing/frameworks/posix_time/... //examples/sntp/... \
           --config=roo_testing_arduino_${{ matrix.soc }} \
           --test_output=errors \
           ${{ env.BAZEL_SYMBOLIZE_FLAGS }}
@@ -92,7 +95,7 @@ jobs:
 
     - name: Build with address sanitizer
       run: |
-        bazel build :all \
+        bazel build :all //examples/sntp/... \
           --config=roo_testing_arduino_${{ matrix.soc }} \
           --config=asan \
           ${{ env.BAZEL_SYMBOLIZE_FLAGS }}
@@ -100,6 +103,9 @@ jobs:
     - name: Test with address sanitizer
       run: |
         bazel test :all \
+          //roo_testing/frameworks/esp32_shims:sntp_tests \
+          //roo_testing/frameworks/esp32_shims:arduino_sntp_test \
+          //roo_testing/frameworks/posix_time/... //examples/sntp/... \
           --config=roo_testing_arduino_${{ matrix.soc }} \
           --config=asan \
           --test_output=errors \
@@ -123,7 +129,33 @@ jobs:
     - name: Test ESP-IDF entry points with address sanitizer
       run: |
         bazel test :idf_tests \
+          //roo_testing/frameworks/esp32_shims:sntp_tests \
+          //roo_testing/frameworks/posix_time/... //examples/sntp/... \
           --config=roo_testing_idf_${{ matrix.soc }} \
           --config=asan \
+          --test_output=errors \
+          ${{ env.BAZEL_SYMBOLIZE_FLAGS }}
+
+  idf:
+    name: ESP-IDF ${{ matrix.soc }}
+    strategy:
+      fail-fast: false
+      matrix:
+        soc: [esp32, esp32s3, esp32c3]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+    - uses: ./.github/actions/ci-setup
+
+    - name: Test ESP-IDF entry points in normal builds
+      run: |
+        bazel test :idf_tests \
+          //roo_testing/frameworks/esp32_shims:sntp_tests \
+          //roo_testing/frameworks/posix_time/... //examples/sntp/... \
+          --config=roo_testing_idf_${{ matrix.soc }} \
           --test_output=errors \
           ${{ env.BAZEL_SYMBOLIZE_FLAGS }}

@@ -8,8 +8,8 @@ bool IsEspTimerImplInitializedForHost();
 
 esp_err_t InitializeEspTimerForHost() {
   esp_err_t err = esp_timer_early_init();
-  if (err != ESP_OK || IsEspTimerImplInitializedForHost()) return err;
-  err = esp_timer_init();
+  if (err != ESP_OK) return err;
+  if (!IsEspTimerImplInitializedForHost()) err = esp_timer_init();
   if (err == ESP_OK) InitializeSntpForHost();
   return err;
 }

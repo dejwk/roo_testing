@@ -1,8 +1,8 @@
+#include "roo_testing/frameworks/posix_time/host_time.h"
+
 #include <sys/syscall.h>
 #include <time.h>
 #include <unistd.h>
-
-#include "roo_testing/frameworks/posix_time/posix_time.h"
 
 namespace roo_testing::system {
 bool GetHostUnixTimeMicros(int64_t& unix_us) {

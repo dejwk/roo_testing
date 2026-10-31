@@ -14,12 +14,24 @@ cc_library(
 cc_library(
     name = "manual_time_mode",
     srcs = ["manual_time_mode.cpp"],
-    alwayslink = 1,
     visibility = ["//visibility:public"],
+    alwayslink = 1,
 )
 
 cc_library(
     name = "include",
     hdrs = glob(["*.h"]),
     visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "wall_clock",
+    srcs = ["wall_clock.cpp"],
+    hdrs = ["wall_clock.h"],
+    copts = ["-fno-exceptions"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":timer",
+        "//roo_testing/host:synchronization",
+    ],
 )

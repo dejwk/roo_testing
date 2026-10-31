@@ -159,6 +159,8 @@ test_suite(
     name = "pico_tests",
     tags = ["manual"],
     tests = [
+        "//examples/pico_gpio:blink_test",
+        "//test/pico:gpio_test",
         "//test/pico:runner_auto_test",
         "//test/pico:runner_manual_test",
         "//test/pico:sdk_probe_c",

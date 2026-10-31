@@ -451,6 +451,12 @@ Proposed commit message:
 
 ### 4. Add the board model and digital GPIO
 
+Implemented: a process-wide 30-pin board, checked SDK digital GPIO, shared
+voltage wiring, and bounded blink with signal/failure tests. The
+[board reference](../roo_testing/microcontrollers/rp2040/README.md) specifies
+initially supported SIO/NULL muxing, borrowed attachments, input/drive semantics,
+and the remaining electrical/interrupt limitations.
+
 Implement fixed RP2040 pin state, validated function selection, voltage wiring,
 and supported GPIO APIs. Add the SDK blink example, signal tests, invalid-pin
 tests, and explicit interrupt-mode rejection; extend the support matrix.

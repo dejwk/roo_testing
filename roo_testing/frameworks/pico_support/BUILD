@@ -23,3 +23,15 @@ cc_library(
         "@googletest//:gtest",
     ],
 )
+
+cc_library(
+    name = "gpio",
+    srcs = ["gpio.cpp"],
+    copts = ["-fno-exceptions"],
+    visibility = ["//roo_testing/frameworks/pico-sdk:__pkg__"],
+    deps = [
+        "//roo_testing/frameworks/pico-sdk:headers",
+        "//roo_testing/microcontrollers/rp2040:pico",
+        "@glog",
+    ],
+)

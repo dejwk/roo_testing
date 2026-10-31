@@ -1,7 +1,7 @@
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
-# Destination-owned overlay: import only native host header roots. Device
-# register headers and unimplemented host GPIO/UART stubs are not exported.
+# Destination-owned overlay: expose native host declarations. Device register
+# headers and the upstream hardware/stdio stub implementations are not compiled.
 cc_library(
     name = "headers",
     hdrs = glob([
@@ -9,6 +9,8 @@ cc_library(
         "src/common/pico_time/include/**/*.h",
         "src/host/pico_platform/include/**/*.h",
         "src/host/hardware_timer/include/**/*.h",
+        "src/host/hardware_gpio/include/**/*.h",
+        "src/host/hardware_irq/include/**/*.h",
         "src/boards/include/**/*.h",
         "roo_testing_host_include/**/*.h",
     ]),
@@ -17,6 +19,8 @@ cc_library(
         "src/boards/include",
         "src/common/pico_base_headers/include",
         "src/common/pico_time/include",
+        "src/host/hardware_gpio/include",
+        "src/host/hardware_irq/include",
         "src/host/hardware_timer/include",
         "src/host/pico_platform/include",
     ],
@@ -33,6 +37,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":headers",
+        "//roo_testing/frameworks/pico_support:gpio",
         "//roo_testing/frameworks/pico_support:time",
     ],
 )

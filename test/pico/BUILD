@@ -121,3 +121,20 @@ cc_test(
     target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
     deps = ["//:pico_gtest_main"],
 )
+
+cc_test(
+    name = "gpio_test",
+    size = "small",
+    srcs = ["gpio_test.cpp"],
+    copts = [
+        "-Werror",
+        "-fno-exceptions",
+    ],
+    linkstatic = True,
+    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    deps = [
+        "//:pico_gtest_main",
+        "//roo_testing/microcontrollers/rp2040:pico",
+        "//roo_testing/system:manual_time_mode",
+    ],
+)

@@ -69,3 +69,9 @@ Pico stage 3 adds clock/runner tests in separate manual and auto executables.
 The Pico verifier also checks the optional opaque timestamp ABI and intentional
 GoogleTest failure results after pending alarm captures are destroyed. Shared
 clock/alarm regressions remain ordinary framework-independent test targets.
+
+Pico stage 4 adds digital GPIO and a bounded blink test to `//:pico_tests`. The
+verifier checks the board/adapter dependencies and C GPIO symbols as well as
+time, and runs the blink executable. GPIO tests include invalid masks/banks,
+preflighted wiring conflicts, overrides, floating inputs, and shared-time voltage
+observations. The existing ESP32 GPIO tests retain their original implementation.

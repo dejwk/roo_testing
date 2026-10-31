@@ -1,6 +1,6 @@
-# Native Pico SDK time and test runtime
+# Native Pico SDK runtime
 
-Pico integration stages 2 and 3 provide the SDK-only profile
+Pico integration stages 2 through 4 provide the SDK-only profile
 `--config=roo_testing_pico_rp2040` and the public `@roo_testing//:pico_sdk` target.
 Applications supply ordinary `main()` and execute with the Linux host ABI/CPU.
 Arduino-Pico sources are staged for a later release stage; no Arduino RP2040
@@ -25,8 +25,8 @@ original Pico board header without switching execution to the device platform.
 The [patch series](../../../copybara/patches/pico-sdk/series) retains the stage-2
 host timer fixes and corrects `delayed_by_us` saturation before unsigned
 addition can wrap. The upstream host timer implementation is now excluded from
-the link. SDK time entry points are owned by [time.cpp](time.cpp), and no GPIO,
-UART, USB, or clock-configuration success stubs are compiled.
+the link. SDK time entry points are owned by [time.cpp](time.cpp), and the [GPIO adapter](gpio.cpp) supplies checked digital I/O. No upstream
+GPIO/UART/USB or clock-configuration success stubs are compiled.
 
 ## Profile and headers
 
@@ -50,13 +50,15 @@ Physical RP2040 identity does not change the native ABI.
 Exposed include roots are `src/common/pico_base_headers/include`,
 `src/common/pico_time/include`, `src/host/pico_platform/include`,
 `src/host/hardware_timer/include`, `src/boards/include`, and
-`roo_testing_host_include`. Device register roots and host GPIO/UART include roots
-are excluded. Only `src/host/pico_platform/platform_base.c` is compiled from the
+`roo_testing_host_include`. Host `hardware_gpio/include` and
+`hardware_irq/include` are additionally exposed for supported GPIO declarations
+and IRQ parameter types. Device register and host UART include roots are
+excluded. Only `src/host/pico_platform/platform_base.c` is compiled from the
 upstream SDK. The [time adapter](time.cpp) and existing shared
 [clock implementation](../../system/timer.cpp) supply time operations. There is
 one linked implementation of each supported SDK entry point.
 
-## Support matrix after stage 3
+## Support matrix after stage 4
 
 | API or facility | Behavior |
 | --- | --- |
@@ -72,7 +74,15 @@ one linked implementation of each supported SDK entry point.
 | Hardware alarm allocation | Optional allocation returns -1; required allocation/claim/unclaim fails explicitly. |
 | Hardware alarm callbacks/targets | `LOG(FATAL)` with the unsupported operation; SDK interrupt context is not emulated. |
 | SDK alarm pools, repeating timers | Unavailable implementations fail to link. |
-| `pico/stdlib.h`, GPIO/UART/SPI/I2C/ADC/PWM, core 1, USB, filesystem, FreeRTOS | Not exported through this stage's include/link surface. |
+| Digital GPIO, SIO latches/direction, pulls, input enable and overrides | Checked GP0–GP29 state, shared voltage sources/sinks, and low-bank mask operations. |
+| Function mux | SIO and NULL; unavailable peripheral functions fail explicitly. |
+| GPIO interrupts and unsupported analog pad controls | Explicit fatal failure, including IRQ-disable requests and two-pull bus keeper mode. |
+| `pico/stdlib.h`, UART/SPI/I2C/ADC/PWM, core 1, USB, filesystem, FreeRTOS | Not exported through this stage's include/link surface. |
+
+See the [RP2040 board reference](../../microcontrollers/rp2040/README.md) for
+fixture wiring, raw latch versus pad semantics, reset/init behavior, mask
+validation, floating inputs, and retained sink history. GPIO uses the same
+emulated uptime as the time APIs below.
 
 ### Shared clock behavior and limits
 
@@ -142,10 +152,12 @@ bazel test //:pico_tests --config=roo_testing_pico_rp2040
 python3 test/pico/verify_pico.py
 bazel run //examples/pico_time:manual_time --config=roo_testing_pico_rp2040
 bazel run //examples/pico_time:auto_time --config=roo_testing_pico_rp2040
+bazel run //examples/pico_gpio:blink_example --config=roo_testing_pico_rp2040
 ```
 
 The verifier checks C/C++ execution, profile failures, dependency/action
 isolation, one implementation per SDK symbol, native ELF identity, unsupported
-alarm failure, manual/auto clock behavior, opaque timestamps, runner result
+alarm failure, GPIO/voltage behavior and bounded blink, manual/auto clock
+behavior, opaque timestamps, runner result
 propagation and post-main cleanup, and ASAN composition. It uses the existing persistent validation
 output root and preserves the global Bazel cache and resource limits.

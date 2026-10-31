@@ -53,6 +53,7 @@ def CheckIsolation():
                 "PICO_PLATFORM_STRING", "PICO_BOARD")
     sdk_sources = set()
     shared_time_sources = set()
+    gpio_sources = set()
     actions = json.loads(raw)["actions"]
     for action in actions:
         if action["mnemonic"] != "CppCompile":
@@ -73,12 +74,18 @@ def CheckIsolation():
                              "roo_testing/frameworks/pico_support/time.cpp"):
             if source.endswith(clock_source):
                 shared_time_sources.add(clock_source)
+        for gpio_source in ("roo_testing/frameworks/pico_support/gpio.cpp",
+                            "roo_testing/microcontrollers/rp2040/fake_pico.cpp"):
+            if source.endswith(gpio_source):
+                gpio_sources.add(gpio_source)
         if "/frameworks/pico-sdk/" in source:
             sdk_sources.add(source.split("/frameworks/pico-sdk/", 1)[1])
     if sdk_sources != {"src/host/pico_platform/platform_base.c"}:
         raise RuntimeError(f"Unexpected SDK implementation sources: {sdk_sources}")
     if len(shared_time_sources) != 2:
         raise RuntimeError(f"Pico did not select the shared clock adapter: {shared_time_sources}")
+    if len(gpio_sources) != 2:
+        raise RuntimeError(f"Pico did not select its GPIO board/adapter: {gpio_sources}")
 
 
 def CheckBinary():
@@ -94,7 +101,8 @@ def CheckBinary():
         ["nm", "-g", "--defined-only", str(binary.with_name("sdk_probe_c"))],
         text=True)
     names = [line.split()[-1] for line in symbols.splitlines() if line.split()]
-    for symbol in ("time_us_32", "time_us_64", "get_core_num"):
+    for symbol in ("time_us_32", "time_us_64", "get_core_num",
+                   "gpio_init", "gpio_get", "gpio_put"):
         if names.count(symbol) != 1:
             raise RuntimeError(f"Expected one linked implementation of {symbol}")
     if any(name.startswith(("esp_", "vTask")) for name in names):
@@ -162,6 +170,7 @@ def Main():
     CheckBinary()
     CheckFailures()
     CheckRunnerResults()
+    print(RunBazel("run", "//examples/pico_gpio:blink_example"), end="")
     print(RunBazel("test", "//test/pico:time_manual_test",
                    "--copt=-DPICO_OPAQUE_ABSOLUTE_TIME_T=1",
                    "--test_output=errors"), end="")

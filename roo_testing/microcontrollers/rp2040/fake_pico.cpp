@@ -111,7 +111,7 @@ void FakePicoBoard::CheckMask(uint64_t mask) {
 }
 
 void FakePicoBoard::checkAttachment(uint pin) const {
-  checkSpiIdle();
+  checkBusesIdle();
   CheckPin(pin);
   CHECK(attachments_[pin] == Attachment::kNone)
       << "Pico GPIO attachment conflict";
@@ -146,6 +146,9 @@ FakePicoBoard::PinState FakePicoBoard::state(uint pin) const {
 
 std::optional<VoltageSignal> FakePicoBoard::driveSignal(uint pin) const {
   CheckPin(pin);
+  CHECK(pins_[pin].function != GPIO_FUNC_I2C &&
+        attachments_[pin] != Attachment::kI2c)
+      << "Unimplemented: Pico I2C pin voltage";
   CHECK(pins_[pin].function != GPIO_FUNC_SPI &&
         attachments_[pin] != Attachment::kSpi)
       << "Unimplemented: Pico SPI pin voltage";
@@ -160,6 +163,9 @@ std::optional<VoltageSignal> FakePicoBoard::driveSignal(uint pin) const {
 
 float FakePicoBoard::padVoltage(uint pin) const {
   CheckPin(pin);
+  CHECK(pins_[pin].function != GPIO_FUNC_I2C &&
+        attachments_[pin] != Attachment::kI2c)
+      << "Unimplemented: Pico I2C pin voltage";
   CHECK(pins_[pin].function != GPIO_FUNC_SPI &&
         attachments_[pin] != Attachment::kSpi)
       << "Unimplemented: Pico SPI pin voltage";
@@ -211,7 +217,7 @@ uint32_t FakePicoBoard::readAll() const {
 /// Signal callbacks observe all selected state changes, without a board lock.
 template <typename Update>
 void FakePicoBoard::updatePins(uint32_t mask, Update update) {
-  checkSpiIdle();
+  checkBusesIdle();
   CheckMask(mask);
   std::array<PinState, kGpioCount> next = pins_;
   uint32_t changed_drive = 0;
@@ -227,6 +233,9 @@ void FakePicoBoard::updatePins(uint32_t mask, Update update) {
     CHECK(attachments_[pin] != Attachment::kSpi ||
           !StrongLevel(next[pin]).has_value())
         << "Unsupported Pico SIO output on a SPI attachment";
+    CHECK(attachments_[pin] != Attachment::kI2c ||
+          !StrongLevel(next[pin]).has_value())
+        << "Unsupported Pico SIO output on an I2C attachment";
     if (StrongLevel(next[pin]) != StrongLevel(pins_[pin])) {
       changed_drive |= uint32_t{1} << pin;
     }
@@ -241,7 +250,9 @@ void FakePicoBoard::updatePins(uint32_t mask, Update update) {
 void FakePicoBoard::publish(uint32_t mask) {
   for (uint pin = 0; pin < kGpioCount; ++pin) {
     if ((mask & (uint32_t{1} << pin)) == 0) continue;
-    if (pins_[pin].function == GPIO_FUNC_SPI ||
+    if (pins_[pin].function == GPIO_FUNC_I2C ||
+        attachments_[pin] == Attachment::kI2c ||
+        pins_[pin].function == GPIO_FUNC_SPI ||
         attachments_[pin] == Attachment::kSpi ||
         pins_[pin].function == GPIO_FUNC_UART ||
         attachments_[pin] == Attachment::kUart) {
@@ -266,9 +277,15 @@ void FakePicoBoard::init(uint32_t mask) {
 
 void FakePicoBoard::setFunction(uint32_t mask, gpio_function_t function) {
   CHECK(function == GPIO_FUNC_SIO || function == GPIO_FUNC_NULL ||
-        function == GPIO_FUNC_UART || function == GPIO_FUNC_SPI)
+        function == GPIO_FUNC_UART || function == GPIO_FUNC_SPI ||
+        function == GPIO_FUNC_I2C)
       << "Unsupported Pico GPIO function";
   updatePins(mask, [this, function](PinState& state, uint pin) {
+    if (function == GPIO_FUNC_I2C) {
+      CHECK(attachments_[pin] == Attachment::kNone ||
+            attachments_[pin] == Attachment::kI2c)
+          << "Pico I2C conflicts with another attachment";
+    }
     if (function == GPIO_FUNC_SPI) {
       CHECK_NE(pin % 4, 1u) << "Unsupported Pico GPIO function: SPI CSn";
       CHECK(attachments_[pin] == Attachment::kNone ||
@@ -432,7 +449,10 @@ FakeUartDevice& FakePicoBoard::uartDevice(uint index, bool transmit) const {
   return *device;
 }
 
-void FakePicoBoard::checkSpiIdle() const {
+void FakePicoBoard::checkBusesIdle() const {
+  for (const I2cState& i2c : i2cs_) {
+    CHECK(!i2c.busy) << "Pico reconfiguration during I2C transfer";
+  }
   for (const SpiState& spi : spis_) {
     CHECK(!spi.busy) << "Pico reconfiguration during SPI transfer";
   }
@@ -440,7 +460,7 @@ void FakePicoBoard::checkSpiIdle() const {
 
 void FakePicoBoard::attachSpiDevice(SimpleFakeSpiDevice& device, int clk,
                                     int miso, int mosi) {
-  checkSpiIdle();
+  checkBusesIdle();
   CheckPin(clk);
   CheckPin(mosi);
   CHECK_GE(miso, -1) << "Invalid Pico SPI RX pin";
@@ -475,7 +495,7 @@ FakePicoBoard::SpiState FakePicoBoard::spiState(uint index) const {
 }
 
 uint FakePicoBoard::initSpi(uint index, uint baudrate) {
-  checkSpiIdle();
+  checkBusesIdle();
   spiState(index);
   const uint actual = SpiBaudrate(baudrate);
   spis_[index] = {true, false, actual, 8, kSpiMode0};
@@ -483,13 +503,13 @@ uint FakePicoBoard::initSpi(uint index, uint baudrate) {
 }
 
 void FakePicoBoard::deinitSpi(uint index) {
-  checkSpiIdle();
+  checkBusesIdle();
   spiState(index);
   spis_[index].enabled = false;
 }
 
 uint FakePicoBoard::setSpiBaudrate(uint index, uint baudrate) {
-  checkSpiIdle();
+  checkBusesIdle();
   CHECK(spiState(index).enabled) << "Pico SPI is disabled";
   const uint actual = SpiBaudrate(baudrate);
   spis_[index].baudrate = actual;
@@ -498,7 +518,7 @@ uint FakePicoBoard::setSpiBaudrate(uint index, uint baudrate) {
 
 void FakePicoBoard::setSpiFormat(uint index, uint data_bits, spi_cpol_t cpol,
                                  spi_cpha_t cpha, spi_order_t order) {
-  checkSpiIdle();
+  checkBusesIdle();
   CHECK(spiState(index).enabled) << "Pico SPI is disabled";
   CHECK(data_bits == 8 || data_bits == 16)
       << "Unimplemented: Pico SPI frame width";
@@ -511,6 +531,9 @@ void FakePicoBoard::setSpiFormat(uint index, uint data_bits, spi_cpol_t cpol,
 }
 
 int FakePicoBoard::prepareSpi(uint index, bool receive, SpiRoute& route) const {
+  for (const I2cState& i2c : i2cs_) {
+    if (i2c.busy) return PICO_ERROR_RESOURCE_IN_USE;
+  }
   const SpiState config = spiState(index);
   if (!config.enabled) return PICO_ERROR_INVALID_STATE;
   for (const SpiState& spi : spis_) {
@@ -555,7 +578,7 @@ int FakePicoBoard::prepareSpi(uint index, bool receive, SpiRoute& route) const {
 }
 
 void FakePicoBoard::beginSpi(uint index) {
-  checkSpiIdle();
+  checkBusesIdle();
   CHECK(spiState(index).enabled) << "Pico SPI is disabled";
   spis_[index].busy = true;
 }
@@ -563,4 +586,109 @@ void FakePicoBoard::beginSpi(uint index) {
 void FakePicoBoard::endSpi(uint index) {
   CHECK(spiState(index).busy) << "Pico SPI is not busy";
   spis_[index].busy = false;
+}
+
+void FakePicoBoard::attachI2cDevice(FakeI2cDevice& device, int sda, int scl) {
+  checkBusesIdle();
+  CheckPin(sda);
+  CheckPin(scl);
+  CHECK_EQ(sda % 2, 0) << "Invalid Pico I2C SDA pin";
+  CHECK_EQ(scl % 2, 1) << "Invalid Pico I2C SCL pin";
+  CHECK_EQ((sda / 2) % 2, (scl / 2) % 2) << "Pico I2C controller mismatch";
+  CHECK(device.address() >= 8 && device.address() <= 0x77)
+      << "Invalid Pico I2C address";
+  for (int pin : {sda, scl}) {
+    CHECK(attachments_[pin] == Attachment::kNone ||
+          attachments_[pin] == Attachment::kI2c)
+        << "Pico I2C attachment conflict";
+    CHECK(!configured_[pin])
+        << "Attach Pico I2C devices before configuring pins";
+  }
+  for (const I2cConnection& connection : i2c_connections_) {
+    CHECK(connection.device != &device) << "Pico I2C device already attached";
+    CHECK(connection.sda != sda || connection.scl != scl ||
+          connection.device->address() != device.address())
+        << "Duplicate Pico I2C address";
+  }
+  i2c_connections_.push_back({&device, sda, scl});
+  attachments_[sda] = Attachment::kI2c;
+  attachments_[scl] = Attachment::kI2c;
+}
+
+FakePicoBoard::I2cState FakePicoBoard::i2cState(uint index) const {
+  CHECK_LT(index, i2cs_.size()) << "Invalid Pico I2C index";
+  return i2cs_[index];
+}
+
+uint FakePicoBoard::initI2c(uint index, uint baudrate) {
+  checkBusesIdle();
+  i2cState(index);
+  CHECK(baudrate != 0 && baudrate <= 1000000) << "Invalid Pico I2C baudrate";
+  const uint64_t period = (125000000 + uint64_t{baudrate} / 2) / baudrate;
+  const uint64_t low = period * 3 / 5;
+  const uint64_t high = period - low;
+  CHECK(low >= 8 && low <= 65535 && high >= 8 && high <= 65535)
+      << "Invalid Pico I2C divider";
+  const uint actual = 125000000 / period;
+  i2cs_[index] = {true, false, false, actual};
+  return actual;
+}
+
+void FakePicoBoard::deinitI2c(uint index) {
+  checkBusesIdle();
+  i2cState(index);
+  i2cs_[index] = {};
+}
+
+uint FakePicoBoard::setI2cBaudrate(uint index, uint baudrate) {
+  CHECK(i2cState(index).enabled) << "Pico I2C is disabled";
+  CHECK(!i2cState(index).restart_on_next) << "Pico I2C bus is held";
+  return initI2c(index, baudrate);
+}
+
+int FakePicoBoard::prepareI2c(uint index, uint8_t address,
+                              FakeI2cDevice*& device) const {
+  if (!i2cState(index).enabled) return PICO_ERROR_INVALID_STATE;
+  for (const I2cState& state : i2cs_) {
+    if (state.busy) return PICO_ERROR_RESOURCE_IN_USE;
+  }
+  for (const SpiState& state : spis_) {
+    if (state.busy) return PICO_ERROR_RESOURCE_IN_USE;
+  }
+  int sda = -1;
+  int scl = -1;
+  for (uint pin = 0; pin < kGpioCount; ++pin) {
+    if (pins_[pin].function != GPIO_FUNC_I2C || (pin / 2) % 2 != index) {
+      continue;
+    }
+    int& selected = pin % 2 == 0 ? sda : scl;
+    if (selected >= 0) return PICO_ERROR_INVALID_STATE;
+    if (!pins_[pin].input_enabled ||
+        pins_[pin].input_override != GPIO_OVERRIDE_NORMAL) {
+      return PICO_ERROR_INVALID_STATE;
+    }
+    selected = pin;
+  }
+  if (sda < 0 || scl < 0) return PICO_ERROR_INVALID_STATE;
+  device = nullptr;
+  for (const I2cConnection& connection : i2c_connections_) {
+    if (connection.sda != sda || connection.scl != scl ||
+        connection.device->address() != address)
+      continue;
+    if (device != nullptr) return PICO_ERROR_RESOURCE_IN_USE;
+    device = connection.device;
+  }
+  return device != nullptr ? PICO_OK : PICO_ERROR_GENERIC;
+}
+
+void FakePicoBoard::beginI2c(uint index) {
+  checkBusesIdle();
+  CHECK(i2cState(index).enabled);
+  i2cs_[index].busy = true;
+}
+
+void FakePicoBoard::endI2c(uint index, bool restart) {
+  CHECK(i2cState(index).busy);
+  i2cs_[index].busy = false;
+  i2cs_[index].restart_on_next = restart;
 }

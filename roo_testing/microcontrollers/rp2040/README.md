@@ -25,7 +25,8 @@ The [pad reset definitions](https://github.com/raspberrypi/pico-sdk/blob/079c6f3
 provide the reset defaults.
 
 SIO, NULL, legal UART TX/RX, and SPI SCK/TX/RX function selection are supported.
-I2C/PWM, PIO, UART CTS/RTS, and hardware SPI CSn muxes fail explicitly.
+I2C SDA/SCL muxes are also supported. PWM, PIO, UART CTS/RTS, and hardware SPI
+CSn muxes remain unsupported.
 Non-normal output/output-enable overrides on non-SIO pins also fail;
 this stage does not claim forced-drive semantics for disconnected peripherals.
 All GPIO interrupt operations, including disable/acknowledge requests, fail
@@ -177,3 +178,5 @@ can inspect controller state and observe `busy == true`.
 `spiState(index)` returns lifecycle, busy, achieved baud, frame width, and mode.
 The [SPI runtime contract](../../frameworks/pico_support/README.md#synchronous-spi-stage-6)
 defines transfer errors, dummy bytes, byte order, timing, and unsupported modes.
+
+I2C device wiring follows the [runtime contract](../../frameworks/pico_support/README.md#i2c-stage-7); it shares borrowed device models and reserves SDA/SCL before configuration.

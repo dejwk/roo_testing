@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 #include "hardware/gpio.h"
+#include "hardware/i2c.h"
 #include "hardware/spi.h"
 #include "hardware/uart.h"
 #include "pico/time.h"
@@ -38,6 +39,9 @@ int main(void) {
   spi_set_format(spi0, 8, SPI_CPOL_0, SPI_CPHA_0, SPI_MSB_FIRST);
   if (spi_write_blocking(spi0, NULL, 0) != 0) return 16;
   spi_deinit(spi0);
+  if (i2c_get_index(i2c_get_instance(1)) != 1) return 17;
+  if (i2c_init(i2c0, 400000) != 399361) return 18;
+  i2c_deinit(i2c0);
   printf("Pico SDK %s host probe: uptime=%" PRIu64 " us, core=0\n",
          PICO_SDK_VERSION_STRING, after);
   return 0;

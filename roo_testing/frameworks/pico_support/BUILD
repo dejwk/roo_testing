@@ -63,3 +63,17 @@ cc_library(
         "@glog",
     ],
 )
+
+cc_library(
+    name = "i2c",
+    srcs = ["i2c.cpp"],
+    copts = ["-fno-exceptions"],
+    visibility = ["//roo_testing/frameworks/pico-sdk:__pkg__"],
+    deps = [
+        ":time",
+        "//roo_testing/buses/i2c",
+        "//roo_testing/frameworks/pico-sdk:headers",
+        "//roo_testing/microcontrollers/rp2040:pico",
+        "@glog",
+    ],
+)

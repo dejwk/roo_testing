@@ -144,7 +144,10 @@ cc_test(
     name = "legacy_i2c_interface_test",
     size = "small",
     srcs = ["legacy_i2c_interface_test.cpp"],
-    deps = ["//roo_testing/buses/i2c"] + select({
+    deps = [
+        "//roo_testing/buses/i2c",
+        "//roo_testing/microcontrollers/esp32:core",
+    ] + select({
         "//roo_testing/platforms:is_idf": ["//:esp_idf_gtest_main"],
         "//conditions:default": ["@googletest//:gtest_main"],
     }),

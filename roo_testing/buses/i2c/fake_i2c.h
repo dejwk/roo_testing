@@ -70,4 +70,6 @@ class FakeI2cInterface {
   std::map<uint16_t, Attachment> devices_;
 };
 
+/// Compatibility declaration for ESP32-only legacy lookup. Its implementation
+/// lives in the ESP32 backend; this generic bus has no framework dependency.
 FakeI2cInterface* getI2cInterface(uint8_t i2c_num);

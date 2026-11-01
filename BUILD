@@ -162,10 +162,12 @@ test_suite(
     tags = ["manual"],
     tests = [
         "//examples/pico_gpio:blink_test",
+        "//examples/pico_i2c:rtc_test",
         "//examples/pico_spi:display_test",
         "//examples/pico_uart:serial_test",
         "//roo_testing/buses/uart:console_test",
         "//test/pico:gpio_test",
+        "//test/pico:i2c_test",
         "//test/pico:runner_auto_test",
         "//test/pico:runner_manual_test",
         "//test/pico:sdk_probe_c",

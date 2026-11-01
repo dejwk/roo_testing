@@ -4,6 +4,6 @@ cc_library(
     name = "i2c",
     srcs = ["fake_i2c.cpp"],
     hdrs = ["fake_i2c.h"],
+    copts = ["-fno-exceptions"],
     visibility = ["//visibility:public"],
-    deps = ["//roo_testing/frameworks/esp-idf:headers"],
 )

@@ -1,6 +1,6 @@
 # Native Pico SDK runtime
 
-Pico integration stages 2 through 6 provide the SDK-only profile
+Pico integration stages 2 through 7 provide the SDK-only profile
 `--config=roo_testing_pico_rp2040` and the public `@roo_testing//:pico_sdk` target.
 Applications supply ordinary `main()` and execute with the Linux host ABI/CPU.
 Arduino-Pico sources are staged for a later release stage; no Arduino RP2040
@@ -62,7 +62,7 @@ upstream SDK. The [time adapter](time.cpp) and existing shared
 [clock implementation](../../system/timer.cpp) supply time operations. There is
 one linked implementation of each supported SDK entry point.
 
-## Support matrix after stage 6
+## Support matrix after stage 7
 
 | API or facility | Behavior |
 | --- | --- |
@@ -83,7 +83,8 @@ one linked implementation of each supported SDK entry point.
 | GPIO interrupts and unsupported analog pad controls | Explicit fatal failure, including IRQ-disable requests and two-pull bus keeper mode. |
 | Synchronous UART | Two checked controllers, 8N1 byte transfers, routing, readiness, CRLF helpers, and UART0 console. |
 | Synchronous SPI | Two masters, modes 0–3, 8/16-bit MSB-first frames, software GPIO CS, bounded shared-device transfers, and transfer time. |
-| `pico/stdlib.h`, I2C/ADC/PWM, core 1, USB, filesystem, FreeRTOS | Not exported through this stage's include/link surface. |
+| I2C | Two seven-bit masters, shared devices, STOP/repeated START, bounded transfers, timeout/error mapping. |
+| `pico/stdlib.h`, ADC/PWM, core 1, USB, filesystem, FreeRTOS | Not exported through this stage's include/link surface. |
 
 See the [RP2040 board reference](../../microcontrollers/rp2040/README.md) for
 fixture wiring, raw latch versus pad semantics, reset/init behavior, mask
@@ -294,3 +295,43 @@ existing display model, validates captured commands and 512 RGB565 pixel bytes,
 and asserts every rendered pixel. No display server, FLTK, or SDL dependency is
 needed. The Pico suite tests routing, modes, word order, selection, frame/chunk
 boundaries, timing, overflow, invalid inputs, and reentrancy in normal/ASAN builds.
+
+## I2C (stage 7)
+
+The owned `hardware/i2c.h` overlay exposes checked `i2c0`/`i2c1`, init/deinit,
+clock selection, and blocking/relative-timeout/deadline/per-character calls.
+Devices use the existing `FakeI2cDevice` protocol and DS3231 model. The shared
+bus library no longer includes ESP-IDF; the ESP32 backend retains legacy
+`getI2cInterface()` and C entry points for existing callers.
+
+`attachI2cDevice(device, sda, scl)` borrows devices before pin configuration.
+SDA is an even GP number; SCL is odd; `(pin / 2) % 2` selects controller 0/1.
+Nonadjacent pins belonging to the same controller are allowed. Shared pins with
+different addresses are allowed; duplicates, conflicting devices, and late
+wiring fail. Select GPIO_FUNC_I2C on exactly one SDA and SCL per controller.
+Unsupported pad overrides, disabled input, absent or ambiguous routes fail
+before delivery. Peripheral pin voltage waveforms and SIO driving reserved pins
+are unsupported, as with SPI/UART. Application configuration is single-threaded;
+device callbacks cannot reconfigure active buses or GPIOs.
+
+Requests support addresses 0x08–0x77 and lengths 1–65535. Oversized transactions
+return PICO_ERROR_INVALID_ARG without splitting or device calls. `nostop` maps
+to `sendStop = false`; successful calls retain repeated-START intent for the
+next call. Init/deinit and device errors clear that intent. Device reads are
+staged and copied to the caller only on success. Models may retain their own
+state changes on device-reported failure; invalid preflight requests cause none.
+
+Timeout microseconds round up to model milliseconds, saturated at 65535 ms.
+Unbounded calls use that maximum. Expired/zero timeouts return PICO_ERROR_TIMEOUT
+without delivery. Per-character variants forward a saturated whole-call budget;
+there is no per-byte device callback or physical bus/clock-stretch timing.
+Baud uses the pinned SDK period rounding at nominal 125 MHz, limited here to
+1 MHz master operation. Slave, FIFO, DMA, IRQ, and register APIs are unsupported.
+
+Success returns the byte count. Device NACK/missing-address/bus failures map to
+PICO_ERROR_GENERIC, device timeout to PICO_ERROR_TIMEOUT, busy to
+PICO_ERROR_RESOURCE_IN_USE, and allocation failure to
+PICO_ERROR_INSUFFICIENT_RESOURCES. Bad arguments and inactive/missing muxes use
+PICO_ERROR_INVALID_ARG / PICO_ERROR_INVALID_STATE respectively. Configuration
+errors and invalid opaque handles fail explicitly. Calls do not invent bus
+latency or advance the shared clock. See [the bounded RTC example](../../../examples/pico_i2c/README.md).

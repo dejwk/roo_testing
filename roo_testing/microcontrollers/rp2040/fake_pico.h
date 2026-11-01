@@ -6,12 +6,14 @@
 #include <vector>
 
 #include "hardware/gpio.h"
+#include "hardware/i2c.h"
 #include "hardware/spi.h"
 #include "roo_testing/buses/gpio/fake_gpio.h"
+#include "roo_testing/buses/i2c/fake_i2c.h"
 #include "roo_testing/buses/spi/fake_spi.h"
 #include "roo_testing/buses/uart/fake_uart.h"
 
-/// Owns RP2040 GPIO/UART/SPI state and borrowed device connections.
+/// Owns RP2040 GPIO/UART/SPI/I2C state and borrowed device connections.
 /// SDK access and fixture configuration are single-threaded. Attach devices
 /// before configuring their pins and retain them through all GPIO activity.
 class FakePicoBoard {
@@ -135,6 +137,43 @@ class FakePicoBoard {
   /// Ends a synchronous controller operation.
   void endSpi(uint index);
 
+  /// Captures seven-bit master configuration and retained START/STOP intent.
+  struct I2cState {
+    bool enabled = false;
+    bool busy = false;
+    bool restart_on_next = false;
+    uint baudrate = 0;
+  };
+
+  /// Borrows an addressed device on legal SDA/SCL pins before configuration.
+  /// Shared bus pins are allowed; duplicate devices/addresses on one tuple
+  /// fail.
+  void attachI2cDevice(FakeI2cDevice& device, int sda, int scl);
+
+  /// Returns a checked I2C controller snapshot.
+  I2cState i2cState(uint index) const;
+
+  /// Initializes a master and returns the nominal-clock achieved baudrate.
+  uint initI2c(uint index, uint baudrate);
+
+  /// Disables an idle master, clearing retained repeated-START intent.
+  void deinitI2c(uint index);
+
+  /// Updates an enabled idle master's nominal-clock divider.
+  uint setI2cBaudrate(uint index, uint baudrate);
+
+  /// Resolves current muxes, checked pads, and exactly one addressed device.
+  /// Returns a PICO_ERROR before device delivery when routing is invalid.
+  int prepareI2c(uint index, uint8_t address, FakeI2cDevice*& device) const;
+
+  /// Marks synchronous device delivery busy, rejecting callback
+  /// reconfiguration.
+  void beginI2c(uint index);
+
+  /// Ends delivery, retaining repeated-START intent only after successful
+  /// nostop.
+  void endI2c(uint index, bool restart);
+
   /// Returns a checked, read-only snapshot of one pin's configuration.
   PinState state(uint pin) const;
 
@@ -159,7 +198,7 @@ class FakePicoBoard {
   /// Pull configuration is preserved, matching gpio_init().
   void init(uint32_t mask);
 
-  /// Selects SIO, NULL, UART TX/RX, or SPI SCK/TX/RX and resets overrides.
+  /// Selects supported SIO, NULL, UART, SPI, or I2C muxes and resets overrides.
   void setFunction(uint32_t mask, gpio_function_t function);
 
   /// Updates selected raw SIO output latches without requiring output
@@ -199,7 +238,15 @@ class FakePicoBoard {
 
   FakePicoBoard() : gpio_(kGpioCount) {}
 
-  enum class Attachment : uint8_t { kNone, kInput, kOutput, kIo, kUart, kSpi };
+  enum class Attachment : uint8_t {
+    kNone,
+    kInput,
+    kOutput,
+    kIo,
+    kUart,
+    kSpi,
+    kI2c
+  };
 
   void checkAttachment(uint pin) const;
 
@@ -231,7 +278,16 @@ class FakePicoBoard {
   std::vector<SpiConnection> spi_connections_;
 
   /// Rejects reconfiguration from within device callbacks or other transfers.
-  void checkSpiIdle() const;
+  void checkBusesIdle() const;
+
+  struct I2cConnection {
+    FakeI2cDevice* device;
+    int sda;
+    int scl;
+  };
+
+  std::array<I2cState, 2> i2cs_{};
+  std::vector<I2cConnection> i2c_connections_;
 
   FakeGpioInterface gpio_;
 };

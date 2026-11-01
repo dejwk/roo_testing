@@ -532,6 +532,12 @@ Proposed commit message:
 
 ### 7. Decouple I2C and add Pico transactions
 
+Implemented: legacy lookup/C entry points live in the ESP32 backend while the
+shared I2C target is framework-independent. Pico resolves legal SDA/SCL routes
+onto existing devices, preserves STOP/repeated-START intent, maps errors/timeouts,
+and rejects oversized transactions. The DS3231 example and tests share the same
+model as ESP32. See the [I2C runtime contract](../roo_testing/frameworks/pico_support/README.md#i2c-stage-7).
+
 Move legacy controller lookup into the ESP32 backend, preserving callers.
 Implement Pico controller routing and I2C adapters. Add a DS3231 example and
 tests for repeated START, errors, timeout mapping, and oversize rejection.

@@ -18,27 +18,30 @@ cc_library(
     name = "arduino",
     linkstatic = 1,
     visibility = ["//visibility:public"],
-    deps = [
-        "//roo_testing/frameworks/arduino-esp32/cores/esp32:arduino",
-    ],
+    deps = select({
+        "//roo_testing/platforms:is_arduino_rp2040": ["//roo_testing/frameworks/arduino_pico_support:arduino"],
+        "//conditions:default": ["//roo_testing/frameworks/arduino-esp32/cores/esp32:arduino"],
+    }),
 )
 
 cc_library(
     name = "arduino_main",
     linkstatic = 1,
     visibility = ["//visibility:public"],
-    deps = [
-        "//roo_testing/frameworks/arduino-esp32/cores/esp32:main",
-    ],
+    deps = select({
+        "//roo_testing/platforms:is_arduino_rp2040": ["//roo_testing/frameworks/arduino_pico_support:main"],
+        "//conditions:default": ["//roo_testing/frameworks/arduino-esp32/cores/esp32:main"],
+    }),
 )
 
 cc_library(
     name = "arduino_gtest_main",
     linkstatic = 1,
     visibility = ["//visibility:public"],
-    deps = [
-        "//roo_testing/frameworks/arduino-esp32/cores/esp32:gtest_main",
-    ],
+    deps = select({
+        "//roo_testing/platforms:is_arduino_rp2040": ["//roo_testing/frameworks/arduino_pico_support:gtest_main"],
+        "//conditions:default": ["//roo_testing/frameworks/arduino-esp32/cores/esp32:gtest_main"],
+    }),
 )
 
 # Stable public test entry point for ESP-IDF-only host tests. It starts the
@@ -190,4 +193,15 @@ cc_library(
     name = "pico_gtest_main",
     visibility = ["//visibility:public"],
     deps = ["//roo_testing/frameworks/pico_support:gtest_main"],
+)
+
+# Arduino Pico adds the selected core to the shared SDK and device contracts.
+test_suite(
+    name = "arduino_pico_tests",
+    tags = ["manual"],
+    tests = [
+        "//:pico_tests",
+        "//examples/arduino_pico:peripherals_test",
+        "//test/arduino_pico:arduino_test",
+    ],
 )

@@ -44,18 +44,27 @@ public:
     }
 
     bool setInvertTX(bool invert = true) {
+        #ifdef ROO_TESTING
+        if (invert) { return false; }
+        #endif
         if (!_running) {
             _invertTX = invert;
         }
         return !_running;
     }
     bool setInvertRX(bool invert = true) {
+        #ifdef ROO_TESTING
+        if (invert) { return false; }
+        #endif
         if (!_running) {
             _invertRX = invert;
         }
         return !_running;
     }
     bool setInvertControl(bool invert = true) {
+        #ifdef ROO_TESTING
+        if (invert) { return false; }
+        #endif
         if (!_running) {
             _invertControl = invert;
         }

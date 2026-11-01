@@ -61,6 +61,9 @@ public:
     void interfaceCB(int itf, uint8_t *dst, int len);
 
 private:
+#ifdef ROO_TESTING
+    int _hostPeek = -1;
+#endif
     bool _running = false;
     uint8_t _id;
     uint8_t _epIn;

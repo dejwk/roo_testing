@@ -408,7 +408,7 @@ core.workflow(
     authoring = authoring.pass_thru("Copybara <copybara@localhost>"),
     origin_files = glob(["LICENSE", "README.md", "api/**"], exclude = COMMON_EXCLUDES),
     destination_files = destination_files(ARDUINO_PICO_DESTINATION + "/ArduinoCore-API"),
-    transformations = [core.move("", ARDUINO_PICO_DESTINATION + "/ArduinoCore-API")],
+    transformations = [patch.apply(series = "patches/arduino-pico-api/series"), core.move("", ARDUINO_PICO_DESTINATION + "/ArduinoCore-API")],
     mode = "SQUASH",
     custom_rev_id = "ArduinoPicoApi-Origin-RevId",
 )

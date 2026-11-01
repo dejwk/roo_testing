@@ -150,3 +150,10 @@ FakeUartCable::~FakeUartCable() = default;
 FakeUartDevice& FakeUartCable::end_a() { return *end_a_; }
 
 FakeUartDevice& FakeUartCable::end_b() { return *end_b_; }
+
+namespace roo_testing {
+ConsoleUartDevice& HostConsoleUart() {
+  static ConsoleUartDevice console;
+  return console;
+}
+}  // namespace roo_testing

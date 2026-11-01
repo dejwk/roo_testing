@@ -37,6 +37,10 @@ int Stream::timedRead()
   do {
     c = read();
     if (c >= 0) return c;
+#ifdef ROO_TESTING
+    // Manual host time needs an explicit wait when polling an empty stream.
+    delay(1);
+#endif
   } while(millis() - _startMillis < _timeout);
   return -1;     // -1 indicates timeout
 }
@@ -49,6 +53,10 @@ int Stream::timedPeek()
   do {
     c = peek();
     if (c >= 0) return c;
+#ifdef ROO_TESTING
+    // Manual host time needs an explicit wait when polling an empty stream.
+    delay(1);
+#endif
   } while(millis() - _startMillis < _timeout);
   return -1;     // -1 indicates timeout
 }

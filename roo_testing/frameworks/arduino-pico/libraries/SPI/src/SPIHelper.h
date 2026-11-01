@@ -22,7 +22,9 @@
 #include <map>
 #include <hardware/spi.h>
 #include <hardware/gpio.h>
+#ifndef ROO_TESTING
 #include <hardware/structs/iobank0.h>
+#endif
 #include <hardware/irq.h>
 
 /**
@@ -108,6 +110,9 @@ public:
         @brief Disables any GPIO interrupts registered before an SPI transaction begins
     */
     void maskInterrupts() {
+#ifdef ROO_TESTING
+        if (!_usingIRQs.empty()) { fprintf(stderr, "Unimplemented: Pico SPI interrupts\n"); abort(); }
+#else
         if (_usingIRQs.empty()) {
             return;
         }
@@ -131,12 +136,16 @@ public:
                  (unsigned)irq_ctrl_base->inte[1], (unsigned)irq_ctrl_base->inte[2], (unsigned)irq_ctrl_base->inte[3],
                  (GPIOIRQREGS > 4) ? (unsigned)irq_ctrl_base->inte[4] : 0, (GPIOIRQREGS > 5) ? (unsigned)irq_ctrl_base->inte[5] : 0);
         interrupts();
+#endif
     }
 
     /**
         @brief Restores GPIO interrupts masks after an SPI transaction completes
     */
     void unmaskInterrupts() {
+#ifdef ROO_TESTING
+        if (!_usingIRQs.empty()) { fprintf(stderr, "Unimplemented: Pico SPI interrupts\n"); abort(); }
+#else
         if (_usingIRQs.empty()) {
             return;
         }
@@ -154,6 +163,7 @@ public:
                  (unsigned)irq_ctrl_base->inte[2], (unsigned)irq_ctrl_base->inte[3], (GPIOIRQREGS > 4) ? (unsigned)irq_ctrl_base->inte[4] : 0,
                  (GPIOIRQREGS > 5) ? (unsigned)irq_ctrl_base->inte[5] : 0);
         interrupts();
+#endif
     }
 
 
@@ -163,7 +173,12 @@ public:
         @param interruptNumber GPIO number to mask off
     */
     void usingInterrupt(int interruptNumber) {
+#ifdef ROO_TESTING
+        (void)interruptNumber;
+        { fprintf(stderr, "Unimplemented: Pico SPI interrupts\n"); abort(); }
+#else
         _usingIRQs.insert({interruptNumber, 0});
+#endif
     }
 
     /**
@@ -172,7 +187,12 @@ public:
         @param interruptNumber GPIO number to remove
     */
     void notUsingInterrupt(int interruptNumber) {
+#ifdef ROO_TESTING
+        (void)interruptNumber;
+        { fprintf(stderr, "Unimplemented: Pico SPI interrupts\n"); abort(); }
+#else
         _usingIRQs.erase(interruptNumber);
+#endif
     }
 
 private:

@@ -44,6 +44,7 @@ cc_library(
         "//roo_testing/frameworks/pico_support:i2c",
         "//roo_testing/frameworks/pico_support:pwm",
         "//roo_testing/frameworks/pico_support:spi",
+        "//roo_testing/frameworks/pico_support:sync",
         "//roo_testing/frameworks/pico_support:time",
         "//roo_testing/frameworks/pico_support:uart",
     ],

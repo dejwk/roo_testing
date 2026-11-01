@@ -23,7 +23,9 @@
 #include <hardware/gpio.h>
 #include <hardware/pwm.h>
 #include <hardware/clocks.h>
+#ifndef ROO_TESTING
 #include <hardware/pll.h>
+#endif
 #include <hardware/adc.h>
 
 void __clearADCPin(pin_size_t p);

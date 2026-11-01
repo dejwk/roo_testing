@@ -34,10 +34,10 @@
 #include "debug_internal.h"
 
 // Chip sanity checking.  SDK uses interesting way of separating 2350A from 2350B, see https://github.com/raspberrypi/pico-sdk/issues/2364
-#if (!defined(PICO_RP2040) && !defined(PICO_RP2350)) || defined(PICO_RP2040) && defined(PICO_RP2350)
+#if (!PICO_RP2040 && !PICO_RP2350) || (PICO_RP2040 && PICO_RP2350)
 #error Invalid core definition. Either PICO_RP2040 or PICO_RP2350 must be defined.
 #endif
-#if defined(PICO_RP2350) && !defined(PICO_RP2350A)
+#if PICO_RP2350 && !defined(PICO_RP2350A)
 #error Invalid RP2350 definition.  Need to set PICO_RP2350A=0/1 for A/B variant
 #endif
 #if defined(PICO_RP2350B)
@@ -136,10 +136,12 @@ extern const String emptyString;
 #endif
 
 #include "SerialUART.h"
+#ifndef ROO_TESTING
 #include "SerialSemi.h"
 #include "RP2040Support.h"
 #include "SerialPIO.h"
 #include "Bootsel.h"
+#endif // Native emulation excludes device-only PIO, semihosting, and core-1 helpers.
 
 // Template which will evaluate at *compile time* to a single 32b number
 // with the specified bits set.
@@ -162,7 +164,7 @@ constexpr uint64_t __bitset(const int (&a)[N], size_t i = 0U) {
 #define PSRAM __attribute__((section("\".psram\"")))
 
 // General GPIO/ADC layout info
-#if defined(PICO_RP2350) && !PICO_RP2350A
+#if PICO_RP2350 && !PICO_RP2350A
 #define __GPIOCNT 48
 #define __FIRSTANALOGGPIO 40
 #else

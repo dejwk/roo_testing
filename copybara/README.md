@@ -131,11 +131,10 @@ The SDK allowlist imports common base/time sources, host sources, and the Pico
 board header. Stage 2 compiled the host platform and timer; stage 3 compiles only the host
 platform and uses the destination-owned shared-clock adapter for time.
 Arduino imports stage the RP2040 core, SPI/Wire libraries, and original Pico
-variant plus release metadata. Core API, FreeRTOS, USB, networking, and other
-submodules are not fetched in this stage. The tracked API files under
-`cores/rp2040/api` are included with the core; the separate root API submodule
-is not fetched. There is no
-nested second SDK copy under Arduino-Pico.
+variant plus release metadata. The core API submodule is imported by its own pinned workflow (see below);
+FreeRTOS, USB, networking and other submodules are not fetched. The tracked
+`cores/rp2040/api` files forward to that submodule. There is no nested second
+SDK copy under Arduino-Pico.
 
 The initial source trees were materialized from the immutable upstream source
 archives, checked against these allowlists and patched with the recorded series.
@@ -156,3 +155,8 @@ nested API source is required. The original Pico variant also includes
 `variants/generic/common.h`, now included in the core allowlist. The core
 workflow preserves the separately imported API subtree. Refresh both from their
 immutable pins with `copybara/import.sh arduino-pico-api` and `arduino-pico`.
+
+Arduino-Pico native boundary patches keep the pinned public API and portable
+core sources. The API patch series also excludes networking and USB umbrella
+includes from the supported host subset and advances Stream timeout polling.
+Destination-owned BUILD files and `arduino_pico_support` are not upstream files.

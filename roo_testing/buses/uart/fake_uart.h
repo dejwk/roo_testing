@@ -79,6 +79,12 @@ class ConsoleUartDevice : public FakeUartDevice {
   mutable std::mutex input_mutex_;
 };
 
+namespace roo_testing {
+/// Returns the lazily constructed shared host console, without terminal
+/// changes.
+ConsoleUartDevice& HostConsoleUart();
+}  // namespace roo_testing
+
 // A bidirectional cable connecting two UART endpoints.
 //
 // Bytes written by one endpoint become immediately available for reading from

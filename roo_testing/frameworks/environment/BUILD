@@ -149,3 +149,14 @@ cc_library(
         "//roo_testing/soc:target",
     ],
 )
+
+cc_library(
+    name = "arduino_pico",
+    srcs = ["arduino_pico_profile_contract.cc"],
+    copts = ["-Werror"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":arduino",
+        ":pico_sdk",
+    ],
+)

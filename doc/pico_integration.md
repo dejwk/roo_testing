@@ -577,6 +577,16 @@ Proposed commit message:
 
 ### 9. Integrate the Arduino-Pico core and public Arduino targets
 
+Implemented: the native Arduino profile selects the original Pico variant and
+stable public Arduino targets. The pinned String, Print, Stream, Common, WMath,
+CoreMutex, non-ISO conversion, and analog implementations run on shared SDK
+adapters. Hardware-specific serial, SPI and Wire leaves reuse existing fake
+buses, console and device models. The bounded peripheral sketch covers blink,
+UART, DS3231 and SPI, with mixed Arduino/SDK regression tests. The exact API
+submodule is imported independently by Copybara; native boundary edits and
+Stream timeout progress are replayable patches. See the
+[Arduino runtime reference](../roo_testing/frameworks/arduino_pico_support/README.md).
+
 Compile the selected core subset against the working SDK adapters, add native
 Arduino startup/test runners, and expose the Arduino RP2040 profile. Update
 stable Arduino targets and the sketch helper through profile selection. Add

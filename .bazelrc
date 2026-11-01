@@ -13,6 +13,7 @@ import %workspace%/.roo_testing/bazelrc/esp32c3/idf.bazelrc
 import %workspace%/.roo_testing/bazelrc/esp32c3/arduino.bazelrc
 import %workspace%/.roo_testing/bazelrc/rp2040/base.bazelrc
 import %workspace%/.roo_testing/bazelrc/rp2040/pico.bazelrc
+import %workspace%/.roo_testing/bazelrc/rp2040/arduino.bazelrc
 
 # Bazelisk invokes .roo_testing/bin/bazel, which defaults configured commands to
 # Arduino only when the caller did not select a frontend. Keeping the default

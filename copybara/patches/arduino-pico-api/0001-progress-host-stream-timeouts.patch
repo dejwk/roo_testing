@@ -1,0 +1,62 @@
+--- a/api/ArduinoAPI.h
++++ b/api/ArduinoAPI.h
+@@ -27,15 +27,23 @@
+ 
+ #ifdef __cplusplus
+ #include "Interrupts.h"
++#ifndef ROO_TESTING
+ #include "IPAddress.h"
++#endif
+ #include "Print.h"
+ #include "Printable.h"
++#ifndef ROO_TESTING
+ #include "PluggableUSB.h"
++#endif
+ #include "Server.h"
+ #include "String.h"
+ #include "Stream.h"
++#ifndef ROO_TESTING
+ #include "Udp.h"
++#endif
++#ifndef ROO_TESTING
+ #include "USBAPI.h"
++#endif
+ #include "WCharacter.h"
+ #endif
+ 
+--- a/api/Common.h
++++ b/api/Common.h
+@@ -108,7 +108,9 @@
+ #ifndef HOST
+ int atexit(void (*func)()) __attribute__((weak));
+ #endif
++#ifndef ROO_TESTING
+ int main() __attribute__((weak));
++#endif
+ 
+ #ifdef EXTENDED_PIN_MODE
+ // Platforms who want to declare more than 256 pins need to define EXTENDED_PIN_MODE globally
+--- a/api/Stream.cpp
++++ b/api/Stream.cpp
+@@ -37,6 +37,10 @@
+   do {
+     c = read();
+     if (c >= 0) return c;
++#ifdef ROO_TESTING
++    // Manual host time needs an explicit wait when polling an empty stream.
++    delay(1);
++#endif
+   } while(millis() - _startMillis < _timeout);
+   return -1;     // -1 indicates timeout
+ }
+@@ -49,6 +53,10 @@
+   do {
+     c = peek();
+     if (c >= 0) return c;
++#ifdef ROO_TESTING
++    // Manual host time needs an explicit wait when polling an empty stream.
++    delay(1);
++#endif
+   } while(millis() - _startMillis < _timeout);
+   return -1;     // -1 indicates timeout
+ }

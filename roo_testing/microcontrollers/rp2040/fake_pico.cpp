@@ -69,10 +69,7 @@ uint ActualBaudrate(uint requested) {
 }
 
 /// Shares the existing ESP32 console device implementation without SDK policy.
-ConsoleUartDevice& HostConsole() {
-  static ConsoleUartDevice console;
-  return console;
-}
+ConsoleUartDevice& HostConsole() { return roo_testing::HostConsoleUart(); }
 
 /// Uses the RP2040 SPI0/SPI1 eight-pin group alternation.
 uint SpiIndex(uint pin) {

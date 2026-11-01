@@ -13,7 +13,7 @@ cc_library(
         "unrelated_c.c",
     ],
     copts = ["-Werror"],
-    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    target_compatible_with = ["//roo_testing/platforms:pico"],
 )
 
 cc_test(
@@ -25,7 +25,7 @@ cc_test(
     ],
     copts = ["-Werror"],
     linkstatic = True,
-    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    target_compatible_with = ["//roo_testing/platforms:pico"],
     deps = ["//:pico_sdk"],
 )
 
@@ -38,7 +38,7 @@ cc_test(
     ],
     copts = ["-Werror"],
     linkstatic = True,
-    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    target_compatible_with = ["//roo_testing/platforms:pico"],
     deps = [
         ":unrelated_c",
         "//:pico_sdk",

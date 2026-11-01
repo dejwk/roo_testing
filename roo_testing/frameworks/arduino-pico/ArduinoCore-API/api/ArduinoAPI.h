@@ -27,15 +27,23 @@
 
 #ifdef __cplusplus
 #include "Interrupts.h"
+#ifndef ROO_TESTING
 #include "IPAddress.h"
+#endif
 #include "Print.h"
 #include "Printable.h"
+#ifndef ROO_TESTING
 #include "PluggableUSB.h"
+#endif
 #include "Server.h"
 #include "String.h"
 #include "Stream.h"
+#ifndef ROO_TESTING
 #include "Udp.h"
+#endif
+#ifndef ROO_TESTING
 #include "USBAPI.h"
+#endif
 #include "WCharacter.h"
 #endif
 

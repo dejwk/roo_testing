@@ -108,7 +108,9 @@ void initVariant(void);
 #ifndef HOST
 int atexit(void (*func)()) __attribute__((weak));
 #endif
+#ifndef ROO_TESTING
 int main() __attribute__((weak));
+#endif
 
 #ifdef EXTENDED_PIN_MODE
 // Platforms who want to declare more than 256 pins need to define EXTENDED_PIN_MODE globally

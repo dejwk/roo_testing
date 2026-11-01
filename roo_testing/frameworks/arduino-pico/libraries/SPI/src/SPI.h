@@ -258,12 +258,20 @@ public:
     /**
         @brief Deprecated, do not use
     */
-    virtual void attachInterrupt() override  __attribute__((deprecated)) { /* noop */ }
+    virtual void attachInterrupt() override  __attribute__((deprecated)) {
+#ifdef ROO_TESTING
+        _helper.usingInterrupt(-1);
+#endif
+    }
 
     /**
         @brief Deprecated, do not use
     */
-    virtual void detachInterrupt() override  __attribute__((deprecated)) { /* noop */ }
+    virtual void detachInterrupt() override  __attribute__((deprecated)) {
+#ifdef ROO_TESTING
+        _helper.usingInterrupt(-1);
+#endif
+    }
 
 private:
     friend void _spiDMAIRQ();

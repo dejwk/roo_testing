@@ -103,3 +103,13 @@ cc_library(
         "@glog",
     ],
 )
+
+cc_library(
+    name = "sync",
+    srcs = ["sync.cpp"],
+    visibility = ["//roo_testing/frameworks/pico-sdk:__pkg__"],
+    deps = [
+        "//roo_testing/frameworks/pico-sdk:headers",
+        "@glog",
+    ],
+)

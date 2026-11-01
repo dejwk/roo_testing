@@ -10,6 +10,7 @@ load(
     "ARDUINO_ESP32_REV",
     "ARDUINO_ESP32_VERSION",
     "ARDUINO_PICO_REV",
+    "ARDUINO_PICO_API_REV",
     "ARDUINO_PICO_VERSION",
     "PICO_SDK_REV",
     "PICO_SDK_VERSION",
@@ -228,6 +229,8 @@ def destination_files(destination):
             # remain destination-owned alongside the Bazel overlay.
             destination + "/**/roo_testing_*",
             destination + "/roo_testing_host_include/**",
+            # Imported by the separate pinned API workflow.
+            destination + "/ArduinoCore-API/**",
             destination + "/sdkconfig.h",
             # The Arduino core include root owns this C++ register proxy. C
             # translation units fall through to ESP-IDF via include_next.
@@ -332,6 +335,7 @@ ARDUINO_PICO_ORIGIN_FILES = glob(
         "libraries/SPI/**",
         "libraries/Wire/**",
         "variants/rpipico/**",
+        "variants/generic/common.h",
     ],
     exclude = COMMON_EXCLUDES,
 )
@@ -389,4 +393,22 @@ core.workflow(
     ],
     mode = "SQUASH",
     custom_rev_id = "ArduinoPico-Origin-RevId",
+)
+
+core.workflow(
+    name = "arduino_pico_api",
+    description = "Import Arduino-Pico's pinned ArduinoCore-API gitlink",
+    origin = git.origin(
+        url = "https://github.com/earlephilhower/ArduinoCore-API.git",
+        ref = ARDUINO_PICO_API_REV,
+        partial_fetch = True,
+        submodules = "NO",
+    ),
+    destination = destination(),
+    authoring = authoring.pass_thru("Copybara <copybara@localhost>"),
+    origin_files = glob(["LICENSE", "README.md", "api/**"], exclude = COMMON_EXCLUDES),
+    destination_files = destination_files(ARDUINO_PICO_DESTINATION + "/ArduinoCore-API"),
+    transformations = [core.move("", ARDUINO_PICO_DESTINATION + "/ArduinoCore-API")],
+    mode = "SQUASH",
+    custom_rev_id = "ArduinoPicoApi-Origin-RevId",
 )

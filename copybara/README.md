@@ -148,3 +148,11 @@ sources, exact macros/header roots, patches, and interim behavior.
 Both new workflows were also exported to isolated folders with Copybara
 v20261026 and compared byte-for-byte with the imported files, excluding only
 the destination-owned overlays.
+
+Stage 9 imports Arduino-Pico's actual `ArduinoCore-API` gitlink at
+`82928635c893189343cf8eb78569f0c4136fded0` via `arduino_pico_api`. The files under
+`cores/rp2040/api` are forwarding includes, not the implementation itself; the
+nested API source is required. The original Pico variant also includes
+`variants/generic/common.h`, now included in the core allowlist. The core
+workflow preserves the separately imported API subtree. Refresh both from their
+immutable pins with `copybara/import.sh arduino-pico-api` and `arduino-pico`.

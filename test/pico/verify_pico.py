@@ -62,6 +62,7 @@ def CheckIsolation():
     uart_sources = set()
     spi_sources = set()
     i2c_sources = set()
+    analog_sources = set()
     actions = json.loads(raw)["actions"]
     for action in actions:
         if action["mnemonic"] != "CppCompile":
@@ -98,6 +99,9 @@ def CheckIsolation():
                            "roo_testing/buses/i2c/fake_i2c.cpp"):
             if source.endswith(i2c_source):
                 i2c_sources.add(i2c_source)
+        for analog_source in ("roo_testing/frameworks/pico_support/adc.cpp",
+                              "roo_testing/frameworks/pico_support/pwm.cpp"):
+            if source.endswith(analog_source): analog_sources.add(analog_source)
         if "/frameworks/pico-sdk/" in source:
             sdk_sources.add(source.split("/frameworks/pico-sdk/", 1)[1])
     if sdk_sources != {"src/host/pico_platform/platform_base.c"}:
@@ -115,6 +119,8 @@ def CheckIsolation():
 
     if len(i2c_sources) != 2:
         raise RuntimeError(f"Pico did not select shared I2C: {i2c_sources}")
+    if len(analog_sources) != 2:
+        raise RuntimeError("Pico did not select ADC/PWM adapters")
     generic_i2c = RunBazel("cquery", "deps(//roo_testing/buses/i2c)")
     if "esp-idf" in generic_i2c or "microcontrollers/esp32" in generic_i2c:
         raise RuntimeError("Generic I2C retained an ESP32 framework dependency")
@@ -218,6 +224,7 @@ def Main():
     print(RunBazel("run", "//examples/pico_uart:serial_example"), end="")
     print(RunBazel("run", "//examples/pico_spi:display_example"), end="")
     print(RunBazel("run", "//examples/pico_i2c:rtc_example"), end="")
+    print(RunBazel("run", "//examples/pico_signal:signal_example"), end="")
     print(RunBazel("test", "//test/pico:time_manual_test",
                    "--copt=-DPICO_OPAQUE_ABSOLUTE_TIME_T=1",
                    "--test_output=errors"), end="")

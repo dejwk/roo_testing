@@ -174,6 +174,42 @@ class FakePicoBoard {
   /// nostop.
   void endI2c(uint index, bool restart);
 
+  /// Stores one free-running PWM slice shared by its A/B GPIO aliases.
+  struct PwmState {
+    bool enabled = false;
+    uint16_t divider16 = 16;
+    uint16_t wrap = 65535;
+    std::array<uint16_t, 2> levels{};
+    std::array<bool, 2> inverted{};
+    uint16_t counter = 0;
+    int64_t origin_us = 0;
+  };
+
+  /// Initializes external ADC selection without changing pin configuration.
+  void initAdc();
+
+  /// Configures a checked external analog pin after voltage fixture attachment.
+  void initAdcGpio(uint pin);
+
+  /// Selects an external channel, rejecting the internal sensor.
+  void selectAdc(uint input);
+
+  /// Returns the initialized converter's selected external channel.
+  uint adcInput() const;
+
+  /// Reads/clamps the selected pin against the fixed 3.3 V board reference.
+  uint16_t readAdc() const;
+
+  /// Returns a checked PWM slice snapshot.
+  PwmState pwmState(uint slice) const;
+
+  /// Publishes validated slice state to every currently mapped GPIO alias.
+  /// Observers see the complete state; callbacks cannot reconfigure the board.
+  void setPwmState(uint slice, const PwmState& state);
+
+  /// Samples the current counter with microsecond uptime resolution.
+  uint16_t pwmCounter(uint slice) const;
+
   /// Returns a checked, read-only snapshot of one pin's configuration.
   PinState state(uint pin) const;
 
@@ -289,6 +325,15 @@ class FakePicoBoard {
   std::array<I2cState, 2> i2cs_{};
   std::vector<I2cConnection> i2c_connections_;
 
+  /// Computes SIO/PWM drive without consulting external voltage sources.
+  std::optional<roo_testing_transducers::VoltageSignal> pinDrive(
+      uint pin, const PinState& state) const;
+
+  std::array<PwmState, 8> pwms_{};
+  bool publishing_pwm_ = false;
+  bool adc_enabled_ = false;
+  uint adc_input_ = 0;
+  std::array<bool, 4> adc_pins_{};
   FakeGpioInterface gpio_;
 };
 

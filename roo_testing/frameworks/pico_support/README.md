@@ -1,6 +1,6 @@
 # Native Pico SDK runtime
 
-Pico integration stages 2 through 7 provide the SDK-only profile
+Pico integration stages 2 through 8 provide the SDK-only profile
 `--config=roo_testing_pico_rp2040` and the public `@roo_testing//:pico_sdk` target.
 Applications supply ordinary `main()` and execute with the Linux host ABI/CPU.
 Arduino-Pico sources are staged for a later release stage; no Arduino RP2040
@@ -62,7 +62,7 @@ upstream SDK. The [time adapter](time.cpp) and existing shared
 [clock implementation](../../system/timer.cpp) supply time operations. There is
 one linked implementation of each supported SDK entry point.
 
-## Support matrix after stage 7
+## Support matrix after stage 8
 
 | API or facility | Behavior |
 | --- | --- |
@@ -84,7 +84,8 @@ one linked implementation of each supported SDK entry point.
 | Synchronous UART | Two checked controllers, 8N1 byte transfers, routing, readiness, CRLF helpers, and UART0 console. |
 | Synchronous SPI | Two masters, modes 0–3, 8/16-bit MSB-first frames, software GPIO CS, bounded shared-device transfers, and transfer time. |
 | I2C | Two seven-bit masters, shared devices, STOP/repeated START, bounded transfers, timeout/error mapping. |
-| `pico/stdlib.h`, ADC/PWM, core 1, USB, filesystem, FreeRTOS | Not exported through this stage's include/link surface. |
+| External ADC / PWM | Four external channels and eight shared PWM slices using time-indexed voltage sources/signals. |
+| `pico/stdlib.h`, core 1, USB, filesystem, FreeRTOS | Not exported through this stage's include/link surface. |
 
 See the [RP2040 board reference](../../microcontrollers/rp2040/README.md) for
 fixture wiring, raw latch versus pad semantics, reset/init behavior, mask
@@ -335,3 +336,31 @@ PICO_ERROR_INSUFFICIENT_RESOURCES. Bad arguments and inactive/missing muxes use
 PICO_ERROR_INVALID_ARG / PICO_ERROR_INVALID_STATE respectively. Configuration
 errors and invalid opaque handles fail explicitly. Calls do not invent bus
 latency or advance the shared clock. See [the bounded RTC example](../../../examples/pico_i2c/README.md).
+
+## ADC and PWM (stage 8)
+
+External ADC channels 0–3 map to GP26–GP29. Attach a voltage source before
+`adc_gpio_init()`, which disables pulls and digital input. `adc_init()` selects
+channel 0; conversion floors `4096 * V / 3.3 V`, clamped to 0..4095. NaN/infinite
+or floating sources fail, as do unconfigured pins and internal channel 4. Samples
+use the same shared clock as GPIO/signal sources; conversion itself is immediate.
+Temperature sensor, continuous conversion, round robin, FIFO, DMA, and IRQ paths
+are unsupported. Their declared control operations fail, even disable requests.
+
+PWM slice `(gpio / 2) % 8` and channel `gpio % 2` share wrap, divider, and enable
+state across physical aliases. Select GPIO_FUNC_PWM after attaching output sinks.
+The board publishes existing `VoltageSignal::Square` values; it creates no edge
+threads or private waveform engine. SCK/SIO bus reservations and source/output
+conflicts remain checked. Wrap is 0..65535, divider 1..255+15/16 quantized down to
+four fractional bits, and frequency is nominal 125 MHz / divider / (wrap+1).
+Compare `level/(wrap+1)` clamps at full duty; A/B inversion is independent.
+
+Init clears compares and counter. Setters publish immediately, rather than
+simulating hardware double-buffered wrap updates. Counter phase uses shared
+microsecond uptime, so sub-microsecond edges/counter accuracy are not claimed.
+Disable retains the stopped comparator voltage, and re-enable resumes from that
+counter. Slice updates publish complete state to mapped observers; callbacks may
+inspect it but cannot reconfigure during publication. Mask updates occur in
+ascending slice order. Phase-correct/gated counting, interrupts, DMA, and register
+access are unsupported. Invalid slices, channels, dividers, pins, and source
+conflicts fail before state publication. See [the bounded signal example](../../../examples/pico_signal/README.md).

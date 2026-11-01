@@ -1,10 +1,12 @@
 #include "roo_testing/microcontrollers/rp2040/fake_pico.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <utility>
 
 #include "glog/logging.h"
+#include "roo_testing/system/timer.h"
 
 using roo_testing_transducers::DigitalLevel;
 using roo_testing_transducers::DigitalLevelFromVoltage;
@@ -155,10 +157,7 @@ std::optional<VoltageSignal> FakePicoBoard::driveSignal(uint pin) const {
   CHECK(pins_[pin].function != GPIO_FUNC_UART &&
         attachments_[pin] != Attachment::kUart)
       << "Unimplemented: Pico UART pin voltage";
-  const std::optional<bool> level = StrongLevel(pins_[pin]);
-  if (!level.has_value()) return std::nullopt;
-  return VoltageSignal::Constant(
-      VoltageFromDigitalLevel(*level ? kDigitalHigh : kDigitalLow));
+  return pinDrive(pin, pins_[pin]);
 }
 
 float FakePicoBoard::padVoltage(uint pin) const {
@@ -179,14 +178,16 @@ float FakePicoBoard::padVoltage(uint pin) const {
     CHECK(std::isfinite(external) || std::isnan(external))
         << "Invalid Pico GPIO source voltage";
   }
-  const std::optional<bool> driven = StrongLevel(pins_[pin]);
+  const std::optional<VoltageSignal> driven = pinDrive(pin, pins_[pin]);
   if (driven.has_value()) {
-    const DigitalLevel level = *driven ? kDigitalHigh : kDigitalLow;
+    const float voltage =
+        driven->voltageAtUptimeMicros(system_time_get_micros());
+    const DigitalLevel level = DigitalLevelFromVoltage(voltage);
     if (std::isfinite(external)) {
       CHECK(DigitalLevelFromVoltage(external) == level)
           << "Pico GPIO strong-driver contention";
     }
-    return VoltageFromDigitalLevel(level);
+    return voltage;
   }
   if (std::isfinite(external)) return external;
   if (pins_[pin].pull_up) return VoltageFromDigitalLevel(kDigitalHigh);
@@ -224,19 +225,19 @@ void FakePicoBoard::updatePins(uint32_t mask, Update update) {
   for (uint pin = 0; pin < kGpioCount; ++pin) {
     if ((mask & (uint32_t{1} << pin)) == 0) continue;
     update(next[pin], pin);
-    CHECK(!StrongLevel(next[pin]).has_value() ||
+    CHECK(!pinDrive(pin, next[pin]).has_value() ||
           attachments_[pin] != Attachment::kInput)
         << "Pico GPIO output conflicts with an attached input source";
     CHECK(attachments_[pin] != Attachment::kUart ||
-          !StrongLevel(next[pin]).has_value())
+          !pinDrive(pin, next[pin]).has_value())
         << "Unsupported Pico SIO output on a UART attachment";
     CHECK(attachments_[pin] != Attachment::kSpi ||
-          !StrongLevel(next[pin]).has_value())
+          !pinDrive(pin, next[pin]).has_value())
         << "Unsupported Pico SIO output on a SPI attachment";
     CHECK(attachments_[pin] != Attachment::kI2c ||
-          !StrongLevel(next[pin]).has_value())
+          !pinDrive(pin, next[pin]).has_value())
         << "Unsupported Pico SIO output on an I2C attachment";
-    if (StrongLevel(next[pin]) != StrongLevel(pins_[pin])) {
+    if (pinDrive(pin, next[pin]) != pinDrive(pin, pins_[pin])) {
       changed_drive |= uint32_t{1} << pin;
     }
   }
@@ -278,7 +279,7 @@ void FakePicoBoard::init(uint32_t mask) {
 void FakePicoBoard::setFunction(uint32_t mask, gpio_function_t function) {
   CHECK(function == GPIO_FUNC_SIO || function == GPIO_FUNC_NULL ||
         function == GPIO_FUNC_UART || function == GPIO_FUNC_SPI ||
-        function == GPIO_FUNC_I2C)
+        function == GPIO_FUNC_I2C || function == GPIO_FUNC_PWM)
       << "Unsupported Pico GPIO function";
   updatePins(mask, [this, function](PinState& state, uint pin) {
     if (function == GPIO_FUNC_I2C) {
@@ -450,6 +451,7 @@ FakeUartDevice& FakePicoBoard::uartDevice(uint index, bool transmit) const {
 }
 
 void FakePicoBoard::checkBusesIdle() const {
+  CHECK(!publishing_pwm_) << "Pico reconfiguration during PWM publication";
   for (const I2cState& i2c : i2cs_) {
     CHECK(!i2c.busy) << "Pico reconfiguration during I2C transfer";
   }
@@ -691,4 +693,105 @@ void FakePicoBoard::endI2c(uint index, bool restart) {
   CHECK(i2cState(index).busy);
   i2cs_[index].busy = false;
   i2cs_[index].restart_on_next = restart;
+}
+
+std::optional<VoltageSignal> FakePicoBoard::pinDrive(
+    uint pin, const PinState& state) const {
+  if (state.function == GPIO_FUNC_PWM) {
+    const PwmState& pwm = pwms_[(pin / 2) % 8];
+    const uint channel = pin % 2;
+    if (!pwm.enabled) {
+      const bool high =
+          (pwm.counter < pwm.levels[channel]) != pwm.inverted[channel];
+      return VoltageSignal::Constant(high ? 3.3f : 0.0f);
+    }
+    const double period = uint32_t{pwm.wrap} + 1;
+    const double duty = std::min<double>(pwm.levels[channel] / period, 1.0);
+    return VoltageSignal::Square(
+        0, 3.3f, 125000000.0 * 16 / pwm.divider16 / period,
+        roo_testing_transducers::ConstantDuty{duty}, pwm.origin_us,
+        -static_cast<double>(pwm.counter) / period, pwm.inverted[channel]);
+  }
+  const std::optional<bool> level = StrongLevel(state);
+  if (!level.has_value()) return std::nullopt;
+  return VoltageSignal::Constant(*level ? 3.3f : 0.0f);
+}
+
+void FakePicoBoard::initAdc() {
+  checkBusesIdle();
+  adc_enabled_ = true;
+  adc_input_ = 0;
+}
+
+void FakePicoBoard::initAdcGpio(uint pin) {
+  CheckPin(pin);
+  CHECK(pin >= 26 && pin <= 29) << "Invalid Pico ADC GPIO";
+  CHECK(attachments_[pin] == Attachment::kNone ||
+        attachments_[pin] == Attachment::kInput ||
+        attachments_[pin] == Attachment::kIo)
+      << "Pico ADC attachment conflict";
+  updatePins(uint32_t{1} << pin, [](PinState& state, uint) {
+    state.function = GPIO_FUNC_NULL;
+    state.direction_out = false;
+    state.input_enabled = false;
+    state.pull_up = false;
+    state.pull_down = false;
+    state.input_override = GPIO_OVERRIDE_NORMAL;
+    state.output_override = GPIO_OVERRIDE_NORMAL;
+    state.output_enable_override = GPIO_OVERRIDE_NORMAL;
+  });
+  adc_pins_[pin - 26] = true;
+}
+
+void FakePicoBoard::selectAdc(uint input) {
+  checkBusesIdle();
+  CHECK(adc_enabled_) << "Pico ADC is not initialized";
+  CHECK_LT(input, 4u) << "Unimplemented: Pico ADC internal channel";
+  adc_input_ = input;
+}
+
+uint FakePicoBoard::adcInput() const {
+  CHECK(adc_enabled_) << "Pico ADC is not initialized";
+  return adc_input_;
+}
+
+uint16_t FakePicoBoard::readAdc() const {
+  const uint input = adcInput();
+  const uint pin = 26 + input;
+  CHECK(adc_pins_[input] && pins_[pin].function == GPIO_FUNC_NULL &&
+        !pins_[pin].input_enabled)
+      << "Configure Pico ADC GPIO before conversion";
+  const float voltage = padVoltage(pin);
+  CHECK(std::isfinite(voltage)) << "Invalid Pico ADC voltage";
+  const double value = std::clamp<double>(voltage / 3.3f, 0.0, 1.0) * 4096;
+  return static_cast<uint16_t>(std::min<double>(std::floor(value), 4095));
+}
+
+FakePicoBoard::PwmState FakePicoBoard::pwmState(uint slice) const {
+  CHECK_LT(slice, pwms_.size()) << "Invalid Pico PWM slice";
+  return pwms_[slice];
+}
+
+uint16_t FakePicoBoard::pwmCounter(uint slice) const {
+  const PwmState state = pwmState(slice);
+  if (!state.enabled) return state.counter;
+  const long double elapsed = system_time_get_micros() - state.origin_us;
+  const long double ticks = elapsed * 125.0L * 16 / state.divider16;
+  return static_cast<uint16_t>(
+      std::fmod(ticks + state.counter, uint32_t{state.wrap} + 1));
+}
+
+void FakePicoBoard::setPwmState(uint slice, const PwmState& state) {
+  checkBusesIdle();
+  pwmState(slice);
+  CHECK_GE(state.divider16, 16u) << "Invalid Pico PWM divider";
+  CHECK_LE(state.divider16, 4095u) << "Invalid Pico PWM divider";
+  pwms_[slice] = state;
+  publishing_pwm_ = true;
+  for (uint pin = 0; pin < kGpioCount; ++pin) {
+    if (pins_[pin].function == GPIO_FUNC_PWM && (pin / 2) % 8 == slice) {
+      publish(uint32_t{1} << pin);
+    }
+  }
+  publishing_pwm_ = false;
 }

@@ -77,3 +77,29 @@ cc_library(
         "@glog",
     ],
 )
+
+cc_library(
+    name = "adc",
+    srcs = ["adc.cpp"],
+    copts = ["-fno-exceptions"],
+    visibility = ["//roo_testing/frameworks/pico-sdk:__pkg__"],
+    deps = [
+        "//roo_testing/frameworks/pico-sdk:headers",
+        "//roo_testing/microcontrollers/rp2040:pico",
+        "//roo_testing/system:timer",
+        "@glog",
+    ],
+)
+
+cc_library(
+    name = "pwm",
+    srcs = ["pwm.cpp"],
+    copts = ["-fno-exceptions"],
+    visibility = ["//roo_testing/frameworks/pico-sdk:__pkg__"],
+    deps = [
+        "//roo_testing/frameworks/pico-sdk:headers",
+        "//roo_testing/microcontrollers/rp2040:pico",
+        "//roo_testing/system:timer",
+        "@glog",
+    ],
+)

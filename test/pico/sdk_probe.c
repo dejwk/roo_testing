@@ -1,8 +1,10 @@
 #include <inttypes.h>
 #include <stdio.h>
 
+#include "hardware/adc.h"
 #include "hardware/gpio.h"
 #include "hardware/i2c.h"
+#include "hardware/pwm.h"
 #include "hardware/spi.h"
 #include "hardware/uart.h"
 #include "pico/time.h"
@@ -42,6 +44,11 @@ int main(void) {
   if (i2c_get_index(i2c_get_instance(1)) != 1) return 17;
   if (i2c_init(i2c0, 400000) != 399361) return 18;
   i2c_deinit(i2c0);
+  adc_init();
+  if (adc_get_selected_input() != 0) return 19;
+  pwm_config pwm = pwm_get_default_config();
+  pwm_init(0, &pwm, false);
+  if (pwm_gpio_to_slice_num(16) != 0) return 20;
   printf("Pico SDK %s host probe: uptime=%" PRIu64 " us, core=0\n",
          PICO_SDK_VERSION_STRING, after);
   return 0;

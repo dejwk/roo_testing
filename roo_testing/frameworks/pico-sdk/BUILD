@@ -39,8 +39,10 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":headers",
+        "//roo_testing/frameworks/pico_support:adc",
         "//roo_testing/frameworks/pico_support:gpio",
         "//roo_testing/frameworks/pico_support:i2c",
+        "//roo_testing/frameworks/pico_support:pwm",
         "//roo_testing/frameworks/pico_support:spi",
         "//roo_testing/frameworks/pico_support:time",
         "//roo_testing/frameworks/pico_support:uart",

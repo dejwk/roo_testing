@@ -554,6 +554,13 @@ Proposed commit message:
 
 ### 8. Add external ADC and basic PWM
 
+Implemented: four external ADC channels sample the existing voltage sources;
+eight PWM slices publish shared periodic VoltageSignal values with A/B aliases,
+compare/inversion, checked dividers, and microsecond-resolution counter state.
+The [signal example](../examples/pico_signal/README.md) connects a 1.65 V source
+to a 50% duty output. The runtime matrix records conversion rounding, immediate
+PWM publication, and unsupported FIFO/IRQ/phase modes.
+
 Implement external ADC conversion and free-running PWM slice state. Document
 reference voltage and rounding; test shared slice settings, channel outputs,
 pin routing, boundary voltages, and unsupported modes. Add a small signal example.

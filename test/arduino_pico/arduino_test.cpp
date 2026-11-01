@@ -193,5 +193,18 @@ TEST_F(ArduinoPicoTest, UnsupportedFeatures) {
   EXPECT_DEATH(Serial.dtr(), "USB");
   EXPECT_DEATH(analogReadTemp(), "temperature");
   EXPECT_DEATH(SPI.usingInterrupt(1), "interrupts");
+  EXPECT_DEATH(
+      {
+        SPI.begin();
+        SPI.beginTransaction(SPISettings(1000000, MSBFIRST, 4));
+      },
+      "Invalid Arduino-Pico SPI mode");
+  EXPECT_DEATH(
+      {
+        SPI.begin();
+        SPI.beginTransaction(
+            SPISettings(1000000, static_cast<BitOrder>(2), SPI_MODE0));
+      },
+      "Invalid Arduino-Pico SPI bit order");
 }
 }  // namespace

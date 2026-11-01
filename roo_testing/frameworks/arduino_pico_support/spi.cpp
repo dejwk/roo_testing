@@ -57,22 +57,30 @@ void SPIClassRP2040::begin(bool hw_cs) {
   CHECK(!hw_cs) << "Unimplemented: Arduino-Pico hardware chip select";
   if (_running) return;
   spi_init(_spi, 1000000);
-  for (pin_size_t pin : {_RX, _TX, _SCK})
+  for (pin_size_t pin : {_RX, _TX, _SCK}) {
     if (pin != 255) gpio_set_function(pin, GPIO_FUNC_SPI);
+  }
   _running = true;
 }
 
 void SPIClassRP2040::end() {
   if (!_running) return;
   spi_deinit(_spi);
-  for (pin_size_t pin : {_RX, _TX, _SCK})
+  for (pin_size_t pin : {_RX, _TX, _SCK}) {
     if (pin != 255) gpio_set_function(pin, GPIO_FUNC_NULL);
+  }
   _running = false;
   _initted = false;
 }
 
 void SPIClassRP2040::beginTransaction(SPISettings settings) {
   CHECK(_running) << "SPI.begin() required";
+  CHECK(settings.getBitOrder() == LSBFIRST ||
+        settings.getBitOrder() == MSBFIRST)
+      << "Invalid Arduino-Pico SPI bit order";
+  CHECK(settings.getDataMode() >= SPI_MODE0 &&
+        settings.getDataMode() <= SPI_MODE3)
+      << "Invalid Arduino-Pico SPI mode";
   _spis = settings;
   spi_set_baudrate(_spi, settings.getClockFreq());
   spi_set_format(_spi, 8, _helper.cpol(settings), _helper.cpha(settings),
@@ -101,11 +109,13 @@ void SPIClassRP2040::transfer(const void* txbuf, void* rxbuf, size_t count) {
     CHECK_EQ(
         spi_write_read_blocking(_spi, outgoing.data(), incoming.data(), size),
         static_cast<int>(size));
-    if (rx != nullptr)
-      for (size_t i = 0; i < size; ++i)
+    if (rx != nullptr) {
+      for (size_t i = 0; i < size; ++i) {
         rx[offset + i] = _spis.getBitOrder() == LSBFIRST
                              ? _helper.reverseByte(incoming[i])
                              : incoming[i];
+      }
+    }
     offset += size;
   }
 }

@@ -724,3 +724,17 @@ cc_binary(
     target_compatible_with = ["//roo_testing/platforms:esp_idf"],
     deps = ["//roo_testing/microcontrollers/esp32:core"],
 )
+
+# A String-only library consumer has no startup runner to incidentally force
+# the timer/logging archives into the right order.
+cc_test(
+    name = "arduino_string_link_test",
+    size = "small",
+    srcs = ["arduino_string_link_test.cpp"],
+    linkstatic = True,
+    target_compatible_with = [
+        "//roo_testing/platforms:arduino",
+        "//roo_testing/platforms:esp_idf",
+    ],
+    deps = ["//:arduino"],
+)

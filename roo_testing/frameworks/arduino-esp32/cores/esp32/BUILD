@@ -90,5 +90,6 @@ cc_library(
     deps = [
         ":headers",
         "//roo_testing/frameworks/esp32_shims:arduino_logging",
+        "//roo_testing/frameworks/esp32_shims:idf",
     ],
 )

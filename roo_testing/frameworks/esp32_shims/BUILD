@@ -289,7 +289,10 @@ cc_library(
     name = "arduino_logging",
     srcs = ["arduino_log.cpp"],
     visibility = ["//visibility:public"],
-    deps = ["//roo_testing/frameworks/arduino-esp32/cores/esp32:headers"],
+    deps = [
+        ":idf",
+        "//roo_testing/frameworks/arduino-esp32/cores/esp32:headers",
+    ],
 )
 
 [

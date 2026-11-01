@@ -1,3 +1,4 @@
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
 cc_test(
@@ -685,4 +686,38 @@ cc_test(
         ],
         "//conditions:default": ["//:esp_idf_gtest_main"],
     }),
+)
+
+cc_test(
+    name = "arduino_console_test",
+    size = "small",
+    linkstatic = True,
+    deps = [
+        "//:arduino_gtest_main",
+        "//roo_testing/buses/uart:console_test_cases",
+    ],
+)
+
+cc_test(
+    name = "idf_console_test",
+    size = "small",
+    linkstatic = True,
+    tags = ["manual"],
+    deps = [
+        "//:esp_idf_gtest_main",
+        "//roo_testing/buses/uart:console_test_cases",
+    ],
+)
+
+cc_binary(
+    name = "esp32_console_probe",
+    srcs = ["esp32_console_probe.cpp"],
+    copts = [
+        "-Werror",
+        "-fno-exceptions",
+    ],
+    linkstatic = True,
+    tags = ["manual"],
+    target_compatible_with = ["//roo_testing/platforms:esp_idf"],
+    deps = ["//roo_testing/microcontrollers/esp32:core"],
 )

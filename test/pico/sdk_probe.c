@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 #include "hardware/gpio.h"
+#include "hardware/uart.h"
 #include "pico/time.h"
 #include "test/pico/profile_contract.h"
 
@@ -23,6 +24,13 @@ int main(void) {
   gpio_xor_mask64(UINT64_C(1) << PICO_DEFAULT_LED_PIN);
   if (gpio_get_out_level(PICO_DEFAULT_LED_PIN)) return 7;
   gpio_deinit(PICO_DEFAULT_LED_PIN);
+  if (uart0 == NULL || uart1 == NULL || uart0 == uart1) return 8;
+  if (uart_get_instance(1) != uart1 || uart_get_index(uart0) != 0) return 9;
+  if (uart_init(uart0, 115200) != 115207) return 10;
+  if (!uart_is_enabled(uart0)) return 11;
+  uart_set_format(uart0, 8, 1, UART_PARITY_NONE);
+  uart_deinit(uart0);
+  if (uart_is_enabled(uart0)) return 12;
   printf("Pico SDK %s host probe: uptime=%" PRIu64 " us, core=0\n",
          PICO_SDK_VERSION_STRING, after);
   return 0;

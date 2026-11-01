@@ -75,3 +75,17 @@ verifier checks the board/adapter dependencies and C GPIO symbols as well as
 time, and runs the blink executable. GPIO tests include invalid masks/banks,
 preflighted wiring conflicts, overrides, floating inputs, and shared-time voltage
 observations. The existing ESP32 GPIO tests retain their original implementation.
+
+Pico stage 5 adds UART route/baud/invalid-mode tests, two-controller cable I/O,
+short and large binary transfers, and a bounded serial example to `//:pico_tests`.
+The verifier checks UART adapter isolation and unique C symbols, runs the serial
+example, and tests console pipes in normal/ASAN configurations. Console tests
+keep an empty stdin pipe open to catch blocking readiness and require explicit
+failure for Pico blocking reads at EOF. Both boards use the shared
+`ConsoleUartDevice`; ESP32 nonblocking reads return zero on EOF. Shared console
+unit tests cover short reads without padding, stable lookahead, EOF, unchanged
+input flags, concurrent readers, and complete output under descriptor
+backpressure. Both directions use POSIX I/O; a live subprocess verifies a single
+write becomes visible before subsequent communication or process exit. They also run through the Arduino/IDF FreeRTOS test runners. The full profile verifier
+checks pipe input/output through the default ESP32 console wiring under all six
+profiles with `test/uart_console_test.py`.

@@ -341,7 +341,7 @@ class FakePicoBoard {
                        int8_t miso, int8_t mosi);
 
   /// Attaches a borrowed UART device to the specified TX and RX pins.
-  void attachUartDevice(FakeUartDevice& device, int8_t tx, int8_t rx);
+  void attachUartDevice(FakeUartDevice& device, int tx, int rx);
 
   // Fixed pin/controller arrays and attachment vectors described above.
 };
@@ -473,11 +473,29 @@ Proposed commit message:
 
 ### 5. Add synchronous UART and console support
 
+Implemented: two checked native UART instances, legal RP2040 TX/RX routes,
+borrowed fake-device/cable wiring, partial and large blocking transfers, text
+translation, and bounded shared-clock readiness waits. UART0 GP0/GP1 substitute
+polling stdin/stdout unless explicitly attached. Pico reuses ESP32's shared
+`ConsoleUartDevice`; host polling, lookahead, and byte I/O live in the shared UART
+layer. Both directions use file descriptors; complete output bypasses stdio
+buffering, preserving standalone `Serial.println()` visibility without a later
+write or flush. Its input-closure query lets Pico reject EOF in blocking reads while
+ESP32 nonblocking reads return zero. The
+[runtime reference](../roo_testing/frameworks/pico_support/README.md#synchronous-uart-and-host-console-stage-5)
+specifies console/EOF behavior, nominal-clock baud calculation, and unsupported
+modes. The [bounded serial example](../examples/pico_uart/README.md) exchanges
+bytes between both controllers. UART fixture arguments use `int` so invalid
+physical pin values are checked before narrowing, with -1 for an unused direction.
+
 Implement UART routing and blocking transfers using existing fake UART devices.
 Add loopback/cable tests and a bounded serial example, including baud and invalid
 function checks. Document host-console substitutions.
 
-Validation: Pico UART device tests and existing fake UART regression tests.
+Validation: Pico UART device tests, shared console polling/binary/EOF and
+concurrency tests, complete descriptor writes under backpressure, existing fake UART
+regressions, and console pipe checks through both Pico and ESP32 board adapters. Shared tests also execute through
+Arduino/IDF FreeRTOS runners.
 
 Proposed commit message:
 

@@ -1,0 +1,39 @@
+--- a/src/host/hardware_uart/include/hardware/uart.h
++++ b/src/host/hardware_uart/include/hardware/uart.h
+@@ -33,6 +33,27 @@
+     UART_PARITY_EVEN,
+     UART_PARITY_ODD
+ } uart_parity_t;
++
++/// Returns the checked UART controller index (0 or 1).
++uint uart_get_index(uart_inst_t *uart);
++
++/// Returns the checked instance for controller 0 or 1.
++uart_inst_t *uart_get_instance(uint index);
++
++/// Reports whether the UART has been initialized and remains enabled.
++bool uart_is_enabled(uart_inst_t *uart);
++
++/// Configures LF-to-CRLF conversion in uart_putc/uart_puts.
++void uart_set_translate_crlf(uart_inst_t *uart, bool enabled);
++
++/// Waits for synchronous writes to complete; no shift-register timing model.
++void uart_tx_wait_blocking(uart_inst_t *uart);
++
++/// Polls readability up to a bounded shared-clock timeout.
++bool uart_is_readable_within_us(uart_inst_t *uart, uint32_t us);
++
++/// Rejects unsupported UART interrupt configuration, including disable requests.
++void uart_set_irq_enables(uart_inst_t *uart, bool rx_has_data, bool tx_needs_data);
+ 
+ // ----------------------------------------------------------------------------
+ // Setup
+@@ -91,7 +112,7 @@
+ 
+ void uart_default_tx_wait_blocking();
+ 
+-#define UART_FUNCSEL_NUM(uart, gpio) 0
++#define UART_FUNCSEL_NUM(uart, gpio) GPIO_FUNC_UART
+ 
+ #ifdef __cplusplus
+ }

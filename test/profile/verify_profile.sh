@@ -244,4 +244,14 @@ done
 
 echo "roo_testing six global compiler profiles verified"
 
+# Check the same host console bridge through each ESP32 board's real pin route.
+for soc in esp32 esp32s3 esp32c3; do
+  for frontend in arduino idf; do
+    console_profile="--config=roo_testing_${frontend}_${soc}"
+    run_bazel build //test:esp32_console_probe "${console_profile}"
+    console_binary="$(run_bazel cquery //test:esp32_console_probe "${console_profile}" --output=files)"
+    python3 test/uart_console_test.py "${console_binary}" --nonblocking-eof
+  done
+done
+
 python3 test/pico/verify_pico.py

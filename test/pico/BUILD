@@ -138,3 +138,55 @@ cc_test(
         "//roo_testing/system:manual_time_mode",
     ],
 )
+
+cc_test(
+    name = "uart_test",
+    size = "small",
+    srcs = ["uart_test.cpp"],
+    copts = [
+        "-Werror",
+        "-fno-exceptions",
+    ],
+    linkstatic = True,
+    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    deps = [
+        "//:pico_gtest_main",
+        "//roo_testing/buses/uart",
+        "//roo_testing/microcontrollers/rp2040:pico",
+        "//roo_testing/system:manual_time_mode",
+        "//roo_testing/system:timer",
+        "//roo_testing/transducers/voltage",
+    ],
+)
+
+cc_binary(
+    name = "console_probe",
+    srcs = ["console_probe.cpp"],
+    copts = [
+        "-Werror",
+        "-fno-exceptions",
+    ],
+    linkstatic = True,
+    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    deps = ["//:pico_sdk"],
+)
+
+cc_test(
+    name = "uart_wiring_test",
+    size = "small",
+    srcs = ["uart_wiring_test.cpp"],
+    copts = [
+        "-Werror",
+        "-fno-exceptions",
+    ],
+    linkstatic = True,
+    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    deps = [
+        "//:pico_gtest_main",
+        "//roo_testing/buses/uart",
+        "//roo_testing/microcontrollers/rp2040:pico",
+        "//roo_testing/system:manual_time_mode",
+        "//roo_testing/system:timer",
+        "//roo_testing/transducers/voltage",
+    ],
+)

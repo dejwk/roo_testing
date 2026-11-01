@@ -1,6 +1,6 @@
 # Native Pico SDK runtime
 
-Pico integration stages 2 through 4 provide the SDK-only profile
+Pico integration stages 2 through 5 provide the SDK-only profile
 `--config=roo_testing_pico_rp2040` and the public `@roo_testing//:pico_sdk` target.
 Applications supply ordinary `main()` and execute with the Linux host ABI/CPU.
 Arduino-Pico sources are staged for a later release stage; no Arduino RP2040
@@ -52,13 +52,13 @@ Exposed include roots are `src/common/pico_base_headers/include`,
 `src/host/hardware_timer/include`, `src/boards/include`, and
 `roo_testing_host_include`. Host `hardware_gpio/include` and
 `hardware_irq/include` are additionally exposed for supported GPIO declarations
-and IRQ parameter types. Device register and host UART include roots are
-excluded. Only `src/host/pico_platform/platform_base.c` is compiled from the
+and IRQ parameter types. Host `hardware_uart/include` exposes the synchronous
+UART adapter. Device register include roots remain excluded. Only `src/host/pico_platform/platform_base.c` is compiled from the
 upstream SDK. The [time adapter](time.cpp) and existing shared
 [clock implementation](../../system/timer.cpp) supply time operations. There is
 one linked implementation of each supported SDK entry point.
 
-## Support matrix after stage 4
+## Support matrix after stage 5
 
 | API or facility | Behavior |
 | --- | --- |
@@ -75,9 +75,10 @@ one linked implementation of each supported SDK entry point.
 | Hardware alarm callbacks/targets | `LOG(FATAL)` with the unsupported operation; SDK interrupt context is not emulated. |
 | SDK alarm pools, repeating timers | Unavailable implementations fail to link. |
 | Digital GPIO, SIO latches/direction, pulls, input enable and overrides | Checked GP0–GP29 state, shared voltage sources/sinks, and low-bank mask operations. |
-| Function mux | SIO and NULL; unavailable peripheral functions fail explicitly. |
+| Function mux | SIO, NULL, and legal UART TX/RX; other peripheral functions fail explicitly. |
 | GPIO interrupts and unsupported analog pad controls | Explicit fatal failure, including IRQ-disable requests and two-pull bus keeper mode. |
-| `pico/stdlib.h`, UART/SPI/I2C/ADC/PWM, core 1, USB, filesystem, FreeRTOS | Not exported through this stage's include/link surface. |
+| Synchronous UART | Two checked controllers, 8N1 byte transfers, routing, readiness, CRLF helpers, and UART0 console. |
+| `pico/stdlib.h`, SPI/I2C/ADC/PWM, core 1, USB, filesystem, FreeRTOS | Not exported through this stage's include/link surface. |
 
 See the [RP2040 board reference](../../microcontrollers/rp2040/README.md) for
 fixture wiring, raw latch versus pad semantics, reset/init behavior, mask
@@ -161,3 +162,59 @@ alarm failure, GPIO/voltage behavior and bounded blink, manual/auto clock
 behavior, opaque timestamps, runner result
 propagation and post-main cleanup, and ASAN composition. It uses the existing persistent validation
 output root and preserves the global Bazel cache and resource limits.
+
+## Synchronous UART and host console (stage 5)
+
+`hardware/uart.h` exports checked, distinct `uart0`/`uart1` handles and native
+adapters for initialization, baud selection, 8N1 format, blocking byte transfers,
+read/write readiness, bounded readability waits, and text helpers. The imported
+host UART implementation is excluded; its null identities and terminal setup do
+not participate. A Copybara patch corrects `UART_FUNCSEL_NUM` and supplies the
+matching supported SDK declarations missing from the host header.
+
+Attach an existing `FakeUartDevice` or `FakeUartCable` endpoint with
+`FakePico().attachUartDevice(device, tx, rx)` before configuring its GPIOs. Use
+physical GP numbers and -1 for an unused direction. Each TX/RX pair must belong
+to the same RP2040 controller. Mux each used pin to `GPIO_FUNC_UART`; the adapter
+resolves current mux state on each operation. Exactly one selected physical pin
+is required per requested direction; missing wiring, ambiguous routes, and RX
+input disable/overrides fail. CTS/RTS muxes and voltage observation of UART pins
+are unsupported. See the [board routing contract](../../microcontrollers/rp2040/README.md)
+and [bounded cable example](../../../examples/pico_uart/README.md).
+
+UART0 TX GP0 and RX GP1 default to host stdout/stdin, independently per direction.
+An explicit attachment replaces that direction's console route. UART1 never
+implicitly uses the console. Both Pico and ESP32 use the shared
+[`ConsoleUartDevice`](../../buses/uart/README.md). It polls without waiting,
+leaves unread destination bytes intact, and reports EOF through `inputClosed()`.
+The Pico blocking-read adapter fails explicitly on EOF; ESP32's nonblocking
+read adapter returns zero. Both directions use descriptor I/O; output completes
+partial writes and bypasses stdio buffering, preserving immediate visibility. No terminal mode/flags are changed, and unread bytes are never
+zero-filled. The console assumes exclusive stdin consumption; do not mix UART
+input with libc/iostream reads. Libc `printf` remains ordinary host stdio, separate
+from UART configuration and CRLF conversion.
+
+The default text mode is untranslated, matching the pinned SDK. Optional
+`uart_set_translate_crlf()` converts LF in `uart_putc()` and avoids duplicate CR
+in `uart_puts()`; raw and block writes remain binary. Init resets this setting.
+Baud selection returns the pinned SDK's divisor-rounded result using a nominal
+125 MHz peripheral clock (115200 requests return 115207). Clock reconfiguration,
+byte pacing, framing, hardware FIFOs, register access, DMA, breaks, flow control,
+and UART IRQs are unsupported. Non-8N1 formats and unsupported controls fail
+explicitly, including IRQ-disable and break-clear requests. Disabling a UART
+retains pin muxes and external device queues.
+
+Blocking transfers retry short or zero-progress device operations and support
+lengths greater than 65535 by chunking. A wait yields host time to external
+producers without advancing manual emulated time. An unbounded read therefore
+requires a producer; it does not pump manual alarms on its own.
+`uart_is_readable_within_us()` has an explicit timeout and uses shared SDK sleeps,
+so manual time progresses and shared device alarms can supply data. Writes
+complete when accepted by the device; `uart_tx_wait_blocking()` confirms that
+synchronous boundary without simulating a physical shift register.
+
+Shared console unit tests run natively and through the Arduino/IDF FreeRTOS
+runners. `test/uart_console_test.py` checks private stdin/stdout pipes through
+both board adapters; the Pico/profile verifiers invoke it. The Pico verifier
+also checks console behavior under ASAN. `//:pico_tests` includes byte
+routing/cable regressions and the bounded serial example. No Arduino-Pico or FreeRTOS startup is introduced.

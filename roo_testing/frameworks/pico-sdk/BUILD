@@ -11,6 +11,7 @@ cc_library(
         "src/host/hardware_timer/include/**/*.h",
         "src/host/hardware_gpio/include/**/*.h",
         "src/host/hardware_irq/include/**/*.h",
+        "src/host/hardware_uart/include/**/*.h",
         "src/boards/include/**/*.h",
         "roo_testing_host_include/**/*.h",
     ]),
@@ -22,6 +23,7 @@ cc_library(
         "src/host/hardware_gpio/include",
         "src/host/hardware_irq/include",
         "src/host/hardware_timer/include",
+        "src/host/hardware_uart/include",
         "src/host/pico_platform/include",
     ],
     visibility = ["//visibility:public"],
@@ -39,5 +41,6 @@ cc_library(
         ":headers",
         "//roo_testing/frameworks/pico_support:gpio",
         "//roo_testing/frameworks/pico_support:time",
+        "//roo_testing/frameworks/pico_support:uart",
     ],
 )

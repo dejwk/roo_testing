@@ -16,3 +16,10 @@ Pico stage 3 excludes the imported host timer from the link and implements SDK
 clocks and waits in destination-owned `pico_support/time.cpp`. Its additional
 header patch saturates `delayed_by_us` before unsigned addition overflow; the
 stage-2 timer patches remain recorded for reproducible source refreshes.
+
+Pico SDK `0004-expose-supported-host-uart-api.patch` corrects the RP2040
+`UART_FUNCSEL_NUM` value and adds signature-compatible declarations for instance
+identity, enable state, CRLF control, synchronous TX completion, bounded RX
+readiness, and the current SDK IRQ spelling. The destination-owned runtime
+implements these operations or rejects unsupported IRQs. The upstream host
+`uart.c` is never compiled; imported source ownership remains with Copybara.

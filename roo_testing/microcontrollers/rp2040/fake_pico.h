@@ -3,11 +3,13 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <vector>
 
 #include "hardware/gpio.h"
 #include "roo_testing/buses/gpio/fake_gpio.h"
+#include "roo_testing/buses/uart/fake_uart.h"
 
-/// Owns RP2040 GPIO configuration and borrowed voltage-device connections.
+/// Owns RP2040 GPIO/UART state and borrowed device connections.
 /// SDK access and fixture configuration are single-threaded. Attach devices
 /// before configuring their pins and retain them through all GPIO activity.
 class FakePicoBoard {
@@ -45,15 +47,52 @@ class FakePicoBoard {
   /// impedance.
   void attach(uint pin, roo_testing_transducers::VoltageIO& io);
 
+  /// Captures the supported synchronous UART configuration.
+  struct UartState {
+    bool enabled = false;
+    uint baudrate = 0;
+    bool translate_crlf = false;
+  };
+
+  /// Connects a borrowed byte device through legal TX/RX GPIOs before mux
+  /// setup. Use -1 for an unused direction; at least one must be connected.
+  /// Both pins must belong to the same UART. Wiring is immutable and reserves
+  /// the pins.
+  void attachUartDevice(FakeUartDevice& device, int tx, int rx);
+
+  /// Returns a checked UART configuration snapshot for controller 0 or 1.
+  UartState uartState(uint index) const;
+
+  /// Initializes 8N1 operation using the nominal 125 MHz peripheral clock.
+  /// Returns the divisor-rounded baudrate; zero requests fail before mutation.
+  uint initUart(uint index, uint baudrate);
+
+  /// Disables a UART without consuming external device queues or changing
+  /// muxes.
+  void deinitUart(uint index);
+
+  /// Changes an enabled UART's divisor-rounded baudrate without byte pacing.
+  uint setUartBaudrate(uint index, uint baudrate);
+
+  /// Controls LF-to-CRLF conversion for text helpers on an enabled UART.
+  void setUartTranslateCrLf(uint index, bool enabled);
+
+  /// Resolves exactly one active TX or RX byte route for an enabled UART.
+  /// UART0 GP0/GP1 use the host console unless explicitly attached. Missing,
+  /// ambiguous, disabled, or unsupported pad routes fail before device access.
+  FakeUartDevice& uartDevice(uint index, bool transmit) const;
+
   /// Returns a checked, read-only snapshot of one pin's configuration.
   PinState state(uint pin) const;
 
   /// Returns the active strong output signal, or no value for high impedance.
+  /// UART muxes/reservations have no bit waveform and fail explicitly.
   std::optional<roo_testing_transducers::VoltageSignal> driveSignal(
       uint pin) const;
 
   /// Samples the resolved pad voltage; NaN denotes an undriven floating pad.
   /// External sources override weak pulls. Opposing strong drivers fail.
+  /// UART muxes/reservations have no voltage model and fail explicitly.
   float padVoltage(uint pin) const;
 
   /// Reads the digital input after input enable and input override.
@@ -67,7 +106,7 @@ class FakePicoBoard {
   /// Pull configuration is preserved, matching gpio_init().
   void init(uint32_t mask);
 
-  /// Selects SIO or NULL, resets overrides, and enables pad input.
+  /// Selects SIO, NULL, or a legal UART TX/RX mux and resets overrides.
   void setFunction(uint32_t mask, gpio_function_t function);
 
   /// Updates selected raw SIO output latches without requiring output
@@ -107,7 +146,7 @@ class FakePicoBoard {
 
   FakePicoBoard() : gpio_(kGpioCount) {}
 
-  enum class Attachment : uint8_t { kNone, kInput, kOutput, kIo };
+  enum class Attachment : uint8_t { kNone, kInput, kOutput, kIo, kUart };
 
   void checkAttachment(uint pin) const;
 
@@ -119,6 +158,15 @@ class FakePicoBoard {
   std::array<PinState, kGpioCount> pins_{};
   std::array<Attachment, kGpioCount> attachments_{};
   std::array<bool, kGpioCount> configured_{};
+
+  struct UartConnection {
+    FakeUartDevice* device;
+    int tx;
+    int rx;
+  };
+
+  std::array<UartState, 2> uarts_{};
+  std::vector<UartConnection> uart_connections_;
   FakeGpioInterface gpio_;
 };
 

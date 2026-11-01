@@ -73,6 +73,7 @@ test_suite(
         "//roo_testing/frameworks/esp32_shims:esp_timer_impl_host_auto_test",
         "//roo_testing/frameworks/esp32_shims:esp_timer_impl_host_test",
         "//roo_testing/frameworks/esp32_shims:idf_sd_compat_test",
+        "//test:arduino_console_test",
         "//test:arduino_environment_test",
         "//test:arduino_gtest_environment_test",
         "//test:arduino_main_environment_test",
@@ -133,6 +134,7 @@ test_suite(
         "//roo_testing/frameworks/esp32_shims:esp_timer_host_test",
         "//roo_testing/frameworks/esp32_shims:esp_timer_impl_host_auto_test",
         "//roo_testing/frameworks/esp32_shims:esp_timer_impl_host_test",
+        "//test:idf_console_test",
         "//test:idf_i2c_device_test",
         "//test:idf_ledc_test",
         "//test:idf_spi_device_test",
@@ -160,6 +162,8 @@ test_suite(
     tags = ["manual"],
     tests = [
         "//examples/pico_gpio:blink_test",
+        "//examples/pico_uart:serial_test",
+        "//roo_testing/buses/uart:console_test",
         "//test/pico:gpio_test",
         "//test/pico:runner_auto_test",
         "//test/pico:runner_manual_test",
@@ -167,6 +171,8 @@ test_suite(
         "//test/pico:sdk_probe_cpp",
         "//test/pico:time_auto_test",
         "//test/pico:time_manual_test",
+        "//test/pico:uart_test",
+        "//test/pico:uart_wiring_test",
     ],
 )
 

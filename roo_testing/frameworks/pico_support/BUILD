@@ -35,3 +35,17 @@ cc_library(
         "@glog",
     ],
 )
+
+cc_library(
+    name = "uart",
+    srcs = ["uart.cpp"],
+    copts = ["-fno-exceptions"],
+    visibility = ["//roo_testing/frameworks/pico-sdk:__pkg__"],
+    deps = [
+        ":time",
+        "//roo_testing/buses/uart",
+        "//roo_testing/frameworks/pico-sdk:headers",
+        "//roo_testing/microcontrollers/rp2040:pico",
+        "@glog",
+    ],
+)

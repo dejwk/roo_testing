@@ -1,4 +1,4 @@
-# RP2040 board and GPIO model
+# RP2040 board, GPIO, and UART model
 
 `@roo_testing//roo_testing/microcontrollers/rp2040:pico` provides
 [`FakePicoBoard` and `FakePico()`](fake_pico.h). The process-wide board constructs
@@ -24,9 +24,9 @@ and enable input, following the
 The [pad reset definitions](https://github.com/raspberrypi/pico-sdk/blob/079c6f39023649b154152db30f1d781e884879bc/src/rp2040/hardware_regs/include/hardware/regs/pads_bank0.h)
 provide the reset defaults.
 
-Stage 4 supports SIO and NULL function selection. Peripheral functions,
-including UART/SPI/I2C/PWM and PIO, fail explicitly until their adapters are
-implemented. Non-normal output/output-enable overrides on NULL pins also fail;
+SIO, NULL, and legal UART TX/RX function selection are supported. SPI/I2C/PWM,
+PIO, and UART CTS/RTS muxes fail explicitly until their adapters are implemented.
+Non-normal output/output-enable overrides on non-SIO pins also fail;
 this stage does not claim forced-drive semantics for disconnected peripherals.
 All GPIO interrupt operations, including disable/acknowledge requests, fail
 explicitly. Raw IRQ APIs have declarations for types but no implementation.
@@ -96,7 +96,41 @@ pulls are resolved on reads rather than sent as strong output assignments. This
 is not a full electrical network or contention/current solver.
 
 The board copies its fixed 30-pin configuration for preflight and publishes only
-changed drives. It does not allocate peripheral-controller state ahead of later
-stages. Shared GPIO adapters are created on attachment or first output use;
+changed drives. It also owns two small UART configuration records and a vector of borrowed
+UART device connections allocated when fixture wiring is registered. Shared GPIO adapters are created on attachment or first output use;
 steady-state board configuration uses fixed storage. These are host allocations,
 not a claim about RP2040 RAM usage.
+
+## UART byte routing
+
+`attachUartDevice(device, tx, rx)` reserves legal physical TX/RX pins before
+configuration. Either direction may be omitted with -1. Pins are exclusive with
+voltage attachments and other UART devices; the same device cannot be registered
+twice. The borrowed device must outlive UART activity. Wiring is immutable,
+configuration is single-threaded, and reconfiguration from device callbacks is
+unsupported. Existing cable queues can receive data from native producer threads.
+
+| TX | RX | Controller |
+| --- | --- | --- |
+| GP0 | GP1 | UART0 |
+| GP4 | GP5 | UART1 |
+| GP8 | GP9 | UART1 |
+| GP12 | GP13 | UART0 |
+| GP16 | GP17 | UART0 |
+| GP20 | GP21 | UART1 |
+| GP24 | GP25 | UART1 |
+| GP28 | GP29 | UART0 |
+
+A pair may combine different groups belonging to the same controller. RX and TX
+resolve independently through the currently selected GPIO functions. Each
+requested direction must have exactly one selected physical route and an attached
+device; UART0 GP0/GP1 substitute the host console when no explicit device occupies
+that pin. Unwired alternate routes and simultaneous aliases fail explicitly.
+
+UART pin state retains raw SIO metadata, but selecting SIO output on a reserved
+UART pin fails. No UART bit waveform is generated: `driveSignal()` and
+`padVoltage()` on reserved or UART-muxed pins fail rather than reporting fake
+levels. RX input disable or overrides fail before byte reads. `uartState(index)`
+returns lifecycle, actual baud, and CRLF settings for fixture inspection.
+See the [runtime contract](../../frameworks/pico_support/README.md) for blocking,
+console, clock, and unsupported-mode semantics.

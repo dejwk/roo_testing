@@ -47,6 +47,30 @@ void CheckOverride(uint value) {
       << "Invalid Pico GPIO override";
 }
 
+/// Maps physical pin groups, including UART1 on both GP4 and GP8 groups.
+uint UartIndex(uint pin) {
+  constexpr uint8_t indices[] = {0, 1, 1, 0, 0, 1, 1, 0};
+  FakePicoBoard::CheckPin(pin);
+  return indices[pin / 4];
+}
+
+/// Implements the pinned SDK divisor calculation at the default peri clock.
+uint ActualBaudrate(uint requested) {
+  CHECK_NE(requested, 0u) << "Invalid Pico UART baudrate";
+  constexpr uint64_t clock = 125000000;
+  const uint64_t divisor = 8 * clock / requested + 1;
+  const uint64_t integer = divisor >> 7;
+  if (integer == 0) return clock / 16;
+  if (integer >= 65535) return 4 * clock / (64 * 65535);
+  return 4 * clock / (64 * integer + ((divisor & 0x7f) >> 1));
+}
+
+/// Shares the existing ESP32 console device implementation without SDK policy.
+ConsoleUartDevice& HostConsole() {
+  static ConsoleUartDevice console;
+  return console;
+}
+
 }  // namespace
 
 FakePicoBoard& FakePico() {
@@ -98,6 +122,9 @@ FakePicoBoard::PinState FakePicoBoard::state(uint pin) const {
 
 std::optional<VoltageSignal> FakePicoBoard::driveSignal(uint pin) const {
   CheckPin(pin);
+  CHECK(pins_[pin].function != GPIO_FUNC_UART &&
+        attachments_[pin] != Attachment::kUart)
+      << "Unimplemented: Pico UART pin voltage";
   const std::optional<bool> level = StrongLevel(pins_[pin]);
   if (!level.has_value()) return std::nullopt;
   return VoltageSignal::Constant(
@@ -106,6 +133,9 @@ std::optional<VoltageSignal> FakePicoBoard::driveSignal(uint pin) const {
 
 float FakePicoBoard::padVoltage(uint pin) const {
   CheckPin(pin);
+  CHECK(pins_[pin].function != GPIO_FUNC_UART &&
+        attachments_[pin] != Attachment::kUart)
+      << "Unimplemented: Pico UART pin voltage";
   float external = std::nanf("");
   if (attachments_[pin] == Attachment::kInput ||
       attachments_[pin] == Attachment::kIo) {
@@ -160,6 +190,9 @@ void FakePicoBoard::updatePins(uint32_t mask, Update update) {
     CHECK(!StrongLevel(next[pin]).has_value() ||
           attachments_[pin] != Attachment::kInput)
         << "Pico GPIO output conflicts with an attached input source";
+    CHECK(attachments_[pin] != Attachment::kUart ||
+          !StrongLevel(next[pin]).has_value())
+        << "Unsupported Pico SIO output on a UART attachment";
     if (StrongLevel(next[pin]) != StrongLevel(pins_[pin])) {
       changed_drive |= uint32_t{1} << pin;
     }
@@ -174,6 +207,10 @@ void FakePicoBoard::updatePins(uint32_t mask, Update update) {
 void FakePicoBoard::publish(uint32_t mask) {
   for (uint pin = 0; pin < kGpioCount; ++pin) {
     if ((mask & (uint32_t{1} << pin)) == 0) continue;
+    if (pins_[pin].function == GPIO_FUNC_UART ||
+        attachments_[pin] == Attachment::kUart) {
+      continue;
+    }
     const std::optional<VoltageSignal> signal = driveSignal(pin);
     if (signal.has_value()) gpio_.get(pin).write(*signal);
   }
@@ -192,9 +229,16 @@ void FakePicoBoard::init(uint32_t mask) {
 }
 
 void FakePicoBoard::setFunction(uint32_t mask, gpio_function_t function) {
-  CHECK(function == GPIO_FUNC_SIO || function == GPIO_FUNC_NULL)
+  CHECK(function == GPIO_FUNC_SIO || function == GPIO_FUNC_NULL ||
+        function == GPIO_FUNC_UART)
       << "Unsupported Pico GPIO function";
-  updatePins(mask, [function](PinState& state, uint) {
+  updatePins(mask, [this, function](PinState& state, uint pin) {
+    if (function == GPIO_FUNC_UART) {
+      CHECK_LT(pin % 4, 2u) << "Unsupported Pico GPIO function: UART CTS/RTS";
+      CHECK(attachments_[pin] == Attachment::kNone ||
+            attachments_[pin] == Attachment::kUart)
+          << "Pico UART conflicts with a GPIO attachment";
+    }
     state.function = function;
     state.input_enabled = true;
     state.input_override = GPIO_OVERRIDE_NORMAL;
@@ -261,4 +305,87 @@ void FakePicoBoard::setOutputEnableOverride(uint pin, uint value) {
   updatePins(uint32_t{1} << pin, [value](PinState& state, uint) {
     state.output_enable_override = value;
   });
+}
+
+void FakePicoBoard::attachUartDevice(FakeUartDevice& device, int tx, int rx) {
+  CHECK(tx >= 0 || rx >= 0) << "Pico UART needs a TX or RX pin";
+  CHECK_GE(tx, -1) << "Invalid Pico UART TX pin";
+  CHECK_GE(rx, -1) << "Invalid Pico UART RX pin";
+  if (tx >= 0) {
+    checkAttachment(tx);
+    CHECK_EQ(tx % 4, 0) << "Invalid Pico UART TX pin";
+  }
+  if (rx >= 0) {
+    checkAttachment(rx);
+    CHECK_EQ(rx % 4, 1) << "Invalid Pico UART RX pin";
+  }
+  if (tx >= 0 && rx >= 0) {
+    CHECK_EQ(UartIndex(tx), UartIndex(rx)) << "Pico UART controller mismatch";
+  }
+  for (const UartConnection& connection : uart_connections_) {
+    CHECK(connection.device != &device) << "Pico UART device already attached";
+  }
+  uart_connections_.push_back({&device, tx, rx});
+  if (tx >= 0) attachments_[tx] = Attachment::kUart;
+  if (rx >= 0) attachments_[rx] = Attachment::kUart;
+}
+
+FakePicoBoard::UartState FakePicoBoard::uartState(uint index) const {
+  CHECK_LT(index, uarts_.size()) << "Invalid Pico UART index";
+  return uarts_[index];
+}
+
+uint FakePicoBoard::initUart(uint index, uint baudrate) {
+  uartState(index);
+  const uint actual = ActualBaudrate(baudrate);
+  uarts_[index] = {true, actual, false};
+  return actual;
+}
+
+void FakePicoBoard::deinitUart(uint index) {
+  uartState(index);
+  uarts_[index].enabled = false;
+}
+
+uint FakePicoBoard::setUartBaudrate(uint index, uint baudrate) {
+  CHECK(uartState(index).enabled) << "Pico UART is disabled";
+  const uint actual = ActualBaudrate(baudrate);
+  uarts_[index].baudrate = actual;
+  return actual;
+}
+
+void FakePicoBoard::setUartTranslateCrLf(uint index, bool enabled) {
+  CHECK(uartState(index).enabled) << "Pico UART is disabled";
+  uarts_[index].translate_crlf = enabled;
+}
+
+FakeUartDevice& FakePicoBoard::uartDevice(uint index, bool transmit) const {
+  CHECK(uartState(index).enabled) << "Pico UART is disabled";
+  FakeUartDevice* device = nullptr;
+  uint active = 0;
+  // Count every selected physical route, including unwired alternate pins.
+  // Otherwise an invalid second route could silently pick a fixture endpoint.
+  for (uint pin = 0; pin < kGpioCount; ++pin) {
+    if (pins_[pin].function != GPIO_FUNC_UART || UartIndex(pin) != index ||
+        pin % 4 != (transmit ? 0u : 1u)) {
+      continue;
+    }
+    ++active;
+    if (!transmit) {
+      CHECK(pins_[pin].input_enabled &&
+            pins_[pin].input_override == GPIO_OVERRIDE_NORMAL)
+          << "Unsupported Pico UART RX pad configuration";
+    }
+    for (const UartConnection& connection : uart_connections_) {
+      if (static_cast<int>(pin) == (transmit ? connection.tx : connection.rx)) {
+        device = connection.device;
+      }
+    }
+    if (pin == (transmit ? 0u : 1u) && attachments_[pin] == Attachment::kNone) {
+      device = &HostConsole();
+    }
+  }
+  CHECK_EQ(active, 1u) << "Pico UART needs exactly one active pin route";
+  CHECK(device != nullptr) << "Pico UART route has no attached device";
+  return *device;
 }

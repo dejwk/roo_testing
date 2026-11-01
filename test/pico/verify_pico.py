@@ -7,6 +7,11 @@ from pathlib import Path
 import subprocess
 import sys
 
+# Keep the standalone verifier from creating cache files in the checkout.
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from uart_console_test import CheckConsole
+
 
 ROOT = Path(__file__).resolve().parents[2]
 TEST_ROOT = Path(os.environ.get(
@@ -54,6 +59,7 @@ def CheckIsolation():
     sdk_sources = set()
     shared_time_sources = set()
     gpio_sources = set()
+    uart_sources = set()
     actions = json.loads(raw)["actions"]
     for action in actions:
         if action["mnemonic"] != "CppCompile":
@@ -78,6 +84,10 @@ def CheckIsolation():
                             "roo_testing/microcontrollers/rp2040/fake_pico.cpp"):
             if source.endswith(gpio_source):
                 gpio_sources.add(gpio_source)
+        for uart_source in ("roo_testing/frameworks/pico_support/uart.cpp",
+                            "roo_testing/buses/uart/fake_uart.cpp"):
+            if source.endswith(uart_source):
+                uart_sources.add(uart_source)
         if "/frameworks/pico-sdk/" in source:
             sdk_sources.add(source.split("/frameworks/pico-sdk/", 1)[1])
     if sdk_sources != {"src/host/pico_platform/platform_base.c"}:
@@ -86,6 +96,19 @@ def CheckIsolation():
         raise RuntimeError(f"Pico did not select the shared clock adapter: {shared_time_sources}")
     if len(gpio_sources) != 2:
         raise RuntimeError(f"Pico did not select its GPIO board/adapter: {gpio_sources}")
+
+    if len(uart_sources) != 2:
+        raise RuntimeError(f"Pico did not select its UART/console adapters: {uart_sources}")
+
+
+def CheckConsoleResults(*options):
+    """Run console pipe tests in both normal and ASAN configurations."""
+    target = "//test/pico:console_probe"
+    RunBazel("build", target, *options)
+    output = RunBazel("cquery", target, *options, "--output=files")
+    binary = ROOT / next(line for line in output.splitlines()
+                         if line.endswith("/console_probe"))
+    CheckConsole(binary)
 
 
 def CheckBinary():
@@ -102,7 +125,7 @@ def CheckBinary():
         text=True)
     names = [line.split()[-1] for line in symbols.splitlines() if line.split()]
     for symbol in ("time_us_32", "time_us_64", "get_core_num",
-                   "gpio_init", "gpio_get", "gpio_put"):
+                   "gpio_init", "gpio_get", "gpio_put", "uart_init", "uart_get_index"):
         if names.count(symbol) != 1:
             raise RuntimeError(f"Expected one linked implementation of {symbol}")
     if any(name.startswith(("esp_", "vTask")) for name in names):
@@ -168,13 +191,16 @@ def Main():
         print(RunBazel("run", target), end="")
     CheckIsolation()
     CheckBinary()
+    CheckConsoleResults()
     CheckFailures()
     CheckRunnerResults()
     print(RunBazel("run", "//examples/pico_gpio:blink_example"), end="")
+    print(RunBazel("run", "//examples/pico_uart:serial_example"), end="")
     print(RunBazel("test", "//test/pico:time_manual_test",
                    "--copt=-DPICO_OPAQUE_ABSOLUTE_TIME_T=1",
                    "--test_output=errors"), end="")
     print(RunBazel("test", "//:pico_tests", "--config=asan", "--test_output=errors"), end="")
+    CheckConsoleResults("--config=asan")
     print("Pico SDK native probes, isolation, explicit failures, and ASAN verified")
     return 0
 

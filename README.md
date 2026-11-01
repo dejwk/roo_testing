@@ -58,7 +58,10 @@ The code does not emulate Xtensa or RISC-V instructions. Your sketch simply comp
 An SDK-only RP2040 backend is available through
 `--config=roo_testing_pico_rp2040` and `@roo_testing//:pico_sdk`. It currently
 supports native stdio, shared emulated uptime and sleeps, digital GPIO with
-voltage-device wiring, and a native GoogleTest runner. Arduino-Pico and peripheral integration remain subsequent stages. See the [Pico support matrix](roo_testing/frameworks/pico_support/README.md)
+voltage-device wiring, synchronous 8N1 UART routing through fake devices/cables,
+a polling UART0 stdin/stdout console, and a native GoogleTest runner. See the
+[bounded serial example](examples/pico_uart/README.md) and
+[Pico support matrix](roo_testing/frameworks/pico_support/README.md)
 for setup, pinned sources, supported APIs, time modes, and lifecycle behavior.
 
 ## Emulated SoC identity

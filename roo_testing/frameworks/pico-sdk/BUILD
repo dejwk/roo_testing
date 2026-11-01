@@ -40,6 +40,7 @@ cc_library(
     deps = [
         ":headers",
         "//roo_testing/frameworks/pico_support:gpio",
+        "//roo_testing/frameworks/pico_support:spi",
         "//roo_testing/frameworks/pico_support:time",
         "//roo_testing/frameworks/pico_support:uart",
     ],

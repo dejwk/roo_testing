@@ -225,11 +225,12 @@ until the application stops; no hot detach or runtime ownership transfer is
 introduced. Separate test processes isolate board state.
 
 For D attached devices and B bytes in a transfer, simple lookup costs O(D) and
-device processing costs O(B), excluding modeled delay. Expected D is under ten;
-there is no reverse index or cache to maintain. Controller and pin state costs
-O(1) per process, attachments O(D), and SPI scratch space O(B) bounded by the
-chosen transfer chunk. These are Linux allocations, not a simulated RP2040 RAM
-budget. Verify actual structure sizes in the implementation rather than making
+device processing costs O(B) per selected device, excluding modeled delay.
+For S selected SPI devices, broadcast delivery costs O(D + B*S). Expected D is
+under ten; there is no reverse index or cache to maintain. Controller and pin
+state costs O(1) per process, attachments O(D), and the SPI call retains O(S)
+selected pointers. SPI uses fixed 256-byte chunks and three 256-byte scratch
+arrays. These are Linux allocations, not a simulated RP2040 RAM budget. Verify actual structure sizes in the implementation rather than making
 target-memory claims from host ABI sizes.
 
 ### Execution, lifecycle, and concurrency
@@ -337,8 +338,8 @@ class FakePicoBoard {
   void attachI2cDevice(FakeI2cDevice& device, int8_t sda, int8_t scl);
 
   /// Attaches a borrowed SPI device to the specified bus pins.
-  void attachSpiDevice(SimpleFakeSpiDevice& device, int8_t clk,
-                       int8_t miso, int8_t mosi);
+  void attachSpiDevice(SimpleFakeSpiDevice& device, int clk,
+                       int miso, int mosi);
 
   /// Attaches a borrowed UART device to the specified TX and RX pins.
   void attachUartDevice(FakeUartDevice& device, int tx, int rx);
@@ -505,6 +506,15 @@ Proposed commit message:
 > console, and unsupported-mode tests for doc/pico_integration.md.
 
 ### 6. Add synchronous SPI and an existing display model
+
+Implemented: two checked native SPI masters, modes 0–3, 8/16-bit MSB-first
+transfers, software GPIO CS, bounded shared-device delivery, and cumulative
+shared-clock transfer time. The destination-owned host header exposes the
+supported SDK subset without device registers. The
+[SPI runtime reference](../roo_testing/frameworks/pico_support/README.md#synchronous-spi-stage-6)
+specifies routing, error preflight, framing, timing, and limitations. The
+[headless ST77xx example](../examples/pico_spi/README.md) reuses the shared display
+model and asserts captured commands, pixel bytes, and final rendered pixels.
 
 Implement SPI configuration and blocking transfers with bounded chunks. Reuse
 an existing display model in a Pico SDK example. Add mode, word-order,

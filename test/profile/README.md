@@ -89,3 +89,10 @@ backpressure. Both directions use POSIX I/O; a live subprocess verifies a single
 write becomes visible before subsequent communication or process exit. They also run through the Arduino/IDF FreeRTOS test runners. The full profile verifier
 checks pipe input/output through the default ESP32 console wiring under all six
 profiles with `test/uart_console_test.py`.
+
+Pico stage 6 adds SPI routing, modes 0–3, 8/16-bit byte order, CS selection,
+multiple-responder failures, bounded chunks, transfer duration, and invalid-call
+preflight tests. Separate manual/auto tests cover shared-clock overflow and
+progression. The ST77xx example asserts command/pixel transactions and rendered
+pixels headlessly. The verifier checks SPI C symbols and shared bus isolation,
+runs the example, and includes the new targets in its ASAN sweep.

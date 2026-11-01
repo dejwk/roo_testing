@@ -1,4 +1,4 @@
-# RP2040 board, GPIO, and UART model
+# RP2040 board, GPIO, UART, and SPI model
 
 `@roo_testing//roo_testing/microcontrollers/rp2040:pico` provides
 [`FakePicoBoard` and `FakePico()`](fake_pico.h). The process-wide board constructs
@@ -24,8 +24,8 @@ and enable input, following the
 The [pad reset definitions](https://github.com/raspberrypi/pico-sdk/blob/079c6f39023649b154152db30f1d781e884879bc/src/rp2040/hardware_regs/include/hardware/regs/pads_bank0.h)
 provide the reset defaults.
 
-SIO, NULL, and legal UART TX/RX function selection are supported. SPI/I2C/PWM,
-PIO, and UART CTS/RTS muxes fail explicitly until their adapters are implemented.
+SIO, NULL, legal UART TX/RX, and SPI SCK/TX/RX function selection are supported.
+I2C/PWM, PIO, UART CTS/RTS, and hardware SPI CSn muxes fail explicitly.
 Non-normal output/output-enable overrides on non-SIO pins also fail;
 this stage does not claim forced-drive semantics for disconnected peripherals.
 All GPIO interrupt operations, including disable/acknowledge requests, fail
@@ -96,8 +96,8 @@ pulls are resolved on reads rather than sent as strong output assignments. This
 is not a full electrical network or contention/current solver.
 
 The board copies its fixed 30-pin configuration for preflight and publishes only
-changed drives. It also owns two small UART configuration records and a vector of borrowed
-UART device connections allocated when fixture wiring is registered. Shared GPIO adapters are created on attachment or first output use;
+changed drives. It also owns two small UART and two SPI configuration records, with vectors
+of borrowed device connections allocated when fixture wiring is registered. Shared GPIO adapters are created on attachment or first output use;
 steady-state board configuration uses fixed storage. These are host allocations,
 not a claim about RP2040 RAM usage.
 
@@ -134,3 +134,46 @@ levels. RX input disable or overrides fail before byte reads. `uartState(index)`
 returns lifecycle, actual baud, and CRLF settings for fixture inspection.
 See the [runtime contract](../../frameworks/pico_support/README.md) for blocking,
 console, clock, and unsupported-mode semantics.
+
+## SPI device routing
+
+`attachSpiDevice(device, clk, miso, mosi)` connects an existing
+`SimpleFakeSpiDevice`. SCK and MOSI are required; MISO may be -1 for a write-only
+device. All supplied pins must belong to the same controller and have the correct
+role. Nonadjacent groups are legal. GP numbers are checked before narrowing.
+
+| Controller | MISO | SCK | MOSI |
+| --- | --- | --- | --- |
+| SPI0 | GP0, GP4, GP16, GP20 | GP2, GP6, GP18, GP22 | GP3, GP7, GP19, GP23 |
+| SPI1 | GP8, GP12, GP24, GP28 | GP10, GP14, GP26 | GP11, GP15, GP27 |
+
+Devices can share bus pins when attached before configuration; duplicate device
+registration, voltage/UART attachment conflicts, and late attachment fail. Devices
+remain borrowed and must outlive bus activity. No device owns a controller or
+changes another device's bindings.
+
+Set each used bus pin to `GPIO_FUNC_SPI`. Exactly one selected SCK and MOSI route
+is required for every transfer, plus MISO for receives. Multiple selected aliases
+of any SPI role are rejected. Matching attachments are resolved through current
+mux state. A selected device on a different physical clock/TX route is unclocked.
+GPIO input-enable/override controls on an active receive pad are validated before
+transfer. SPI muxes/reservations have no voltage waveform: electrical queries fail,
+and SIO output on a reserved bus pin is rejected.
+
+Chip select stays in the shared voltage model:
+
+```cpp
+FakePico().attachSpiDevice(display, 18, -1, 19);
+FakePico().attachOutput(17, display.cs());
+// Attach DC/reset as ordinary output sinks before configuring their GPIOs.
+```
+
+Application code configures CS as SIO output and drives it low to select the
+model. Attach display DC/reset the same way. Hardware CSn is unsupported.
+Selection is sampled once per SDK call and retained through bounded chunks.
+Changing bus configuration or CS from device callbacks is unsupported; callbacks
+can inspect controller state and observe `busy == true`.
+
+`spiState(index)` returns lifecycle, busy, achieved baud, frame width, and mode.
+The [SPI runtime contract](../../frameworks/pico_support/README.md#synchronous-spi-stage-6)
+defines transfer errors, dummy bytes, byte order, timing, and unsupported modes.

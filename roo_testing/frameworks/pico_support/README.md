@@ -1,6 +1,6 @@
 # Native Pico SDK runtime
 
-Pico integration stages 2 through 5 provide the SDK-only profile
+Pico integration stages 2 through 6 provide the SDK-only profile
 `--config=roo_testing_pico_rp2040` and the public `@roo_testing//:pico_sdk` target.
 Applications supply ordinary `main()` and execute with the Linux host ABI/CPU.
 Arduino-Pico sources are staged for a later release stage; no Arduino RP2040
@@ -53,12 +53,16 @@ Exposed include roots are `src/common/pico_base_headers/include`,
 `roo_testing_host_include`. Host `hardware_gpio/include` and
 `hardware_irq/include` are additionally exposed for supported GPIO declarations
 and IRQ parameter types. Host `hardware_uart/include` exposes the synchronous
-UART adapter. Device register include roots remain excluded. Only `src/host/pico_platform/platform_base.c` is compiled from the
+UART adapter. The destination-owned `roo_testing_host_include/hardware/spi.h`
+exposes the supported native SPI declarations; the pinned SDK has no host SPI
+module. It matches the selected API signatures and enums in the pinned
+`rp2_common/hardware_spi` header without exporting its register dependencies.
+Device register include roots remain excluded. Only `src/host/pico_platform/platform_base.c` is compiled from the
 upstream SDK. The [time adapter](time.cpp) and existing shared
 [clock implementation](../../system/timer.cpp) supply time operations. There is
 one linked implementation of each supported SDK entry point.
 
-## Support matrix after stage 5
+## Support matrix after stage 6
 
 | API or facility | Behavior |
 | --- | --- |
@@ -75,10 +79,11 @@ one linked implementation of each supported SDK entry point.
 | Hardware alarm callbacks/targets | `LOG(FATAL)` with the unsupported operation; SDK interrupt context is not emulated. |
 | SDK alarm pools, repeating timers | Unavailable implementations fail to link. |
 | Digital GPIO, SIO latches/direction, pulls, input enable and overrides | Checked GP0–GP29 state, shared voltage sources/sinks, and low-bank mask operations. |
-| Function mux | SIO, NULL, and legal UART TX/RX; other peripheral functions fail explicitly. |
+| Function mux | SIO, NULL, legal UART TX/RX, and SPI SCK/TX/RX; other peripheral functions fail explicitly. |
 | GPIO interrupts and unsupported analog pad controls | Explicit fatal failure, including IRQ-disable requests and two-pull bus keeper mode. |
 | Synchronous UART | Two checked controllers, 8N1 byte transfers, routing, readiness, CRLF helpers, and UART0 console. |
-| `pico/stdlib.h`, SPI/I2C/ADC/PWM, core 1, USB, filesystem, FreeRTOS | Not exported through this stage's include/link surface. |
+| Synchronous SPI | Two masters, modes 0–3, 8/16-bit MSB-first frames, software GPIO CS, bounded shared-device transfers, and transfer time. |
+| `pico/stdlib.h`, I2C/ADC/PWM, core 1, USB, filesystem, FreeRTOS | Not exported through this stage's include/link surface. |
 
 See the [RP2040 board reference](../../microcontrollers/rp2040/README.md) for
 fixture wiring, raw latch versus pad semantics, reset/init behavior, mask
@@ -218,3 +223,74 @@ runners. `test/uart_console_test.py` checks private stdin/stdout pipes through
 both board adapters; the Pico/profile verifiers invoke it. The Pico verifier
 also checks console behavior under ASAN. `//:pico_tests` includes byte
 routing/cable regressions and the bounded serial example. No Arduino-Pico or FreeRTOS startup is introduced.
+
+## Synchronous SPI (stage 6)
+
+`hardware/spi.h` provides checked, distinct `spi0` and `spi1` handles (the original
+Pico defaults to `spi0`), initialization/deinitialization, baud selection/query,
+format selection, busy observation, and all six blocking 8/16-bit transfer APIs.
+This is a destination-owned host header; no imported device implementation or
+register layout is compiled. See the pinned
+[SDK header](https://github.com/raspberrypi/pico-sdk/blob/079c6f39023649b154152db30f1d781e884879bc/src/rp2_common/hardware_spi/include/hardware/spi.h)
+and [divider algorithm](https://github.com/raspberrypi/pico-sdk/blob/079c6f39023649b154152db30f1d781e884879bc/src/rp2_common/hardware_spi/spi.c).
+
+Initialization selects an enabled, mode-0, 8-bit master. CPOL/CPHA modes 0–3 and
+8/16-bit frames are supported. MSB-first is the only supported order, matching
+the PL022; 16-bit native words are packed high byte first, independently of host
+endianness. The 8-bit APIs require 8-bit configuration; the 16-bit APIs require
+16-bit configuration. Other frame widths, LSB-first, slave mode, and FIFO-status
+queries fail explicitly. DMA, IRQs, hardware CSn, register access, and physical
+SCK/MOSI/MISO voltage waveforms are unavailable. `spi_set_slave(false)` retains
+master operation; `spi_is_busy()` observes device callback execution.
+
+Baud follows the pinned SDK's even prescale (2–254) and postdivide (1–256) search
+at nominal 125 MHz `clk_peri`. Requests of 1 MHz achieve 992063 Hz; 125 MHz
+requests achieve the maximum 62.5 MHz SCK. Invalid/too-low requests fail before
+configuration changes. Dynamic clock configuration is not modeled.
+
+Attach `SimpleFakeSpiDevice` instances through `FakePico().attachSpiDevice()`
+before configuring pins. The shared interface supplies achieved SCK, mode, and
+MSB-first order. The [board reference](../../microcontrollers/rp2040/README.md#spi-device-routing)
+specifies legal routes and software CS wiring. Each call samples selected devices
+once, holds that selection across chunks, and supplies each with an independent
+copy of the original outgoing bytes. Multiple selected devices can receive a
+write; a receive with multiple selected MISO responders fails before any delivery.
+With no selected responder, reads sample the configured MISO pull. An undriven
+MISO with no pull or unsupported input override fails explicitly.
+
+Transfers use fixed 256-byte chunks (128 whole frames in 16-bit mode) and three
+256-byte scratch arrays. Frame boundaries and software CS remain intact; lengths
+larger than the shared model's 16-bit bit-count capacity are supported by chunking.
+Return values count frames, not bytes. Identical source/destination is supported;
+partial overlap is rejected. Read-only calls clock their repeated dummy value;
+write-only calls discard incoming bytes. Zero-length calls on an enabled,
+matching-format controller need no pin route or non-null buffer.
+
+Each chunk advances the shared emulated clock with `system_time_lag_ns()` and
+paces auto mode using `system_time_sync()`, reusing the ESP32 SPI timing boundary.
+Duration uses total bits / achieved baud, rounded up to nanoseconds cumulatively
+within the call, avoiding extra delay at chunk boundaries. Bus time is counted
+once regardless of the number of selected devices. These calls do not pump
+manual alarms or emulate SPI interrupts. Device callbacks observe the start of
+their chunk; byte-level edges are not modeled. Active configuration and CS must
+remain stable; GPIO/SPI reconfiguration from device callbacks fails, and nested
+SPI transfers return an in-use error. The initial runtime is single-threaded.
+
+Blocking transfer failures return the following SDK error codes before changing
+buffers, device state, or time:
+
+| Error | Condition |
+| --- | --- |
+| `PICO_ERROR_INVALID_ARG` | Null required buffer, length above `INT_MAX`, API/frame mismatch, partial overlap, or duration outside the shared clock range. |
+| `PICO_ERROR_INVALID_STATE` | Disabled controller, missing/ambiguous pin routes, absent bus wiring, unsupported RX pad state, or floating unselected MISO. |
+| `PICO_ERROR_RESOURCE_IN_USE` | Multiple selected MISO responders or a nested SPI transaction. |
+
+Invalid opaque handles and unsupported/invalid void configuration APIs fail
+fatally. Timing preflight reserves the final 999 ns of the shared clock as a
+conservative margin because its public uptime query is in microseconds.
+
+The [headless ST77xx example](../../../examples/pico_spi/README.md) uses the
+existing display model, validates captured commands and 512 RGB565 pixel bytes,
+and asserts every rendered pixel. No display server, FLTK, or SDL dependency is
+needed. The Pico suite tests routing, modes, word order, selection, frame/chunk
+boundaries, timing, overflow, invalid inputs, and reentrancy in normal/ASAN builds.

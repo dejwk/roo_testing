@@ -162,6 +162,7 @@ test_suite(
     tags = ["manual"],
     tests = [
         "//examples/pico_gpio:blink_test",
+        "//examples/pico_spi:display_test",
         "//examples/pico_uart:serial_test",
         "//roo_testing/buses/uart:console_test",
         "//test/pico:gpio_test",
@@ -169,6 +170,10 @@ test_suite(
         "//test/pico:runner_manual_test",
         "//test/pico:sdk_probe_c",
         "//test/pico:sdk_probe_cpp",
+        "//test/pico:spi_auto_test",
+        "//test/pico:spi_manual_test",
+        "//test/pico:spi_test",
+        "//test/pico:spi_wiring_test",
         "//test/pico:time_auto_test",
         "//test/pico:time_manual_test",
         "//test/pico:uart_test",

@@ -190,3 +190,78 @@ cc_test(
         "//roo_testing/transducers/voltage",
     ],
 )
+
+cc_test(
+    name = "spi_test",
+    size = "small",
+    srcs = ["spi_test.cpp"],
+    copts = [
+        "-Werror",
+        "-fno-exceptions",
+    ],
+    linkstatic = True,
+    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    deps = [
+        "//:pico_gtest_main",
+        "//roo_testing/buses/spi",
+        "//roo_testing/microcontrollers/rp2040:pico",
+        "//roo_testing/system:manual_time_mode",
+    ],
+)
+
+cc_test(
+    name = "spi_wiring_test",
+    size = "small",
+    srcs = ["spi_wiring_test.cpp"],
+    copts = [
+        "-Werror",
+        "-fno-exceptions",
+    ],
+    linkstatic = True,
+    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    deps = [
+        "//:pico_gtest_main",
+        "//roo_testing/buses/spi",
+        "//roo_testing/microcontrollers/rp2040:pico",
+        "//roo_testing/system:manual_time_mode",
+    ],
+)
+
+cc_test(
+    name = "spi_manual_test",
+    size = "small",
+    srcs = ["spi_clock_test.cpp"],
+    copts = [
+        "-Werror",
+        "-fno-exceptions",
+    ],
+    linkstatic = True,
+    local_defines = ["PICO_SPI_AUTO=0"],
+    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    deps = [
+        "//:pico_gtest_main",
+        "//roo_testing/buses/spi",
+        "//roo_testing/microcontrollers/rp2040:pico",
+        "//roo_testing/system:manual_time_mode",
+        "//roo_testing/system:timer",
+    ],
+)
+
+cc_test(
+    name = "spi_auto_test",
+    size = "small",
+    srcs = ["spi_clock_test.cpp"],
+    copts = [
+        "-Werror",
+        "-fno-exceptions",
+    ],
+    linkstatic = True,
+    local_defines = ["PICO_SPI_AUTO=1"],
+    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    deps = [
+        "//:pico_gtest_main",
+        "//roo_testing/buses/spi",
+        "//roo_testing/microcontrollers/rp2040:pico",
+        "//roo_testing/system:timer",
+    ],
+)

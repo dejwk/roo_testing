@@ -6,10 +6,12 @@
 #include <vector>
 
 #include "hardware/gpio.h"
+#include "hardware/spi.h"
 #include "roo_testing/buses/gpio/fake_gpio.h"
+#include "roo_testing/buses/spi/fake_spi.h"
 #include "roo_testing/buses/uart/fake_uart.h"
 
-/// Owns RP2040 GPIO/UART state and borrowed device connections.
+/// Owns RP2040 GPIO/UART/SPI state and borrowed device connections.
 /// SDK access and fixture configuration are single-threaded. Attach devices
 /// before configuring their pins and retain them through all GPIO activity.
 class FakePicoBoard {
@@ -82,17 +84,68 @@ class FakePicoBoard {
   /// ambiguous, disabled, or unsupported pad routes fail before device access.
   FakeUartDevice& uartDevice(uint index, bool transmit) const;
 
+  /// Captures the supported synchronous SPI master configuration.
+  struct SpiState {
+    bool enabled = false;
+    bool busy = false;
+    uint baudrate = 0;
+    uint data_bits = 8;
+    SpiDataMode mode = kSpiMode0;
+  };
+
+  /// Captures selected shared devices and the single MISO responder for a call.
+  struct SpiRoute {
+    std::vector<SimpleFakeSpiDevice*> devices;
+    SimpleFakeSpiDevice* receiver = nullptr;
+    bool idle_high = false;
+  };
+
+  /// Connects a borrowed SPI device before pin configuration. SCK/MOSI are
+  /// required; MISO may be -1 for a write-only device. Bus pins can be shared
+  /// by devices on the same controller. Attach device.cs() separately to SIO
+  /// GPIO.
+  void attachSpiDevice(SimpleFakeSpiDevice& device, int clk, int miso,
+                       int mosi);
+
+  /// Returns a checked controller configuration snapshot.
+  SpiState spiState(uint index) const;
+
+  /// Initializes a mode-0, 8-bit master at the achieved nominal-clock baudrate.
+  uint initSpi(uint index, uint baudrate);
+
+  /// Disables an idle SPI controller, retaining pins and borrowed connections.
+  void deinitSpi(uint index);
+
+  /// Changes an enabled, idle controller's achieved nominal-clock baudrate.
+  uint setSpiBaudrate(uint index, uint baudrate);
+
+  /// Changes an idle controller's supported frame width and mode.
+  void setSpiFormat(uint index, uint data_bits, spi_cpol_t cpol,
+                    spi_cpha_t cpha, spi_order_t order);
+
+  /// Preflights current routes and CS selection without changing device state.
+  /// Returns PICO_OK or a negative state/conflict error. Receive with no
+  /// selected responder samples the MISO pull; floating or overridden pads
+  /// fail.
+  int prepareSpi(uint index, bool receive, SpiRoute& route) const;
+
+  /// Marks an idle controller busy until endSpi(), rejecting nested transfers.
+  void beginSpi(uint index);
+
+  /// Ends a synchronous controller operation.
+  void endSpi(uint index);
+
   /// Returns a checked, read-only snapshot of one pin's configuration.
   PinState state(uint pin) const;
 
   /// Returns the active strong output signal, or no value for high impedance.
-  /// UART muxes/reservations have no bit waveform and fail explicitly.
+  /// UART/SPI muxes/reservations have no bit waveform and fail explicitly.
   std::optional<roo_testing_transducers::VoltageSignal> driveSignal(
       uint pin) const;
 
   /// Samples the resolved pad voltage; NaN denotes an undriven floating pad.
   /// External sources override weak pulls. Opposing strong drivers fail.
-  /// UART muxes/reservations have no voltage model and fail explicitly.
+  /// UART/SPI muxes/reservations have no voltage model and fail explicitly.
   float padVoltage(uint pin) const;
 
   /// Reads the digital input after input enable and input override.
@@ -106,7 +159,7 @@ class FakePicoBoard {
   /// Pull configuration is preserved, matching gpio_init().
   void init(uint32_t mask);
 
-  /// Selects SIO, NULL, or a legal UART TX/RX mux and resets overrides.
+  /// Selects SIO, NULL, UART TX/RX, or SPI SCK/TX/RX and resets overrides.
   void setFunction(uint32_t mask, gpio_function_t function);
 
   /// Updates selected raw SIO output latches without requiring output
@@ -146,7 +199,7 @@ class FakePicoBoard {
 
   FakePicoBoard() : gpio_(kGpioCount) {}
 
-  enum class Attachment : uint8_t { kNone, kInput, kOutput, kIo, kUart };
+  enum class Attachment : uint8_t { kNone, kInput, kOutput, kIo, kUart, kSpi };
 
   void checkAttachment(uint pin) const;
 
@@ -167,6 +220,19 @@ class FakePicoBoard {
 
   std::array<UartState, 2> uarts_{};
   std::vector<UartConnection> uart_connections_;
+  struct SpiConnection {
+    SimpleFakeSpiDevice* device;
+    int clk;
+    int miso;
+    int mosi;
+  };
+
+  std::array<SpiState, 2> spis_{};
+  std::vector<SpiConnection> spi_connections_;
+
+  /// Rejects reconfiguration from within device callbacks or other transfers.
+  void checkSpiIdle() const;
+
   FakeGpioInterface gpio_;
 };
 

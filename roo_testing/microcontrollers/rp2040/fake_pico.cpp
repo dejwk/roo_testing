@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <cstdlib>
+#include <utility>
 
 #include "glog/logging.h"
 
@@ -71,6 +72,28 @@ ConsoleUartDevice& HostConsole() {
   return console;
 }
 
+/// Uses the RP2040 SPI0/SPI1 eight-pin group alternation.
+uint SpiIndex(uint pin) {
+  FakePicoBoard::CheckPin(pin);
+  return (pin / 8) % 2;
+}
+
+/// Matches the pinned SDK prescale/postdivide search at nominal clk_peri.
+uint SpiBaudrate(uint requested) {
+  constexpr uint64_t clock = 125000000;
+  CHECK(requested != 0 && requested <= clock) << "Invalid Pico SPI baudrate";
+  uint prescale;
+  for (prescale = 2; prescale <= 254; prescale += 2) {
+    if (clock < prescale * 256 * uint64_t{requested}) break;
+  }
+  CHECK_LE(prescale, 254u) << "Invalid Pico SPI baudrate: too low";
+  uint postdiv;
+  for (postdiv = 256; postdiv > 1; --postdiv) {
+    if (clock / (prescale * (postdiv - 1)) > requested) break;
+  }
+  return clock / (prescale * postdiv);
+}
+
 }  // namespace
 
 FakePicoBoard& FakePico() {
@@ -88,6 +111,7 @@ void FakePicoBoard::CheckMask(uint64_t mask) {
 }
 
 void FakePicoBoard::checkAttachment(uint pin) const {
+  checkSpiIdle();
   CheckPin(pin);
   CHECK(attachments_[pin] == Attachment::kNone)
       << "Pico GPIO attachment conflict";
@@ -122,6 +146,9 @@ FakePicoBoard::PinState FakePicoBoard::state(uint pin) const {
 
 std::optional<VoltageSignal> FakePicoBoard::driveSignal(uint pin) const {
   CheckPin(pin);
+  CHECK(pins_[pin].function != GPIO_FUNC_SPI &&
+        attachments_[pin] != Attachment::kSpi)
+      << "Unimplemented: Pico SPI pin voltage";
   CHECK(pins_[pin].function != GPIO_FUNC_UART &&
         attachments_[pin] != Attachment::kUart)
       << "Unimplemented: Pico UART pin voltage";
@@ -133,6 +160,9 @@ std::optional<VoltageSignal> FakePicoBoard::driveSignal(uint pin) const {
 
 float FakePicoBoard::padVoltage(uint pin) const {
   CheckPin(pin);
+  CHECK(pins_[pin].function != GPIO_FUNC_SPI &&
+        attachments_[pin] != Attachment::kSpi)
+      << "Unimplemented: Pico SPI pin voltage";
   CHECK(pins_[pin].function != GPIO_FUNC_UART &&
         attachments_[pin] != Attachment::kUart)
       << "Unimplemented: Pico UART pin voltage";
@@ -181,6 +211,7 @@ uint32_t FakePicoBoard::readAll() const {
 /// Signal callbacks observe all selected state changes, without a board lock.
 template <typename Update>
 void FakePicoBoard::updatePins(uint32_t mask, Update update) {
+  checkSpiIdle();
   CheckMask(mask);
   std::array<PinState, kGpioCount> next = pins_;
   uint32_t changed_drive = 0;
@@ -193,6 +224,9 @@ void FakePicoBoard::updatePins(uint32_t mask, Update update) {
     CHECK(attachments_[pin] != Attachment::kUart ||
           !StrongLevel(next[pin]).has_value())
         << "Unsupported Pico SIO output on a UART attachment";
+    CHECK(attachments_[pin] != Attachment::kSpi ||
+          !StrongLevel(next[pin]).has_value())
+        << "Unsupported Pico SIO output on a SPI attachment";
     if (StrongLevel(next[pin]) != StrongLevel(pins_[pin])) {
       changed_drive |= uint32_t{1} << pin;
     }
@@ -207,7 +241,9 @@ void FakePicoBoard::updatePins(uint32_t mask, Update update) {
 void FakePicoBoard::publish(uint32_t mask) {
   for (uint pin = 0; pin < kGpioCount; ++pin) {
     if ((mask & (uint32_t{1} << pin)) == 0) continue;
-    if (pins_[pin].function == GPIO_FUNC_UART ||
+    if (pins_[pin].function == GPIO_FUNC_SPI ||
+        attachments_[pin] == Attachment::kSpi ||
+        pins_[pin].function == GPIO_FUNC_UART ||
         attachments_[pin] == Attachment::kUart) {
       continue;
     }
@@ -230,9 +266,15 @@ void FakePicoBoard::init(uint32_t mask) {
 
 void FakePicoBoard::setFunction(uint32_t mask, gpio_function_t function) {
   CHECK(function == GPIO_FUNC_SIO || function == GPIO_FUNC_NULL ||
-        function == GPIO_FUNC_UART)
+        function == GPIO_FUNC_UART || function == GPIO_FUNC_SPI)
       << "Unsupported Pico GPIO function";
   updatePins(mask, [this, function](PinState& state, uint pin) {
+    if (function == GPIO_FUNC_SPI) {
+      CHECK_NE(pin % 4, 1u) << "Unsupported Pico GPIO function: SPI CSn";
+      CHECK(attachments_[pin] == Attachment::kNone ||
+            attachments_[pin] == Attachment::kSpi)
+          << "Pico SPI conflicts with a GPIO attachment";
+    }
     if (function == GPIO_FUNC_UART) {
       CHECK_LT(pin % 4, 2u) << "Unsupported Pico GPIO function: UART CTS/RTS";
       CHECK(attachments_[pin] == Attachment::kNone ||
@@ -388,4 +430,137 @@ FakeUartDevice& FakePicoBoard::uartDevice(uint index, bool transmit) const {
   CHECK_EQ(active, 1u) << "Pico UART needs exactly one active pin route";
   CHECK(device != nullptr) << "Pico UART route has no attached device";
   return *device;
+}
+
+void FakePicoBoard::checkSpiIdle() const {
+  for (const SpiState& spi : spis_) {
+    CHECK(!spi.busy) << "Pico reconfiguration during SPI transfer";
+  }
+}
+
+void FakePicoBoard::attachSpiDevice(SimpleFakeSpiDevice& device, int clk,
+                                    int miso, int mosi) {
+  checkSpiIdle();
+  CheckPin(clk);
+  CheckPin(mosi);
+  CHECK_GE(miso, -1) << "Invalid Pico SPI RX pin";
+  CHECK_EQ(clk % 4, 2) << "Invalid Pico SPI SCK pin";
+  CHECK_EQ(mosi % 4, 3) << "Invalid Pico SPI TX pin";
+  CHECK_EQ(SpiIndex(clk), SpiIndex(mosi)) << "Pico SPI controller mismatch";
+  if (miso >= 0) {
+    CheckPin(miso);
+    CHECK_EQ(miso % 4, 0) << "Invalid Pico SPI RX pin";
+    CHECK_EQ(SpiIndex(clk), SpiIndex(miso)) << "Pico SPI controller mismatch";
+  }
+  for (int pin : {clk, miso, mosi}) {
+    if (pin < 0) continue;
+    CHECK(attachments_[pin] == Attachment::kNone ||
+          attachments_[pin] == Attachment::kSpi)
+        << "Pico SPI attachment conflict";
+    CHECK(!configured_[pin])
+        << "Attach Pico SPI devices before configuring pins";
+  }
+  for (const SpiConnection& connection : spi_connections_) {
+    CHECK(connection.device != &device) << "Pico SPI device already attached";
+  }
+  spi_connections_.push_back({&device, clk, miso, mosi});
+  for (int pin : {clk, miso, mosi}) {
+    if (pin >= 0) attachments_[pin] = Attachment::kSpi;
+  }
+}
+
+FakePicoBoard::SpiState FakePicoBoard::spiState(uint index) const {
+  CHECK_LT(index, spis_.size()) << "Invalid Pico SPI index";
+  return spis_[index];
+}
+
+uint FakePicoBoard::initSpi(uint index, uint baudrate) {
+  checkSpiIdle();
+  spiState(index);
+  const uint actual = SpiBaudrate(baudrate);
+  spis_[index] = {true, false, actual, 8, kSpiMode0};
+  return actual;
+}
+
+void FakePicoBoard::deinitSpi(uint index) {
+  checkSpiIdle();
+  spiState(index);
+  spis_[index].enabled = false;
+}
+
+uint FakePicoBoard::setSpiBaudrate(uint index, uint baudrate) {
+  checkSpiIdle();
+  CHECK(spiState(index).enabled) << "Pico SPI is disabled";
+  const uint actual = SpiBaudrate(baudrate);
+  spis_[index].baudrate = actual;
+  return actual;
+}
+
+void FakePicoBoard::setSpiFormat(uint index, uint data_bits, spi_cpol_t cpol,
+                                 spi_cpha_t cpha, spi_order_t order) {
+  checkSpiIdle();
+  CHECK(spiState(index).enabled) << "Pico SPI is disabled";
+  CHECK(data_bits == 8 || data_bits == 16)
+      << "Unimplemented: Pico SPI frame width";
+  CHECK(order == SPI_MSB_FIRST) << "Unimplemented: Pico SPI LSB-first order";
+  CHECK(cpol == SPI_CPOL_0 || cpol == SPI_CPOL_1)
+      << "Invalid Pico SPI polarity";
+  CHECK(cpha == SPI_CPHA_0 || cpha == SPI_CPHA_1) << "Invalid Pico SPI phase";
+  spis_[index].data_bits = data_bits;
+  spis_[index].mode = static_cast<SpiDataMode>(2 * cpol + cpha);
+}
+
+int FakePicoBoard::prepareSpi(uint index, bool receive, SpiRoute& route) const {
+  const SpiState config = spiState(index);
+  if (!config.enabled) return PICO_ERROR_INVALID_STATE;
+  for (const SpiState& spi : spis_) {
+    if (spi.busy) return PICO_ERROR_RESOURCE_IN_USE;
+  }
+  int pins[4] = {-1, -1, -1, -1};
+  for (uint pin = 0; pin < kGpioCount; ++pin) {
+    if (pins_[pin].function != GPIO_FUNC_SPI || SpiIndex(pin) != index) {
+      continue;
+    }
+    const uint role = pin % 4;
+    if (pins[role] >= 0) return PICO_ERROR_INVALID_STATE;
+    pins[role] = pin;
+  }
+  if (pins[2] < 0 || pins[3] < 0 || (receive && pins[0] < 0)) {
+    return PICO_ERROR_INVALID_STATE;
+  }
+  if (receive && (!pins_[pins[0]].input_enabled ||
+                  pins_[pins[0]].input_override != GPIO_OVERRIDE_NORMAL)) {
+    return PICO_ERROR_INVALID_STATE;
+  }
+  bool wired = false;
+  SpiRoute next;
+  for (const SpiConnection& connection : spi_connections_) {
+    if (connection.clk != pins[2] || connection.mosi != pins[3]) continue;
+    wired = true;
+    if (!connection.device->isSelected()) continue;
+    next.devices.push_back(connection.device);
+    if (receive && connection.miso == pins[0]) {
+      if (next.receiver != nullptr) return PICO_ERROR_RESOURCE_IN_USE;
+      next.receiver = connection.device;
+    }
+  }
+  if (!wired) return PICO_ERROR_INVALID_STATE;
+  if (receive && next.receiver == nullptr) {
+    const PinState& input = pins_[pins[0]];
+    if (!input.pull_up && !input.pull_down) return PICO_ERROR_INVALID_STATE;
+    next.idle_high = input.pull_up;
+  }
+  route = std::move(next);
+  return PICO_OK;
+}
+
+void FakePicoBoard::beginSpi(uint index) {
+  checkSpiIdle();
+  CHECK(spiState(index).enabled) << "Pico SPI is disabled";
+  spis_[index].busy = true;
+}
+
+void FakePicoBoard::endSpi(uint index) {
+  CHECK(spiState(index).busy) << "Pico SPI is not busy";
+  spis_[index].busy = false;
 }

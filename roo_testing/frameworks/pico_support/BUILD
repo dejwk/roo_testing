@@ -49,3 +49,17 @@ cc_library(
         "@glog",
     ],
 )
+
+cc_library(
+    name = "spi",
+    srcs = ["spi.cpp"],
+    copts = ["-fno-exceptions"],
+    visibility = ["//roo_testing/frameworks/pico-sdk:__pkg__"],
+    deps = [
+        "//roo_testing/buses/spi",
+        "//roo_testing/frameworks/pico-sdk:headers",
+        "//roo_testing/microcontrollers/rp2040:pico",
+        "//roo_testing/system:timer",
+        "@glog",
+    ],
+)

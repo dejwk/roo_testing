@@ -60,6 +60,7 @@ def CheckIsolation():
     shared_time_sources = set()
     gpio_sources = set()
     uart_sources = set()
+    spi_sources = set()
     actions = json.loads(raw)["actions"]
     for action in actions:
         if action["mnemonic"] != "CppCompile":
@@ -88,6 +89,10 @@ def CheckIsolation():
                             "roo_testing/buses/uart/fake_uart.cpp"):
             if source.endswith(uart_source):
                 uart_sources.add(uart_source)
+        for spi_source in ("roo_testing/frameworks/pico_support/spi.cpp",
+                           "roo_testing/buses/spi/fake_spi.cpp"):
+            if source.endswith(spi_source):
+                spi_sources.add(spi_source)
         if "/frameworks/pico-sdk/" in source:
             sdk_sources.add(source.split("/frameworks/pico-sdk/", 1)[1])
     if sdk_sources != {"src/host/pico_platform/platform_base.c"}:
@@ -99,6 +104,9 @@ def CheckIsolation():
 
     if len(uart_sources) != 2:
         raise RuntimeError(f"Pico did not select its UART/console adapters: {uart_sources}")
+
+    if len(spi_sources) != 2:
+        raise RuntimeError(f"Pico did not select the shared SPI adapter: {spi_sources}")
 
 
 def CheckConsoleResults(*options):
@@ -125,7 +133,8 @@ def CheckBinary():
         text=True)
     names = [line.split()[-1] for line in symbols.splitlines() if line.split()]
     for symbol in ("time_us_32", "time_us_64", "get_core_num",
-                   "gpio_init", "gpio_get", "gpio_put", "uart_init", "uart_get_index"):
+                   "gpio_init", "gpio_get", "gpio_put", "uart_init", "uart_get_index", "spi_init", "spi_get_index",
+                   "spi_write_read_blocking", "spi_read16_blocking"):
         if names.count(symbol) != 1:
             raise RuntimeError(f"Expected one linked implementation of {symbol}")
     if any(name.startswith(("esp_", "vTask")) for name in names):
@@ -196,6 +205,7 @@ def Main():
     CheckRunnerResults()
     print(RunBazel("run", "//examples/pico_gpio:blink_example"), end="")
     print(RunBazel("run", "//examples/pico_uart:serial_example"), end="")
+    print(RunBazel("run", "//examples/pico_spi:display_example"), end="")
     print(RunBazel("test", "//test/pico:time_manual_test",
                    "--copt=-DPICO_OPAQUE_ABSOLUTE_TIME_T=1",
                    "--test_output=errors"), end="")

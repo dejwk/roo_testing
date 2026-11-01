@@ -38,13 +38,13 @@ jobs:
 
     - name: Build
       run: |
-        bazel build :all //examples/sntp/... \
+        bazel build //:arduino_main //:arduino_gtest_main //:all_tests //examples/sntp/... \
           --config=roo_testing_arduino_${{ matrix.soc }} \
           ${{ env.BAZEL_SYMBOLIZE_FLAGS }}
 
     - name: Test
       run: |
-        bazel test :all \
+        bazel test //:all_tests \
           //roo_testing/frameworks/esp32_shims:sntp_tests \
           //roo_testing/frameworks/esp32_shims:arduino_sntp_test \
           //roo_testing/frameworks/posix_time/... //examples/sntp/... \
@@ -95,14 +95,14 @@ jobs:
 
     - name: Build with address sanitizer
       run: |
-        bazel build :all //examples/sntp/... \
+        bazel build //:arduino_main //:arduino_gtest_main //:all_tests //examples/sntp/... \
           --config=roo_testing_arduino_${{ matrix.soc }} \
           --config=asan \
           ${{ env.BAZEL_SYMBOLIZE_FLAGS }}
 
     - name: Test with address sanitizer
       run: |
-        bazel test :all \
+        bazel test //:all_tests \
           //roo_testing/frameworks/esp32_shims:sntp_tests \
           //roo_testing/frameworks/esp32_shims:arduino_sntp_test \
           //roo_testing/frameworks/posix_time/... //examples/sntp/... \
@@ -159,3 +159,29 @@ jobs:
           --config=roo_testing_idf_${{ matrix.soc }} \
           --test_output=errors \
           ${{ env.BAZEL_SYMBOLIZE_FLAGS }}
+
+  pico:
+    name: Pico ${{ matrix.frontend }} ${{ matrix.mode }}
+    strategy:
+      fail-fast: false
+      matrix:
+        frontend: [pico, arduino]
+        mode: [normal, asan]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+    - uses: ./.github/actions/ci-setup
+    - name: Test native Pico frontend
+      env:
+        FRONTEND: ${{ matrix.frontend }}
+        MODE: ${{ matrix.mode }}
+      run: |
+        options=()
+        if [[ "$MODE" == asan ]]; then options+=(--config=asan); fi
+        suite=pico_tests
+        if [[ "$FRONTEND" == arduino ]]; then suite=arduino_pico_tests; fi
+        bazel test "//:$suite" "--config=roo_testing_${FRONTEND}_rp2040" \
+          "${options[@]}" --test_output=errors

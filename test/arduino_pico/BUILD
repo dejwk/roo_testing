@@ -1,3 +1,4 @@
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
 cc_test(
@@ -22,4 +23,28 @@ cc_test(
         "//roo_testing/system:manual_time_mode",
         "//roo_testing/system:timer",
     ],
+)
+
+cc_binary(
+    name = "unsupported_core1_probe",
+    srcs = ["unsupported_core1_probe.cpp"],
+    linkstatic = True,
+    tags = ["manual"],
+    deps = ["//:arduino"],
+)
+
+cc_binary(
+    name = "unsupported_freertos_probe",
+    srcs = ["unsupported_freertos_probe.cpp"],
+    linkstatic = True,
+    tags = ["manual"],
+    deps = ["//:arduino"],
+)
+
+cc_binary(
+    name = "console_probe",
+    srcs = ["console_probe.cpp"],
+    linkstatic = True,
+    tags = ["manual"],
+    deps = ["//:arduino"],
 )

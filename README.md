@@ -1,6 +1,6 @@
 # roo_testing
 
-Experimental ESP32 emulator that can be used to test Arduino sketches on Linux, before uploading them to the microcontroller. Supports emulation of external I2C and SPI devices, including TFT displays.
+Experimental ESP32 and RP2040 emulator that can be used to test Arduino sketches on Linux, before uploading them to the microcontroller. Supports emulation of external I2C and SPI devices, including TFT displays.
 
 I built it to test my sketches that tend to use a variety of external devices, from TFT displays to temperature sensors, networking, SD cards, and real-time clock modules. It is not 100% accurate, but it gets the job done.
 
@@ -49,22 +49,51 @@ bazel run :main
 
 # How it works
 
-The code is based on the Espressif ESP32 Arduino framework, instrumented to intercept hardware- or interface-level events and couple them with simulated implementations.
+The ESP32 backend uses the Espressif Arduino framework and ESP-IDF; the Pico backend uses the pinned Pico SDK and Arduino-Pico core. Hardware calls connect to shared simulated buses, devices, signals and host integrations.
 
-The code does not emulate Xtensa or RISC-V instructions. Your sketch simply compiles and runs on your computer's architecture. This works because the Espressif framework is implemented in standard, portable C/C++.
+The code does not interpret Xtensa, RISC-V or ARM instructions. Applications compile and run on the host architecture, using portable framework code and native peripheral adapters.
 
-## Native Pico SDK foundation
+## Native Pico SDK and Arduino-Pico
 
-An SDK-only RP2040 backend is available through
-`--config=roo_testing_pico_rp2040` and `@roo_testing//:pico_sdk`. It currently
-supports native stdio, shared emulated uptime and sleeps, digital GPIO with
-voltage-device wiring, synchronous 8N1 UART routing through fake devices/cables,
-a polling UART0 stdin/stdout console, synchronous SPI masters through shared
-device/display models, and a native GoogleTest runner. See the
-[bounded serial example](examples/pico_uart/README.md),
-[headless SPI display example](examples/pico_spi/README.md), and
-[Pico support matrix](roo_testing/frameworks/pico_support/README.md)
-for setup, pinned sources, supported APIs, time modes, and lifecycle behavior.
+The original non-wireless Pico (RP2040, core 0) supports two native profiles:
+
+| Profile | Public library / process entry point |
+| --- | --- |
+| `roo_testing_pico_rp2040` | `:pico_sdk`, ordinary C/C++ `main()`, `:pico_gtest_main` |
+| `roo_testing_arduino_rp2040` | `:arduino`, `:arduino_main`, `:arduino_gtest_main` |
+
+Vendor these canonical fragments into the root workspace and import them in
+its `.bazelrc` alongside the shared ASAN fragment:
+
+```bazelrc
+import %workspace%/.roo_testing/bazelrc/rp2040/base.bazelrc
+import %workspace%/.roo_testing/bazelrc/rp2040/pico.bazelrc
+import %workspace%/.roo_testing/bazelrc/rp2040/arduino.bazelrc
+```
+
+Both profiles use a bare-metal runtime and share clock, GPIO, 8N1 UART,
+synchronous SPI/I2C, external ADC and free-running PWM adapters. They reuse the
+existing console, fake buses/devices and voltage signals. Arduino-Pico 6.3.1
+uses its actual pinned API/core and original `rpipico` variant above Pico SDK
+2.3.1. `Serial` substitutes the unbuffered host console for USB and warns once.
+No ESP-IDF or FreeRTOS runtime is selected.
+
+Run `bazel run --config=roo_testing_arduino_rp2040 //examples/arduino_pico:peripherals -- --iterations=2`
+for a bounded blink/UART/DS3231/SPI sketch. SDK examples cover
+[serial](examples/pico_uart/README.md), [I2C](examples/pico_i2c/README.md),
+[ADC/PWM](examples/pico_signal/README.md) and a
+[headless SPI display](examples/pico_spi/README.md).
+See the [SDK support matrix](roo_testing/frameworks/pico_support/README.md) and
+[Arduino support matrix](roo_testing/frameworks/arduino_pico_support/README.md).
+
+Coordinated local `roo_threads` and `roo_time` overrides are required until
+matching client releases are available. Supported client validation covers
+roo_time, cooperative roo_scheduler and roo_display's Arduino SPI transport;
+thread-dependent clients and the full filesystem/display stack are excluded.
+Run `python3 test/pico_clients/verify_clients.py` with sibling Roo checkouts, or
+set `ROO_CLIENT_ROOT`. See [release validation](doc/pico_validation.md) for exact
+scope and the pending physical-board qualification. Pico FreeRTOS is planned
+for a subsequent release.
 
 ## Emulated SoC identity
 
@@ -80,7 +109,7 @@ For example, use `--config=roo_testing_arduino_esp32s3` or
 `--config=roo_testing_idf_esp32c3` after importing their matching rc fragments.
 See [SoC profiles](roo_testing/soc/README.md) for the support boundaries.
 
-Linux is the execution host. All profiles retain the single-core host scheduler;
+Linux is the execution host. ESP32 profiles retain the single-core host scheduler;
 reported physical core counts and target architecture reflect the selected chip.
 
 For S3 or C3, import all three matching fragments, then select one frontend:
@@ -109,6 +138,7 @@ workspace. The SoC-first layout keeps future profiles incremental:
   bazelrc/esp32/{base,arduino,idf}.bazelrc
   bazelrc/esp32s3/{base,arduino,idf}.bazelrc
   bazelrc/esp32c3/{base,arduino,idf}.bazelrc
+  bazelrc/rp2040/{base,pico,arduino}.bazelrc
 ```
 
 Import the common ASAN fragment, the shared base, and every frontend that the
@@ -140,7 +170,7 @@ BAZELISK_WRAPPER_DIRECTORY=.roo_testing/bin
 Bazelisk then discovers `.roo_testing/bin/bazel`. For configured commands such
 as `build`, `test`, `run`, `info`, `cquery`, and `aquery`, the wrapper inserts
 the Arduino ESP32 config only when no `roo_testing_arduino_*` or
-`roo_testing_idf_*` config was supplied, and prints a concise notice. Thus both
+`roo_testing_idf_*` or `roo_testing_pico_*` config was supplied, and prints a concise notice. Thus both
 of these are clean, single-profile invocations:
 
 ```sh
@@ -158,19 +188,19 @@ default when workspace rc loading is disabled. Invoking the Bazel binary
 directly or setting `BAZELISK_SKIP_WRAPPER=true` bypasses this convenience and
 therefore requires an explicit profile.
 
-Mixed workspaces can exercise their native test targets under both profiles
+Mixed workspaces can exercise their native test targets under all eight profiles
 without Starlark transitions:
 
 ```sh
 .roo_testing/bin/test_all_profiles ... --test_output=errors
 ```
 
-The helper requires importing all three fragments (`base`, `arduino`, and
-`idf`) for each of the three SoCs into the root `.bazelrc`.
+The helper requires the three fragments for each ESP32 SoC and the RP2040
+`base`, `pico`, and `arduino` fragments in the root `.bazelrc`.
 
 With no arguments, the helper tests `...`. It runs Arduino and then IDF for
-ESP32, ESP32-S3, and ESP32-C3, forwarding the same target patterns and options
-to all six runs and stopping on the first failure. Targets must support the
+ESP32, ESP32-S3, and ESP32-C3, then SDK and Arduino for RP2040, forwarding the same target patterns and options
+to all eight runs and stopping on the first failure. Targets must support the
 selected profiles or declare their platform compatibility. The standalone
 Arduino examples vendor the configuration fragments and nested wrapper, so
 their plain Bazel commands use the same announced default. An rc file cannot import an `@roo_testing//...` label because
@@ -196,8 +226,8 @@ bazel test ... --config=roo_testing_idf_esp32 --config=asan \
   --test_output=errors
 ```
 
-To test all six profiles under ASAN, pass the config through the existing
-six-profile helper:
+To test all eight profiles under ASAN, pass the config through the existing
+eight-profile helper:
 
 ```sh
 .roo_testing/bin/test_all_profiles ... --config=asan --test_output=errors

@@ -301,3 +301,32 @@ cc_test(
         "//roo_testing/transducers/voltage",
     ],
 )
+
+cc_test(
+    name = "arduino_runner_manual_test",
+    size = "small",
+    srcs = ["runner_test.cpp"],
+    linkstatic = True,
+    local_defines = ["PICO_TEST_AUTO=0"],
+    target_compatible_with = [
+        "//roo_testing/platforms:rp2040",
+        "//roo_testing/platforms:arduino",
+    ],
+    deps = [
+        "//:arduino_gtest_main",
+        "//roo_testing/system:manual_time_mode",
+    ],
+)
+
+cc_test(
+    name = "arduino_runner_auto_test",
+    size = "small",
+    srcs = ["runner_test.cpp"],
+    linkstatic = True,
+    local_defines = ["PICO_TEST_AUTO=1"],
+    target_compatible_with = [
+        "//roo_testing/platforms:rp2040",
+        "//roo_testing/platforms:arduino",
+    ],
+    deps = ["//:arduino_gtest_main"],
+)

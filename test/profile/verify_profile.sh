@@ -242,7 +242,7 @@ for soc in esp32s3 esp32c3; do
   done
 done
 
-echo "roo_testing six global compiler profiles verified"
+echo "roo_testing six ESP32 global compiler profiles verified"
 
 # Check the same host console bridge through each ESP32 board's real pin route.
 for soc in esp32 esp32s3 esp32c3; do
@@ -255,3 +255,6 @@ for soc in esp32 esp32s3 esp32c3; do
 done
 
 python3 test/pico/verify_pico.py
+
+python3 test/arduino_pico/verify_arduino_pico.py
+echo "roo_testing eight global compiler profiles verified"

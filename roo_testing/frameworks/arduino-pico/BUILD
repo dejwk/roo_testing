@@ -17,10 +17,6 @@ cc_library(
         "libraries/Wire/src",
         "variants/rpipico",
     ],
-    textual_hdrs = [
-        "cores/rp2040/CoreMutex.cpp",
-        "ArduinoCore-API/api/deprecated-avr-comp/avr/dtostrf.c.impl",
-    ],
     visibility = ["//visibility:public"],
     deps = [
         "//roo_testing/frameworks/environment:arduino_pico",

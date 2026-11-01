@@ -3,8 +3,8 @@
 Pico integration stages 2 through 8 provide the SDK-only profile
 `--config=roo_testing_pico_rp2040` and the public `@roo_testing//:pico_sdk` target.
 Applications supply ordinary `main()` and execute with the Linux host ABI/CPU.
-Arduino-Pico sources are staged for a later release stage; no Arduino RP2040
-profile or core implementation is exposed yet.
+The Arduino-Pico profile runs above these same adapters; see its
+[core support matrix](../arduino_pico_support/README.md).
 
 ## Pinned sources and ownership
 
@@ -14,7 +14,7 @@ profile or core implementation is exposed yet.
 | Pico SDK | 2.3.1 | `079c6f39023649b154152db30f1d781e884879bc` |
 
 The SDK revision is the `pico-sdk` gitlink in that Arduino-Pico commit. Both
-SDK-only and later Arduino builds use this one SDK copy. Imports use the
+SDK-only and Arduino builds use this one SDK copy. Imports use the
 [Copybara workflows](../../../copybara/README.md) and
 [version pins](../../../copybara/versions.bara.sky). Pristine imported files
 retain upstream formatting and licenses. BUILD files and

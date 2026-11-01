@@ -84,6 +84,7 @@ test_suite(
         "//test:arduino_preferences_startup_test",
         "//test:arduino_sd_diskio_link_test",
         "//test:arduino_spi_clock_test",
+        "//test:arduino_string_link_test",
         "//test:arduino_uart_api_test",
         "//test:emulator_environment_test",
         "//test:esp_intr_alloc_anonymous_test",
@@ -203,5 +204,7 @@ test_suite(
         "//:pico_tests",
         "//examples/arduino_pico:peripherals_test",
         "//test/arduino_pico:arduino_test",
+        "//test/pico:arduino_runner_auto_test",
+        "//test/pico:arduino_runner_manual_test",
     ],
 )

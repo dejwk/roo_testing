@@ -21,9 +21,9 @@ for arg in "$@"; do
 
   if $expect_config_value; then
     case "${arg}" in
-      roo_testing_arduino_*|roo_testing_idf_*)
+      roo_testing_arduino_*|roo_testing_idf_*|roo_testing_pico_*)
         printf >&2 '%s\n' \
-          "ERROR: .roo_testing/bin/test_all_profiles selects all six profiles; do not pass --config ${arg}."
+          "ERROR: .roo_testing/bin/test_all_profiles selects all eight profiles; do not pass --config ${arg}."
         exit 2
         ;;
     esac
@@ -33,17 +33,22 @@ for arg in "$@"; do
 
   case "${arg}" in
     --config) expect_config_value=true ;;
-    --config=roo_testing_arduino_*|--config=roo_testing_idf_*)
+    --config=roo_testing_arduino_*|--config=roo_testing_idf_*|--config=roo_testing_pico_*)
       printf >&2 '%s\n' \
-        "ERROR: .roo_testing/bin/test_all_profiles selects all six profiles; do not pass ${arg}."
+        "ERROR: .roo_testing/bin/test_all_profiles selects all eight profiles; do not pass ${arg}."
       exit 2
       ;;
   esac
 done
 
-for soc in esp32 esp32s3 esp32c3; do
-  for frontend in arduino idf; do
-    printf >&2 'INFO: roo_testing: testing %s %s.\n' "${frontend}" "${soc}"
-    "${bazel_launcher}" test "--config=roo_testing_${frontend}_${soc}" "$@"
-  done
+# Keep the supported matrix explicit; do not invent future combinations.
+profiles=(
+  arduino_esp32 idf_esp32
+  arduino_esp32s3 idf_esp32s3
+  arduino_esp32c3 idf_esp32c3
+  pico_rp2040 arduino_rp2040
+)
+for profile in "${profiles[@]}"; do
+  printf >&2 'INFO: roo_testing: testing %s %s.\n' "${profile%_*}" "${profile##*_}"
+  "${bazel_launcher}" test "--config=roo_testing_${profile}" "$@"
 done

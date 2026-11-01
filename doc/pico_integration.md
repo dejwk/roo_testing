@@ -1,6 +1,7 @@
 # Pico SDK and Arduino-Pico integration
 
-Status: Proposed for review
+Status: Host integration implemented; physical-board release qualification pending.
+See the [validation record](pico_validation.md) for verified scope and exclusions.
 
 Release plan: initial Pico SDK/Arduino support, followed by a committed
 Arduino-Pico FreeRTOS release.
@@ -605,6 +606,12 @@ Proposed commit message:
 
 ### 10. Align Roo threading selection in the client repository
 
+Implemented in the separate roo_threads commit `fa93a8b`: explicit bare-metal
+runtime selection precedes the existing emulation FreeRTOS branch. Pico
+clients avoid the ESP scheduler dependency. Backend tests cover both Pico
+frontends and ESP32, while the pure compile-only probe preserves a future
+RP2040 FreeRTOS choice without claiming a working runtime.
+
 In a separate roo_threads commit, follow that repository's instructions and
 select its existing single-threaded implementation for the explicit bare-metal
 emulation runtime before its general `ROO_TESTING` FreeRTOS branch. Avoid a
@@ -626,6 +633,18 @@ Proposed commit message:
 > ESP32 selection, following roo_testing/doc/pico_integration.md.
 
 ### 11. Complete the profile matrix and supported client validation
+
+Host implementation complete: the helper and CI enumerate all eight profiles;
+wrapper conflict tests, Arduino-Pico source/dependency isolation, console
+visibility, runner cleanup/status propagation and explicit feature exclusions
+are verified. Coordinated client tests cover roo_time, cooperative roo_scheduler
+and roo_display's synchronous Arduino SPI transport in normal and ASAN builds.
+Client fixes select the active Arduino frontend, use real Pico SPI APIs, and
+pump idle scheduler events without indefinite waits. The ESP32 String dependency
+regression found by client validation is covered on all three Arduino profiles.
+The [validation record](pico_validation.md) lists the supported subset and
+outstanding physical-board compile/smoke release gate. The design does not claim
+hardware qualification until that gate is completed.
 
 Add the explicit eight-profile helper list, wrapper conflict tests, and CI
 coverage. Validate roo_time, roo_scheduler, and supported roo_display Arduino

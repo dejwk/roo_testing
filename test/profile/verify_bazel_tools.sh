@@ -245,7 +245,7 @@ set -e
 grep -Fq 'select exactly one frontend/SoC profile' "${stderr_log}" ||
   fail "distinct Arduino profiles did not explain the error"
 
-for other_profile in roo_testing_arduino_esp32 roo_testing_idf_esp32; do
+for other_profile in roo_testing_arduino_esp32 roo_testing_idf_esp32 roo_testing_arduino_rp2040; do
   : >"${capture}"
   set +e
   invoke_wrapper build --config=roo_testing_pico_rp2040 "--config=${other_profile}" //:target
@@ -266,7 +266,7 @@ env -u BAZEL_REAL \
   "${wrapper}" version
 assert_lines call skip=true arg=version end
 
-# The six-profile helper forwards arguments and runs each profile once.
+# The eight-profile helper forwards arguments and runs each profile once.
 : >"${capture}"
 : >"${stderr_log}"
 ROO_TESTING_BAZEL="${self}" \
@@ -280,7 +280,30 @@ for soc in esp32 esp32s3 esp32c3; do
     grep -Fq "testing ${frontend} ${soc}." "${stderr_log}" || fail "helper omitted ${frontend} ${soc} notice"
   done
 done
+for frontend in pico arduino; do
+  expected+=(call skip= arg=test "arg=--config=roo_testing_${frontend}_rp2040" arg=//... arg=--config=asan arg=--test_output=errors end)
+  grep -Fq "testing ${frontend} rp2040." "${stderr_log}" || fail "helper omitted ${frontend} rp2040 notice"
+done
 assert_lines "${expected[@]}"
+
+# The Arduino-Pico spelling and split form must compose with ASAN unchanged.
+invoke_wrapper test --config roo_testing_arduino_rp2040 --config=asan //:target
+assert_lines call skip= arg=test arg=--config arg=roo_testing_arduino_rp2040 arg=--config=asan arg=//:target end
+[[ ! -s "${stderr_log}" ]] || fail "Arduino Pico printed a default notice"
+
+# Both split and joined profile overrides must be rejected before any invocation.
+for profile in roo_testing_pico_rp2040 roo_testing_arduino_rp2040; do
+  for form in joined split; do
+    : >"${capture}"
+    if [[ "$form" == joined ]]; then config_args=("--config=$profile"); else config_args=(--config "$profile"); fi
+    set +e
+    ROO_TESTING_BAZEL="${self}" ROO_TESTING_FAKE_BAZEL=1 ROO_TESTING_FAKE_CAPTURE="${capture}" \
+      "${profile_helper}" //... "${config_args[@]}" 2>"${stderr_log}"
+    status=$?
+    set -e
+    [[ "$status" == 2 && ! -s "${capture}" ]] || fail "helper accepted profile override"
+  done
+done
 
 : >"${capture}"
 set +e

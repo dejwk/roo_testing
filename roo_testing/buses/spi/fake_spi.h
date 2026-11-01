@@ -37,8 +37,8 @@ class FakeSpiInterface {
 
 class SimpleFakeSpiDevice {
  public:
-  SimpleFakeSpiDevice(const std::string& name)
-      : name_(name), cs_(name + ":CS") {}
+  /// Creates a device whose CS sink reports digital selection edges.
+  SimpleFakeSpiDevice(const std::string& name);
 
   virtual ~SimpleFakeSpiDevice() {}
 
@@ -53,8 +53,14 @@ class SimpleFakeSpiDevice {
 
   roo_testing_transducers::VoltageSink& cs() { return cs_; }
 
+ protected:
+  /// Receives CS edges after the retained sink value changes. The default
+  /// does nothing; protocol fakes can delimit frames across transfer() calls.
+  virtual void onChipSelect(bool selected) {}
+
  private:
+  void updateChipSelect();
   const std::string name_;
-  int8_t cs_pin_;
+  bool selected_ = false;
   roo_testing_transducers::SimpleDigitalSink cs_;
 };

@@ -577,7 +577,7 @@ SpiDataMode Esp32SpiInterface::dataMode() const {
 }
 
 SpiBitOrder Esp32SpiInterface::bitOrder() const {
-  return spi_.ctrl.wr_bit_order ? kSpiMsbFirst : kSpiLsbFirst;
+  return spi_.ctrl.wr_bit_order != 0 ? kSpiLsbFirst : kSpiMsbFirst;
 }
 
 uint32_t Esp32SpiInterface::transfer() {

@@ -1,6 +1,7 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
+#include <vector>
 
 #include "Arduino.h"
 #include "SPI.h"
@@ -18,10 +19,20 @@ class ClockRecordingSpiDevice : public SimpleFakeSpiDevice {
                 uint16_t bit_count) override {
     frequency = spi.clkHz();
     bits = bit_count;
+    mode = spi.dataMode();
+    order = spi.bitOrder();
   }
 
   uint32_t frequency = 0;
   uint16_t bits = 0;
+  SpiDataMode mode = kSpiMode0;
+  SpiBitOrder order = kSpiMsbFirst;
+  std::vector<bool> selection_edges;
+
+ protected:
+  void onChipSelect(bool selected) override {
+    selection_edges.push_back(selected);
+  }
 };
 
 TEST(ArduinoSpiClockTest, MatchesUpstreamDividedClockEncoding) {
@@ -41,7 +52,7 @@ TEST(ArduinoSpiClockTest, MatchesUpstreamDividedClockEncoding) {
   constexpr int kMosi = 6;
   constexpr int kChipSelect = 7;
 
-  ClockRecordingSpiDevice device;
+  static ClockRecordingSpiDevice device;
   FakeEsp32().attachSpiDevice(device, kClock, kMiso, kMosi);
   FakeEsp32().gpio.attachOutput(kChipSelect, device.cs());
 
@@ -68,6 +79,40 @@ TEST(ArduinoSpiClockTest, MatchesUpstreamDividedClockEncoding) {
   digitalWrite(kChipSelect, HIGH);
   spi.end();
   FakeEsp32().gpio.detach(kChipSelect);
+}
+
+// Verifies register-backed Arduino SPI reports the selected mode and bit
+// order accurately to protocol-checking devices on every transaction.
+TEST(ArduinoSpiClockTest, ReportsAllModesAndBothBitOrders) {
+  static ClockRecordingSpiDevice device;
+  FakeEsp32().attachSpiDevice(device, 18, 19, 23);
+  FakeEsp32().gpio.attachOutput(5, device.cs());
+#if CONFIG_IDF_TARGET_ESP32
+  SPIClass spi(VSPI);
+#else
+  SPIClass spi(FSPI);
+#endif
+  ASSERT_TRUE(spi.begin(18, 19, 23));
+  pinMode(5, OUTPUT);
+  digitalWrite(5, HIGH);
+  device.selection_edges.clear();
+  digitalWrite(5, LOW);
+  digitalWrite(5, LOW);  // Repeating a level is not a new frame.
+  const uint8_t modes[] = {SPI_MODE0, SPI_MODE1, SPI_MODE2, SPI_MODE3};
+  for (int mode = 0; mode < 4; ++mode) {
+    for (uint8_t order : {SPI_MSBFIRST, SPI_LSBFIRST}) {
+      spi.beginTransaction(SPISettings(1000000, order, modes[mode]));
+      spi.transfer(0x96);
+      spi.endTransaction();
+      EXPECT_EQ(static_cast<SpiDataMode>(mode), device.mode);
+      EXPECT_EQ(order == SPI_MSBFIRST ? kSpiMsbFirst : kSpiLsbFirst,
+                device.order);
+    }
+  }
+  digitalWrite(5, HIGH);
+  EXPECT_EQ((std::vector<bool>{true, false}), device.selection_edges);
+  spi.end();
+  FakeEsp32().gpio.detach(5);
 }
 
 }  // namespace

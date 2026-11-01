@@ -1,5 +1,8 @@
 # Unreleased
 
+- Add calendar/control RTC fakes for DS3232, DS3234, DS1307, PCF8523, RV-3028-C7, and RV-8803-C7; bring DS3231 onto the same independently tested timekeeping model while preserving thermometer ownership.
+- Observe SPI chip-select edges across fragmented transfers and correct Arduino SPI bit-order reporting to attached protocol fakes.
+
 - Emulate immediate SNTP synchronization through Arduino, raw/ESP SNTP, and esp-netif APIs, with task-context notifications, controllable virtual servers, cold-boot process-local UTC, and isolated host-monotonic scheduler waits.
 
 - Support ESP32-S3 and ESP32-C3 in both Arduino and ESP-IDF host profiles, using the existing pinned framework versions and generic Dev Module variants.

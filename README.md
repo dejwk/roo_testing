@@ -452,3 +452,56 @@ Validate with:
 ```sh
 bazel test --config=roo_testing_idf_esp32 //test:idf_i2c_device_test
 ```
+
+## RTC device fakes
+
+Calendar/control fakes are available at
+`//roo_testing/devices/clock/<device>:<device>` for `ds3231`, `ds3232`, `ds3234`,
+`ds1307`, `pcf8523`, `rv3028`, and `rv8803`. Include the matching
+`roo_testing/devices/clock/<device>/<device>.h` and construct `FakeDs3231`,
+`FakeDs3232`, `FakeDs3234`, `FakeDs1307`, `FakePcf8523`, `FakeRv3028`, or
+`FakeRv8803`. They attach to the existing emulated I2C/SPI wiring:
+
+```cpp
+FakeDs3232 rtc;
+FakeEsp32().attachI2cDevice(rtc, 18, 19);
+
+FakeDs3234 spi_rtc;
+FakeEsp32().attachSpiDevice(spi_rtc, 18, 19, 23);
+FakeEsp32().gpio.attachOutput(5, spi_rtc.cs());
+```
+
+The attached objects must outlive their wiring. Default clocks follow emulator
+time; pass a borrowed `roo_testing_transducers::Clock*` to control oscillator
+time independently. `FakeDs3231` accepts a clock reference and retains its
+existing owning thermometer constructor. Fakes begin at 2000-01-01 with a
+chip-appropriate time-loss/halt indication. Initialize their calendar and clear
+validity flags through the bus, or use `roo_rtc`'s `set()`.
+
+`reset()` restores the model's initial registers. `simulateTimeLoss()` raises
+the chip's loss indication without replacing its plausible calendar.
+`injectRegister(address, value)` deliberately bypasses write masks for tests
+of invalid BCD, stopped clocks, and pending flags. Ordinary bus writes obey
+status write-zero-clear/read-only behavior. `FakeDs3234::protocolError()`
+reports unsupported SPI modes, order, frequency, addresses, or partial bytes;
+CS edges delimit commands even when a frame spans many transfer() calls.
+
+Models advance their calendar independently of drivers, using a four-year
+leap cycle and per-chip weekday/hour encoding. I2C bursts latch calendar reads
+where hardware does; RV-8803 reads remain live. DS3234 snapshots on falling CS
+and refreshes when the calendar bank wraps from 0x13 to 0x00. DS1307 CH,
+PCF8523 STOP, and RV-8803 RESET hold timekeeping; DS323x EOSC has no effect
+without a modeled backup-power transition. PCF8523 backup settings and RV-3028
+volatile backup/refresh/charging bits are retained through normal register IO.
+
+The scope is calendar/control software testing. Alarm/timer firing, calibration
+drift, electrical backup/supply transitions, timestamp capture, EEPROM/password
+protocols, RV-3028's independent Unix counter, and DS3234's indirect SRAM port
+are not simulated. Unmodeled registers are not a promise of complete chip
+emulation. DS3231 temperature follows its thermometer source; DS3232/DS3234
+provide fixed 25 degree Celsius temperature registers.
+
+`//roo_testing/devices/clock:rtc_test` tests the models with independent golden
+register bytes, oscillator steps, latch/rollover behavior, status masks, and
+SPI framing. The seven per-device integration targets in roo_rtc test the
+production drivers through the real Arduino/ESP-IDF adapters and these fakes.

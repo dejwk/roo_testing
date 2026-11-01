@@ -1,47 +1,38 @@
 #pragma once
+#include <memory>
 
-#include "roo_testing/buses/i2c/fake_i2c.h"
+#include "roo_testing/devices/clock/internal/i2c_rtc.h"
 #include "roo_testing/transducers/temperature/temperature.h"
 
-/// Emulates DS3231 timekeeping and its sequential register address pointer.
-class FakeDs3231 : public FakeI2cDevice {
+/// Emulates DS3231 calendar/control/status and sequential registers at 0x68.
+/// Starts at 2000-01-01 with OSF set; set a trusted calendar and clear OSF to
+/// make time valid. Models 12/24-hour time, W0C flags, and temperature
+/// readings. Alarm firing, oscillator calibration, and electrical power are not
+/// modeled.
+class FakeDs3231 : public roo_testing_rtc::I2cRtc {
  public:
-  enum HourMode {
-    H24 = 0,
-    H12 = 1,
-  };
+  /// Compatible names for the chip's two calendar hour encodings.
+  enum HourMode { H24 = 0, H12 = 1 };
 
-  /// Creates a clock with a fixed 25 degree Celsius temperature source.
+  /// Creates a clock using emulator time and a fixed 25 degree Celsius source.
   FakeDs3231();
 
-  /// Takes ownership of the temperature source used for register readings.
-  FakeDs3231(roo_testing_transducers::Thermometer* thermometer);
+  /// Borrows @p clock for deterministic time advancement at 25 degrees C.
+  explicit FakeDs3231(roo_testing_transducers::Clock& clock);
 
-  /// Selects a register and writes sequential bytes, wrapping after 0x12.
-  Result write(const uint8_t* buf, uint16_t size, bool sendStop,
-               uint16_t timeOutMillis) override;
+  /// Takes ownership of @p thermometer and optionally borrows @p clock.
+  /// A null clock selects emulator time; the thermometer must be non-null.
+  explicit FakeDs3231(roo_testing_transducers::Thermometer* thermometer,
+                      roo_testing_transducers::Clock* clock = nullptr);
 
-  /// Reads sequential bytes from the selected register, wrapping after 0x12.
-  Result read(uint8_t* buff, uint16_t size, bool sendStop,
-              uint16_t timeOutMillis) override;
+  /// Selects/writes sequential registers, wrapping after 0x12.
+  Result write(const uint8_t* data, uint16_t size, bool stop,
+               uint16_t timeout) override;
+
+  /// Reads sequential registers, latching calendar data per read burst.
+  Result read(uint8_t* data, uint16_t size, bool stop,
+              uint16_t timeout) override;
 
  private:
-  void tick();
-  void flush();
-  void register_write(int index, uint8_t value);
-  uint8_t register_read(int index) const;
-
-  HourMode get_hour_mode() const {
-    return (registers_[2] & 0x40) == 0 ? H24 : H12;
-  }
-
   std::unique_ptr<roo_testing_transducers::Thermometer> thermometer_;
-
-  uint8_t register_address_;
-  static constexpr uint8_t kRegisterCount = 0x13;
-  uint8_t registers_[kRegisterCount];
-  bool registers_written_[kRegisterCount];
-
-  uint64_t time_offset_;
-  int weekday_offset_;
 };

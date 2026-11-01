@@ -6,8 +6,7 @@ cc_library(
     hdrs = ["ds3231.h"],
     visibility = ["//visibility:public"],
     deps = [
-        "//roo_testing/buses/i2c",
+        "//roo_testing/devices/clock/internal:i2c_rtc",
         "//roo_testing/transducers/temperature",
-        "//roo_testing/transducers/time",
     ],
 )

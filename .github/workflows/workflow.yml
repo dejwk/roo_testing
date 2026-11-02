@@ -185,3 +185,27 @@ jobs:
         if [[ "$FRONTEND" == arduino ]]; then suite=arduino_pico_tests; fi
         bazel test "//:$suite" "--config=roo_testing_${FRONTEND}_rp2040" \
           "${options[@]}" --test_output=errors
+
+  pico_freertos:
+    name: Pico FreeRTOS ${{ matrix.mode }}
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [normal, asan]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+    - uses: ./.github/actions/ci-setup
+    - name: Test the single-core Pico FreeRTOS runtime
+      env:
+        MODE: ${{ matrix.mode }}
+      run: |
+        options=()
+        if [[ "$MODE" == asan ]]; then options+=(--config=asan); fi
+        bazel test //:arduino_pico_freertos_tests \
+          --config=roo_testing_arduino_rp2040_freertos \
+          "${options[@]}" --test_output=errors
+        python3 test/pico_freertos/verify_profile.py

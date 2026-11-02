@@ -733,7 +733,10 @@ and shared bus/device interfaces meet the demonstrated needs with less migration
 
 ## Future Work
 
-### Committed subsequent release: Arduino-Pico FreeRTOS
+### Implemented subsequent release: Arduino-Pico FreeRTOS
+
+The implementation is documented in [Pico FreeRTOS](pico_freertos.md). The
+following original release criteria are implemented there.
 
 Add `roo_testing_arduino_rp2040_freertos` as a separate profile, retaining the
 initial profiles and their behavior. Compile Earle's FreeRTOS-enabled core with

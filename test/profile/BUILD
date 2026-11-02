@@ -274,3 +274,11 @@ cc_test(
 )
 
 exports_files(["verify_identity.sh"])
+
+cc_test(
+    name = "freertos_headers_test",
+    size = "small",
+    srcs = ["freertos_headers_test.cc"],
+    linkstatic = True,
+    deps = ["//roo_testing/runtime:freertos_headers"],
+)

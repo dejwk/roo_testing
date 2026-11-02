@@ -8,7 +8,7 @@ cc_library(
     name = "freertos_headers",
     deps = ["//roo_testing/frameworks/environment:freertos"] + select({
         "//roo_testing/platforms:is_arduino_rp2040_freertos": ["//roo_testing/frameworks/freertos_posix:compat_headers"],
-        "//conditions:default": ["//roo_testing/frameworks/esp-idf/components/freertos"],
+        "//conditions:default": ["//roo_testing/frameworks/esp-idf/components/freertos:include"],
     }),
 )
 

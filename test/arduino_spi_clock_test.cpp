@@ -85,14 +85,15 @@ TEST(ArduinoSpiClockTest, MatchesUpstreamDividedClockEncoding) {
 // order accurately to protocol-checking devices on every transaction.
 TEST(ArduinoSpiClockTest, ReportsAllModesAndBothBitOrders) {
   static ClockRecordingSpiDevice device;
-  FakeEsp32().attachSpiDevice(device, 18, 19, 23);
+  // GPIO 21 exists on ESP32, S3 and C3; GPIO 23 is absent on S3/C3.
+  FakeEsp32().attachSpiDevice(device, 18, 19, 21);
   FakeEsp32().gpio.attachOutput(5, device.cs());
 #if CONFIG_IDF_TARGET_ESP32
   SPIClass spi(VSPI);
 #else
   SPIClass spi(FSPI);
 #endif
-  ASSERT_TRUE(spi.begin(18, 19, 23));
+  ASSERT_TRUE(spi.begin(18, 19, 21));
   pinMode(5, OUTPUT);
   digitalWrite(5, HIGH);
   device.selection_edges.clear();

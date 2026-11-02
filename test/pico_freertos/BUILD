@@ -1,4 +1,5 @@
 load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
 cc_test(
@@ -61,6 +62,10 @@ cc_test(
             "-fno-rtti",
         ],
         linkstatic = True,
+        target_compatible_with = [
+            "//roo_testing/platforms:rp2040",
+            "//roo_testing/platforms:freertos",
+        ],
         deps = [
             "//:arduino_gtest_main",
             "//roo_testing/buses/i2c",
@@ -77,6 +82,10 @@ cc_test(
 cc_binary(
     name = "core1_probe",
     srcs = ["core1_probe.cpp"],
+    target_compatible_with = [
+        "//roo_testing/platforms:rp2040",
+        "//roo_testing/platforms:freertos",
+    ],
     deps = ["//:arduino_main"],
 )
 
@@ -117,6 +126,32 @@ cc_test(
         "//:arduino_gtest_main",
         "//roo_testing/sys",
         "//roo_testing/system:manual_time_mode",
+    ],
+)
+
+cc_library(
+    name = "unrelated_c_identity",
+    srcs = ["identity.c"],
+    copts = ["-Werror"],
+    target_compatible_with = [
+        "//roo_testing/platforms:rp2040",
+        "//roo_testing/platforms:freertos",
+    ],
+)
+
+cc_test(
+    name = "identity_test",
+    size = "small",
+    srcs = ["identity_test.cpp"],
+    copts = [
+        "-Werror",
+        "-fno-exceptions",
+        "-fno-rtti",
+    ],
+    linkstatic = True,
+    deps = [
+        ":unrelated_c_identity",
+        "//roo_testing/runtime:freertos_headers",
     ],
 )
 

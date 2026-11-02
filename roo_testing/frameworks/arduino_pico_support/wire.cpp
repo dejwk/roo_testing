@@ -191,7 +191,9 @@ int TwoWire::peek() {
 }
 void TwoWire::flush() {
   roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
-  roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
+  if (!FakePico().i2cState(i2c_get_index(_i2c)).restart_on_next) {
+    roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
+  }
   _buffLen = 0;
   _buffOff = 0;
 }

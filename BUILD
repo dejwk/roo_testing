@@ -208,3 +208,27 @@ test_suite(
         "//test/pico:arduino_runner_manual_test",
     ],
 )
+
+# The separate profile exercises actual preemptive tasks over the Pico models.
+test_suite(
+    name = "arduino_pico_freertos_tests",
+    tags = ["manual"],
+    tests = [
+        "//examples/arduino_pico:peripherals_test",
+        "//test/pico:freertos_runner_auto_test",
+        "//test/pico:freertos_runner_manual_test",
+        "//test/pico_freertos:arduino_auto_test",
+        "//test/pico_freertos:arduino_manual_test",
+        "//test/pico_freertos:clock_auto_test",
+        "//test/pico_freertos:clock_manual_test",
+        "//test/pico_freertos:event_test",
+        "//test/pico_freertos:identity_test",
+        "//test/pico_freertos:kernel_test",
+        "//test/pico_freertos:peripheral_auto_test",
+        "//test/pico_freertos:peripheral_manual_test",
+        "//test/pico_freertos:runner_process_test",
+        "//test/pico_freertos:sys_test",
+        "//test/profile:freertos_headers_test",
+        "//test/profile:runtime_selection_test",
+    ],
+)

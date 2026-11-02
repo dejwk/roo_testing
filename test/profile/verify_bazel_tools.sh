@@ -266,7 +266,7 @@ env -u BAZEL_REAL \
   "${wrapper}" version
 assert_lines call skip=true arg=version end
 
-# The eight-profile helper forwards arguments and runs each profile once.
+# The nine-profile helper forwards arguments and runs each profile once.
 : >"${capture}"
 : >"${stderr_log}"
 ROO_TESTING_BAZEL="${self}" \
@@ -284,6 +284,8 @@ for frontend in pico arduino; do
   expected+=(call skip= arg=test "arg=--config=roo_testing_${frontend}_rp2040" arg=//... arg=--config=asan arg=--test_output=errors end)
   grep -Fq "testing ${frontend} rp2040." "${stderr_log}" || fail "helper omitted ${frontend} rp2040 notice"
 done
+expected+=(call skip= arg=test arg=--config=roo_testing_arduino_rp2040_freertos arg=//... arg=--config=asan arg=--test_output=errors end)
+grep -Fq 'testing arduino rp2040 freertos.' "${stderr_log}" || fail "helper omitted Pico FreeRTOS"
 assert_lines "${expected[@]}"
 
 # The Arduino-Pico spelling and split form must compose with ASAN unchanged.
@@ -291,8 +293,11 @@ invoke_wrapper test --config roo_testing_arduino_rp2040 --config=asan //:target
 assert_lines call skip= arg=test arg=--config arg=roo_testing_arduino_rp2040 arg=--config=asan arg=//:target end
 [[ ! -s "${stderr_log}" ]] || fail "Arduino Pico printed a default notice"
 
+invoke_wrapper test --config=roo_testing_arduino_rp2040_freertos //:target
+assert_lines call skip= arg=test arg=--config=roo_testing_arduino_rp2040_freertos arg=//:target end
+
 # Both split and joined profile overrides must be rejected before any invocation.
-for profile in roo_testing_pico_rp2040 roo_testing_arduino_rp2040; do
+for profile in roo_testing_pico_rp2040 roo_testing_arduino_rp2040 roo_testing_arduino_rp2040_freertos; do
   for form in joined split; do
     : >"${capture}"
     if [[ "$form" == joined ]]; then config_args=("--config=$profile"); else config_args=(--config "$profile"); fi

@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       profiles:
-        description: JSON array of host, arduino, idf, arduino_esp32s3, idf_esp32s3, arduino_esp32c3, idf_esp32c3, pico_rp2040, or arduino_rp2040.
+        description: JSON array of host, arduino, idf, arduino_esp32s3, idf_esp32s3, arduino_esp32c3, idf_esp32c3, pico_rp2040, arduino_rp2040, or arduino_rp2040_freertos.
         required: false
         type: string
         default: '["arduino"]'
@@ -111,7 +111,7 @@ jobs:
             idf)
               profile_args=(--config=roo_testing_idf_esp32)
               ;;
-            arduino_esp32s3|idf_esp32s3|arduino_esp32c3|idf_esp32c3|pico_rp2040|arduino_rp2040)
+            arduino_esp32s3|idf_esp32s3|arduino_esp32c3|idf_esp32c3|pico_rp2040|arduino_rp2040|arduino_rp2040_freertos)
               profile_args=("--config=roo_testing_${PROFILE}")
               ;;
             *)

@@ -8,11 +8,15 @@
 
 namespace {
 // Starts a fresh scheduler process so each run also validates native cleanup.
-int Run(const char* executable, const char* filter) {
+int Run(const char* executable, const char* filter, bool gtest = true) {
   const pid_t child = fork();
   if (child == 0) {
-    execl(executable, executable, "--gtest_also_run_disabled_tests", filter,
-          static_cast<char*>(nullptr));
+    if (gtest) {
+      execl(executable, executable, "--gtest_also_run_disabled_tests", filter,
+            static_cast<char*>(nullptr));
+    } else {
+      execl(executable, executable, filter, static_cast<char*>(nullptr));
+    }
     std::_Exit(127);
   }
   if (child < 0) return -1;
@@ -36,7 +40,7 @@ int main(int argc, char** argv) {
     if (Run(argv[4], "--gtest_filter=*DISABLED_PropagatesFailure") != 1)
       return 6;
   }
-  const int core1 = Run(argv[3], "--iterations=1");
+  const int core1 = Run(argv[3], "--iterations=1", false);
   if (core1 != 128 + SIGABRT) return 7;
   std::puts("Pico FreeRTOS runners and lifecycle verified");
   return 0;

@@ -73,6 +73,7 @@ cc_test(
     ],
     copts = ["-Werror"],
     linkstatic = 1,
+    target_compatible_with = ["//roo_testing/platforms:esp_idf"],
     deps = ["//:arduino"],
 )
 
@@ -88,6 +89,7 @@ cc_test(
     ],
     copts = ["-Werror"],
     linkstatic = 1,
+    target_compatible_with = ["//roo_testing/platforms:esp_idf"],
     deps = ["//:arduino_main"],
 )
 
@@ -102,6 +104,7 @@ cc_test(
     ],
     copts = ["-Werror"],
     linkstatic = 1,
+    target_compatible_with = ["//roo_testing/platforms:esp_idf"],
     deps = ["//:arduino_gtest_main"],
 )
 
@@ -121,6 +124,7 @@ cc_test(
     size = "small",
     srcs = ["arduino_periman_static_initialization_test.cpp"],
     linkstatic = 1,
+    target_compatible_with = ["//roo_testing/platforms:esp_idf"],
     deps = ["//:arduino_gtest_main"],
 )
 
@@ -216,6 +220,7 @@ cc_test(
     srcs = ["arduino_ledc_test.cpp"],
     linkstatic = 1,
     local_defines = ["ROO_TESTING_EXPECT_AUTO_SYNC=1"],
+    target_compatible_with = ["//roo_testing/platforms:esp_idf"],
     deps = ["//:arduino_gtest_main"],
 )
 
@@ -225,6 +230,7 @@ cc_test(
     srcs = ["arduino_ledc_test.cpp"],
     linkstatic = 1,
     local_defines = ["ROO_TESTING_EXPECT_AUTO_SYNC=0"],
+    target_compatible_with = ["//roo_testing/platforms:esp_idf"],
     deps = [
         "//:arduino_gtest_main",
         "//roo_testing/system:manual_time_mode",
@@ -302,6 +308,7 @@ cc_test(
     size = "small",
     srcs = ["arduino_uart_api_test.cpp"],
     linkstatic = 1,
+    target_compatible_with = ["//roo_testing/platforms:esp_idf"],
     deps = ["//:arduino_gtest_main"],
 )
 
@@ -368,6 +375,7 @@ cc_test(
     size = "small",
     srcs = ["gpio_test.cpp"],
     linkstatic = 1,
+    target_compatible_with = ["//roo_testing/platforms:esp_idf"],
     deps = [
         "//:arduino_gtest_main",
         "//roo_testing/buses/gpio",
@@ -502,6 +510,7 @@ cc_test(
     size = "small",
     srcs = ["nvs_test.cpp"],
     linkstatic = 1,
+    target_compatible_with = ["//roo_testing/platforms:esp_idf"],
     deps = [
         "//:arduino_gtest_main",
         "//roo_testing/microcontrollers/esp32:nvs_storage",

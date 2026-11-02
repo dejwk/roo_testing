@@ -210,3 +210,42 @@ changes. Dedicated auto/manual consumer tests verify roo_time Delay, shared
 uptime, joins, semaphore handoffs, mutex contention, CV notification and timeout.
 roo_time itself needs no implementation change: its emulation delay already uses
 the shared clock and now reaches the task-aware runtime hook.
+
+Stage 6: helpers enumerate nine profiles and CI has normal/ASAN FreeRTOS jobs.
+Unrelated C and public-header C++ probes verify global identity, 32-bit ticks,
+one core and the pinned kernel version. Configured dependency/compile-action
+checks reject ESP32/IDF code and identity macros. Header-only runtime consumers
+link without starting a scheduler. Default and recursive discovery skip fixtures
+whose contracts require another runtime; the legacy SPI fixture now uses pins
+present on all three ESP32 variants.
+
+The cancellation stress test exposed a POSIX condition-wait cleanup race:
+cancellation reacquires the event mutex, and without a cleanup handler the
+subsequent signal deadlocks. The recorded event patch fixes both wait paths.
+The direct test cancels 100 native waiters; 20 ASAN repetitions each of this test,
+manual runner cleanup and the multi-process runner test pass. All three port
+patches replay byte-for-byte from the pristine pinned kernel. Copybara itself
+was unavailable locally; replay, allowlists and source comparisons validate the
+recorded import instead.
+
+The previous profile suites pass in normal and ASAN modes: 55 tests per Arduino
+ESP32/S3/C3 profile, 17 per IDF profile, 21 for SDK Pico, and 23 for Arduino Pico
+(with two SDK-frontend identity probes correctly skipped). The combined consumer
+verifier passes 15 tests in each mode across roo_threads, roo_time, roo_scheduler
+and the existing roo_display transport. Its dependency graph also excludes
+ESP32/IDF. No production change was necessary in those latter three consumers.
+
+To reproduce with coordinated sibling checkouts:
+
+```sh
+bazel test //:arduino_pico_freertos_tests --config=roo_testing_arduino_rp2040_freertos
+bazel test //:arduino_pico_freertos_tests --config=roo_testing_arduino_rp2040_freertos --config=asan
+python3 test/pico_freertos/verify_profile.py
+python3 test/pico_freertos/verify_clients.py
+```
+
+The profile verifier accepts `ROO_TESTING_BAZEL_OUTPUT_BASE` for an existing
+persistent workspace base. Client validation reuses the stable persistent
+workspace from the Pico consumer verifier and shuts its extra server down.
+Physical board/ARM builds are not part of host-runtime qualification; upstream
+kernel files and hardware-specific startup remain separate ownership boundaries.

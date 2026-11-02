@@ -5,8 +5,9 @@ Select `--config=roo_testing_arduino_rp2040` and depend on the stable
 The public `roo_arduino_example` helper selects this main automatically.
 Applications use the real pinned Arduino-Pico 6.3.1 public headers and original
 `rpipico` variant. The independently pinned ArduinoCore-API gitlink supplies
-the forwarding headers' implementation. This is bare metal on core 0, without
-an ESP-IDF or FreeRTOS dependency.
+the forwarding headers' implementation. This original profile is bare metal on core 0. The separate
+`roo_testing_arduino_rp2040_freertos` profile uses the same public targets
+with task-backed startup and no ESP-IDF dependency.
 
 The upstream Common, String, Print, Stream, WMath, CoreMutex, non-ISO conversion
 and analog implementations are compiled. Small recorded Copybara patches
@@ -28,9 +29,9 @@ functions absent from glibc. Linux ABI limitations still apply.
 | Core mutex | Checked core-0 ownership for the upstream portable core. No host-thread exclusion or ISR synchronization is claimed. |
 
 Networking (including the fork's lwIP-dependent IPAddress/UDP), filesystem,
-USB hardware, PIO, semihosting, direct register access, core 1 and FreeRTOS are
+USB hardware, PIO, semihosting, direct register access, core 1 are
 excluded. Their headers are not replaced with success stubs. SDK unsupported
-operations retain their explicit failures. Pico FreeRTOS is a subsequent release.
+operations retain their explicit failures. The FreeRTOS variant is described below.
 Do not mix independent readers of stdin: Serial and the default SDK UART0
 share one console, not two independent byte streams.
 
@@ -39,3 +40,28 @@ loop/yield. `--iterations=N` bounds the sketch for CI; otherwise it runs
 continuously. The test runner initializes the core on the native thread,
 returns GoogleTest's status and shuts down the shared timer service. Examples
 and tests are in `//examples/arduino_pico` and `//test/arduino_pico`.
+
+
+## FreeRTOS variant
+
+`--config=roo_testing_arduino_rp2040_freertos` compiles the portable core with
+`__FREERTOS`, real contended CoreMutex support, and the pinned POSIX kernel.
+Destination-owned startup replaces hardware USB/network/core-1 initialization.
+The main/test body runs in a FreeRTOS task; delay() and yield() release execution.
+delayMicroseconds() consumes host time without a kernel wait (and does not move
+manual uptime). noInterrupts()/interrupts() balance nested scheduler critical
+sections; hardware IRQ sources and user interrupt callbacks remain unsupported.
+
+SPI beginTransaction/endTransaction reserve a controller across settings, CS
+edges and waits. Wire reserves TX, repeated START, and unread RX state; consume
+or flush RX before handing the controller to another task. A no-STOP operation
+retains its reservation until the conversation is finished or Wire.end().
+SerialUART serializes RX queue and TX operations; Serial's peek state is guarded
+against task preemption. Configure lifecycle/pins and borrowed device wiring
+before concurrent use. Finish owned mutexes/reservations before deleting tasks.
+Independent native threads must not call the board concurrently.
+
+GoogleTest status is returned unchanged. Runners delete remaining application
+tasks, stop the ticker, join native contexts, and close pending clock callbacks.
+One scheduler lifetime is supported per executable. Core-1 entry points fail
+explicitly. See [the design and validation](../../../doc/pico_freertos.md).

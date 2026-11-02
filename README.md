@@ -55,12 +55,13 @@ The code does not interpret Xtensa, RISC-V or ARM instructions. Applications com
 
 ## Native Pico SDK and Arduino-Pico
 
-The original non-wireless Pico (RP2040, core 0) supports two native profiles:
+The original non-wireless Pico (RP2040, core 0) supports three native profiles:
 
 | Profile | Public library / process entry point |
 | --- | --- |
 | `roo_testing_pico_rp2040` | `:pico_sdk`, ordinary C/C++ `main()`, `:pico_gtest_main` |
 | `roo_testing_arduino_rp2040` | `:arduino`, `:arduino_main`, `:arduino_gtest_main` |
+| `roo_testing_arduino_rp2040_freertos` | Same Arduino targets, with a single-core FreeRTOS scheduler |
 
 Vendor these canonical fragments into the root workspace and import them in
 its `.bazelrc` alongside the shared ASAN fragment:
@@ -69,14 +70,16 @@ its `.bazelrc` alongside the shared ASAN fragment:
 import %workspace%/.roo_testing/bazelrc/rp2040/base.bazelrc
 import %workspace%/.roo_testing/bazelrc/rp2040/pico.bazelrc
 import %workspace%/.roo_testing/bazelrc/rp2040/arduino.bazelrc
+import %workspace%/.roo_testing/bazelrc/rp2040/freertos.bazelrc
 ```
 
-Both profiles use a bare-metal runtime and share clock, GPIO, 8N1 UART,
+The SDK and original Arduino profiles use a bare-metal runtime. The FreeRTOS
+variant adds task scheduling. All three share clock, GPIO, 8N1 UART,
 synchronous SPI/I2C, external ADC and free-running PWM adapters. They reuse the
 existing console, fake buses/devices and voltage signals. Arduino-Pico 6.3.1
 uses its actual pinned API/core and original `rpipico` variant above Pico SDK
 2.3.1. `Serial` substitutes the unbuffered host console for USB and warns once.
-No ESP-IDF or FreeRTOS runtime is selected.
+The Pico graph has no ESP-IDF dependency.
 
 Run `bazel run --config=roo_testing_arduino_rp2040 //examples/arduino_pico:peripherals -- --iterations=2`
 for a bounded blink/UART/DS3231/SPI sketch. SDK examples cover
@@ -89,11 +92,33 @@ See the [SDK support matrix](roo_testing/frameworks/pico_support/README.md) and
 Coordinated local `roo_threads` and `roo_time` overrides are required until
 matching client releases are available. Supported client validation covers
 roo_time, cooperative roo_scheduler and roo_display's Arduino SPI transport;
-thread-dependent clients and the full filesystem/display stack are excluded.
+thread-dependent clients use the separate FreeRTOS profile. The full
+filesystem/display stack remains outside the supported Pico surface.
 Run `python3 test/pico_clients/verify_clients.py` with sibling Roo checkouts, or
 set `ROO_CLIENT_ROOT`. See [release validation](doc/pico_validation.md) for exact
-scope and the pending physical-board qualification. Pico FreeRTOS is planned
-for a subsequent release.
+scope and the pending physical-board qualification. See
+[the FreeRTOS runtime contract](doc/pico_freertos.md) for task-aware support.
+
+The Arduino-Pico FreeRTOS profile uses the pinned 11.1.0+ kernel with shared
+emulated uptime. Run:
+
+```sh
+bazel test //:arduino_pico_freertos_tests --config=roo_testing_arduino_rp2040_freertos
+```
+
+This exercises task startup, preemption, queues, notifications, software
+timers, peripheral contention, and cleanup;
+append `--config=asan` for sanitizer validation. Run
+`python3 test/pico_freertos/verify_clients.py` with sibling Roo checkouts for
+thread, time, scheduler, and display-transport consumer validation. See
+[the runtime design and support contract](doc/pico_freertos.md).
+Vendor `.roo_testing/bazelrc/rp2040/freertos.bazelrc` and import it after the RP2040
+base fragment to enable this config in a client workspace. Roo consumers select
+`//roo_testing/runtime:freertos` (or `:freertos_headers`) to obtain the matching
+kernel without importing ESP-IDF. Supported execution is one scheduler core and
+one scheduler lifetime per native executable. Complete bus reservations before
+deleting their owner; core 1, hardware IRQ callbacks, DMA, USB and networking
+retain the existing unsupported status.
 
 ## Emulated SoC identity
 
@@ -195,7 +220,7 @@ default when workspace rc loading is disabled. Invoking the Bazel binary
 directly or setting `BAZELISK_SKIP_WRAPPER=true` bypasses this convenience and
 therefore requires an explicit profile.
 
-Mixed workspaces can exercise their native test targets under all eight profiles
+Mixed workspaces can exercise their native test targets under all nine profiles
 without Starlark transitions:
 
 ```sh
@@ -206,8 +231,8 @@ The helper requires the three fragments for each ESP32 SoC and the RP2040
 `base`, `pico`, and `arduino` fragments in the root `.bazelrc`.
 
 With no arguments, the helper tests `...`. It runs Arduino and then IDF for
-ESP32, ESP32-S3, and ESP32-C3, then SDK and Arduino for RP2040, forwarding the same target patterns and options
-to all eight runs and stopping on the first failure. Targets must support the
+ESP32, ESP32-S3, and ESP32-C3, then SDK, Arduino and Arduino with FreeRTOS for RP2040, forwarding the same target patterns and options
+to all nine runs and stopping on the first failure. Targets must support the
 selected profiles or declare their platform compatibility. The standalone
 Arduino examples vendor the configuration fragments and nested wrapper, so
 their plain Bazel commands use the same announced default. An rc file cannot import an `@roo_testing//...` label because
@@ -233,8 +258,8 @@ bazel test ... --config=roo_testing_idf_esp32 --config=asan \
   --test_output=errors
 ```
 
-To test all eight profiles under ASAN, pass the config through the existing
-eight-profile helper:
+To test all nine profiles under ASAN, pass the config through the existing
+nine-profile helper:
 
 ```sh
 .roo_testing/bin/test_all_profiles ... --config=asan --test_output=errors

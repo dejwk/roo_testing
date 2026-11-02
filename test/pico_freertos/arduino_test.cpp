@@ -45,7 +45,8 @@ class Registers : public FakeI2cDevice {
     return I2C_ERROR_OK;
   }
   Result read(uint8_t* bytes, uint16_t size, bool stop, uint16_t) override {
-    configASSERT(!last_stop && stop);
+    configASSERT(!last_stop);
+    last_stop = stop;
     for (uint16_t i = 0; i < size; ++i) bytes[i] = writes.back() + i;
     return I2C_ERROR_OK;
   }
@@ -147,6 +148,7 @@ TEST(PicoFreeRtosArduino, CompleteSpiTransaction) {
 // Verifies TX buffers, a repeated START, and unread RX bytes retain their owner
 // across delays; a competing task progresses only after the last byte is read.
 TEST(PicoFreeRtosArduino, CompleteWireTransaction) {
+  wiring.registers.writes.clear();
   Wire.begin();
   done = xSemaphoreCreateBinary();
   progressed = false;
@@ -169,6 +171,35 @@ TEST(PicoFreeRtosArduino, CompleteWireTransaction) {
   ASSERT_EQ(xSemaphoreTake(done, pdMS_TO_TICKS(100)), pdTRUE);
   EXPECT_TRUE(progressed);
   EXPECT_EQ(wiring.registers.writes, (std::vector<uint8_t>{0x20, 0x40}));
+  vTaskDelete(worker);
+  vSemaphoreDelete(done);
+  Wire.end();
+}
+// Verifies consuming or flushing RX after no STOP preserves the controller
+// until its owner emits STOP, including a second task already waiting for it.
+TEST(PicoFreeRtosArduino, NoStopReceiveRetainsOwnership) {
+  wiring.registers.writes.clear();
+  Wire.begin();
+  Wire.beginTransmission(0x68);
+  Wire.write(0x60);
+  ASSERT_EQ(Wire.endTransmission(false), 0);
+  ASSERT_EQ(Wire.requestFrom(0x68, size_t{1}, false), 1u);
+  done = xSemaphoreCreateBinary();
+  progressed = false;
+  TaskHandle_t worker;
+  ASSERT_EQ(xTaskCreate(WireWorker, "other_wire", 16384, nullptr, 3, &worker),
+            pdPASS);
+  EXPECT_EQ(Wire.read(), 0x60);
+  delay(1);
+  EXPECT_FALSE(progressed);
+  Wire.flush();
+  delay(1);
+  EXPECT_FALSE(progressed);
+  Wire.beginTransmission(0x68);
+  Wire.write(0x61);
+  ASSERT_EQ(Wire.endTransmission(), 0);
+  ASSERT_EQ(xSemaphoreTake(done, pdMS_TO_TICKS(100)), pdTRUE);
+  EXPECT_TRUE(progressed);
   vTaskDelete(worker);
   vSemaphoreDelete(done);
   Wire.end();

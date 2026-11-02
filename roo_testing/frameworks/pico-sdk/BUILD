@@ -27,7 +27,10 @@ cc_library(
         "src/host/pico_platform/include",
     ],
     visibility = ["//visibility:public"],
-    deps = ["//roo_testing/frameworks/environment:pico_sdk"],
+    deps = ["//roo_testing/frameworks/environment:pico_sdk"] + select({
+        "//roo_testing/platforms:is_arduino_rp2040_freertos": ["//roo_testing/frameworks/arduino-pico/FreeRTOS-Kernel:headers"],
+        "//conditions:default": [],
+    }),
 )
 
 cc_library(

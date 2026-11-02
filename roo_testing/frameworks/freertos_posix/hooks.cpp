@@ -20,6 +20,12 @@ struct Waiter {
   SemaphoreHandle_t event;
   Waiter* next;
 };
+struct Resource {
+  StaticSemaphore_t storage;
+  SemaphoreHandle_t handle = nullptr;
+  TaskHandle_t reservation_owner = nullptr;
+};
+Resource resources[4];
 Waiter* waiters = nullptr;
 std::atomic<bool> active{false};
 int64_t tick_origin_us = 0;
@@ -79,6 +85,12 @@ void RooFreeRtosTaskDeleted(void* task) {
   // The caller is an active task or native main after the scheduler has
   // stopped.
   portENTER_CRITICAL();
+  for (Resource& resource : resources) {
+    // FreeRTOS does not release an owner's mutex on task deletion. Require
+    // transactions to finish before deletion, rather than leaving a dead bus.
+    configASSERT(resource.handle == nullptr ||
+                 xSemaphoreGetMutexHolder(resource.handle) != task);
+  }
   Waiter** current = &waiters;
   while (*current != nullptr) {
     if ((*current)->task == task) {
@@ -184,6 +196,45 @@ bool roo_testing_runtime_sync() {
 
 void roo_testing_runtime_time_advanced() {
   if (active.load(std::memory_order_acquire)) RooFreeRtosPortRequestTick();
+}
+
+void RooFreeRtosLockResource(uint32_t resource) {
+  if (!RooFreeRtosTaskContext()) return;
+  configASSERT(resource < 4);
+  Resource& state = resources[resource];
+  portENTER_CRITICAL();
+  if (state.handle == nullptr) {
+    state.handle = xSemaphoreCreateRecursiveMutexStatic(&state.storage);
+  }
+  portEXIT_CRITICAL();
+  configASSERT(xSemaphoreTakeRecursive(state.handle, portMAX_DELAY) == pdTRUE);
+}
+
+void RooFreeRtosUnlockResource(uint32_t resource) {
+  if (!RooFreeRtosTaskContext()) return;
+  configASSERT(resource < 4);
+  configASSERT(xSemaphoreGiveRecursive(resources[resource].handle) == pdTRUE);
+}
+
+void RooFreeRtosReserveResource(uint32_t resource) {
+  if (!RooFreeRtosTaskContext()) return;
+  RooFreeRtosLockResource(resource);
+  Resource& state = resources[resource];
+  if (state.reservation_owner == xTaskGetCurrentTaskHandle()) {
+    RooFreeRtosUnlockResource(resource);
+  } else {
+    state.reservation_owner = xTaskGetCurrentTaskHandle();
+  }
+}
+
+void RooFreeRtosReleaseResource(uint32_t resource) {
+  if (!RooFreeRtosTaskContext()) return;
+  configASSERT(resource < 4);
+  Resource& state = resources[resource];
+  if (state.reservation_owner == nullptr) return;
+  configASSERT(state.reservation_owner == xTaskGetCurrentTaskHandle());
+  state.reservation_owner = nullptr;
+  RooFreeRtosUnlockResource(resource);
 }
 
 void RooFreeRtosEndScheduler() {

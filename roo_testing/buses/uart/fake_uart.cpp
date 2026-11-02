@@ -12,6 +12,9 @@
 #include "glog/logging.h"
 #include "roo_testing/host/scheduler_safe_host_lock.h"
 
+extern "C" bool roo_testing_runtime_delay_micros(uint64_t)
+    __attribute__((weak));
+
 ConsoleUartDevice::ConsoleUartDevice(int input_fd, int output_fd)
     : input_fd_(input_fd), output_fd_(output_fd) {}
 
@@ -26,6 +29,9 @@ size_t ConsoleUartDevice::write(const uint8_t* buf, uint16_t size) {
     const ssize_t count = ::write(output_fd_, buf + sent, size - sent);
     if (count < 0 && errno == EINTR) continue;
     if (count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+      if (roo_testing_runtime_delay_micros != nullptr &&
+          roo_testing_runtime_delay_micros(1000))
+        continue;
       pollfd descriptor{output_fd_, POLLOUT, 0};
       int ready;
       do {
@@ -105,7 +111,7 @@ class FakeUartCable::Endpoint : public FakeUartDevice {
   }
 
   size_t read(uint8_t* buf, uint16_t size) override {
-    std::lock_guard<std::mutex> lock(mutex_);
+    roo_testing::SchedulerSafeHostLock lock(mutex_);
     size_t count = std::min<size_t>(size, received_.size());
     for (size_t i = 0; i < count; ++i) {
       buf[i] = received_.front();
@@ -115,7 +121,7 @@ class FakeUartCable::Endpoint : public FakeUartDevice {
   }
 
   size_t availableForRead() override {
-    std::lock_guard<std::mutex> lock(mutex_);
+    roo_testing::SchedulerSafeHostLock lock(mutex_);
     return received_.size();
   }
 
@@ -126,7 +132,7 @@ class FakeUartCable::Endpoint : public FakeUartDevice {
  private:
   size_t receive(const uint8_t* buf, uint16_t size) {
     {
-      std::lock_guard<std::mutex> lock(mutex_);
+      roo_testing::SchedulerSafeHostLock lock(mutex_);
       received_.insert(received_.end(), buf, buf + size);
     }
     notifyDataAvailable();

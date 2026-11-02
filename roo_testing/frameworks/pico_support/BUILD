@@ -1,6 +1,16 @@
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
 cc_library(
+    name = "task_support",
+    hdrs = ["task_support.h"],
+    visibility = ["//visibility:public"],
+    deps = ["//roo_testing/system:timer"] + select({
+        "//roo_testing/platforms:is_arduino_rp2040_freertos": ["//roo_testing/frameworks/arduino-pico/FreeRTOS-Kernel:freertos"],
+        "//conditions:default": [],
+    }),
+)
+
+cc_library(
     name = "time",
     srcs = ["time.cpp"],
     copts = ["-fno-exceptions"],
@@ -42,6 +52,7 @@ cc_library(
     copts = ["-fno-exceptions"],
     visibility = ["//roo_testing/frameworks/pico-sdk:__pkg__"],
     deps = [
+        ":task_support",
         ":time",
         "//roo_testing/buses/uart",
         "//roo_testing/frameworks/pico-sdk:headers",
@@ -56,6 +67,7 @@ cc_library(
     copts = ["-fno-exceptions"],
     visibility = ["//roo_testing/frameworks/pico-sdk:__pkg__"],
     deps = [
+        ":task_support",
         "//roo_testing/buses/spi",
         "//roo_testing/frameworks/pico-sdk:headers",
         "//roo_testing/microcontrollers/rp2040:pico",
@@ -70,6 +82,7 @@ cc_library(
     copts = ["-fno-exceptions"],
     visibility = ["//roo_testing/frameworks/pico-sdk:__pkg__"],
     deps = [
+        ":task_support",
         ":time",
         "//roo_testing/buses/i2c",
         "//roo_testing/frameworks/pico-sdk:headers",
@@ -109,6 +122,7 @@ cc_library(
     srcs = ["sync.cpp"],
     visibility = ["//roo_testing/frameworks/pico-sdk:__pkg__"],
     deps = [
+        ":task_support",
         "//roo_testing/frameworks/pico-sdk:headers",
         "@glog",
     ],

@@ -6,6 +6,7 @@
 
 #include "glog/logging.h"
 #include "pico/time.h"
+#include "roo_testing/frameworks/pico_support/task_support.h"
 #include "roo_testing/microcontrollers/rp2040/fake_pico.h"
 
 // Native identity tokens; no device registers or host pointers encode indices.
@@ -34,7 +35,11 @@ uint EnabledIndex(uart_inst_t* uart) {
 
 /// Yields to host device producers without inventing emulated UART data/time.
 void WaitForDevice() {
+#if defined(__FREERTOS)
+  system_time_delay_micros(1000);
+#else
   std::this_thread::sleep_for(std::chrono::milliseconds(1));
+#endif
 }
 
 }  // namespace

@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "runtime.h"
+#define portCHECK_IF_IN_ISR() RooFreeRtosPortIsIsr()
+
 #define configNUMBER_OF_CORES 1
 #define configUSE_PREEMPTION 1
 #define configUSE_TIME_SLICING 1
@@ -53,6 +56,7 @@
 #define INCLUDE_eTaskGetState 1
 #define INCLUDE_xTimerPendFunctionCall 1
 #define INCLUDE_xTaskAbortDelay 1
+#define INCLUDE_xSemaphoreGetMutexHolder 1
 #define configASSERT(x)                                                 \
   do {                                                                  \
     if (!(x)) {                                                         \

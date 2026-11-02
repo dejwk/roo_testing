@@ -7,6 +7,8 @@
 #include <limits>
 
 #include "glog/logging.h"
+#include "roo_testing/frameworks/pico_support/task_support.h"
+#include "roo_testing/host/scheduler_signal_guard.h"
 #include "roo_testing/microcontrollers/rp2040/fake_pico.h"
 #include "roo_testing/system/timer.h"
 
@@ -68,6 +70,7 @@ int Transfer(spi_inst_t* spi, const Word* src, Word* dst, size_t len,
              Word repeated, bool send, bool receive) {
   FakePicoBoard& board = FakePico();
   const uint index = Index(spi);
+  roo_testing::pico::ControllerLock controller(index);
   const FakePicoBoard::SpiState state = board.spiState(index);
   if (!state.enabled) return PICO_ERROR_INVALID_STATE;
   if (state.data_bits != 8 * sizeof(Word) || len > INT_MAX ||
@@ -109,7 +112,10 @@ int Transfer(spi_inst_t* spi, const Word* src, Word* dst, size_t len,
     if (receive) incoming.fill(route.idle_high ? 0xff : 0);
     for (SimpleFakeSpiDevice* device : route.devices) {
       std::copy_n(outgoing.begin(), bytes, scratch.begin());
-      device->transfer(interface, scratch.data(), bytes * 8);
+      {
+        roo_testing::SchedulerSignalGuard callback_guard;
+        device->transfer(interface, scratch.data(), bytes * 8);
+      }
       if (receive && device == route.receiver) {
         std::copy_n(scratch.begin(), bytes, incoming.begin());
       }
@@ -126,8 +132,7 @@ int Transfer(spi_inst_t* spi, const Word* src, Word* dst, size_t len,
     offset += words;
     const uint64_t completed = DurationNs(
         static_cast<uint64_t>(offset) * state.data_bits, state.baudrate);
-    system_time_lag_ns(completed - elapsed);
-    system_time_sync();
+    roo_testing::pico::TransferDelayNs(completed - elapsed);
     elapsed = completed;
   }
   board.endSpi(index);
@@ -149,12 +154,17 @@ spi_inst_t* spi_get_instance(uint num) {
 }
 
 uint spi_init(spi_inst_t* spi, uint baudrate) {
+  roo_testing::pico::ControllerLock controller(Index(spi));
   return FakePico().initSpi(Index(spi), baudrate);
 }
 
-void spi_deinit(spi_inst_t* spi) { FakePico().deinitSpi(Index(spi)); }
+void spi_deinit(spi_inst_t* spi) {
+  roo_testing::pico::ControllerLock controller(Index(spi));
+  FakePico().deinitSpi(Index(spi));
+}
 
 uint spi_set_baudrate(spi_inst_t* spi, uint baudrate) {
+  roo_testing::pico::ControllerLock controller(Index(spi));
   return FakePico().setSpiBaudrate(Index(spi), baudrate);
 }
 
@@ -166,6 +176,7 @@ uint spi_get_baudrate(const spi_inst_t* spi) {
 
 void spi_set_format(spi_inst_t* spi, uint bits, spi_cpol_t cpol,
                     spi_cpha_t cpha, spi_order_t order) {
+  roo_testing::pico::ControllerLock controller(Index(spi));
   FakePico().setSpiFormat(Index(spi), bits, cpol, cpha, order);
 }
 

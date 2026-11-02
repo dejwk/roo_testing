@@ -21,6 +21,14 @@ void RooFreeRtosTaskDeleted(void* task);
 void RooFreeRtosIdle(void);
 /// Parks the current task until shared uptime reaches the absolute deadline.
 void RooFreeRtosWaitUntil(int64_t deadline_us);
+/// Acquires a recursive SPI/I2C controller operation lock (resource 0..3).
+void RooFreeRtosLockResource(uint32_t resource);
+/// Releases one recursive controller operation lock.
+void RooFreeRtosUnlockResource(uint32_t resource);
+/// Holds a controller until its Arduino transaction/read buffer is complete.
+void RooFreeRtosReserveResource(uint32_t resource);
+/// Releases the current task's persistent controller reservation, if any.
+void RooFreeRtosReleaseResource(uint32_t resource);
 /// Deletes other application tasks before returning through scheduler shutdown.
 void RooFreeRtosEndScheduler(void);
 /// Reclaims the final caller task after native main regains control.

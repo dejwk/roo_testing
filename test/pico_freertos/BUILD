@@ -26,3 +26,24 @@ cc_test(
         "manual",
     ]
 ]
+
+[
+    cc_test(
+        name = "peripheral_" + mode + "_test",
+        size = "small",
+        timeout = "short",
+        srcs = ["peripheral_test.cpp"],
+        linkstatic = True,
+        deps = [
+            "//:pico_sdk",
+            "//roo_testing/buses/spi",
+            "//roo_testing/buses/uart",
+            "//roo_testing/frameworks/arduino-pico/FreeRTOS-Kernel:freertos",
+            "//roo_testing/microcontrollers/rp2040:pico",
+        ] + (["//roo_testing/system:manual_time_mode"] if mode == "manual" else []),
+    )
+    for mode in [
+        "auto",
+        "manual",
+    ]
+]

@@ -364,3 +364,24 @@ inspect it but cannot reconfigure during publication. Mask updates occur in
 ascending slice order. Phase-correct/gated counting, interrupts, DMA, and register
 access are unsupported. Invalid slices, channels, dividers, pins, and source
 conflicts fail before state publication. See [the bounded signal example](../../../examples/pico_signal/README.md).
+
+## FreeRTOS task-aware adapters
+
+The separate `roo_testing_arduino_rp2040_freertos` profile uses contended SDK
+mutexes and recursive per-controller operation locks. Independent SPI/I2C
+controllers can progress concurrently. Changes to the pins or CS sink of a busy
+controller still fail before mutation. Short GPIO/ADC/PWM and board-state updates
+mask scheduler signals; fixture wiring belongs before application scheduling.
+Device callbacks are synchronous and must not block.
+
+SPI transfer intervals park the task at microsecond precision, conservatively
+rounding sub-microsecond intervals upward. UART readers park between empty reads;
+shared cable and console input state use scheduler-safe host locks. Nonblocking
+host-output backpressure also parks FreeRTOS callers. Native blocking output
+retains the borrowed descriptor's OS behavior and flags.
+
+As on physical FreeRTOS, a task must release owned mutexes and bus reservations
+before deletion. The runtime diagnoses controller-owner deletion rather than
+leaving a silently locked bus. Deleting a task blocked in a UART readiness wait
+or a runtime deadline wait is supported. SDK callers serialize multi-call bus
+protocols; Arduino transaction adapters provide complete conversation scopes.

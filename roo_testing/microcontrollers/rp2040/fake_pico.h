@@ -14,7 +14,8 @@
 #include "roo_testing/buses/uart/fake_uart.h"
 
 /// Owns RP2040 GPIO/UART/SPI/I2C state and borrowed device connections.
-/// SDK access and fixture configuration are single-threaded. Attach devices
+/// SDK operations are serialized under the FreeRTOS profile. Fixture wiring is
+/// configured before scheduling. Attach devices
 /// before configuring their pins and retain them through all GPIO activity.
 class FakePicoBoard {
  public:
@@ -294,6 +295,7 @@ class FakePicoBoard {
   std::array<PinState, kGpioCount> pins_{};
   std::array<Attachment, kGpioCount> attachments_{};
   std::array<bool, kGpioCount> configured_{};
+  std::array<roo_testing_transducers::VoltageSink*, kGpioCount> output_sinks_{};
 
   struct UartConnection {
     FakeUartDevice* device;
@@ -315,6 +317,9 @@ class FakePicoBoard {
 
   /// Rejects reconfiguration from within device callbacks or other transfers.
   void checkBusesIdle() const;
+
+  /// Rejects changes to an active controller's pins or attached CS sink.
+  void checkPinsIdle(uint32_t mask) const;
 
   struct I2cConnection {
     FakeI2cDevice* device;

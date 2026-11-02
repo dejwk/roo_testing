@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "glog/logging.h"
+#include "roo_testing/host/scheduler_signal_guard.h"
 #include "roo_testing/system/timer.h"
 
 using roo_testing_transducers::DigitalLevel;
@@ -96,20 +97,24 @@ uint SpiBaudrate(uint requested) {
 }  // namespace
 
 FakePicoBoard& FakePico() {
+  roo_testing::SchedulerSignalGuard signal_guard;
   static FakePicoBoard board;
   return board;
 }
 
 void FakePicoBoard::CheckPin(uint pin) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CHECK_LT(pin, kGpioCount) << "Invalid Pico GPIO pin";
 }
 
 void FakePicoBoard::CheckMask(uint64_t mask) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CHECK_EQ(mask & ~static_cast<uint64_t>(kGpioMask), uint64_t{0})
       << "Invalid Pico GPIO mask";
 }
 
 void FakePicoBoard::checkAttachment(uint pin) const {
+  roo_testing::SchedulerSignalGuard signal_guard;
   checkBusesIdle();
   CheckPin(pin);
   CHECK(attachments_[pin] == Attachment::kNone)
@@ -120,6 +125,7 @@ void FakePicoBoard::checkAttachment(uint pin) const {
 
 void FakePicoBoard::attachInput(
     uint pin, const roo_testing_transducers::VoltageSource& source) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   checkAttachment(pin);
   gpio_.attachInput(pin, source);
   attachments_[pin] = Attachment::kInput;
@@ -127,23 +133,28 @@ void FakePicoBoard::attachInput(
 
 void FakePicoBoard::attachOutput(uint pin,
                                  roo_testing_transducers::VoltageSink& sink) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   checkAttachment(pin);
   gpio_.attachOutput(pin, sink);
+  output_sinks_[pin] = &sink;
   attachments_[pin] = Attachment::kOutput;
 }
 
 void FakePicoBoard::attach(uint pin, roo_testing_transducers::VoltageIO& io) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   checkAttachment(pin);
   gpio_.attach(pin, io);
   attachments_[pin] = Attachment::kIo;
 }
 
 FakePicoBoard::PinState FakePicoBoard::state(uint pin) const {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CheckPin(pin);
   return pins_[pin];
 }
 
 std::optional<VoltageSignal> FakePicoBoard::driveSignal(uint pin) const {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CheckPin(pin);
   CHECK(pins_[pin].function != GPIO_FUNC_I2C &&
         attachments_[pin] != Attachment::kI2c)
@@ -158,6 +169,7 @@ std::optional<VoltageSignal> FakePicoBoard::driveSignal(uint pin) const {
 }
 
 float FakePicoBoard::padVoltage(uint pin) const {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CheckPin(pin);
   CHECK(pins_[pin].function != GPIO_FUNC_I2C &&
         attachments_[pin] != Attachment::kI2c)
@@ -193,6 +205,7 @@ float FakePicoBoard::padVoltage(uint pin) const {
 }
 
 bool FakePicoBoard::read(uint pin) const {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CheckPin(pin);
   const PinState& config = pins_[pin];
   if (config.input_override == GPIO_OVERRIDE_LOW) return false;
@@ -204,6 +217,7 @@ bool FakePicoBoard::read(uint pin) const {
 }
 
 uint32_t FakePicoBoard::readAll() const {
+  roo_testing::SchedulerSignalGuard signal_guard;
   uint32_t value = 0;
   for (uint pin = 0; pin < kGpioCount; ++pin) {
     if (read(pin)) value |= uint32_t{1} << pin;
@@ -215,7 +229,9 @@ uint32_t FakePicoBoard::readAll() const {
 /// Signal callbacks observe all selected state changes, without a board lock.
 template <typename Update>
 void FakePicoBoard::updatePins(uint32_t mask, Update update) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   checkBusesIdle();
+  checkPinsIdle(mask);
   CheckMask(mask);
   std::array<PinState, kGpioCount> next = pins_;
   uint32_t changed_drive = 0;
@@ -246,6 +262,7 @@ void FakePicoBoard::updatePins(uint32_t mask, Update update) {
 }
 
 void FakePicoBoard::publish(uint32_t mask) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   for (uint pin = 0; pin < kGpioCount; ++pin) {
     if ((mask & (uint32_t{1} << pin)) == 0) continue;
     if (pins_[pin].function == GPIO_FUNC_I2C ||
@@ -262,6 +279,7 @@ void FakePicoBoard::publish(uint32_t mask) {
 }
 
 void FakePicoBoard::init(uint32_t mask) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   updatePins(mask, [](PinState& state, uint) {
     state.function = GPIO_FUNC_SIO;
     state.direction_out = false;
@@ -274,6 +292,7 @@ void FakePicoBoard::init(uint32_t mask) {
 }
 
 void FakePicoBoard::setFunction(uint32_t mask, gpio_function_t function) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CHECK(function == GPIO_FUNC_SIO || function == GPIO_FUNC_NULL ||
         function == GPIO_FUNC_UART || function == GPIO_FUNC_SPI ||
         function == GPIO_FUNC_I2C || function == GPIO_FUNC_PWM)
@@ -305,24 +324,28 @@ void FakePicoBoard::setFunction(uint32_t mask, gpio_function_t function) {
 }
 
 void FakePicoBoard::put(uint32_t mask, uint32_t value) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   updatePins(mask, [value](PinState& state, uint pin) {
     state.output_latch = (value & (uint32_t{1} << pin)) != 0;
   });
 }
 
 void FakePicoBoard::toggle(uint32_t mask) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   updatePins(mask, [](PinState& state, uint) {
     state.output_latch = !state.output_latch;
   });
 }
 
 void FakePicoBoard::setDirection(uint32_t mask, uint32_t value) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   updatePins(mask, [value](PinState& state, uint pin) {
     state.direction_out = (value & (uint32_t{1} << pin)) != 0;
   });
 }
 
 void FakePicoBoard::setPulls(uint pin, bool up, bool down) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CheckPin(pin);
   CHECK(!up || !down) << "Unimplemented: Pico GPIO bus keeper";
   updatePins(uint32_t{1} << pin, [up, down](PinState& state, uint) {
@@ -332,6 +355,7 @@ void FakePicoBoard::setPulls(uint pin, bool up, bool down) {
 }
 
 void FakePicoBoard::setInputEnabled(uint pin, bool enabled) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CheckPin(pin);
   updatePins(uint32_t{1} << pin, [enabled](PinState& state, uint) {
     state.input_enabled = enabled;
@@ -339,6 +363,7 @@ void FakePicoBoard::setInputEnabled(uint pin, bool enabled) {
 }
 
 void FakePicoBoard::setInputOverride(uint pin, uint value) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CheckPin(pin);
   CheckOverride(value);
   updatePins(uint32_t{1} << pin,
@@ -346,6 +371,7 @@ void FakePicoBoard::setInputOverride(uint pin, uint value) {
 }
 
 void FakePicoBoard::setOutputOverride(uint pin, uint value) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CheckPin(pin);
   CheckOverride(value);
   CHECK(value == GPIO_OVERRIDE_NORMAL || pins_[pin].function == GPIO_FUNC_SIO)
@@ -355,6 +381,7 @@ void FakePicoBoard::setOutputOverride(uint pin, uint value) {
 }
 
 void FakePicoBoard::setOutputEnableOverride(uint pin, uint value) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CheckPin(pin);
   CheckOverride(value);
   CHECK(value == GPIO_OVERRIDE_NORMAL || pins_[pin].function == GPIO_FUNC_SIO)
@@ -365,6 +392,7 @@ void FakePicoBoard::setOutputEnableOverride(uint pin, uint value) {
 }
 
 void FakePicoBoard::attachUartDevice(FakeUartDevice& device, int tx, int rx) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CHECK(tx >= 0 || rx >= 0) << "Pico UART needs a TX or RX pin";
   CHECK_GE(tx, -1) << "Invalid Pico UART TX pin";
   CHECK_GE(rx, -1) << "Invalid Pico UART RX pin";
@@ -388,11 +416,13 @@ void FakePicoBoard::attachUartDevice(FakeUartDevice& device, int tx, int rx) {
 }
 
 FakePicoBoard::UartState FakePicoBoard::uartState(uint index) const {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CHECK_LT(index, uarts_.size()) << "Invalid Pico UART index";
   return uarts_[index];
 }
 
 uint FakePicoBoard::initUart(uint index, uint baudrate) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   uartState(index);
   const uint actual = ActualBaudrate(baudrate);
   uarts_[index] = {true, actual, false};
@@ -400,11 +430,13 @@ uint FakePicoBoard::initUart(uint index, uint baudrate) {
 }
 
 void FakePicoBoard::deinitUart(uint index) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   uartState(index);
   uarts_[index].enabled = false;
 }
 
 uint FakePicoBoard::setUartBaudrate(uint index, uint baudrate) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CHECK(uartState(index).enabled) << "Pico UART is disabled";
   const uint actual = ActualBaudrate(baudrate);
   uarts_[index].baudrate = actual;
@@ -412,11 +444,13 @@ uint FakePicoBoard::setUartBaudrate(uint index, uint baudrate) {
 }
 
 void FakePicoBoard::setUartTranslateCrLf(uint index, bool enabled) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CHECK(uartState(index).enabled) << "Pico UART is disabled";
   uarts_[index].translate_crlf = enabled;
 }
 
 FakeUartDevice& FakePicoBoard::uartDevice(uint index, bool transmit) const {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CHECK(uartState(index).enabled) << "Pico UART is disabled";
   FakeUartDevice* device = nullptr;
   uint active = 0;
@@ -448,17 +482,47 @@ FakeUartDevice& FakePicoBoard::uartDevice(uint index, bool transmit) const {
 }
 
 void FakePicoBoard::checkBusesIdle() const {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CHECK(!publishing_pwm_) << "Pico reconfiguration during PWM publication";
+#if !defined(__FREERTOS)
   for (const I2cState& i2c : i2cs_) {
     CHECK(!i2c.busy) << "Pico reconfiguration during I2C transfer";
   }
   for (const SpiState& spi : spis_) {
     CHECK(!spi.busy) << "Pico reconfiguration during SPI transfer";
   }
+#endif
+}
+
+void FakePicoBoard::checkPinsIdle(uint32_t mask) const {
+#if defined(__FREERTOS)
+  for (uint pin = 0; pin < kGpioCount; ++pin) {
+    if ((mask & (uint32_t{1} << pin)) == 0) continue;
+    if (pins_[pin].function == GPIO_FUNC_SPI ||
+        attachments_[pin] == Attachment::kSpi) {
+      CHECK(!spis_[SpiIndex(pin)].busy)
+          << "Pico reconfiguration during SPI transfer";
+    }
+    if (pins_[pin].function == GPIO_FUNC_I2C ||
+        attachments_[pin] == Attachment::kI2c) {
+      CHECK(!i2cs_[(pin / 2) % 2].busy)
+          << "Pico reconfiguration during I2C transfer";
+    }
+    for (const SpiConnection& connection : spi_connections_) {
+      if (output_sinks_[pin] == &connection.device->cs()) {
+        CHECK(!spis_[SpiIndex(connection.clk)].busy)
+            << "Pico CS change during SPI transfer";
+      }
+    }
+  }
+#else
+  (void)mask;
+#endif
 }
 
 void FakePicoBoard::attachSpiDevice(SimpleFakeSpiDevice& device, int clk,
                                     int miso, int mosi) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   checkBusesIdle();
   CheckPin(clk);
   CheckPin(mosi);
@@ -489,12 +553,15 @@ void FakePicoBoard::attachSpiDevice(SimpleFakeSpiDevice& device, int clk,
 }
 
 FakePicoBoard::SpiState FakePicoBoard::spiState(uint index) const {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CHECK_LT(index, spis_.size()) << "Invalid Pico SPI index";
   return spis_[index];
 }
 
 uint FakePicoBoard::initSpi(uint index, uint baudrate) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   checkBusesIdle();
+  CHECK(!spiState(index).busy) << "Pico reconfiguration during SPI transfer";
   spiState(index);
   const uint actual = SpiBaudrate(baudrate);
   spis_[index] = {true, false, actual, 8, kSpiMode0};
@@ -502,13 +569,17 @@ uint FakePicoBoard::initSpi(uint index, uint baudrate) {
 }
 
 void FakePicoBoard::deinitSpi(uint index) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   checkBusesIdle();
+  CHECK(!spiState(index).busy) << "Pico reconfiguration during SPI transfer";
   spiState(index);
   spis_[index].enabled = false;
 }
 
 uint FakePicoBoard::setSpiBaudrate(uint index, uint baudrate) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   checkBusesIdle();
+  CHECK(!spiState(index).busy) << "Pico reconfiguration during SPI transfer";
   CHECK(spiState(index).enabled) << "Pico SPI is disabled";
   const uint actual = SpiBaudrate(baudrate);
   spis_[index].baudrate = actual;
@@ -517,7 +588,9 @@ uint FakePicoBoard::setSpiBaudrate(uint index, uint baudrate) {
 
 void FakePicoBoard::setSpiFormat(uint index, uint data_bits, spi_cpol_t cpol,
                                  spi_cpha_t cpha, spi_order_t order) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   checkBusesIdle();
+  CHECK(!spiState(index).busy) << "Pico reconfiguration during SPI transfer";
   CHECK(spiState(index).enabled) << "Pico SPI is disabled";
   CHECK(data_bits == 8 || data_bits == 16)
       << "Unimplemented: Pico SPI frame width";
@@ -530,14 +603,21 @@ void FakePicoBoard::setSpiFormat(uint index, uint data_bits, spi_cpol_t cpol,
 }
 
 int FakePicoBoard::prepareSpi(uint index, bool receive, SpiRoute& route) const {
+  roo_testing::SchedulerSignalGuard signal_guard;
+#if !defined(__FREERTOS)
   for (const I2cState& i2c : i2cs_) {
     if (i2c.busy) return PICO_ERROR_RESOURCE_IN_USE;
   }
+#endif
   const SpiState config = spiState(index);
   if (!config.enabled) return PICO_ERROR_INVALID_STATE;
+#if !defined(__FREERTOS)
   for (const SpiState& spi : spis_) {
     if (spi.busy) return PICO_ERROR_RESOURCE_IN_USE;
   }
+#else
+  if (config.busy) return PICO_ERROR_RESOURCE_IN_USE;
+#endif
   int pins[4] = {-1, -1, -1, -1};
   for (uint pin = 0; pin < kGpioCount; ++pin) {
     if (pins_[pin].function != GPIO_FUNC_SPI || SpiIndex(pin) != index) {
@@ -577,17 +657,21 @@ int FakePicoBoard::prepareSpi(uint index, bool receive, SpiRoute& route) const {
 }
 
 void FakePicoBoard::beginSpi(uint index) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   checkBusesIdle();
+  CHECK(!spiState(index).busy) << "Pico reconfiguration during SPI transfer";
   CHECK(spiState(index).enabled) << "Pico SPI is disabled";
   spis_[index].busy = true;
 }
 
 void FakePicoBoard::endSpi(uint index) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CHECK(spiState(index).busy) << "Pico SPI is not busy";
   spis_[index].busy = false;
 }
 
 void FakePicoBoard::attachI2cDevice(FakeI2cDevice& device, int sda, int scl) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   checkBusesIdle();
   CheckPin(sda);
   CheckPin(scl);
@@ -615,12 +699,15 @@ void FakePicoBoard::attachI2cDevice(FakeI2cDevice& device, int sda, int scl) {
 }
 
 FakePicoBoard::I2cState FakePicoBoard::i2cState(uint index) const {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CHECK_LT(index, i2cs_.size()) << "Invalid Pico I2C index";
   return i2cs_[index];
 }
 
 uint FakePicoBoard::initI2c(uint index, uint baudrate) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   checkBusesIdle();
+  CHECK(!i2cState(index).busy) << "Pico reconfiguration during I2C transfer";
   i2cState(index);
   CHECK(baudrate != 0 && baudrate <= 1000000) << "Invalid Pico I2C baudrate";
   const uint64_t period = (125000000 + uint64_t{baudrate} / 2) / baudrate;
@@ -634,12 +721,15 @@ uint FakePicoBoard::initI2c(uint index, uint baudrate) {
 }
 
 void FakePicoBoard::deinitI2c(uint index) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   checkBusesIdle();
+  CHECK(!i2cState(index).busy) << "Pico reconfiguration during I2C transfer";
   i2cState(index);
   i2cs_[index] = {};
 }
 
 uint FakePicoBoard::setI2cBaudrate(uint index, uint baudrate) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CHECK(i2cState(index).enabled) << "Pico I2C is disabled";
   CHECK(!i2cState(index).restart_on_next) << "Pico I2C bus is held";
   return initI2c(index, baudrate);
@@ -647,13 +737,18 @@ uint FakePicoBoard::setI2cBaudrate(uint index, uint baudrate) {
 
 int FakePicoBoard::prepareI2c(uint index, uint8_t address,
                               FakeI2cDevice*& device) const {
+  roo_testing::SchedulerSignalGuard signal_guard;
   if (!i2cState(index).enabled) return PICO_ERROR_INVALID_STATE;
+#if !defined(__FREERTOS)
   for (const I2cState& state : i2cs_) {
     if (state.busy) return PICO_ERROR_RESOURCE_IN_USE;
   }
   for (const SpiState& state : spis_) {
     if (state.busy) return PICO_ERROR_RESOURCE_IN_USE;
   }
+#else
+  if (i2cState(index).busy) return PICO_ERROR_RESOURCE_IN_USE;
+#endif
   int sda = -1;
   int scl = -1;
   for (uint pin = 0; pin < kGpioCount; ++pin) {
@@ -681,12 +776,15 @@ int FakePicoBoard::prepareI2c(uint index, uint8_t address,
 }
 
 void FakePicoBoard::beginI2c(uint index) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   checkBusesIdle();
+  CHECK(!i2cState(index).busy) << "Pico reconfiguration during I2C transfer";
   CHECK(i2cState(index).enabled);
   i2cs_[index].busy = true;
 }
 
 void FakePicoBoard::endI2c(uint index, bool restart) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CHECK(i2cState(index).busy);
   i2cs_[index].busy = false;
   i2cs_[index].restart_on_next = restart;
@@ -694,6 +792,7 @@ void FakePicoBoard::endI2c(uint index, bool restart) {
 
 std::optional<VoltageSignal> FakePicoBoard::pinDrive(
     uint pin, const PinState& state) const {
+  roo_testing::SchedulerSignalGuard signal_guard;
   if (state.function == GPIO_FUNC_PWM) {
     const PwmState& pwm = pwms_[(pin / 2) % 8];
     const uint channel = pin % 2;
@@ -715,12 +814,14 @@ std::optional<VoltageSignal> FakePicoBoard::pinDrive(
 }
 
 void FakePicoBoard::initAdc() {
+  roo_testing::SchedulerSignalGuard signal_guard;
   checkBusesIdle();
   adc_enabled_ = true;
   adc_input_ = 0;
 }
 
 void FakePicoBoard::initAdcGpio(uint pin) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CheckPin(pin);
   CHECK(pin >= 26 && pin <= 29) << "Invalid Pico ADC GPIO";
   CHECK(attachments_[pin] == Attachment::kNone ||
@@ -741,6 +842,7 @@ void FakePicoBoard::initAdcGpio(uint pin) {
 }
 
 void FakePicoBoard::selectAdc(uint input) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   checkBusesIdle();
   CHECK(adc_enabled_) << "Pico ADC is not initialized";
   CHECK_LT(input, 4u) << "Unimplemented: Pico ADC internal channel";
@@ -748,11 +850,13 @@ void FakePicoBoard::selectAdc(uint input) {
 }
 
 uint FakePicoBoard::adcInput() const {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CHECK(adc_enabled_) << "Pico ADC is not initialized";
   return adc_input_;
 }
 
 uint16_t FakePicoBoard::readAdc() const {
+  roo_testing::SchedulerSignalGuard signal_guard;
   const uint input = adcInput();
   const uint pin = 26 + input;
   CHECK(adc_pins_[input] && pins_[pin].function == GPIO_FUNC_NULL &&
@@ -765,11 +869,13 @@ uint16_t FakePicoBoard::readAdc() const {
 }
 
 FakePicoBoard::PwmState FakePicoBoard::pwmState(uint slice) const {
+  roo_testing::SchedulerSignalGuard signal_guard;
   CHECK_LT(slice, pwms_.size()) << "Invalid Pico PWM slice";
   return pwms_[slice];
 }
 
 uint16_t FakePicoBoard::pwmCounter(uint slice) const {
+  roo_testing::SchedulerSignalGuard signal_guard;
   const PwmState state = pwmState(slice);
   if (!state.enabled) return state.counter;
   const long double elapsed = system_time_get_micros() - state.origin_us;
@@ -779,6 +885,7 @@ uint16_t FakePicoBoard::pwmCounter(uint slice) const {
 }
 
 void FakePicoBoard::setPwmState(uint slice, const PwmState& state) {
+  roo_testing::SchedulerSignalGuard signal_guard;
   checkBusesIdle();
   pwmState(slice);
   CHECK_GE(state.divider16, 16u) << "Invalid Pico PWM divider";

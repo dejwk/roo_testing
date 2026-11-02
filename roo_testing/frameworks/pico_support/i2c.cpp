@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "glog/logging.h"
+#include "roo_testing/frameworks/pico_support/task_support.h"
 #include "roo_testing/microcontrollers/rp2040/fake_pico.h"
 
 struct i2c_inst {
@@ -41,6 +42,7 @@ int Result(FakeI2cDevice::Result result, size_t len) {
 int Transfer(i2c_inst_t* i2c, uint8_t address, const uint8_t* src, uint8_t* dst,
              size_t len, bool nostop, uint64_t timeout_us, bool receive) {
   const uint index = Index(i2c);
+  roo_testing::pico::ControllerLock controller(2 + index);
   if (address < 8 || address > 0x77 || len == 0 || len > UINT16_MAX ||
       (receive ? dst == nullptr : src == nullptr))
     return PICO_ERROR_INVALID_ARG;
@@ -83,12 +85,17 @@ i2c_inst_t* i2c_get_instance(uint num) {
 }
 
 uint i2c_init(i2c_inst_t* i2c, uint baudrate) {
+  roo_testing::pico::ControllerLock controller(2 + Index(i2c));
   return FakePico().initI2c(Index(i2c), baudrate);
 }
 
-void i2c_deinit(i2c_inst_t* i2c) { FakePico().deinitI2c(Index(i2c)); }
+void i2c_deinit(i2c_inst_t* i2c) {
+  roo_testing::pico::ControllerLock controller(2 + Index(i2c));
+  FakePico().deinitI2c(Index(i2c));
+}
 
 uint i2c_set_baudrate(i2c_inst_t* i2c, uint baudrate) {
+  roo_testing::pico::ControllerLock controller(2 + Index(i2c));
   return FakePico().setI2cBaudrate(Index(i2c), baudrate);
 }
 

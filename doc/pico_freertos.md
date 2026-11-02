@@ -84,7 +84,7 @@ Arduino initialization and setup/loop execute in a kernel task after startup.
 semantics. Core-1 entry points and affinity requests fail explicitly.
 
 GoogleTest runs in a task and returns its exact status to process main. Shutdown
-quiesces clock callbacks, deletes remaining application tasks, ends the scheduler,
+quiesces clock callbacks, deletes remaining application tasks that hold no controller reservations, ends the scheduler,
 joins native contexts, and releases the final test task before process exit.
 Support is one scheduler lifetime per executable; repeated lifecycle coverage
 uses separate child processes, matching existing runners.
@@ -186,3 +186,9 @@ Stage 2: normal auto/manual clock tests cover overlapping 10/20 ms deadlines,
 50 us waits, preservation of application notification slots, shared-clock alarms,
 queue timeouts, software timers, deleted blocked tasks, shutdown with a pending
 waiter, and a near-50-day manual delay crossing the 32-bit tick rollover.
+
+Stage 3: normal and ASAN tests cover contended SDK mutexes, a task-fed UART read,
+deletion of a blocked UART reader, and overlapping transfers on independent SPI
+controllers. The 21-test bare-metal Pico suite remains green. Native descriptors
+retain their blocking/nonblocking mode; nonblocking console backpressure parks
+FreeRTOS callers. Controller owners must finish transactions before deletion.

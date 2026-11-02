@@ -1,5 +1,11 @@
 # Unreleased
 
+- Restore root and recursive Bazel wildcard tests by propagating frontend/SoC
+  compatibility and excluding generated output trees and standalone example
+  modules from parent-module discovery. Preserve explicit profile rejection.
+- Retain timer example entry points during linking and repair LEDC test GPIOs,
+  manual-clock linkage, and auto-sync timing assumptions.
+
 - Add calendar/control RTC fakes for DS3232, DS3234, DS1307, PCF8523, RV-3028-C7, and RV-8803-C7; bring DS3231 onto the same independently tested timekeeping model while preserving thermometer ownership.
 - Observe SPI chip-select edges across fragmented transfers and correct Arduino SPI bit-order reporting to attached protocol fakes.
 

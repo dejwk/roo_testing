@@ -80,7 +80,7 @@ def Main():
     Run("build", "//:arduino", "--copt=-D__FREERTOS=1", succeeds=False,
         diagnostic="cannot carry FreeRTOS/ESP-IDF identity")
     Run("build", "//:esp_idf_main", succeeds=False,
-        diagnostic="requires target-platform constraint(s)")
+        diagnostic="incompatible")
     for options in ((), ("--config=asan",)):
         print(Run("test", "//:arduino_pico_tests", *options, "--test_output=errors"), end="")
         CheckFlushedOutput(Binary("//test/arduino_pico:console_probe", options))

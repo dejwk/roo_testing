@@ -18,7 +18,7 @@ def _profile_guard_impl(ctx):
 
     return [DefaultInfo()]
 
-profile_guard = rule(
+_profile_guard = rule(
     implementation = _profile_guard_impl,
     attrs = {
         "environment": attr.string(mandatory = True),
@@ -28,3 +28,22 @@ profile_guard = rule(
         ),
     },
 )
+
+def profile_guard(name, environment, required_constraints):
+    """Reject explicit profile mismatches while allowing wildcards to skip them.
+
+    Compatibility propagates through callers, so an ESP32 wildcard does not
+    analyze Pico libraries (or other frontend/SoC contracts). Explicit requests
+    still fail with Bazel's incompatible-target diagnostic.
+
+    Args:
+        name: Target name for the profile boundary.
+        environment: Human-readable environment used in guard diagnostics.
+        required_constraints: Platform constraints inherited by all dependents.
+    """
+    _profile_guard(
+        name = name,
+        environment = environment,
+        required_constraints = required_constraints,
+        target_compatible_with = required_constraints,
+    )

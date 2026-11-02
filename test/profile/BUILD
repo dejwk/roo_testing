@@ -13,6 +13,10 @@ cc_library(
         "unrelated_c.c",
     ],
     copts = ["-Werror"],
+    target_compatible_with = [
+        "//roo_testing/platforms:arduino",
+        "//roo_testing/platforms:esp_idf",
+    ],
 )
 
 cc_library(
@@ -23,6 +27,10 @@ cc_library(
         "unrelated_cpp.cc",
     ],
     copts = ["-Werror"],
+    target_compatible_with = [
+        "//roo_testing/platforms:arduino",
+        "//roo_testing/platforms:esp_idf",
+    ],
 )
 
 cc_test(
@@ -49,6 +57,9 @@ cc_library(
 cc_library(
     name = "select_probe",
     srcs = ["select_probe.cc"],
+    target_compatible_with = [
+        "//roo_testing/platforms:arduino",
+    ],
     deps = select({
         "//roo_testing/platforms:is_arduino": [":arduino_optional_dependency"],
         "//conditions:default": [],

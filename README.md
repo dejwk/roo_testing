@@ -170,13 +170,20 @@ BAZELISK_WRAPPER_DIRECTORY=.roo_testing/bin
 Bazelisk then discovers `.roo_testing/bin/bazel`. For configured commands such
 as `build`, `test`, `run`, `info`, `cquery`, and `aquery`, the wrapper inserts
 the Arduino ESP32 config only when no `roo_testing_arduino_*` or
-`roo_testing_idf_*` or `roo_testing_pico_*` config was supplied, and prints a concise notice. Thus both
-of these are clean, single-profile invocations:
+`roo_testing_idf_*` or `roo_testing_pico_*` config was supplied, and prints a
+concise notice. These commands each select one profile:
 
 ```sh
 bazel test :all
+bazel test ...
 bazel test ... --config=roo_testing_idf_esp32
 ```
+
+Wildcard builds skip libraries and tests belonging to other frontend/SoC
+profiles. Explicitly requesting an incompatible target still fails with a
+constraint diagnostic. `REPO.bazel` excludes generated `bazel-*` output trees
+and the six standalone example modules; run those examples from their own
+directories so Bazel loads their dependencies.
 
 An unconditional `build --config=roo_testing_arduino_esp32` in `.bazelrc`
 cannot provide this behavior. Bazel expands a command-line SoC/frontend config in

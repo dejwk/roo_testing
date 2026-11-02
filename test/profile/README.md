@@ -19,6 +19,13 @@ checks with:
 ./test/profile/verify_profile.sh
 ```
 
+The default and ESP-IDF profiles check both `//:all` and `//...` with a
+deliberately broken package behind a nested `bazel-*` symlink. Successful discovery proves generated
+outputs are excluded. Profile guards declare their required constraints as
+Bazel target compatibility: wildcards skip foreign profiles, while explicit
+mismatches fail with Bazel's incompatible-target diagnostic. Macro/identity
+compile contracts still reject contradictory compiler flags.
+
 This also runs `verify_bazel_tools.sh`, whose fake-Bazel checks cover nested
 Bazelisk wrapper discovery settings, argument forwarding, startup-option and
 `--` parsing, explicit and future frontend configs, disabled rc loading,

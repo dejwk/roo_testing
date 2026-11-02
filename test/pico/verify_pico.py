@@ -172,10 +172,10 @@ def CheckFailures():
                     "--config=roo_testing_idf_esp32"):
         for target in ("//:pico_sdk", "//:pico_gtest_main"):
             RunBazel("build", target, profile=profile, succeeds=False,
-                     diagnostic="requires target-platform constraint(s)")
+                     diagnostic="incompatible")
     for target in ("//:arduino", "//:esp_idf_main"):
         RunBazel("build", target, succeeds=False,
-                 diagnostic="requires target-platform constraint(s)")
+                 diagnostic="incompatible")
     for option, diagnostic in (
         ("--copt=-DARDUINO=10819", "SDK-only Pico frontend must not carry Arduino identity"),
         ("--copt=-DPICO_ON_DEVICE=1", "Pico SDK requires native host platform identity"),

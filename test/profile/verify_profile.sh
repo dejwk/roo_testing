@@ -62,9 +62,25 @@ expect_failure() {
   fi
 }
 
-run_bazel test //:all_tests
+# Verifies root/recursive wildcards skip generated output directories. The
+# deliberately broken package must never be loaded, even after local builds.
+verify_wildcards() {
+  local fixture
+  fixture="$(mktemp -d "${test_root}/wildcard-output.XXXXXX")"
+  local generated_link="${workspace}/test/profile/bazel-${fixture##*/}"
+  printf '%s\n' 'fail("Wildcard entered generated Bazel output")' >"${fixture}/BUILD"
+  ln -s "${fixture}" "${generated_link}"
+  local status=0
+  run_bazel test //:all //... --test_output=errors "$@" || status=$?
+  rm -- "${generated_link}"
+  rm -r -- "${fixture}"
+  return "${status}"
+}
+
+verify_wildcards
 
 run_idf_bazel test //:idf_tests --config=roo_testing_idf_esp32
+verify_wildcards --config=roo_testing_idf_esp32
 
 run_bazel build //test/profile:user_copt_probe \
   --copt=-DROO_TESTING_USER_COPT_PROBE=73

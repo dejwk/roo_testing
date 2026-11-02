@@ -63,10 +63,10 @@ if grep -Eq '//roo_testing/frameworks/(esp-idf|arduino-esp32|esp32_shims)' \
 fi
 
 expect_failure "generic identity does not grant IDF capability" \
-  'requires target-platform constraint(s)' \
+  'incompatible' \
   run_generic build //roo_testing/frameworks/environment:esp_idf
 expect_failure "generic Arduino does not grant Arduino-ESP32 capability" \
-  'requires target-platform constraint(s)' \
+  'incompatible' \
   run_generic build //roo_testing/frameworks/environment:arduino_esp32
 expect_failure "generic SoC does not grant IDF SoC identity" \
   'Compiler identity does not match selected SoC target' \
@@ -92,7 +92,7 @@ expect_failure "runtime macro values must be canonical" \
   run_generic build //roo_testing/frameworks/environment:runtime \
   --copt=-UROO_TESTING_RUNTIME_BARE_METAL --copt=-DROO_TESTING_RUNTIME_BARE_METAL=0
 expect_failure "runtime platform constraint is mandatory" \
-  'requires target-platform constraint(s)' \
+  'incompatible' \
   run_generic build //roo_testing/frameworks/environment:runtime \
   --platforms=//test/profile:incorrect_arduino_soc
 expect_failure "typed SoC identities cannot be mixed" \

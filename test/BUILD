@@ -21,6 +21,10 @@ cc_test(
         "//test/profile:esp32_idf_environment_contract.h",
     ],
     copts = ["-Werror"],
+    target_compatible_with = [
+        "//roo_testing/platforms:arduino",
+        "//roo_testing/platforms:esp_idf",
+    ],
     deps = ["//:environment"],
 )
 
@@ -34,6 +38,10 @@ cc_test(
         "//test/profile:esp32_idf_environment_contract.h",
     ],
     copts = ["-Werror"],
+    target_compatible_with = [
+        "//roo_testing/platforms:arduino",
+        "//roo_testing/platforms:esp_idf",
+    ],
     deps = ["//roo_testing/frameworks/esp-idf:headers"],
 )
 
@@ -47,6 +55,10 @@ cc_test(
         "//test/profile:esp32_idf_environment_contract.h",
     ],
     copts = ["-Werror"],
+    target_compatible_with = [
+        "//roo_testing/platforms:arduino",
+        "//roo_testing/platforms:esp_idf",
+    ],
     deps = ["//roo_testing/soc:target"],
 )
 
@@ -203,6 +215,7 @@ cc_test(
     size = "small",
     srcs = ["arduino_ledc_test.cpp"],
     linkstatic = 1,
+    local_defines = ["ROO_TESTING_EXPECT_AUTO_SYNC=1"],
     deps = ["//:arduino_gtest_main"],
 )
 
@@ -211,6 +224,7 @@ cc_test(
     size = "small",
     srcs = ["arduino_ledc_test.cpp"],
     linkstatic = 1,
+    local_defines = ["ROO_TESTING_EXPECT_AUTO_SYNC=0"],
     deps = [
         "//:arduino_gtest_main",
         "//roo_testing/system:manual_time_mode",
@@ -230,6 +244,8 @@ cc_test(
     size = "small",
     srcs = ["ledc_fade_engine_test.cpp"],
     copts = ["-fno-exceptions"],
+    linkstatic = True,
+    local_defines = ["ROO_TESTING_EXPECT_AUTO_SYNC=1"],
     deps = [
         "//roo_testing/frameworks/esp32_shims:ledc_fade_engine",
         "@googletest//:gtest_main",
@@ -241,6 +257,8 @@ cc_test(
     size = "small",
     srcs = ["ledc_fade_engine_test.cpp"],
     copts = ["-fno-exceptions"],
+    linkstatic = True,
+    local_defines = ["ROO_TESTING_EXPECT_AUTO_SYNC=0"],
     deps = [
         "//roo_testing/frameworks/esp32_shims:ledc_fade_engine",
         "//roo_testing/system:manual_time_mode",

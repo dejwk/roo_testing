@@ -1,0 +1,12 @@
+# These examples are standalone Bazel modules with their own dependencies.
+# Run them from their directories; they are not packages of this module.
+ignore_directories([
+    "examples/gpio",
+    "examples/onewire",
+    "examples/rtc_ds3231_i2c",
+    "examples/simple",
+    "examples/tft_display",
+    "examples/tft_touch",
+    # Nested workspaces and local builds can leave generated output symlinks.
+    "**/bazel-*",
+])

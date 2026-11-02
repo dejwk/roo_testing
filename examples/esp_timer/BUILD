@@ -6,12 +6,16 @@ cc_library(
     name = "app",
     srcs = ["src/main.cpp"],
     deps = ["//roo_testing/frameworks/esp32_shims:idf"],
+    # Startup references app_main after application libraries on the link line.
+    alwayslink = True,
 )
 
 cc_library(
     name = "arduino_app",
     srcs = ["src/arduino_main.cpp"],
     deps = ["//roo_testing/frameworks/esp32_shims:arduino"],
+    # Keep setup()/loop() even when startup introduces their references later.
+    alwayslink = True,
 )
 
 cc_binary(

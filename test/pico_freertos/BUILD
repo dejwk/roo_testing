@@ -102,3 +102,20 @@ cc_test(
         "//roo_testing/platforms:freertos",
     ],
 )
+
+cc_test(
+    name = "sys_test",
+    size = "small",
+    timeout = "short",
+    srcs = ["sys_test.cpp"],
+    linkstatic = True,
+    target_compatible_with = [
+        "//roo_testing/platforms:rp2040",
+        "//roo_testing/platforms:freertos",
+    ],
+    deps = [
+        "//:arduino_gtest_main",
+        "//roo_testing/sys",
+        "//roo_testing/system:manual_time_mode",
+    ],
+)

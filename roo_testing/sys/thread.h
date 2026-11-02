@@ -24,12 +24,12 @@ class thread {
    public:
     attributes();
 
-    uint16_t stack_size() const { return stack_size_; }
+    uint32_t stack_size() const { return stack_size_; }
     uint16_t priority() const { return priority_; }
     bool joinable() const { return joinable_; }
     const char* name() const { return name_; }
 
-    void set_stack_size(uint16_t stack_size) { stack_size_ = stack_size; }
+    void set_stack_size(uint32_t stack_size) { stack_size_ = stack_size; }
 
     void set_priority(uint16_t priority) { priority_ = priority; }
 
@@ -38,7 +38,7 @@ class thread {
    private:
     friend class thread;
 
-    uint16_t stack_size_;
+    uint32_t stack_size_;
     uint16_t priority_;
     bool joinable_;
     const char* name_;

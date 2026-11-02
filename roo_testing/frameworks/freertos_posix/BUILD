@@ -34,3 +34,11 @@ cc_library(
         "//roo_testing/system:timer",
     ],
 )
+
+cc_library(
+    name = "compat_headers",
+    hdrs = glob(["include/freertos/*.h"]),
+    includes = ["include"],
+    visibility = ["//visibility:public"],
+    deps = ["//roo_testing/frameworks/arduino-pico/FreeRTOS-Kernel:headers"],
+)

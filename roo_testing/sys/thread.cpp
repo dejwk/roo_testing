@@ -67,7 +67,7 @@ void thread::start(const attributes& attributes,
   }
   vTaskSuspendAll();
   if (xTaskCreate(run_thread, state->attr.name(),
-                  (uint16_t)(state->attr.stack_size() / sizeof(portSTACK_TYPE)),
+                  state->attr.stack_size() / sizeof(portSTACK_TYPE),
                   (void*)state, state->attr.priority(),
                   &state->task) != pdPASS) {
     delete state;

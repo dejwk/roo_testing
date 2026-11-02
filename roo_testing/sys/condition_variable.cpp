@@ -3,6 +3,24 @@
 #include "glog/logging.h"
 
 namespace roo_testing {
+namespace {
+// The pinned Pico kernel uses the upstream no-argument critical-section API.
+void EnterCritical() {
+#if defined(ROO_TESTING_SOC_RP2040)
+  taskENTER_CRITICAL();
+#else
+  taskENTER_CRITICAL(nullptr);
+#endif
+}
+
+void ExitCritical() {
+#if defined(ROO_TESTING_SOC_RP2040)
+  taskEXIT_CRITICAL();
+#else
+  taskEXIT_CRITICAL(nullptr);
+#endif
+}
+}  // namespace
 
 condition_variable::condition_variable() noexcept {
   for (int i = 0; i < kMaxWaitingThreads; ++i) {
@@ -12,7 +30,7 @@ condition_variable::condition_variable() noexcept {
 
 void condition_variable::notify_one() noexcept {
   TaskHandle_t* task_to_notify = nullptr;
-  taskENTER_CRITICAL(nullptr);
+  EnterCritical();
   for (int i = 0; i < kMaxWaitingThreads; ++i) {
     if (tasks_waiting_[i] != nullptr) {
       if (task_to_notify == nullptr ||
@@ -26,24 +44,24 @@ void condition_variable::notify_one() noexcept {
     xTaskNotify(*task_to_notify, 0, eNoAction);
     *task_to_notify = nullptr;
   }
-  taskEXIT_CRITICAL(nullptr);
+  ExitCritical();
 }
 
 void condition_variable::notify_all() noexcept {
-  taskENTER_CRITICAL(nullptr);
+  EnterCritical();
   for (int i = 0; i < kMaxWaitingThreads; ++i) {
     if (tasks_waiting_[i] != nullptr) {
       xTaskNotify(tasks_waiting_[i], 0, eNoAction);
       tasks_waiting_[i] = nullptr;
     }
   }
-  taskEXIT_CRITICAL(nullptr);
+  ExitCritical();
 }
 
 void condition_variable::wait(unique_lock<mutex>& lock) noexcept {
   TaskHandle_t me = xTaskGetCurrentTaskHandle();
   bool queued = false;
-  taskENTER_CRITICAL(nullptr);
+  EnterCritical();
   for (int i = 0; i < kMaxWaitingThreads; ++i) {
     if (tasks_waiting_[i] == nullptr) {
       tasks_waiting_[i] = me;
@@ -52,21 +70,21 @@ void condition_variable::wait(unique_lock<mutex>& lock) noexcept {
     }
   }
   lock.unlock();
-  taskEXIT_CRITICAL(nullptr);
+  ExitCritical();
   CHECK(queued) << "Maximum number of queued threads reached";
 
   // Wait on the condition variable.
   // bool signaled =
   xTaskNotifyWait(0, 0, nullptr, portMAX_DELAY);  // == pdPASS;
   lock.lock();
-  taskENTER_CRITICAL(nullptr);
+  EnterCritical();
   for (int i = 0; i < kMaxWaitingThreads; ++i) {
     if (tasks_waiting_[i] == me) {
       tasks_waiting_[i] = nullptr;
       break;
     }
   }
-  taskEXIT_CRITICAL(nullptr);
+  ExitCritical();
 }
 
 cv_status condition_variable::wait_until_impl(
@@ -80,7 +98,7 @@ cv_status condition_variable::wait_until_impl(
   uint64_t ms = (ns + 999999) / 1000000;
   TickType_t delay = (ms + portTICK_PERIOD_MS - 1) / portTICK_PERIOD_MS;
   bool queued = false;
-  taskENTER_CRITICAL(nullptr);
+  EnterCritical();
   for (int i = 0; i < kMaxWaitingThreads; ++i) {
     if (tasks_waiting_[i] == nullptr) {
       tasks_waiting_[i] = me;
@@ -89,7 +107,7 @@ cv_status condition_variable::wait_until_impl(
     }
   }
   lock.unlock();
-  taskEXIT_CRITICAL(nullptr);
+  ExitCritical();
   CHECK(queued) << "Maximum number of queued threads reached";
   // Wait on the condition variable.
   while (true) {
@@ -105,14 +123,14 @@ cv_status condition_variable::wait_until_impl(
     delay = (ms + portTICK_PERIOD_MS - 1) / portTICK_PERIOD_MS;
   }
   lock.lock();
-  taskENTER_CRITICAL(nullptr);
+  EnterCritical();
   for (int i = 0; i < kMaxWaitingThreads; ++i) {
     if (tasks_waiting_[i] == me) {
       tasks_waiting_[i] = nullptr;
       break;
     }
   }
-  taskEXIT_CRITICAL(nullptr);
+  ExitCritical();
   return status;
 }
 

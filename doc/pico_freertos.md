@@ -201,3 +201,12 @@ Wire TX/repeated-START/RX ownership across competing tasks. Wire retains no-STOP
 ownership after RX drains; finish the conversation or call end() before deletion.
 SPI frequencies use the SDK's divider rounding. Lifecycle/configuration changes
 and fixture wiring must complete before concurrent peripheral use.
+
+Stage 5: runtime library/header targets select the independently pinned kernel;
+ESP-style Roo include paths are supplied by small forwarding headers. The legacy
+sys adapter supports upstream critical-section signatures and native stack sizes
+above 64 KiB. roo_threads' existing FreeRTOS backend works without production
+changes. Dedicated auto/manual consumer tests verify roo_time Delay, shared
+uptime, joins, semaphore handoffs, mutex contention, CV notification and timeout.
+roo_time itself needs no implementation change: its emulation delay already uses
+the shared clock and now reaches the task-aware runtime hook.

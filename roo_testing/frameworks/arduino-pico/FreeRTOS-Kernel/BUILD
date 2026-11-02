@@ -46,3 +46,12 @@ cc_library(
     ],
     alwayslink = True,
 )
+
+cc_library(
+    name = "native_event_test_support",
+    testonly = True,
+    srcs = ["portable/ThirdParty/GCC/Posix/utils/wait_for_event.c"],
+    hdrs = ["portable/ThirdParty/GCC/Posix/utils/wait_for_event.h"],
+    includes = ["portable/ThirdParty/GCC/Posix/utils"],
+    visibility = ["//test/pico_freertos:__pkg__"],
+)

@@ -119,3 +119,15 @@ cc_test(
         "//roo_testing/system:manual_time_mode",
     ],
 )
+
+cc_test(
+    name = "event_test",
+    size = "small",
+    timeout = "short",
+    srcs = ["event_test.cpp"],
+    target_compatible_with = [
+        "//roo_testing/platforms:rp2040",
+        "//roo_testing/platforms:freertos",
+    ],
+    deps = ["//roo_testing/frameworks/arduino-pico/FreeRTOS-Kernel:native_event_test_support"],
+)

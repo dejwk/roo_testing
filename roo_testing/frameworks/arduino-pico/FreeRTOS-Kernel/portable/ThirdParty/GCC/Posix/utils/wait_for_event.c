@@ -60,9 +60,16 @@ void event_delete( struct event * ev )
     free( ev );
 }
 
+/* POSIX cancellation reacquires the condvar mutex before running cleanup. */
+static void EventUnlockAfterCancel( void * mutex )
+{
+    if( pthread_mutex_unlock( ( pthread_mutex_t * ) mutex ) != 0 ) abort();
+}
+
 bool event_wait( struct event * ev )
 {
     pthread_mutex_lock( &ev->mutex );
+    pthread_cleanup_push( EventUnlockAfterCancel, &ev->mutex );
 
     while( ev->event_triggered == false )
     {
@@ -70,7 +77,7 @@ bool event_wait( struct event * ev )
     }
 
     ev->event_triggered = false;
-    pthread_mutex_unlock( &ev->mutex );
+    pthread_cleanup_pop( 1 );
     return true;
 }
 bool event_wait_timed( struct event * ev,
@@ -78,25 +85,24 @@ bool event_wait_timed( struct event * ev,
 {
     struct timespec ts;
     int ret = 0;
-
-    clock_gettime( CLOCK_REALTIME, &ts );
+    bool triggered;
+    if( ms < 0 ) return false;
+    if( clock_gettime( CLOCK_REALTIME, &ts ) != 0 ) abort();
     ts.tv_sec += ms / 1000;
     ts.tv_nsec += ( ( ms % 1000 ) * 1000000 );
+    ts.tv_sec += ts.tv_nsec / 1000000000;
+    ts.tv_nsec %= 1000000000;
     pthread_mutex_lock( &ev->mutex );
-
+    pthread_cleanup_push( EventUnlockAfterCancel, &ev->mutex );
     while( ( ev->event_triggered == false ) && ( ret == 0 ) )
     {
         ret = pthread_cond_timedwait( &ev->cond, &ev->mutex, &ts );
-
-        if( ( ret == -1 ) && ( errno == ETIMEDOUT ) )
-        {
-            return false;
-        }
     }
-
+    if( ( ret != 0 ) && ( ret != ETIMEDOUT ) ) abort();
+    triggered = ev->event_triggered;
     ev->event_triggered = false;
-    pthread_mutex_unlock( &ev->mutex );
-    return true;
+    pthread_cleanup_pop( 1 );
+    return triggered;
 }
 
 void event_signal( struct event * ev )

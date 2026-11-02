@@ -169,3 +169,6 @@ one-core host runtime. Its patch series fixes the host minimum pthread stack and
 uses a 32-bit tick type. Native configuration/hooks live in destination-owned
 `frameworks/freertos_posix`. Arduino core imports exclude this separately owned
 kernel tree. The initial import carries `PicoFreeRtos-Origin-RevId`.
+
+The Pico POSIX event patch releases condition-variable mutexes during pthread
+cancellation. Native event and repeated runner tests cover the shutdown race.

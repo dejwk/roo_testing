@@ -3,10 +3,9 @@
 #include <cstdio>
 
 #include "FreeRTOS.h"
+#include "runtime.h"
 #include "semphr.h"
 #include "task.h"
-
-extern "C" void RooFreeRtosDeleteFinalTask();
 namespace {
 std::atomic<int> result{1};
 SemaphoreHandle_t ready;
@@ -47,7 +46,7 @@ void Test(void*) {
   vTaskDelay(2);
   configASSERT(xTaskGetTickCount() - before >= 2);
   result.store(0);
-  vTaskEndScheduler();
+  RooFreeRtosEndScheduler();
 }
 }  // namespace
 

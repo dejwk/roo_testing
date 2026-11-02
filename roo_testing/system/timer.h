@@ -18,6 +18,9 @@ void CancelSystemTimeAlarm(SystemTimeAlarmId id);
 /// Delivers all alarms due at the current emulated uptime.
 void ProcessSystemTimeAlarms();
 
+/// Returns the earliest pending alarm deadline, or INT64_MAX when none exists.
+int64_t GetNextSystemTimeAlarmDeadline();
+
 /// Starts host-runner shutdown when no alarm callback is being delivered.
 bool TryBeginSystemTimeServiceShutdownForHost();
 

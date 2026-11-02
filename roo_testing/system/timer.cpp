@@ -24,6 +24,12 @@ extern "C" volatile sig_atomic_t system_time_auto_sync_mode
     __attribute__((weak));
 volatile sig_atomic_t system_time_auto_sync_mode = 1;
 
+extern "C" {
+bool roo_testing_runtime_delay_micros(uint64_t) __attribute__((weak));
+bool roo_testing_runtime_sync() __attribute__((weak));
+void roo_testing_runtime_time_advanced() __attribute__((weak));
+}
+
 namespace {
 
 constexpr int64_t kNanosPerMicrosecond = 1000;
@@ -439,6 +445,12 @@ void ProcessSystemTimeAlarms() {
   DeliverAlarmsThrough(kPublication.read(), false);
 }
 
+int64_t GetNextSystemTimeAlarmDeadline() {
+  roo_testing::SchedulerSafeHostLock lock(kMutationMutex);
+  return kAlarms.empty() ? std::numeric_limits<int64_t>::max()
+                         : kAlarms.begin()->first;
+}
+
 bool TryBeginSystemTimeServiceShutdownForHost() {
   {
     roo_testing::SchedulerSafeHostLock lock(kMutationMutex);
@@ -478,12 +490,17 @@ void FinishSystemTimeServiceShutdownForHost() {
 
 extern "C" {
 
-void system_time_sync() { PaceAutoSync(); }
+void system_time_sync() {
+  if (roo_testing_runtime_sync != nullptr && roo_testing_runtime_sync()) return;
+  PaceAutoSync();
+}
 
 void system_time_lag_ns(uint64_t ns) {
   kPublication.isAutoSyncEnabled();
   CHECK_LE(ns, static_cast<uint64_t>(std::numeric_limits<int64_t>::max()));
   AddUptimeNs(static_cast<int64_t>(ns));
+  if (roo_testing_runtime_time_advanced != nullptr)
+    roo_testing_runtime_time_advanced();
 }
 
 int64_t system_time_get_micros() {
@@ -495,6 +512,9 @@ bool system_time_is_auto_sync_enabled() {
 }
 
 void system_time_delay_micros(uint64_t micros) {
+  if (roo_testing_runtime_delay_micros != nullptr &&
+      roo_testing_runtime_delay_micros(micros))
+    return;
   kPublication.isAutoSyncEnabled();
   DeliverAlarmsThrough(ReserveDelayedUptimeNs(MicrosToNanos(micros)), true);
   PaceAutoSync();

@@ -175,3 +175,14 @@ tasks must eventually block/yield or be terminated by a host watchdog.
 
 Dual-core SMP, SDK alarms/IRQs as application interrupt APIs, RP2350, Pico W,
 networking, and asynchronous peripherals require separate contracts and tests.
+
+## Implementation evidence
+
+Stage 1: the isolated pinned-kernel prototype passes normal/ASAN tests for
+priority handoff, preemption of a busy task, timed blocking, deletion, and exit.
+Its configured dependency graph contains no ESP-IDF or ESP32 implementation.
+
+Stage 2: normal auto/manual clock tests cover overlapping 10/20 ms deadlines,
+50 us waits, preservation of application notification slots, shared-clock alarms,
+queue timeouts, software timers, deleted blocked tasks, shutdown with a pending
+waiter, and a near-50-day manual delay crossing the 32-bit tick rollover.

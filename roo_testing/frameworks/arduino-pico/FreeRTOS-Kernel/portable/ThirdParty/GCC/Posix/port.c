@@ -57,6 +57,7 @@
 #include <pthread.h>
 #include <limits.h>
 #include <signal.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -74,6 +75,7 @@
 #include "task.h"
 #include "timers.h"
 #include "utils/wait_for_event.h"
+#include "runtime.h"
 /*-----------------------------------------------------------*/
 
 #define SIG_RESUME    SIGUSR1
@@ -107,7 +109,9 @@ static pthread_t hMainThread = ( pthread_t ) NULL;
 static volatile BaseType_t uxCriticalNesting;
 static BaseType_t xSchedulerEnd = pdFALSE;
 static pthread_t hTimerTickThread;
-static bool xTimerTickThreadShouldRun;
+static _Atomic bool xTimerTickThreadShouldRun;
+static _Thread_local bool rooIsTask;
+static _Thread_local bool rooIsIsr;
 static uint64_t prvStartTimeNs;
 /*-----------------------------------------------------------*/
 
@@ -282,6 +286,7 @@ void vPortEndScheduler( void )
     /* Stop the timer tick thread. */
     xTimerTickThreadShouldRun = false;
     pthread_join( hTimerTickThread, NULL );
+    RooFreeRtosRuntimeStopped();
 
     /* Signal the scheduler to exit its loop. */
     xSchedulerEnd = pdTRUE;
@@ -396,7 +401,7 @@ static void * prvTimerTickHandler( void * arg )
          */
         Thread_t * thread = prvGetThreadFromTask( xTaskGetCurrentTaskHandle() );
         pthread_kill( thread->pthread, SIGALRM );
-        usleep( portTICK_RATE_MICROSECONDS );
+        usleep( 100 );
     }
 
     return NULL;
@@ -409,6 +414,7 @@ static void * prvTimerTickHandler( void * arg )
  */
 void prvSetupTimerInterrupt( void )
 {
+    RooFreeRtosRuntimeStarted();
     xTimerTickThreadShouldRun = true;
     pthread_create( &hTimerTickThread, NULL, prvTimerTickHandler, NULL );
 
@@ -418,44 +424,30 @@ void prvSetupTimerInterrupt( void )
 
 static void vPortSystemTickHandler( int sig )
 {
-    Thread_t * pxThreadToSuspend;
-    Thread_t * pxThreadToResume;
-
+    Thread_t * previous;
+    Thread_t * next;
+    BaseType_t reschedule;
+    uint32_t ticks;
     ( void ) sig;
-
-/* uint64_t xExpectedTicks; */
-
-    uxCriticalNesting++; /* Signals are blocked in this signal handler. */
-
-    #if ( configUSE_PREEMPTION == 1 )
-        pxThreadToSuspend = prvGetThreadFromTask( xTaskGetCurrentTaskHandle() );
-    #endif
-
-    /* Tick Increment, accounting for any lost signals or drift in
-     * the timer. */
-
-/*
- *      Comment code to adjust timing according to full demo requirements
- *      xExpectedTicks = (prvGetTimeNs() - prvStartTimeNs)
- *        / (portTICK_RATE_MICROSECONDS * 1000);
- * do { */
-    xTaskIncrementTick();
-
-/*        prvTickCount++;
- *    } while (prvTickCount < xExpectedTicks);
- */
-
-    #if ( configUSE_PREEMPTION == 1 )
-        /* Select Next Task. */
+    rooIsIsr = true;
+    uxCriticalNesting++;
+    previous = prvGetThreadFromTask( xTaskGetCurrentTaskHandle() );
+    reschedule = ( BaseType_t ) RooFreeRtosPollWaiters();
+    ticks = RooFreeRtosElapsedTicks();
+    while( ticks-- != 0 )
+    {
+        if( xTaskIncrementTick() != pdFALSE ) reschedule = pdTRUE;
+    }
+    if( reschedule != pdFALSE )
+    {
         vTaskSwitchContext();
-
-        pxThreadToResume = prvGetThreadFromTask( xTaskGetCurrentTaskHandle() );
-
-        prvSwitchThread( pxThreadToResume, pxThreadToSuspend );
-    #endif
-
+        next = prvGetThreadFromTask( xTaskGetCurrentTaskHandle() );
+        prvSwitchThread( next, previous );
+    }
     uxCriticalNesting--;
+    rooIsIsr = false;
 }
+
 /*-----------------------------------------------------------*/
 
 void vPortThreadDying( void * pxTaskToDelete,
@@ -472,6 +464,7 @@ void vPortThreadDying( void * pxTaskToDelete,
 void vPortCancelThread( void * pxTaskToDelete )
 {
     Thread_t * pxThreadToCancel = prvGetThreadFromTask( pxTaskToDelete );
+    RooFreeRtosTaskDeleted( pxTaskToDelete );
 
     /*
      * The thread has already been suspended so it can be safely cancelled.
@@ -486,6 +479,7 @@ void vPortCancelThread( void * pxTaskToDelete )
 static void * prvWaitForStart( void * pvParams )
 {
     Thread_t * pxThread = pvParams;
+    rooIsTask = true;
 
     prvSuspendSelf( pxThread );
 
@@ -617,3 +611,15 @@ uint32_t ulPortGetRunTime( void )
     return ( uint32_t ) xTimes.tms_utime;
 }
 /*-----------------------------------------------------------*/
+
+/* Native-only context queries and shared-clock wake request. */
+bool RooFreeRtosPortIsTask( void ) { return rooIsTask; }
+bool RooFreeRtosPortIsIsr( void ) { return rooIsIsr; }
+void RooFreeRtosPortRequestTick( void )
+{
+    if( xTaskGetCurrentTaskHandle() != NULL )
+    {
+        Thread_t * thread = prvGetThreadFromTask( xTaskGetCurrentTaskHandle() );
+        pthread_kill( thread->pthread, SIGALRM );
+    }
+}

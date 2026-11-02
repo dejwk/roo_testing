@@ -32,6 +32,8 @@
 #define configUSE_APPLICATION_TASK_TAG 1
 #define configUSE_IDLE_HOOK 1
 #define configUSE_TICK_HOOK 0
+#define configUSE_TICKLESS_IDLE 2
+#define portSUPPRESS_TICKS_AND_SLEEP(ticks) ((void)(ticks))
 #define configUSE_MALLOC_FAILED_HOOK 1
 #define configCHECK_FOR_STACK_OVERFLOW 0
 #define configUSE_NEWLIB_REENTRANT 0

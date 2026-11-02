@@ -6,6 +6,8 @@
 
 #include "glog/logging.h"
 #include "pico/error.h"
+#include "roo_testing/frameworks/pico_support/task_support.h"
+#include "roo_testing/microcontrollers/rp2040/fake_pico.h"
 
 TwoWire Wire(i2c0, PIN_WIRE0_SDA, PIN_WIRE0_SCL);
 TwoWire Wire1(i2c1, PIN_WIRE1_SDA, PIN_WIRE1_SCL);
@@ -59,6 +61,7 @@ bool TwoWire::setSCL(pin_size_t pin) {
 }
 
 void TwoWire::begin() {
+  roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
   if (_running) end();
   i2c_init(_i2c, _clkHz);
   gpio_set_function(_sda, GPIO_FUNC_I2C);
@@ -71,6 +74,8 @@ void TwoWire::begin() {
 
 void TwoWire::begin(uint8_t) { LOG(FATAL) << "Unimplemented: Pico I2C slave"; }
 void TwoWire::end() {
+  roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
+  roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
   if (!_running) return;
   i2c_deinit(_i2c);
   gpio_set_function(_sda, GPIO_FUNC_NULL);
@@ -82,12 +87,14 @@ void TwoWire::end() {
 }
 
 void TwoWire::setClock(uint32_t frequency) {
+  roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
   CHECK_GT(frequency, 0u);
   _clkHz = frequency;
   if (_running) i2c_set_baudrate(_i2c, frequency);
 }
 
 void TwoWire::beginTransmission(uint8_t address) {
+  roo_testing::pico::ReserveController(2 + i2c_get_index(_i2c));
   CHECK(_running);
   _addr = address;
   _buffLen = 0;
@@ -97,6 +104,7 @@ void TwoWire::beginTransmission(uint8_t address) {
 
 size_t TwoWire::write(uint8_t byte) { return write(&byte, 1); }
 size_t TwoWire::write(const uint8_t* bytes, size_t size) {
+  roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
   if (!_txBegun) return 0;
   const size_t written = std::min(size, _buffSize - _buffLen);
   if (written != 0) std::memcpy(_buff + _buffLen, bytes, written);
@@ -106,6 +114,7 @@ size_t TwoWire::write(const uint8_t* bytes, size_t size) {
 }
 
 uint8_t TwoWire::endTransmission(bool stop) {
+  roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
   if (!_running || !_txBegun) return 4;
   _txBegun = false;
   const int result = i2c_write_timeout_us(
@@ -117,18 +126,29 @@ uint8_t TwoWire::endTransmission(bool stop) {
       end();
       begin();
     }
+    roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
     return 5;
   }
+  if (stop || result < 0)
+    roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
   return result < 0 ? 4 : 0;
 }
 
 uint8_t TwoWire::endTransmission() { return endTransmission(true); }
 size_t TwoWire::requestFrom(uint8_t address, size_t size, bool stop) {
-  if (!_running || _txBegun) return 0;
+  roo_testing::pico::ReserveController(2 + i2c_get_index(_i2c));
+  if (!_running || _txBegun) {
+    if (!_txBegun)
+      roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
+    return 0;
+  }
   size = std::min(size, _buffSize);
   _buffLen = 0;
   _buffOff = 0;
-  if (size == 0) return 0;
+  if (size == 0) {
+    roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
+    return 0;
+  }
   const int result = i2c_read_timeout_us(
       _i2c, address, _buff, size, !stop,
       std::min<uint64_t>(uint64_t{_timeout} * 1000, UINT32_MAX));
@@ -140,6 +160,8 @@ size_t TwoWire::requestFrom(uint8_t address, size_t size, bool stop) {
     }
   }
   if (result > 0) _buffLen = result;
+  if (_buffLen == 0)
+    roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
   return _buffLen;
 }
 
@@ -147,15 +169,35 @@ size_t TwoWire::requestFrom(uint8_t address, size_t size) {
   return requestFrom(address, size, true);
 }
 
-int TwoWire::available() { return _buffLen - _buffOff; }
-int TwoWire::read() { return _buffOff < _buffLen ? _buff[_buffOff++] : -1; }
-int TwoWire::peek() { return _buffOff < _buffLen ? _buff[_buffOff] : -1; }
+int TwoWire::available() {
+  roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
+  const int count = _buffLen - _buffOff;
+  if (!_txBegun && _buffOff >= _buffLen &&
+      !FakePico().i2cState(i2c_get_index(_i2c)).restart_on_next)
+    roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
+  return count;
+}
+int TwoWire::read() {
+  roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
+  const int value = _buffOff < _buffLen ? _buff[_buffOff++] : -1;
+  if (!_txBegun && _buffOff >= _buffLen &&
+      !FakePico().i2cState(i2c_get_index(_i2c)).restart_on_next)
+    roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
+  return value;
+}
+int TwoWire::peek() {
+  roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
+  return _buffOff < _buffLen ? _buff[_buffOff] : -1;
+}
 void TwoWire::flush() {
+  roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
+  roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
   _buffLen = 0;
   _buffOff = 0;
 }
 
 void TwoWire::setTimeout(uint32_t timeout, bool reset) {
+  roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
   _timeout = timeout;
   _reset_with_timeout = reset;
 }

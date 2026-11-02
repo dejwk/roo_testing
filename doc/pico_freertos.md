@@ -108,8 +108,8 @@ bazel test //:arduino_pico_freertos_tests \
 Public `:arduino`, `:arduino_main`, and `:arduino_gtest_main` retain their names.
 `//roo_testing/runtime:freertos` and `:freertos_headers` select the matching kernel
 for runtime consumers such as `roo_testing/sys`. Existing bare-metal profiles
-continue rejecting FreeRTOS headers. During the kernel prototype, public Arduino
-startup remains unavailable until the task-aware core adapter stage lands.
+continue rejecting FreeRTOS headers. The portable core compiles with `__FREERTOS`; destination-owned runners replace
+the hardware-specific upstream startup (USB, networking, and core 1).
 
 ## Implementation Plan
 
@@ -192,3 +192,12 @@ deletion of a blocked UART reader, and overlapping transfers on independent SPI
 controllers. The 21-test bare-metal Pico suite remains green. Native descriptors
 retain their blocking/nonblocking mode; nonblocking console backpressure parks
 FreeRTOS callers. Controller owners must finish transactions before deletion.
+
+Stage 4: task-backed Arduino and SDK GoogleTest runners preserve exact exit
+status and close pending clock captures. Process tests repeat successful and
+failing lifetimes and reject core-1 entry points. Arduino tests exercise nested
+critical sections, portable String code, busy waits, full SPI transactions and
+Wire TX/repeated-START/RX ownership across competing tasks. Wire retains no-STOP
+ownership after RX drains; finish the conversation or call end() before deletion.
+SPI frequencies use the SDK's divider rounding. Lifecycle/configuration changes
+and fixture wiring must complete before concurrent peripheral use.

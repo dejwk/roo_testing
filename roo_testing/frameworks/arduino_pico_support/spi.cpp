@@ -4,6 +4,7 @@
 #include <array>
 
 #include "glog/logging.h"
+#include "roo_testing/frameworks/pico_support/task_support.h"
 
 namespace {
 /// Validates the RP2040 alternate routes for a specific SPI signal.
@@ -54,6 +55,7 @@ bool SPIClassRP2040::setCS(pin_size_t pin) {
 }
 
 void SPIClassRP2040::begin(bool hw_cs) {
+  roo_testing::pico::ControllerLock operation(spi_get_index(_spi));
   CHECK(!hw_cs) << "Unimplemented: Arduino-Pico hardware chip select";
   if (_running) return;
   spi_init(_spi, 1000000);
@@ -64,6 +66,7 @@ void SPIClassRP2040::begin(bool hw_cs) {
 }
 
 void SPIClassRP2040::end() {
+  roo_testing::pico::ControllerLock operation(spi_get_index(_spi));
   if (!_running) return;
   spi_deinit(_spi);
   for (pin_size_t pin : {_RX, _TX, _SCK}) {
@@ -71,9 +74,11 @@ void SPIClassRP2040::end() {
   }
   _running = false;
   _initted = false;
+  roo_testing::pico::ReleaseController(spi_get_index(_spi));
 }
 
 void SPIClassRP2040::beginTransaction(SPISettings settings) {
+  roo_testing::pico::ReserveController(spi_get_index(_spi));
   CHECK(_running) << "SPI.begin() required";
   CHECK(settings.getBitOrder() == LSBFIRST ||
         settings.getBitOrder() == MSBFIRST)
@@ -89,11 +94,16 @@ void SPIClassRP2040::beginTransaction(SPISettings settings) {
   _initted = true;
 }
 
-void SPIClassRP2040::endTransaction() { _helper.unmaskInterrupts(); }
+void SPIClassRP2040::endTransaction() {
+  _helper.unmaskInterrupts();
+  roo_testing::pico::ReleaseController(spi_get_index(_spi));
+}
 
 void SPIClassRP2040::transfer(const void* txbuf, void* rxbuf, size_t count) {
+  roo_testing::pico::ControllerLock operation(spi_get_index(_spi));
   CHECK(_running);
-  if (!_initted) beginTransaction(SPISettings());
+  const bool implicit = !_initted;
+  if (implicit) beginTransaction(SPISettings());
   const uint8_t* tx = static_cast<const uint8_t*>(txbuf);
   uint8_t* rx = static_cast<uint8_t*>(rxbuf);
   // Bound scratch storage and retain one SDK transfer per chunk, not per byte.
@@ -118,6 +128,7 @@ void SPIClassRP2040::transfer(const void* txbuf, void* rxbuf, size_t count) {
     }
     offset += size;
   }
+  if (implicit) endTransaction();
 }
 
 void SPIClassRP2040::transfer(void* bytes, size_t size) {

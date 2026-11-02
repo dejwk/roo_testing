@@ -23,3 +23,14 @@ cc_library(
     ],
     alwayslink = True,
 )
+
+cc_library(
+    name = "runner",
+    srcs = ["runner.cpp"],
+    hdrs = ["runner.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//roo_testing/frameworks/arduino-pico/FreeRTOS-Kernel:freertos",
+        "//roo_testing/system:timer",
+    ],
+)

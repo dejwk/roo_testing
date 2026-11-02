@@ -5,6 +5,26 @@
 #include "Arduino.h"
 #include "glog/logging.h"
 #include "roo_testing/system/timer.h"
+#if defined(__FREERTOS)
+#include "roo_testing/frameworks/freertos_posix/runner.h"
+extern void setup1() __attribute__((weak));
+extern void loop1() __attribute__((weak));
+#endif
+
+namespace {
+int RunSketch(void* context) {
+  const uint64_t iterations = *static_cast<const uint64_t*>(context);
+  init();
+  initVariant();
+  Serial.begin(115200);
+  setup();
+  for (uint64_t i = 0; i < iterations; ++i) {
+    loop();
+    yield();
+  }
+  return 0;
+}
+}  // namespace
 
 int main(int argc, char** argv) {
   uint64_t iterations = UINT64_MAX;
@@ -16,15 +36,14 @@ int main(int argc, char** argv) {
   } else {
     CHECK_EQ(argc, 1);
   }
-  init();
-  initVariant();
-  Serial.begin(115200);
-  setup();
-  for (uint64_t i = 0; i < iterations; ++i) {
-    loop();
-    yield();
-  }
+#if defined(__FREERTOS)
+  CHECK(setup1 == nullptr && loop1 == nullptr)
+      << "Unimplemented: Arduino-Pico FreeRTOS core 1";
+  return roo_testing::freertos_posix::Run(RunSketch, &iterations);
+#else
+  const int result = RunSketch(&iterations);
   while (!TryBeginSystemTimeServiceShutdownForHost()) std::this_thread::yield();
   FinishSystemTimeServiceShutdownForHost();
-  return 0;
+  return result;
+#endif
 }

@@ -31,7 +31,10 @@ cc_library(
         "//:pico_sdk",
         "//roo_testing/system:timer",
         "@googletest//:gtest",
-    ],
+    ] + select({
+        "//roo_testing/platforms:is_arduino_rp2040_freertos": ["//roo_testing/frameworks/freertos_posix:runner"],
+        "//conditions:default": [],
+    }),
 )
 
 cc_library(

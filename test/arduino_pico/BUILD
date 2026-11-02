@@ -12,6 +12,7 @@ cc_test(
     ],
     linkstatic = True,
     target_compatible_with = [
+        "//roo_testing/platforms:bare_metal",
         "//roo_testing/platforms:rp2040",
         "//roo_testing/platforms:arduino",
     ],

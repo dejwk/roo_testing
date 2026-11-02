@@ -19,6 +19,7 @@ cc_library(
         "//roo_testing/buses/uart",
         "//roo_testing/frameworks/arduino-pico:headers",
         "//roo_testing/frameworks/arduino-pico:portable",
+        "//roo_testing/frameworks/pico_support:task_support",
         "//roo_testing/microcontrollers/rp2040:pico",
         "//roo_testing/system:timer",
         "@glog",
@@ -33,7 +34,10 @@ cc_library(
         ":arduino",
         "//roo_testing/system:timer",
         "@googletest//:gtest",
-    ],
+    ] + select({
+        "//roo_testing/platforms:is_arduino_rp2040_freertos": ["//roo_testing/frameworks/freertos_posix:runner"],
+        "//conditions:default": [],
+    }),
 )
 
 cc_library(
@@ -44,7 +48,10 @@ cc_library(
         ":arduino",
         "//roo_testing/system:timer",
         "@glog",
-    ],
+    ] + select({
+        "//roo_testing/platforms:is_arduino_rp2040_freertos": ["//roo_testing/frameworks/freertos_posix:runner"],
+        "//conditions:default": [],
+    }),
 )
 
 cc_library(

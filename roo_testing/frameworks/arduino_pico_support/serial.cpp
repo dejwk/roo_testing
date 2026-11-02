@@ -1,9 +1,11 @@
 #include <algorithm>
 
 #include "Arduino.h"
+#include "CoreMutex.h"
 #include "glog/logging.h"
 #include "hardware/uart.h"
 #include "roo_testing/buses/uart/fake_uart.h"
+#include "roo_testing/host/scheduler_signal_guard.h"
 #include "roo_testing/microcontrollers/rp2040/fake_pico.h"
 
 namespace {
@@ -101,17 +103,20 @@ void SerialUART::_pumpFIFO() {
 }
 
 int SerialUART::available() {
+  CoreMutex operation(&_fifoMutex);
   _pumpFIFO();
   return _running ? _queue->available() : 0;
 }
 
 int SerialUART::read() {
+  CoreMutex operation(&_fifoMutex);
   _pumpFIFO();
   uint8_t byte;
   return _running && _queue->read(&byte) ? byte : -1;
 }
 
 int SerialUART::peek() {
+  CoreMutex operation(&_fifoMutex);
   _pumpFIFO();
   uint8_t byte;
   return _running && _queue->peek(&byte) ? byte : -1;
@@ -124,6 +129,7 @@ int SerialUART::availableForWrite() {
 
 size_t SerialUART::write(uint8_t byte) { return write(&byte, 1); }
 size_t SerialUART::write(const uint8_t* bytes, size_t size) {
+  CoreMutex operation(&_mutex);
   if (!_running || _tx == UART_PIN_NOT_DEFINED) return 0;
   uart_write_blocking(_uart, bytes, size);
   return size;
@@ -148,11 +154,13 @@ void SerialUSB::begin(unsigned long) {
 }
 
 void SerialUSB::end() {
+  roo_testing::SchedulerSignalGuard operation;
   _running = false;
   _hostPeek = -1;
 }
 
 int SerialUSB::available() {
+  roo_testing::SchedulerSignalGuard operation;
   return _running ? (_hostPeek >= 0
                          ? 1
                          : roo_testing::HostConsoleUart().availableForRead())
@@ -160,6 +168,7 @@ int SerialUSB::available() {
 }
 
 int SerialUSB::peek() {
+  roo_testing::SchedulerSignalGuard operation;
   if (!_running) return -1;
   if (_hostPeek < 0) {
     uint8_t byte;
@@ -169,6 +178,7 @@ int SerialUSB::peek() {
 }
 
 int SerialUSB::read() {
+  roo_testing::SchedulerSignalGuard operation;
   const int byte = peek();
   _hostPeek = -1;
   return byte;

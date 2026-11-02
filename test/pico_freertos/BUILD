@@ -1,3 +1,4 @@
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
 load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
 cc_test(
@@ -47,3 +48,57 @@ cc_test(
         "manual",
     ]
 ]
+
+[
+    cc_test(
+        name = "arduino_" + mode + "_test",
+        size = "small",
+        timeout = "short",
+        srcs = ["arduino_test.cpp"],
+        copts = [
+            "-Werror",
+            "-fno-exceptions",
+            "-fno-rtti",
+        ],
+        linkstatic = True,
+        deps = [
+            "//:arduino_gtest_main",
+            "//roo_testing/buses/i2c",
+            "//roo_testing/buses/spi",
+            "//roo_testing/microcontrollers/rp2040:pico",
+        ] + (["//roo_testing/system:manual_time_mode"] if mode == "manual" else []),
+    )
+    for mode in [
+        "auto",
+        "manual",
+    ]
+]
+
+cc_binary(
+    name = "core1_probe",
+    srcs = ["core1_probe.cpp"],
+    deps = ["//:arduino_main"],
+)
+
+cc_test(
+    name = "runner_process_test",
+    size = "small",
+    timeout = "short",
+    srcs = ["runner_process_test.cpp"],
+    args = [
+        "$(location :arduino_auto_test)",
+        "$(location :arduino_manual_test)",
+        "$(location :core1_probe)",
+        "$(location //test/pico:freertos_runner_manual_test)",
+    ],
+    data = [
+        ":arduino_auto_test",
+        ":arduino_manual_test",
+        ":core1_probe",
+        "//test/pico:freertos_runner_manual_test",
+    ],
+    target_compatible_with = [
+        "//roo_testing/platforms:rp2040",
+        "//roo_testing/platforms:freertos",
+    ],
+)

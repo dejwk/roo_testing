@@ -2,6 +2,12 @@
 #include <thread>
 
 #include "Arduino.h"
+#include "roo_testing/host/scheduler_signal_guard.h"
+#if defined(__FREERTOS)
+#include "FreeRTOS.h"
+#include "runtime.h"
+#include "task.h"
+#endif
 #include "glog/logging.h"
 #include "pico/time.h"
 #include "roo_testing/system/timer.h"
@@ -18,9 +24,26 @@ void UnsupportedInterrupt() {
 }  // namespace
 
 extern "C" {
-void init() { system_time_is_auto_sync_enabled(); }
+#if defined(__FREERTOS)
+volatile bool __freeRTOSinitted = false;
+thread_local uint32_t interrupt_depth = 0;
+#endif
+void init() {
+  system_time_is_auto_sync_enabled();
+#if defined(__FREERTOS)
+  __freeRTOSinitted = RooFreeRtosTaskContext();
+#endif
+}
 void __attribute__((weak)) initVariant() {}
-void yield() { std::this_thread::yield(); }
+void yield() {
+#if defined(__FREERTOS)
+  if (RooFreeRtosTaskContext()) {
+    taskYIELD();
+    return;
+  }
+#endif
+  std::this_thread::yield();
+}
 unsigned long micros() { return static_cast<uint32_t>(time_us_64()); }
 unsigned long millis() { return static_cast<uint32_t>(time_us_64() / 1000); }
 void delay(unsigned long ms) {
@@ -28,10 +51,33 @@ void delay(unsigned long ms) {
   sleep_us(uint64_t{ms} * 1000);
 }
 
-void delayMicroseconds(unsigned int us) { sleep_us(us); }
-void interrupts() { UnsupportedInterrupt(); }
-void noInterrupts() { UnsupportedInterrupt(); }
+void delayMicroseconds(unsigned int us) {
+#if defined(__FREERTOS)
+  busy_wait_us(us);
+#else
+  sleep_us(us);
+#endif
+}
+void interrupts() {
+#if defined(__FREERTOS)
+  if (interrupt_depth != 0) {
+    --interrupt_depth;
+    portEXIT_CRITICAL();
+  }
+#else
+  UnsupportedInterrupt();
+#endif
+}
+void noInterrupts() {
+#if defined(__FREERTOS)
+  portENTER_CRITICAL();
+  ++interrupt_depth;
+#else
+  UnsupportedInterrupt();
+#endif
+}
 void pinMode(pin_size_t pin, PinMode mode) {
+  roo_testing::SchedulerSignalGuard state_guard;
   CHECK_LT(pin, 30) << "Invalid Arduino-Pico pin";
   CHECK(mode == INPUT || mode == INPUT_PULLUP || mode == INPUT_PULLDOWN ||
         mode == OUTPUT || mode == OUTPUT_4MA)
@@ -45,6 +91,7 @@ void pinMode(pin_size_t pin, PinMode mode) {
 }
 
 void digitalWrite(pin_size_t pin, PinStatus value) {
+  roo_testing::SchedulerSignalGuard state_guard;
   CHECK_LT(pin, 30) << "Invalid Arduino-Pico pin";
   CHECK(value == LOW || value == HIGH) << "Invalid Arduino-Pico digital level";
   gpio_set_function(pin, GPIO_FUNC_SIO);

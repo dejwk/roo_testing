@@ -13,7 +13,10 @@ cc_library(
         "unrelated_c.c",
     ],
     copts = ["-Werror"],
-    target_compatible_with = ["//roo_testing/platforms:pico"],
+    target_compatible_with = [
+        "//roo_testing/platforms:bare_metal",
+        "//roo_testing/platforms:pico",
+    ],
 )
 
 cc_test(
@@ -25,7 +28,10 @@ cc_test(
     ],
     copts = ["-Werror"],
     linkstatic = True,
-    target_compatible_with = ["//roo_testing/platforms:pico"],
+    target_compatible_with = [
+        "//roo_testing/platforms:bare_metal",
+        "//roo_testing/platforms:pico",
+    ],
     deps = ["//:pico_sdk"],
 )
 
@@ -38,7 +44,10 @@ cc_test(
     ],
     copts = ["-Werror"],
     linkstatic = True,
-    target_compatible_with = ["//roo_testing/platforms:pico"],
+    target_compatible_with = [
+        "//roo_testing/platforms:bare_metal",
+        "//roo_testing/platforms:pico",
+    ],
     deps = [
         ":unrelated_c",
         "//:pico_sdk",
@@ -67,7 +76,10 @@ cc_test(
     ],
     linkstatic = True,
     local_defines = ["PICO_TEST_AUTO=0"],
-    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    target_compatible_with = [
+        "//roo_testing/platforms:bare_metal",
+        "//roo_testing/platforms:pico_sdk",
+    ],
     deps = [
         "//:pico_gtest_main",
         "//roo_testing/system:manual_time_mode",
@@ -87,7 +99,10 @@ cc_test(
     ],
     linkstatic = True,
     local_defines = ["PICO_TEST_AUTO=1"],
-    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    target_compatible_with = [
+        "//roo_testing/platforms:bare_metal",
+        "//roo_testing/platforms:pico_sdk",
+    ],
     deps = ["//:pico_gtest_main"],
 )
 
@@ -101,7 +116,10 @@ cc_test(
     ],
     linkstatic = True,
     local_defines = ["PICO_TEST_AUTO=0"],
-    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    target_compatible_with = [
+        "//roo_testing/platforms:bare_metal",
+        "//roo_testing/platforms:pico_sdk",
+    ],
     deps = [
         "//:pico_gtest_main",
         "//roo_testing/system:manual_time_mode",
@@ -118,7 +136,10 @@ cc_test(
     ],
     linkstatic = True,
     local_defines = ["PICO_TEST_AUTO=1"],
-    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    target_compatible_with = [
+        "//roo_testing/platforms:bare_metal",
+        "//roo_testing/platforms:pico_sdk",
+    ],
     deps = ["//:pico_gtest_main"],
 )
 
@@ -131,7 +152,10 @@ cc_test(
         "-fno-exceptions",
     ],
     linkstatic = True,
-    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    target_compatible_with = [
+        "//roo_testing/platforms:bare_metal",
+        "//roo_testing/platforms:pico_sdk",
+    ],
     deps = [
         "//:pico_gtest_main",
         "//roo_testing/microcontrollers/rp2040:pico",
@@ -148,7 +172,10 @@ cc_test(
         "-fno-exceptions",
     ],
     linkstatic = True,
-    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    target_compatible_with = [
+        "//roo_testing/platforms:bare_metal",
+        "//roo_testing/platforms:pico_sdk",
+    ],
     deps = [
         "//:pico_gtest_main",
         "//roo_testing/buses/uart",
@@ -167,7 +194,10 @@ cc_binary(
         "-fno-exceptions",
     ],
     linkstatic = True,
-    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    target_compatible_with = [
+        "//roo_testing/platforms:bare_metal",
+        "//roo_testing/platforms:pico_sdk",
+    ],
     deps = ["//:pico_sdk"],
 )
 
@@ -180,7 +210,10 @@ cc_test(
         "-fno-exceptions",
     ],
     linkstatic = True,
-    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    target_compatible_with = [
+        "//roo_testing/platforms:bare_metal",
+        "//roo_testing/platforms:pico_sdk",
+    ],
     deps = [
         "//:pico_gtest_main",
         "//roo_testing/buses/uart",
@@ -200,7 +233,10 @@ cc_test(
         "-fno-exceptions",
     ],
     linkstatic = True,
-    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    target_compatible_with = [
+        "//roo_testing/platforms:bare_metal",
+        "//roo_testing/platforms:pico_sdk",
+    ],
     deps = [
         "//:pico_gtest_main",
         "//roo_testing/buses/spi",
@@ -218,7 +254,10 @@ cc_test(
         "-fno-exceptions",
     ],
     linkstatic = True,
-    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    target_compatible_with = [
+        "//roo_testing/platforms:bare_metal",
+        "//roo_testing/platforms:pico_sdk",
+    ],
     deps = [
         "//:pico_gtest_main",
         "//roo_testing/buses/spi",
@@ -237,7 +276,10 @@ cc_test(
     ],
     linkstatic = True,
     local_defines = ["PICO_SPI_AUTO=0"],
-    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    target_compatible_with = [
+        "//roo_testing/platforms:bare_metal",
+        "//roo_testing/platforms:pico_sdk",
+    ],
     deps = [
         "//:pico_gtest_main",
         "//roo_testing/buses/spi",
@@ -257,7 +299,10 @@ cc_test(
     ],
     linkstatic = True,
     local_defines = ["PICO_SPI_AUTO=1"],
-    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    target_compatible_with = [
+        "//roo_testing/platforms:bare_metal",
+        "//roo_testing/platforms:pico_sdk",
+    ],
     deps = [
         "//:pico_gtest_main",
         "//roo_testing/buses/spi",
@@ -275,7 +320,10 @@ cc_test(
         "-fno-exceptions",
     ],
     linkstatic = True,
-    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    target_compatible_with = [
+        "//roo_testing/platforms:bare_metal",
+        "//roo_testing/platforms:pico_sdk",
+    ],
     deps = [
         "//:pico_gtest_main",
         "//roo_testing/buses/i2c",
@@ -293,7 +341,10 @@ cc_test(
         "-fno-exceptions",
     ],
     linkstatic = True,
-    target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+    target_compatible_with = [
+        "//roo_testing/platforms:bare_metal",
+        "//roo_testing/platforms:pico_sdk",
+    ],
     deps = [
         "//:pico_gtest_main",
         "//roo_testing/microcontrollers/rp2040:pico",
@@ -309,6 +360,7 @@ cc_test(
     linkstatic = True,
     local_defines = ["PICO_TEST_AUTO=0"],
     target_compatible_with = [
+        "//roo_testing/platforms:bare_metal",
         "//roo_testing/platforms:rp2040",
         "//roo_testing/platforms:arduino",
     ],
@@ -325,8 +377,30 @@ cc_test(
     linkstatic = True,
     local_defines = ["PICO_TEST_AUTO=1"],
     target_compatible_with = [
+        "//roo_testing/platforms:bare_metal",
         "//roo_testing/platforms:rp2040",
         "//roo_testing/platforms:arduino",
     ],
     deps = ["//:arduino_gtest_main"],
 )
+
+[
+    cc_test(
+        name = "freertos_runner_" + mode + "_test",
+        size = "small",
+        timeout = "short",
+        srcs = ["runner_test.cpp"],
+        linkstatic = True,
+        local_defines = ["PICO_TEST_AUTO=" + ("0" if mode == "manual" else "1")],
+        target_compatible_with = [
+            "//roo_testing/platforms:rp2040",
+            "//roo_testing/platforms:freertos",
+        ],
+        visibility = ["//test/pico_freertos:__pkg__"],
+        deps = ["//:pico_gtest_main"] + (["//roo_testing/system:manual_time_mode"] if mode == "manual" else []),
+    )
+    for mode in [
+        "auto",
+        "manual",
+    ]
+]

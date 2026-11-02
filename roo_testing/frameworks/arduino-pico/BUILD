@@ -32,6 +32,7 @@ cc_library(
         "ArduinoCore-API/api/Stream.cpp",
         "ArduinoCore-API/api/String.cpp",
         "cores/rp2040/CoreMutex.cpp",
+        "cores/rp2040/FS.cpp",
         "cores/rp2040/WMath.cpp",
         "cores/rp2040/stdlib_noniso.cpp",
         "cores/rp2040/wiring_analog.cpp",

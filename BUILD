@@ -204,6 +204,7 @@ test_suite(
         "//:pico_tests",
         "//examples/arduino_pico:peripherals_test",
         "//test/arduino_pico:arduino_test",
+        "//test/arduino_pico:filesystem_test",
         "//test/pico:arduino_runner_auto_test",
         "//test/pico:arduino_runner_manual_test",
     ],
@@ -215,6 +216,7 @@ test_suite(
     tags = ["manual"],
     tests = [
         "//examples/arduino_pico:peripherals_test",
+        "//test/arduino_pico:filesystem_test",
         "//test/pico:freertos_runner_auto_test",
         "//test/pico:freertos_runner_manual_test",
         "//test/pico_freertos:arduino_auto_test",
@@ -231,4 +233,10 @@ test_suite(
         "//test/profile:freertos_headers_test",
         "//test/profile:runtime_selection_test",
     ],
+)
+
+cc_library(
+    name = "pico_filesystem",
+    visibility = ["//visibility:public"],
+    deps = ["//roo_testing/frameworks/arduino_pico_support:filesystem"],
 )

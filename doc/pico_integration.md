@@ -767,3 +767,59 @@ separate extension.
 - Add RP2350 and board-specific pin maps without equating chip and board identity.
 - Add Pico W networking above host networking with explicit radio limitations.
 - Add filesystem, DMA, PIO, and USB support only with dedicated support contracts.
+
+
+### Filesystem emulation
+
+`//:pico_filesystem` adds optional `SD.h`, `SDFS.h` and `LittleFS.h` host adapters
+on both Arduino-Pico runtimes. They use the imported core's `FS.cpp`, `FS.h` and
+`FSImpl.h`; no ESP32 filesystem header or VFS is involved. Each
+`roo_testing::PicoFilesystem` owns a unique native directory under `TEST_TMPDIR`
+(`/var/tmp` outside Bazel). Contents persist across end/begin and disappear after
+the last backend/file reference is released. Keep the FS object alive while its
+File/Dir wrappers exist, as required by the core's borrowed FS pointer.
+
+The LittleFS fake reproduces the core's deletion behavior: removing the last
+entry also removes empty parent directories, and raw `rmdir()` aliases
+`remove()`. SDFS preserves parents. Construct a separate
+`PicoFilesystem(true)` to exercise LittleFS behavior; the default constructor
+retains SDFS behavior. The Roo LittleFS adapter restores pruned ancestors to
+preserve its public filesystem contract. This difference was found by the
+[RP2040-Zero board smoke tests](../../roo-registry/integration/pico_io/BOARD_VALIDATION.md).
+
+The global SDFS and LittleFS objects expose `setMediaPresent(bool)`,
+`setMountFailure(bool)`, `mounted()` and `hostRoot()`. Configure before use and
+serialize access externally. Removal makes open file I/O fail; failed mounts do
+not format or erase contents. Formatting is explicit and requires an unmounted,
+present medium. Parent traversal and symlink paths are rejected. Nominal capacity
+is informational; quota, SD protocol timing, flash geometry/wear, SDIO and
+SdFat-specific extensions are outside this model. The supported SD shim covers
+SPI begin/end/configuration; use SDFS for file operations.
+
+`//test/arduino_pico:filesystem_test` checks the upstream FS API and isolated
+storage on bare-metal and FreeRTOS, and is included in both Pico Arduino suites.
+The roo_io Pico storage integration tests exercise the real Roo adapters over
+these fakes, including mount lifetimes, read-only mode and update policies.
+
+
+### SD SPI presence commands
+
+`//roo_testing/devices/storage/sd_spi` supplies `FakeSdSpiCard`, a device-level
+model of CMD0 (reset) and CMD58 (READ_OCR). Attach it to a board SPI route and
+connect its `cs()` sink to the card-select GPIO. It validates mode 0/MSB-first
+frames and the command CRC bytes, and exposes insertion/removal, readiness,
+raw OCR injection, delayed responses and command counters.
+
+This model is separate from the SDFS filesystem fake: it verifies the actual
+presence-probe traffic without implementing block reads, filesystem transport,
+card initialization or electrical timing. When simulating complete card removal,
+set both the SPI card's presence and SDFS media presence as appropriate for the
+test. The core SD shim continues to model mount/configuration rather than SD
+initialization traffic; tests can mark the card ready after a successful mount.
+
+The portable `sd_spi_test` target checks the protocol model itself. roo_io's
+Pico `sd_detection_test` runs its production SD backend through both SPI
+controllers and checks mounted queries, removal, malformed/missing responses,
+mount-error classification and optional socket-switch polarity. Applications
+configure the production driver directly; no detection callback registration is
+needed for either emulation or hardware.

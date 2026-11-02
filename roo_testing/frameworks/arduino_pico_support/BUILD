@@ -60,3 +60,20 @@ cc_library(
     visibility = ["//roo_testing/frameworks/arduino-pico:__pkg__"],
     deps = ["//roo_testing/frameworks/arduino-pico:headers"],
 )
+
+cc_library(
+    name = "filesystem",
+    srcs = ["filesystem.cpp"],
+    hdrs = ["filesystem.h"] + glob(["storage/*.h"]),
+    copts = [
+        "-fno-exceptions",
+        "-fno-rtti",
+    ],
+    includes = ["storage"],
+    target_compatible_with = [
+        "//roo_testing/platforms:arduino",
+        "//roo_testing/platforms:rp2040",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [":arduino"],
+)

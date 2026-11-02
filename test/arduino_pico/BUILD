@@ -49,3 +49,21 @@ cc_binary(
     tags = ["manual"],
     deps = ["//:arduino"],
 )
+
+cc_test(
+    name = "filesystem_test",
+    size = "small",
+    srcs = ["filesystem_test.cpp"],
+    copts = [
+        "-fno-rtti",
+        "-fno-exceptions",
+    ],
+    target_compatible_with = [
+        "//roo_testing/platforms:arduino",
+        "//roo_testing/platforms:rp2040",
+    ],
+    deps = [
+        "//:arduino_gtest_main",
+        "//roo_testing/frameworks/arduino_pico_support:filesystem",
+    ],
+)

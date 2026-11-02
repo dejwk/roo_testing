@@ -305,3 +305,25 @@ config_setting(
         ":rp2040",
     ],
 )
+
+platform(
+    name = "arduino_rp2040_freertos",
+    constraint_values = [
+        ":arduino",
+        ":freertos",
+        ":pico_sdk",
+        ":roo_testing",
+        ":rp2040",
+    ],
+    parents = ["@platforms//host:host"],
+)
+
+config_setting(
+    name = "is_arduino_rp2040_freertos",
+    constraint_values = [
+        ":arduino",
+        ":freertos",
+        ":pico_sdk",
+        ":rp2040",
+    ],
+)

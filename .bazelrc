@@ -21,3 +21,5 @@ import %workspace%/.roo_testing/bazelrc/rp2040/arduino.bazelrc
 
 # GCC 14 can emit spurious maybe-uninitialized warnings in std::regex with ASAN.
 build:asan --per_file_copt=.*glog\+.*logging\.cc@-Wno-maybe-uninitialized
+
+import %workspace%/.roo_testing/bazelrc/rp2040/freertos.bazelrc

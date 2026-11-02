@@ -160,3 +160,12 @@ Arduino-Pico native boundary patches keep the pinned public API and portable
 core sources. The API patch series also excludes networking and USB umbrella
 includes from the supported host subset and advances Stream timeout polling.
 Destination-owned BUILD files and `arduino_pico_support` are not upstream files.
+
+## Pico FreeRTOS kernel
+
+`copybara/import.sh pico-freertos` imports Arduino-Pico's pinned FreeRTOS gitlink
+into `frameworks/arduino-pico/FreeRTOS-Kernel`. The kernel's POSIX port runs the
+one-core host runtime. Its patch series fixes the host minimum pthread stack and
+uses a 32-bit tick type. Native configuration/hooks live in destination-owned
+`frameworks/freertos_posix`. Arduino core imports exclude this separately owned
+kernel tree. The initial import carries `PicoFreeRtos-Origin-RevId`.

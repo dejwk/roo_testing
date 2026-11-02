@@ -1,0 +1,29 @@
+--- a/portable/ThirdParty/GCC/Posix/port.c
++++ b/portable/ThirdParty/GCC/Posix/port.c
+@@ -179,8 +179,11 @@
+     thread->pvParams = pvParameters;
+     thread->xDying = pdFALSE;
+ 
+-    /* Ensure ulStackSize is at least PTHREAD_STACK_MIN */
+-    ulStackSize = (ulStackSize < ( size_t ) ( PTHREAD_STACK_MIN ) ) ? ( size_t ) ( PTHREAD_STACK_MIN ) : ulStackSize;
++    /* Signal delivery and pthread cancellation need more than PTHREAD_STACK_MIN. */
++    if( ulStackSize < ( size_t ) ( 64 * 1024 ) )
++    {
++        ulStackSize = ( size_t ) ( 64 * 1024 );
++    }
+ 
+     pthread_attr_init( &xThreadAttributes );
+     iRet = pthread_attr_setstacksize( &xThreadAttributes, ulStackSize );
+--- a/portable/ThirdParty/GCC/Posix/portmacro.h
++++ b/portable/ThirdParty/GCC/Posix/portmacro.h
+@@ -63,8 +63,8 @@
+ typedef long             BaseType_t;
+ typedef unsigned long    UBaseType_t;
+ 
+-typedef unsigned long    TickType_t;
+-#define portMAX_DELAY              ( ( TickType_t ) ULONG_MAX )
++typedef uint32_t         TickType_t;
++#define portMAX_DELAY              ( ( TickType_t ) UINT32_MAX )
+ 
+ #define portTICK_TYPE_IS_ATOMIC    1
+ 

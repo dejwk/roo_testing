@@ -12,6 +12,7 @@ load(
     "ARDUINO_PICO_REV",
     "ARDUINO_PICO_API_REV",
     "ARDUINO_PICO_VERSION",
+    "PICO_FREERTOS_REV",
     "PICO_SDK_REV",
     "PICO_SDK_VERSION",
     "ESP_IDF_REV",
@@ -231,6 +232,7 @@ def destination_files(destination):
             destination + "/roo_testing_host_include/**",
             # Imported by the separate pinned API workflow.
             destination + "/ArduinoCore-API/**",
+            destination + "/FreeRTOS-Kernel/**",
             destination + "/sdkconfig.h",
             # The Arduino core include root owns this C++ register proxy. C
             # translation units fall through to ESP-IDF via include_next.
@@ -411,4 +413,30 @@ core.workflow(
     transformations = [patch.apply(series = "patches/arduino-pico-api/series"), core.move("", ARDUINO_PICO_DESTINATION + "/ArduinoCore-API")],
     mode = "SQUASH",
     custom_rev_id = "ArduinoPicoApi-Origin-RevId",
+)
+
+
+core.workflow(
+    name = "pico_freertos",
+    description = "Import the FreeRTOS kernel pinned by Arduino-Pico",
+    origin = git.origin(
+        url = "https://github.com/earlephilhower/FreeRTOS-Kernel.git",
+        ref = PICO_FREERTOS_REV,
+        partial_fetch = True,
+        submodules = "NO",
+    ),
+    destination = destination(),
+    authoring = authoring.pass_thru("Copybara <copybara@localhost>"),
+    origin_files = glob([
+        "LICENSE.md", "include/**", "event_groups.c", "list.c", "queue.c",
+        "stream_buffer.c", "tasks.c", "timers.c", "portable/MemMang/heap_3.c",
+        "portable/ThirdParty/GCC/Posix/**",
+    ], exclude = COMMON_EXCLUDES),
+    destination_files = destination_files(ARDUINO_PICO_DESTINATION + "/FreeRTOS-Kernel"),
+    transformations = [
+        patch.apply(series = "patches/pico-freertos/series"),
+        core.move("", ARDUINO_PICO_DESTINATION + "/FreeRTOS-Kernel"),
+    ],
+    mode = "SQUASH",
+    custom_rev_id = "PicoFreeRtos-Origin-RevId",
 )

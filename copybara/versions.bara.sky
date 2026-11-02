@@ -21,3 +21,6 @@ PICO_SDK_REV = "079c6f39023649b154152db30f1d781e884879bc"
 
 # Arduino-Pico 6.3.1 ArduinoCore-API gitlink; actual forwarding API dependency.
 ARDUINO_PICO_API_REV = "82928635c893189343cf8eb78569f0c4136fded0"
+
+# FreeRTOS-Kernel gitlink in the pinned Arduino-Pico core (11.1.0+).
+PICO_FREERTOS_REV = "2e588af95bad29aef577373512883370c9408c1c"

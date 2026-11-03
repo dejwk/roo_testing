@@ -1,4 +1,9 @@
-# Unreleased
+# roo_testing 2.5.0
+
+- Add pinned Pico SDK 2.3.1 / Arduino-Pico 6.3.1 host support, shared Pico bus models, bare-metal and single-core FreeRTOS profiles, and canonical nine-profile tooling.
+
+- Add optional Pico FS/SDFS/LittleFS host storage using the imported core FS API, isolated native roots and injected mount/media failures.
+- Add a portable SD SPI presence-command fake with CMD0/CMD58 framing, CRC validation, insertion/readiness controls, OCR injection and delayed responses.
 
 - Restore root and recursive Bazel wildcard tests by propagating frontend/SoC
   compatibility and excluding generated output trees and standalone example

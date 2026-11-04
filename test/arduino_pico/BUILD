@@ -67,3 +67,20 @@ cc_test(
         "//roo_testing/frameworks/arduino_pico_support:filesystem",
     ],
 )
+
+cc_test(
+    name = "wire_test",
+    size = "small",
+    srcs = ["wire_test.cpp"],
+    copts = ["-Werror", "-fno-exceptions", "-fno-rtti"],
+    linkstatic = True,
+    target_compatible_with = [
+        "//roo_testing/platforms:arduino",
+        "//roo_testing/platforms:rp2040",
+    ],
+    deps = [
+        "//:arduino_gtest_main",
+        "//roo_testing/buses/i2c",
+        "//roo_testing/microcontrollers/rp2040:pico",
+    ],
+)

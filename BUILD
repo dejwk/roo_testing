@@ -205,6 +205,7 @@ test_suite(
         "//examples/arduino_pico:peripherals_test",
         "//test/arduino_pico:arduino_test",
         "//test/arduino_pico:filesystem_test",
+        "//test/arduino_pico:wire_test",
         "//test/pico:arduino_runner_auto_test",
         "//test/pico:arduino_runner_manual_test",
     ],
@@ -217,6 +218,7 @@ test_suite(
     tests = [
         "//examples/arduino_pico:peripherals_test",
         "//test/arduino_pico:filesystem_test",
+        "//test/arduino_pico:wire_test",
         "//test/pico:freertos_runner_auto_test",
         "//test/pico:freertos_runner_manual_test",
         "//test/pico_freertos:arduino_auto_test",

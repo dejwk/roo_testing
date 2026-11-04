@@ -28,6 +28,10 @@ functions absent from glibc. Linux ABI limitations still apply.
 | Analog | Upstream resolution, range and frequency scaling over four external ADC channels and shared PWM slices. Internal temperature, FIFO, phase-correct PWM and IRQs fail. |
 | Core mutex | Checked core-0 ownership for the upstream portable core. No host-thread exclusion or ISR synchronization is claimed. |
 
+Wire follows the pinned core's shared TX/RX buffer rules: oversized or zero-length
+reads return zero without changing buffered bytes; `flush()` does nothing.
+Repeated `begin()` and nested `beginTransmission()` calls preserve active state.
+
 Networking (including the fork's lwIP-dependent IPAddress/UDP), filesystem,
 USB hardware, PIO, semihosting, direct register access, core 1 are
 excluded. Their headers are not replaced with success stubs. SDK unsupported

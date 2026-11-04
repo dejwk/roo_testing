@@ -34,14 +34,15 @@ TwoWire::TwoWire(i2c_inst_t* i2c, pin_size_t sda, pin_size_t scl)
 }
 
 size_t TwoWire::setBufferSize(size_t size) {
-  if (_running || size < WIRE_BUFFER_SIZE_MIN || size > 65535) return 0;
-  void* buffer = std::realloc(_buff, size);
-  if (buffer == nullptr) return 0;
-  _buff = static_cast<uint8_t*>(buffer);
-  _buffSize = size;
-  _buffLen = 0;
-  _buffOff = 0;
-  return size;
+  if (_running || size == _buffSize) return _buffSize;
+  const size_t requested =
+      std::max(WIRE_BUFFER_SIZE_MIN, static_cast<int>(size));
+  void* buffer = std::realloc(_buff, requested);
+  if (buffer != nullptr) {
+    _buff = static_cast<uint8_t*>(buffer);
+    _buffSize = requested;
+  }
+  return _buffSize;
 }
 
 bool TwoWire::setSDA(pin_size_t pin) {
@@ -62,10 +63,12 @@ bool TwoWire::setSCL(pin_size_t pin) {
 
 void TwoWire::begin() {
   roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
-  if (_running) end();
+  if (_running) return;
   i2c_init(_i2c, _clkHz);
   gpio_set_function(_sda, GPIO_FUNC_I2C);
+  gpio_pull_up(_sda);
   gpio_set_function(_scl, GPIO_FUNC_I2C);
+  gpio_pull_up(_scl);
   _running = true;
   _txBegun = false;
   _buffLen = 0;
@@ -78,8 +81,8 @@ void TwoWire::end() {
   roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
   if (!_running) return;
   i2c_deinit(_i2c);
-  gpio_set_function(_sda, GPIO_FUNC_NULL);
-  gpio_set_function(_scl, GPIO_FUNC_NULL);
+  pinMode(_sda, INPUT);
+  pinMode(_scl, INPUT);
   _running = false;
   _txBegun = false;
   _buffLen = 0;
@@ -95,7 +98,7 @@ void TwoWire::setClock(uint32_t frequency) {
 
 void TwoWire::beginTransmission(uint8_t address) {
   roo_testing::pico::ReserveController(2 + i2c_get_index(_i2c));
-  CHECK(_running);
+  if (!_running || _txBegun) return;
   _addr = address;
   _buffLen = 0;
   _buffOff = 0;
@@ -105,11 +108,10 @@ void TwoWire::beginTransmission(uint8_t address) {
 size_t TwoWire::write(uint8_t byte) { return write(&byte, 1); }
 size_t TwoWire::write(const uint8_t* bytes, size_t size) {
   roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
-  if (!_txBegun) return 0;
+  if (!_running || !_txBegun) return 0;
   const size_t written = std::min(size, _buffSize - _buffLen);
   if (written != 0) std::memcpy(_buff + _buffLen, bytes, written);
   _buffLen += written;
-  if (written < size) setWriteError();
   return written;
 }
 
@@ -131,24 +133,19 @@ uint8_t TwoWire::endTransmission(bool stop) {
   }
   if (stop || result < 0)
     roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
-  return result < 0 ? 4 : 0;
+  const size_t expected = _buffLen;
+  _buffLen = 0;
+  return result == static_cast<int>(expected) ? 0 : 4;
 }
 
 uint8_t TwoWire::endTransmission() { return endTransmission(true); }
 size_t TwoWire::requestFrom(uint8_t address, size_t size, bool stop) {
   roo_testing::pico::ReserveController(2 + i2c_get_index(_i2c));
-  if (!_running || _txBegun) {
-    if (!_txBegun)
-      roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
-    return 0;
-  }
-  size = std::min(size, _buffSize);
+  // The core rejects invalid requests before touching its shared TX/RX buffer.
+  // In particular, an oversized read is not a shorter successful transfer.
+  if (!_running || _txBegun || size == 0 || size > _buffSize) return 0;
   _buffLen = 0;
   _buffOff = 0;
-  if (size == 0) {
-    roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
-    return 0;
-  }
   const int result = i2c_read_timeout_us(
       _i2c, address, _buff, size, !stop,
       std::min<uint64_t>(uint64_t{_timeout} * 1000, UINT32_MAX));
@@ -171,7 +168,7 @@ size_t TwoWire::requestFrom(uint8_t address, size_t size) {
 
 int TwoWire::available() {
   roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
-  const int count = _buffLen - _buffOff;
+  const int count = _running ? _buffLen - _buffOff : 0;
   if (!_txBegun && _buffOff >= _buffLen &&
       !FakePico().i2cState(i2c_get_index(_i2c)).restart_on_next)
     roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
@@ -179,7 +176,7 @@ int TwoWire::available() {
 }
 int TwoWire::read() {
   roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
-  const int value = _buffOff < _buffLen ? _buff[_buffOff++] : -1;
+  const int value = _running && _buffOff < _buffLen ? _buff[_buffOff++] : -1;
   if (!_txBegun && _buffOff >= _buffLen &&
       !FakePico().i2cState(i2c_get_index(_i2c)).restart_on_next)
     roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
@@ -187,15 +184,11 @@ int TwoWire::read() {
 }
 int TwoWire::peek() {
   roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
-  return _buffOff < _buffLen ? _buff[_buffOff] : -1;
+  return _running && _buffOff < _buffLen ? _buff[_buffOff] : -1;
 }
 void TwoWire::flush() {
-  roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
-  if (!FakePico().i2cState(i2c_get_index(_i2c)).restart_on_next) {
-    roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
-  }
-  _buffLen = 0;
-  _buffOff = 0;
+  // Arduino-Pico flush() is a no-op: it neither drains RX nor sends buffered
+  // TX. endTransmission() starts a write; read() consumes received bytes.
 }
 
 void TwoWire::setTimeout(uint32_t timeout, bool reset) {

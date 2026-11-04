@@ -137,6 +137,24 @@ TEST_F(PicoWire, StoppedAndRestartedMaster) {
   EXPECT_EQ(Wire.available(), 0);
 }
 
+// Verifies the existing pin route can be selected again while running; changing
+// routes while stopped succeeds and does not depend on the prior route.
+TEST_F(PicoWire, SelectPinsAndRepeatRunningSelection) {
+  EXPECT_TRUE(Wire.setSDA(4));
+  EXPECT_TRUE(Wire.setSCL(5));
+  Wire.end();
+  EXPECT_TRUE(Wire.setSDA(8));
+  EXPECT_TRUE(Wire.setSCL(9));
+  Wire.begin();
+  EXPECT_TRUE(Wire.setSDA(8));
+  EXPECT_TRUE(Wire.setSCL(9));
+  EXPECT_EQ(gpio_get_function(8), GPIO_FUNC_I2C);
+  EXPECT_EQ(gpio_get_function(9), GPIO_FUNC_I2C);
+  Wire.end();
+  EXPECT_TRUE(Wire.setSDA(4));
+  EXPECT_TRUE(Wire.setSCL(5));
+}
+
 // Verifies failed receives replace prior RX state, timeout flags are sticky,
 // and timeout recovery leaves the master usable for the next transfer.
 TEST_F(PicoWire, ReceiveErrorsAndTimeoutRecovery) {

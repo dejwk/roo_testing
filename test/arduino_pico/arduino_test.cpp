@@ -67,6 +67,14 @@ class ArduinoPicoTest : public testing::Test {
   void SetUp() override { Connections(); }
 };
 
+// Verifies illegal controller/pin mappings fail explicitly as the real core
+// panics, rather than returning false and allowing the app to continue.
+TEST(PicoArduinoWire, RejectIllegalPins) {
+  Wire.end();
+  EXPECT_DEATH(Wire.setSDA(6), "SDA to illegal pin");
+  EXPECT_DEATH(Wire.setSCL(7), "SCL to illegal pin");
+}
+
 // Verifies real core String, Print, and Stream behavior over the shared UART,
 // including timeout progress when the deterministic clock is stopped.
 TEST_F(ArduinoPicoTest, PortableCoreAndUart) {
@@ -151,7 +159,10 @@ TEST_F(ArduinoPicoTest, SharedRtcAndWireErrors) {
   Wire.clearTimeoutFlag();
   EXPECT_FALSE(Wire.getTimeoutFlag());
   Wire.setTimeout(25);
-  EXPECT_FALSE(Wire.setSDA(8));
+  EXPECT_TRUE(Wire.setSDA(4));
+  EXPECT_TRUE(Wire.setSCL(5));
+  EXPECT_DEATH(Wire.setSDA(8), "SDA while running");
+  EXPECT_DEATH(Wire.setSCL(9), "SCL while running");
   Wire.end();
 }
 

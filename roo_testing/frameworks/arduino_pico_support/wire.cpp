@@ -46,17 +46,19 @@ size_t TwoWire::setBufferSize(size_t size) {
 }
 
 bool TwoWire::setSDA(pin_size_t pin) {
-  if (_running || pin >= 30 || pin % 2 != 0 ||
-      (pin / 2) % 2 != i2c_get_index(_i2c))
-    return false;
+  if (_sda == pin) return true;
+  CHECK(!_running) << "Attempting to set Wire SDA while running";
+  CHECK(pin < 30 && pin % 2 == 0 && (pin / 2) % 2 == i2c_get_index(_i2c))
+      << "Attempting to set Wire SDA to illegal pin";
   _sda = pin;
   return true;
 }
 
 bool TwoWire::setSCL(pin_size_t pin) {
-  if (_running || pin >= 30 || pin % 2 != 1 ||
-      (pin / 2) % 2 != i2c_get_index(_i2c))
-    return false;
+  if (_scl == pin) return true;
+  CHECK(!_running) << "Attempting to set Wire SCL while running";
+  CHECK(pin < 30 && pin % 2 == 1 && (pin / 2) % 2 == i2c_get_index(_i2c))
+      << "Attempting to set Wire SCL to illegal pin";
   _scl = pin;
   return true;
 }

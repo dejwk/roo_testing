@@ -78,7 +78,6 @@ void TwoWire::begin() {
 void TwoWire::begin(uint8_t) { LOG(FATAL) << "Unimplemented: Pico I2C slave"; }
 void TwoWire::end() {
   roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
-  roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
   if (!_running) return;
   i2c_deinit(_i2c);
   pinMode(_sda, INPUT);
@@ -97,7 +96,7 @@ void TwoWire::setClock(uint32_t frequency) {
 }
 
 void TwoWire::beginTransmission(uint8_t address) {
-  roo_testing::pico::ReserveController(2 + i2c_get_index(_i2c));
+  roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
   if (!_running || _txBegun) return;
   _addr = address;
   _buffLen = 0;
@@ -128,11 +127,8 @@ uint8_t TwoWire::endTransmission(bool stop) {
       end();
       begin();
     }
-    roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
     return 5;
   }
-  if (stop || result < 0)
-    roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
   const size_t expected = _buffLen;
   _buffLen = 0;
   return result == static_cast<int>(expected) ? 0 : 4;
@@ -140,7 +136,7 @@ uint8_t TwoWire::endTransmission(bool stop) {
 
 uint8_t TwoWire::endTransmission() { return endTransmission(true); }
 size_t TwoWire::requestFrom(uint8_t address, size_t size, bool stop) {
-  roo_testing::pico::ReserveController(2 + i2c_get_index(_i2c));
+  roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
   // The core rejects invalid requests before touching its shared TX/RX buffer.
   // In particular, an oversized read is not a shorter successful transfer.
   if (!_running || _txBegun || size == 0 || size > _buffSize) return 0;
@@ -157,8 +153,6 @@ size_t TwoWire::requestFrom(uint8_t address, size_t size, bool stop) {
     }
   }
   if (result > 0) _buffLen = result;
-  if (_buffLen == 0)
-    roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
   return _buffLen;
 }
 
@@ -166,26 +160,25 @@ size_t TwoWire::requestFrom(uint8_t address, size_t size) {
   return requestFrom(address, size, true);
 }
 
+// The real core shares one RAM buffer across callers. Protect individual host
+// operations, but never reserve the controller between Wire calls: applications
+// must serialize whole conversations themselves, including reads of this
+// buffer.
 int TwoWire::available() {
   roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
-  const int count = _running ? _buffLen - _buffOff : 0;
-  if (!_txBegun && _buffOff >= _buffLen &&
-      !FakePico().i2cState(i2c_get_index(_i2c)).restart_on_next)
-    roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
-  return count;
+  return _running ? _buffLen - _buffOff : 0;
 }
+
 int TwoWire::read() {
   roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
-  const int value = _running && _buffOff < _buffLen ? _buff[_buffOff++] : -1;
-  if (!_txBegun && _buffOff >= _buffLen &&
-      !FakePico().i2cState(i2c_get_index(_i2c)).restart_on_next)
-    roo_testing::pico::ReleaseController(2 + i2c_get_index(_i2c));
-  return value;
+  return _running && _buffOff < _buffLen ? _buff[_buffOff++] : -1;
 }
+
 int TwoWire::peek() {
   roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
   return _running && _buffOff < _buffLen ? _buff[_buffOff] : -1;
 }
+
 void TwoWire::flush() {
   // Arduino-Pico flush() is a no-op: it neither drains RX nor sends buffered
   // TX. endTransmission() starts a write; read() consumes received bytes.
@@ -229,8 +222,12 @@ bool TwoWire::finishedAsync() {
 }
 
 bool TwoWire::busIdle() {
-  return true;
-}  // Supported calls are synchronous on core 0.
+  const FakePicoBoard::I2cState state =
+      FakePico().i2cState(i2c_get_index(_i2c));
+  // A no-STOP transfer holds the bus active, independently of unread RAM bytes
+  // and of which task starts the next transfer.
+  return !state.busy && !state.restart_on_next;
+}
 void TwoWire::abortAsync() { LOG(FATAL) << "Unimplemented: Pico I2C DMA"; }
 void TwoWire::onFinishedAsync(void (*)()) {
   LOG(FATAL) << "Unimplemented: Pico I2C DMA callbacks";

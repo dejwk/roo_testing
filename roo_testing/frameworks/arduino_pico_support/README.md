@@ -57,9 +57,12 @@ manual uptime). noInterrupts()/interrupts() balance nested scheduler critical
 sections; hardware IRQ sources and user interrupt callbacks remain unsupported.
 
 SPI beginTransaction/endTransaction reserve a controller across settings, CS
-edges and waits. Wire reserves TX, repeated START, and unread RX state; consume
-or flush RX before handing the controller to another task. A no-STOP operation
-retains its reservation until the conversation is finished or Wire.end().
+edges and waits. Wire follows the real core: applications must serialize whole
+beginTransmission/write/endTransmission/requestFrom/read conversations using
+their own mutex. Unread RX bytes hold no controller reservation, and the next
+beginTransmission replaces them. A no-STOP transfer retains bus START/STOP
+state until a subsequent STOP or end(), independently of task ownership;
+flush() neither clears RX nor finishes that bus conversation.
 SerialUART serializes RX queue and TX operations; Serial's peek state is guarded
 against task preemption. Configure lifecycle/pins and borrowed device wiring
 before concurrent use. Finish owned mutexes/reservations before deleting tasks.

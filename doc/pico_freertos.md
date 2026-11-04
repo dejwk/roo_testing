@@ -93,8 +93,12 @@ uses separate child processes, matching existing runners.
 
 SDK state mutations are short and protected from preemption. UART waits park the
 calling task. Arduino SPI transactions reserve their controller until
-endTransaction; SDK transfers serialize individual calls. Wire protects a complete
-beginTransmission/write/endTransmission sequence and read state. Fixtures wire
+endTransaction; SDK transfers serialize individual calls. Wire has the pinned
+core's shared buffer and no cross-call reservation. Applications must hold their
+own mutex across beginTransmission/write/endTransmission/requestFrom/read when
+sharing Wire between tasks. Unread RAM bytes do not keep a task reservation;
+no-STOP bus state persists independently until a transfer emits STOP or end()
+disables the controller. flush() is a no-op. Fixtures wire
 borrowed devices before scheduling and retain them through scheduler shutdown.
 Device callbacks must remain synchronous and nonblocking.
 
@@ -129,7 +133,7 @@ and [Copybara ownership](../copybara/README.md).
    protection for short state operations, controller reservations, and UART waits.
    Proposed commit: `Pico FreeRTOS stage 3: Make Pico peripherals task-aware.`
    Validation: contended mutexes, independent bus traffic, complete SPI framing,
-   Wire sequence isolation, and cancellation while blocked.
+   caller-serialized Wire sequences, and cancellation while blocked.
 4. **Arduino runners.** Compile supported FreeRTOS core paths and provide
    scheduler-backed main/gtest startup and complete cleanup.
    Proposed commit: `Pico FreeRTOS stage 4: Run Arduino applications in tasks.`
@@ -197,8 +201,11 @@ Stage 4: task-backed Arduino and SDK GoogleTest runners preserve exact exit
 status and close pending clock captures. Process tests repeat successful and
 failing lifetimes and reject core-1 entry points. Arduino tests exercise nested
 critical sections, portable String code, busy waits, full SPI transactions and
-Wire TX/repeated-START/RX ownership across competing tasks. Wire retains no-STOP
-ownership after RX drains; finish the conversation or call end() before deletion.
+caller-serialized Wire TX/repeated-START/RX exchanges across competing tasks.
+Wire parity regressions verify buffer limits, no-op flush, lifecycle and errors,
+and that unread RX or no-STOP bus state never reserves Wire for a task. A second
+task can replace unread RX or alter an active TX buffer, matching the real core;
+application mutexes are required to prevent these interleavings.
 SPI frequencies use the SDK's divider rounding. Lifecycle/configuration changes
 and fixture wiring must complete before concurrent peripheral use.
 

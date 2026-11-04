@@ -39,8 +39,7 @@ class Registers : public FakeI2cDevice {
   Registers() : FakeI2cDevice("task registers", 0x68) {}
   Result write(const uint8_t* bytes, uint16_t size, bool stop,
                uint16_t) override {
-    configASSERT(size == 1);
-    writes.push_back(bytes[0]);
+    writes.insert(writes.end(), bytes, bytes + size);
     last_stop = stop;
     return I2C_ERROR_OK;
   }
@@ -79,11 +78,14 @@ void SpiWorker(void*) {
   vTaskSuspend(nullptr);
 }
 
-void WireWorker(void*) {
+void WireWorker(void* arg) {
+  SemaphoreHandle_t mutex = static_cast<SemaphoreHandle_t>(arg);
+  if (mutex != nullptr) configASSERT(xSemaphoreTake(mutex, portMAX_DELAY));
   Wire.beginTransmission(0x68);
   progressed = true;
   Wire.write(0x40);
   configASSERT(Wire.endTransmission() == 0);
+  if (mutex != nullptr) xSemaphoreGive(mutex);
   xSemaphoreGive(done);
   vTaskSuspend(nullptr);
 }
@@ -145,17 +147,19 @@ TEST(PicoFreeRtosArduino, CompleteSpiTransaction) {
   SPI.end();
 }
 
-// Verifies TX buffers, a repeated START, and unread RX bytes retain their owner
-// across delays; a competing task progresses only after the last byte is read.
-TEST(PicoFreeRtosArduino, CompleteWireTransaction) {
+// Verifies an application mutex protects TX, repeated START, and RX consumption
+// across task delays, as required by the real core's shared Wire buffer.
+TEST(PicoFreeRtosArduino, CallerSerializesWireTransaction) {
   wiring.registers.writes.clear();
   Wire.begin();
   done = xSemaphoreCreateBinary();
   progressed = false;
+  SemaphoreHandle_t mutex = xSemaphoreCreateMutex();
+  ASSERT_EQ(xSemaphoreTake(mutex, portMAX_DELAY), pdTRUE);
   Wire.beginTransmission(0x68);
   Wire.write(0x20);
   TaskHandle_t worker;
-  ASSERT_EQ(xTaskCreate(WireWorker, "other_wire", 16384, nullptr, 3, &worker),
+  ASSERT_EQ(xTaskCreate(WireWorker, "other_wire", 16384, mutex, 3, &worker),
             pdPASS);
   delay(2);
   EXPECT_FALSE(progressed);
@@ -168,38 +172,63 @@ TEST(PicoFreeRtosArduino, CompleteWireTransaction) {
   EXPECT_EQ(Wire.read(), 0x20);
   EXPECT_FALSE(progressed);
   EXPECT_EQ(Wire.read(), 0x21);
+  EXPECT_FALSE(progressed);
+  xSemaphoreGive(mutex);
   ASSERT_EQ(xSemaphoreTake(done, pdMS_TO_TICKS(100)), pdTRUE);
   EXPECT_TRUE(progressed);
   EXPECT_EQ(wiring.registers.writes, (std::vector<uint8_t>{0x20, 0x40}));
   vTaskDelete(worker);
   vSemaphoreDelete(done);
+  vSemaphoreDelete(mutex);
   Wire.end();
 }
-// Verifies consuming or flushing RX after no STOP preserves the controller
-// until its owner emits STOP, including a second task already waiting for it.
-TEST(PicoFreeRtosArduino, NoStopReceiveRetainsOwnership) {
+// Verifies unread RX, rejected reads, and no-STOP bus state impose no task
+// reservation. Another task can replace the shared buffer and finish the bus.
+TEST(PicoFreeRtosArduino, UnreadReceiveDoesNotReserveController) {
+  for (bool stop : {true, false}) {
+    wiring.registers.writes.clear();
+    Wire.begin();
+    Wire.beginTransmission(0x68);
+    Wire.write(0x60);
+    ASSERT_EQ(Wire.endTransmission(false), 0);
+    ASSERT_EQ(Wire.requestFrom(0x68, size_t{2}, stop), 2u);
+    EXPECT_EQ(Wire.busIdle(), stop);
+    EXPECT_EQ(Wire.requestFrom(0x68, size_t{WIRE_BUFFER_SIZE + 1}), 0u);
+    Wire.flush();
+    EXPECT_EQ(Wire.available(), 2);
+    EXPECT_EQ(Wire.busIdle(), stop);
+    done = xSemaphoreCreateBinary();
+    progressed = false;
+    TaskHandle_t worker;
+    ASSERT_EQ(xTaskCreate(WireWorker, "other_wire", 16384, nullptr, 3, &worker),
+              pdPASS);
+    ASSERT_EQ(xSemaphoreTake(done, pdMS_TO_TICKS(100)), pdTRUE);
+    EXPECT_TRUE(progressed);
+    EXPECT_EQ(wiring.registers.writes, (std::vector<uint8_t>{0x60, 0x40}));
+    EXPECT_EQ(Wire.available(), 0);
+    EXPECT_TRUE(Wire.busIdle());
+    vTaskDelete(worker);
+    vSemaphoreDelete(done);
+    Wire.end();
+  }
+}
+
+// Verifies beginTransmission does not acquire a cross-call mutex. Without
+// application locking, a second task appends to and sends the first task's TX.
+TEST(PicoFreeRtosArduino, TransmitBufferDoesNotReserveController) {
   wiring.registers.writes.clear();
   Wire.begin();
   Wire.beginTransmission(0x68);
-  Wire.write(0x60);
-  ASSERT_EQ(Wire.endTransmission(false), 0);
-  ASSERT_EQ(Wire.requestFrom(0x68, size_t{1}, false), 1u);
+  Wire.write(0x20);
   done = xSemaphoreCreateBinary();
   progressed = false;
   TaskHandle_t worker;
   ASSERT_EQ(xTaskCreate(WireWorker, "other_wire", 16384, nullptr, 3, &worker),
             pdPASS);
-  EXPECT_EQ(Wire.read(), 0x60);
-  delay(1);
-  EXPECT_FALSE(progressed);
-  Wire.flush();
-  delay(1);
-  EXPECT_FALSE(progressed);
-  Wire.beginTransmission(0x68);
-  Wire.write(0x61);
-  ASSERT_EQ(Wire.endTransmission(), 0);
   ASSERT_EQ(xSemaphoreTake(done, pdMS_TO_TICKS(100)), pdTRUE);
   EXPECT_TRUE(progressed);
+  EXPECT_EQ(wiring.registers.writes, (std::vector<uint8_t>{0x20, 0x40}));
+  EXPECT_EQ(Wire.endTransmission(), 4);
   vTaskDelete(worker);
   vSemaphoreDelete(done);
   Wire.end();

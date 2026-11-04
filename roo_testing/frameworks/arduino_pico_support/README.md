@@ -24,13 +24,15 @@ functions absent from glibc. Linux ABI limitations still apply.
 | `Serial` | Host stdin/stdout through the existing POSIX console. Warns once about USB substitution. Writes complete immediately without stdio buffering. Nonblocking read/peek; blocking Stream reads observe timeouts. USB descriptors, DTR/RTS and USB flow control fail. |
 | `Serial1/2` | SDK UART0/1, 8N1, polling the upstream software queue. Shared cable/device models; UART0 defaults to the host console. Pin routes are checked. IRQ mode, inversion, breaks and flow control are unsupported. |
 | `SPI/SPI1` | Synchronous transfers, manual GPIO CS, four modes, MSB or software-reversed LSB. Bounded transfer storage; borrowed const TX data is preserved. Hardware CS, DMA, asynchronous transfers and IRQ masking fail. |
-| `Wire/Wire1` | Synchronous seven-bit master, configurable software buffer, repeated START, timeout flag and existing I2C device models. Empty address-only probes return an error (the SDK subset requires payload bytes). Slave, IRQ and DMA operations fail. |
+| `Wire/Wire1` | Synchronous seven-bit master, configurable software buffer, repeated START, timeout flag and existing I2C device models. Address-only probes model ACK/NACK from device routing and always finish with STOP, without payload delivery. Slave, IRQ and DMA operations fail. |
 | Analog | Upstream resolution, range and frequency scaling over four external ADC channels and shared PWM slices. Internal temperature, FIFO, phase-correct PWM and IRQs fail. |
 | Core mutex | Checked core-0 ownership for the upstream portable core. No host-thread exclusion or ISR synchronization is claimed. |
 
 Wire follows the pinned core's shared TX/RX buffer rules: oversized or zero-length
 reads return zero without changing buffered bytes; `flush()` does nothing.
 Repeated `begin()` and nested `beginTransmission()` calls preserve active state.
+Probe timing models address clocks rather than GPIO edges or clock stretching;
+attached devices acknowledge their configured address.
 
 Networking (including the fork's lwIP-dependent IPAddress/UDP), filesystem,
 USB hardware, PIO, semihosting, direct register access, core 1 are

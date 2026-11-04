@@ -120,6 +120,21 @@ uint8_t TwoWire::endTransmission(bool stop) {
   roo_testing::pico::ControllerLock operation(2 + i2c_get_index(_i2c));
   if (!_running || !_txBegun) return 4;
   _txBegun = false;
+  if (_buffLen == 0) {
+    // The native core bit-bangs address-only probes because the SDK rejects
+    // zero-byte writes. Model the address ACK without sending payload bytes to
+    // the device. Like that bit-banged path, a probe always finishes with STOP
+    // and does not use Wire's configured transfer timeout.
+    const uint index = i2c_get_index(_i2c);
+    FakePicoBoard& board = FakePico();
+    FakeI2cDevice* device = nullptr;
+    const int status = board.prepareI2c(index, _addr, device);
+    if (status != PICO_OK && status != PICO_ERROR_GENERIC) return 2;
+    board.beginI2c(index);
+    roo_testing::pico::TransferDelayNs((9000000000ull + _clkHz - 1) / _clkHz);
+    board.endI2c(index, false);
+    return status == PICO_OK ? 0 : 2;
+  }
   const int result = i2c_write_timeout_us(
       _i2c, _addr, _buff, _buffLen, !stop,
       std::min<uint64_t>(uint64_t{_timeout} * 1000, UINT32_MAX));

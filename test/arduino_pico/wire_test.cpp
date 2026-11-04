@@ -174,6 +174,26 @@ TEST_F(PicoWire, ReceiveErrorsAndTimeoutRecovery) {
   EXPECT_FALSE(Wire.getTimeoutFlag());
 }
 
+// Verifies scanner-style address probes ACK attached devices, NACK missing
+// addresses, deliver no payload and always emit STOP, even with stop=false.
+TEST_F(PicoWire, AddressOnlyProbe) {
+  for (uint8_t address : {0x68, 0x70}) {
+    Wire.beginTransmission(0x68);
+    Wire.write(0x42);
+    ASSERT_EQ(Wire.endTransmission(false), 0);
+    EXPECT_FALSE(Wire.busIdle());
+    const size_t writes = wiring.device.writes.size();
+    Wire.setTimeout(0);
+    Wire.beginTransmission(address);
+    EXPECT_EQ(Wire.endTransmission(false), address == 0x68 ? 0 : 2);
+    EXPECT_EQ(wiring.device.writes.size(), writes);
+    EXPECT_EQ(wiring.device.reads, 0);
+    EXPECT_FALSE(Wire.getTimeoutFlag());
+    EXPECT_TRUE(Wire.busIdle());
+    Wire.setTimeout(25);
+  }
+}
+
 // Verifies TX buffers clear on success/NACK, but survive a timeout when bus
 // reset was not requested, matching the core's early timeout return.
 TEST_F(PicoWire, TransmitResultAndBufferState) {

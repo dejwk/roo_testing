@@ -9,4 +9,8 @@ bazel_dep(name = "rules_python", version = "2.3.3")
 bazel_dep(name = "rules_license", version = "1.0.0")
 bazel_dep(name = "googletest", version = "1.18.0.bcr.1")
 bazel_dep(name = "protobuf", version = "36.1.bcr.1")
+
+# Older Abseil versions pulled in by Protobuf include bmi2intrin.h directly,
+# which fails when the host compiler enables BMI2.
+bazel_dep(name = "abseil-cpp", version = "20260817.0")
 bazel_dep(name = "glog", version = "0.7.1.bcr.1")

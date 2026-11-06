@@ -14,6 +14,9 @@
 #if defined __unix__ && defined __GLIBC__
 
 #include <sys/cdefs.h>
+// glibc pthread types use __unused as a member name. Parse them before the
+// SDK defines its attribute macro, including when pico.h precedes C++ headers.
+#include <pthread.h>
 
 #endif
 

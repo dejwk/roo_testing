@@ -23,3 +23,9 @@ identity, enable state, CRLF control, synchronous TX completion, bounded RX
 readiness, and the current SDK IRQ spelling. The destination-owned runtime
 implements these operations or rejects unsupported IRQs. The upstream host
 `uart.c` is never compiled; imported source ownership remains with Copybara.
+
+Pico SDK `0005-include-pthread-before-unused-macro.patch` loads glibc pthread
+headers before the SDK defines `__unused`, which otherwise expands a pthread
+structure member name when Pico headers precede host C or C++ headers. The C
+and C++ host-header tests cover static mutex initialization and locking in all
+three Pico profiles.

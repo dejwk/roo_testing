@@ -2,3 +2,4 @@
 0002-reject-unsupported-host-alarm-allocation.patch
 0003-saturate-delays-before-unsigned-overflow.patch
 0004-expose-supported-host-uart-api.patch
+0005-include-pthread-before-unused-macro.patch

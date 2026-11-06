@@ -4,6 +4,23 @@ load("@rules_cc//cc:cc_test.bzl", "cc_test")
 
 package(default_visibility = ["//visibility:private"])
 
+# These header-only consumers also run under the Pico FreeRTOS profile.
+[
+    cc_test(
+        name = "host_headers_" + language + "_test",
+        size = "small",
+        srcs = ["host_headers_test." + extension],
+        copts = ["-Werror"],
+        linkstatic = True,
+        target_compatible_with = ["//roo_testing/platforms:pico_sdk"],
+        deps = ["//roo_testing/frameworks/pico-sdk:headers"],
+    )
+    for language, extension in [
+        ("c", "c"),
+        ("cpp", "cpp"),
+    ]
+]
+
 # Wrong profiles skip these tests in wildcard builds; public :pico_sdk itself
 # has a hard guard and fails when explicitly requested with no SDK capability.
 cc_library(

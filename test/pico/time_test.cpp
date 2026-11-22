@@ -75,7 +75,8 @@ TEST(PicoTimeTest, SleepsInMicrosecondsMillisecondsAndUntilADeadline) {
   sleep_until(deadline);
   EXPECT_TRUE(time_reached(deadline));
   const absolute_time_t timeout = make_timeout_time_ms(1);
-  EXPECT_TRUE(best_effort_wfe_or_timeout(timeout));
+  while (!best_effort_wfe_or_timeout(timeout)) {
+  }
   EXPECT_TRUE(time_reached(timeout));
 }
 

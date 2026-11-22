@@ -8,6 +8,7 @@
 #include "hardware/adc.h"
 #include "hardware/pwm.h"
 #include "hardware/uart.h"
+#include "pico/time.h"
 #include "roo_testing/buses/uart/fake_uart.h"
 #include "roo_testing/devices/clock/ds3231/ds3231.h"
 #include "roo_testing/microcontrollers/rp2040/fake_pico.h"
@@ -192,6 +193,24 @@ TEST_F(ArduinoPicoTest, SharedSpi) {
   digitalWrite(17, HIGH);
   SPI.endTransaction();
   SPI.end();
+}
+
+// Verifies Arduino's interrupt mask gates SDK timer IRQs in the same runtime.
+TEST_F(ArduinoPicoTest, MasksPicoTimerAlarmUntilInterruptsAreEnabled) {
+  unsigned exception = 0;
+  ASSERT_GT(add_alarm_in_us(
+                10,
+                [](alarm_id_t, void* data) -> int64_t {
+                  *static_cast<unsigned*>(data) = __get_current_exception();
+                  return 0;
+                },
+                &exception, false),
+            0);
+  noInterrupts();
+  delay(1);
+  EXPECT_EQ(exception, 0u);
+  interrupts();
+  EXPECT_NE(exception, 0u);
 }
 
 // Verifies absent interrupt, DMA, USB and slave hardware cannot report success.

@@ -46,6 +46,7 @@ void DispatchTimerAlarm(void* argument) {
   interrupt_delivery::EnterPicoTimerInterrupt(number);
   alarm.callback(number);
   interrupt_delivery::LeavePicoTimerInterrupt();
+  __sev();
 }
 
 /// Asserts a compare or forced interrupt after updating the timer state.

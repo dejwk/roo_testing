@@ -15,6 +15,7 @@ cc_library(
     srcs = ["time.cpp"] + select({
         "//roo_testing/platforms:is_bare_metal": [
             "alarm_pool.cpp",
+            "event.cpp",
             "hardware_alarm.cpp",
             "hardware_alarm.h",
         ],

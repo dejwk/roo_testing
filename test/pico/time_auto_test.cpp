@@ -2,6 +2,7 @@
 #include <thread>
 
 #include "gtest/gtest.h"
+#include "hardware/sync.h"
 #include "pico/time.h"
 #include "roo_testing/system/timer.h"
 
@@ -31,6 +32,38 @@ TEST(PicoAutoTimeTest, BusyWaitsUntilThePublishedUptimeDeadline) {
   const absolute_time_t deadline = make_timeout_time_us(100);
   busy_wait_until(deadline);
   EXPECT_TRUE(time_reached(deadline));
+}
+
+// Verifies host-paced Pico waits deliver timer IRQs on the waiting core.
+TEST(PicoAutoTimeTest, TimerIrqWakesEventWaitInCoreContext) {
+  __sev();
+  __wfe();
+  unsigned exception = 0;
+  ASSERT_GT(add_alarm_in_ms(
+                5,
+                [](alarm_id_t, void* data) -> int64_t {
+                  *static_cast<unsigned*>(data) = __get_current_exception();
+                  return 0;
+                },
+                &exception, false),
+            0);
+  const absolute_time_t timeout = make_timeout_time_ms(500);
+  while (exception == 0 && !best_effort_wfe_or_timeout(timeout)) {
+  }
+  EXPECT_EQ(exception, 16u + PICO_TIME_DEFAULT_ALARM_POOL_HARDWARE_ALARM_NUM);
+  EXPECT_FALSE(time_reached(timeout));
+}
+
+// Verifies a host-side device callback can wake a blocked Pico core.
+TEST(PicoAutoTimeTest, SharedDeviceEventWakesHostWait) {
+  __sev();
+  __wfe();
+  const absolute_time_t timeout = make_timeout_time_ms(500);
+  const SystemTimeAlarmId alarm =
+      ScheduleSystemTimeAlarm(system_time_get_micros() + 5000, [] { __sev(); });
+  EXPECT_FALSE(best_effort_wfe_or_timeout(timeout));
+  EXPECT_FALSE(time_reached(timeout));
+  CancelSystemTimeAlarm(alarm);
 }
 
 }  // namespace

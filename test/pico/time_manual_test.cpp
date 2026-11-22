@@ -30,8 +30,9 @@ TEST(PicoTimeDeathTest, RejectsUnrepresentableDeadlinesAndInfiniteWaits) {
                "Pico deadline exceeds");
   EXPECT_DEATH(sleep_until(at_the_end_of_time), "Pico deadline exceeds");
   EXPECT_DEATH(busy_wait_until(at_the_end_of_time), "Pico deadline exceeds");
-  EXPECT_DEATH(best_effort_wfe_or_timeout(at_the_end_of_time),
-               "Pico deadline exceeds");
+  EXPECT_DEATH(
+      best_effort_wfe_or_timeout(from_us_since_boot(kMaxClockMicros + 1)),
+      "Pico deadline exceeds");
   EXPECT_EQ(time_us_64(), before_us);
 }
 
@@ -229,6 +230,62 @@ TEST(PicoManualTimeTest, KeepsRepeatingAlarmPhaseWhenAnIrqIsDelayed) {
   EXPECT_EQ(record.deadlines,
             (std::array<uint64_t, 3>{start + 15, start + 20, start + 30}));
   EXPECT_FALSE(cancel_repeating_timer(&timer));
+}
+
+// Verifies that the same SDK alarm that interrupts fixed sleep also wakes an
+// event wait at its deadline, in the same timer IRQ context.
+TEST(PicoManualTimeTest, WakesEventWaitAtSdkAlarmDeadline) {
+  __sev();
+  __wfe();
+  const uint64_t start = time_us_64();
+  TimerObservation record;
+  ASSERT_GT(add_alarm_in_ms(5, RecordSdkAlarm, &record, false), 0);
+  const absolute_time_t timeout = make_timeout_time_ms(500);
+  EXPECT_FALSE(best_effort_wfe_or_timeout(timeout));
+  EXPECT_EQ(record.fired_at, start + 5000);
+  EXPECT_EQ(record.exception,
+            16u + PICO_TIME_DEFAULT_ALARM_POOL_HARDWARE_ALARM_NUM);
+  EXPECT_EQ(time_us_64(), start + 5000);
+  EXPECT_TRUE(best_effort_wfe_or_timeout(timeout));
+  EXPECT_EQ(time_us_64(), start + 500000);
+}
+
+// Verifies event signals are latched before waiting and coalesce into one wake.
+TEST(PicoManualTimeTest, ConsumesOneLatchedEvent) {
+  const uint64_t start = time_us_64();
+  const absolute_time_t timeout = make_timeout_time_us(10);
+  __sev();
+  __sev();
+  EXPECT_FALSE(best_effort_wfe_or_timeout(timeout));
+  EXPECT_EQ(time_us_64(), start);
+  EXPECT_TRUE(best_effort_wfe_or_timeout(timeout));
+  EXPECT_EQ(time_us_64(), start + 10);
+}
+
+// Verifies a masked timer IRQ expires without waking WFE before the timeout.
+TEST(PicoManualTimeTest, DelaysEventWakeWhileTimerIrqIsMasked) {
+  __sev();
+  __wfe();
+  TimerObservation record;
+  ASSERT_GT(add_alarm_in_us(10, RecordSdkAlarm, &record, false), 0);
+  const uint32_t saved = save_and_disable_interrupts();
+  EXPECT_TRUE(best_effort_wfe_or_timeout(make_timeout_time_us(20)));
+  EXPECT_EQ(record.exception, 0u);
+  restore_interrupts(saved);
+  EXPECT_EQ(record.fired_at, time_us_64());
+  EXPECT_NE(record.exception, 0u);
+  __wfe();
+}
+
+// Verifies an indefinite event wait advances to a shared device event in
+// manual mode, with no finite timeout to force clock progress.
+TEST(PicoManualTimeTest, WakesIndefiniteWaitOnSharedDeviceEvent) {
+  __sev();
+  __wfe();
+  const uint64_t start = time_us_64();
+  ScheduleSystemTimeAlarm(start + 10, [] { __sev(); });
+  EXPECT_FALSE(best_effort_wfe_or_timeout(at_the_end_of_time));
+  EXPECT_EQ(time_us_64(), start + 10);
 }
 
 // Verifies host busy waits neither advance manual uptime nor deliver alarms.

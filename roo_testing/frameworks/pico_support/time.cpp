@@ -106,6 +106,7 @@ void busy_wait_until(absolute_time_t target) {
   } while (now_us < target_us);
 }
 
+#if !defined(ROO_TESTING_RUNTIME_BARE_METAL) || !ROO_TESTING_RUNTIME_BARE_METAL
 bool best_effort_wfe_or_timeout(absolute_time_t target) {
   // No processor-event source is modeled. Waiting to the deadline is the
   // supported fallback; SDK alarms and interrupt callbacks remain unavailable.
@@ -113,7 +114,6 @@ bool best_effort_wfe_or_timeout(absolute_time_t target) {
   return time_reached(target);
 }
 
-#if !defined(ROO_TESTING_RUNTIME_BARE_METAL) || !ROO_TESTING_RUNTIME_BARE_METAL
 void hardware_alarm_claim(uint) { UnsupportedAlarm("claim"); }
 
 void hardware_alarm_unclaim(uint) { UnsupportedAlarm("unclaim"); }

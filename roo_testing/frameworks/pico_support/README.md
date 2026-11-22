@@ -74,7 +74,7 @@ one linked implementation of each supported SDK entry point.
 | `sleep_us`, `sleep_ms`, `sleep_until` | Shared emulated-time delays; manual mode advances deterministically, auto mode uses shared host pacing. |
 | `busy_wait_us_32`, `busy_wait_us`, `busy_wait_ms` | Host-monotonic busy waits without explicit emulated-time publication or callback dispatch. |
 | `busy_wait_until` | Auto mode rechecks shared uptime until the target; manual mode consumes the sampled remaining host duration without changing manual time. |
-| `best_effort_wfe_or_timeout` | Sleeps until the timeout and returns true; processor events are not modeled. |
+| `__sev`, `__wfe`, `best_effort_wfe_or_timeout` | Bare-metal processor events latch until consumed. An event or timer IRQ can end the wait before its timeout. |
 | `get_core_num` | Always 0 for this single-threaded application runtime. |
 | Hardware alarm allocation | The bare-metal profile tracks the four RP2040 compare channels. |
 | Hardware alarm callbacks/targets | Bare-metal timer IRQs run on core 0 at SDK wait and interrupt-control checkpoints. Masked IRQs stay pending. |
@@ -97,6 +97,11 @@ emulated uptime as the time APIs below.
 
 The [clock contract](../../../doc/emulated_time_clock.md) and
 [shared alarm contract](../../../doc/emulated_time_alarms.md) apply to Pico too.
+Fixed sleeps keep waiting after a timer interrupt. An event wait returns when it
+consumes a latched event or reaches its timeout. Manual mode advances to the
+next relevant deadline before testing for a wakeup. Auto mode waits on the
+host with a time limit and delivers Pico IRQs on the emulated core.
+
 Time mode is fixed by the executable's link dependencies before global
 constructors. The default follows host elapsed time; depending on
 `//roo_testing/system:manual_time_mode` selects manual progression. SDK reads do
@@ -113,9 +118,9 @@ nanoseconds: finite microsecond deadlines and durations are checked against
 `INT64_MAX / 1000`, and the shared service additionally checks addition against
 the current precise uptime. Invalid waits fail before publication. The SDK
 end-of-time marker remains `INT64_MAX` microseconds and is never reached by the
-shared clock; waiting until it fails explicitly instead of wrapping or
-pretending to complete. The marker remains valid for comparisons and saturated
-timeout arithmetic.
+shared clock. Fixed sleeps reject it; event waits use it as an indefinite
+timeout. The marker remains valid for comparisons and saturated timeout
+arithmetic.
 
 Busy waits obey the shared host-busy-wait contract. In manual mode they do not
 make `time_reached(future_deadline)` become true; the driver still controls

@@ -1,3 +1,10 @@
+# roo_testing 2.6.0
+
+- The reusable CI workflow now requires `arduino_esp32` and `idf_esp32` in place of `arduino` and `idf` in `profiles`. The default is `["arduino_esp32"]`.
+- Repository CI jobs now use canonical profile names across ESP32 and RP2040, with an `_asan` suffix for AddressSanitizer jobs.
+
+---
+
 # roo_testing 2.5.0
 
 - Add pinned Pico SDK 2.3.1 / Arduino-Pico 6.3.1 host support, shared Pico bus models, bare-metal and single-core FreeRTOS profiles, and canonical nine-profile tooling.

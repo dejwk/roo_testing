@@ -1,3 +1,4 @@
+#include <array>
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
@@ -155,6 +156,79 @@ TEST(PicoManualTimeTest, CancelsPendingHardwareAlarmBeforeRearming) {
   EXPECT_EQ(observation.fired_at, next);
   EXPECT_EQ(observation.exception, 18u);
   hardware_alarm_unclaim(2);
+}
+
+/// Records SDK alarm delivery using the same callback signature as firmware.
+int64_t RecordSdkAlarm(alarm_id_t, void* data) {
+  auto& record = *static_cast<TimerObservation*>(data);
+  record = {time_us_64(), __get_current_exception()};
+  return 0;
+}
+
+// Verifies that the SDK default alarm uses the reserved timer IRQ during sleep.
+TEST(PicoManualTimeTest, DeliversSdkAlarmDuringFixedSleep) {
+  const uint64_t start = time_us_64();
+  TimerObservation record;
+  ASSERT_GT(add_alarm_in_ms(5, RecordSdkAlarm, &record, false), 0);
+  sleep_ms(500);
+  EXPECT_EQ(record.fired_at, start + 5000);
+  EXPECT_EQ(record.exception,
+            16u + PICO_TIME_DEFAULT_ALARM_POOL_HARDWARE_ALARM_NUM);
+  EXPECT_EQ(time_us_64(), start + 500000);
+}
+
+// Verifies custom pool capacity, cancellation, and reusing a released compare.
+TEST(PicoManualTimeTest, CancelsAndReusesEntriesInABoundedPool) {
+  alarm_pool_t* pool = alarm_pool_create_with_unused_hardware_alarm(1);
+  const uint channel = alarm_pool_timer_alarm_num(pool);
+  TimerObservation record;
+  const alarm_id_t cancelled =
+      alarm_pool_add_alarm_in_us(pool, 10, RecordSdkAlarm, &record, false);
+  EXPECT_GT(cancelled, 0);
+  EXPECT_EQ(alarm_pool_remaining_alarm_time_us(pool, cancelled), 10);
+  EXPECT_LT(
+      alarm_pool_add_alarm_in_us(pool, 20, RecordSdkAlarm, &record, false), 0);
+  EXPECT_TRUE(alarm_pool_cancel_alarm(pool, cancelled));
+  EXPECT_FALSE(alarm_pool_cancel_alarm(pool, cancelled));
+  const uint64_t start = time_us_64();
+  EXPECT_GT(
+      alarm_pool_add_alarm_in_us(pool, 20, RecordSdkAlarm, &record, false), 0);
+  sleep_us(30);
+  EXPECT_EQ(record.fired_at, start + 20);
+  EXPECT_EQ(record.exception, 16u + channel);
+  alarm_pool_destroy(pool);
+  hardware_alarm_claim(channel);
+  hardware_alarm_unclaim(channel);
+}
+
+struct RepeatingObservation {
+  std::array<uint64_t, 3> deadlines{};
+  size_t count = 0;
+};
+
+/// Records three calls before stopping the repeating timer.
+bool RecordRepeatingTimer(repeating_timer_t* timer) {
+  auto& record = *static_cast<RepeatingObservation*>(timer->user_data);
+  record.deadlines[record.count++] = time_us_64();
+  return record.count < record.deadlines.size();
+}
+
+// Verifies negative repeat intervals retain their original phase after masking.
+TEST(PicoManualTimeTest, KeepsRepeatingAlarmPhaseWhenAnIrqIsDelayed) {
+  RepeatingObservation record;
+  repeating_timer_t timer;
+  const uint64_t start = time_us_64();
+  ASSERT_TRUE(
+      add_repeating_timer_us(-10, RecordRepeatingTimer, &record, &timer));
+  const uint32_t saved = save_and_disable_interrupts();
+  sleep_us(15);
+  EXPECT_EQ(record.count, 0u);
+  restore_interrupts(saved);
+  sleep_us(25);
+  EXPECT_EQ(record.count, 3u);
+  EXPECT_EQ(record.deadlines,
+            (std::array<uint64_t, 3>{start + 15, start + 20, start + 30}));
+  EXPECT_FALSE(cancel_repeating_timer(&timer));
 }
 
 // Verifies host busy waits neither advance manual uptime nor deliver alarms.

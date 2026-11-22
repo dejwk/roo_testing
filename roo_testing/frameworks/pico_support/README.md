@@ -78,7 +78,7 @@ one linked implementation of each supported SDK entry point.
 | `get_core_num` | Always 0 for this single-threaded application runtime. |
 | Hardware alarm allocation | The bare-metal profile tracks the four RP2040 compare channels. |
 | Hardware alarm callbacks/targets | Bare-metal timer IRQs run on core 0 at SDK wait and interrupt-control checkpoints. Masked IRQs stay pending. |
-| SDK alarm pools, repeating timers | Unavailable implementations fail to link. |
+| SDK alarm pools, repeating timers | Bounded pools use the RP2040 compare channels in the bare-metal profile. Callbacks run in timer IRQ context. |
 | Digital GPIO, SIO latches/direction, pulls, input enable and overrides | Checked GP0–GP29 state, shared voltage sources/sinks, and low-bank mask operations. |
 | Function mux | SIO, NULL, legal UART TX/RX, and SPI SCK/TX/RX; other peripheral functions fail explicitly. |
 | GPIO interrupts and unsupported analog pad controls | Explicit fatal failure, including IRQ-disable requests and two-pull bus keeper mode. |

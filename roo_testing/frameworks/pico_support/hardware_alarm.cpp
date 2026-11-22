@@ -23,7 +23,13 @@ struct HardwareAlarm {
   bool fired = false;
 };
 
-std::array<HardwareAlarm, NUM_ALARMS> alarms;
+std::array<HardwareAlarm, NUM_ALARMS> alarms = [] {
+  std::array<HardwareAlarm, NUM_ALARMS> result{};
+#if !PICO_TIME_DEFAULT_ALARM_POOL_DISABLED
+  result[PICO_TIME_DEFAULT_ALARM_POOL_HARDWARE_ALARM_NUM].claimed = true;
+#endif
+  return result;
+}();
 
 /// Finds the checked hardware state for an RP2040 timer alarm.
 HardwareAlarm& Alarm(uint number) {

@@ -71,13 +71,6 @@ cc_test(
     ],
 )
 
-cc_binary(
-    name = "unsupported_alarm_pool_probe",
-    srcs = ["unsupported_alarm_pool_probe.c"],
-    tags = ["manual"],
-    deps = ["//:pico_sdk"],
-)
-
 exports_files(["verify_pico.py"])
 
 cc_test(

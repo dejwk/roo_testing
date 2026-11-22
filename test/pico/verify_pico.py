@@ -184,8 +184,7 @@ def CheckFailures():
         ("--copt=-UROO_TESTING_RUNTIME_BARE_METAL", "Select exactly one roo_testing application runtime"),
     ):
         RunBazel("build", "//:pico_sdk", option, succeeds=False, diagnostic=diagnostic)
-    RunBazel("build", "//test/pico:unsupported_alarm_pool_probe", succeeds=False,
-             diagnostic="undefined reference to `alarm_pool_init_default'")
+
 
 
 def CheckRunnerResults():

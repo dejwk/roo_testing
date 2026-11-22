@@ -1,3 +1,12 @@
+# roo_testing 2.7.0
+
+- Emulate all four RP2040 hardware timer channels, Pico SDK alarm pools, and repeating timers in bare-metal Pico SDK and Arduino-Pico host builds. Timer callbacks run in interrupt context during SDK waits and shared-clock delays. Raw timer handlers can schedule alarms in the default pool.
+- Keep timer interrupts pending while masked, including across nested masks and when a handler masks interrupts. Bare-metal Arduino-Pico now supports `noInterrupts()` and `interrupts()` for timer IRQs.
+- Support latched processor events through `__sev()`, `__wfe()`, and `best_effort_wfe_or_timeout()`. Timer interrupts and device events can wake waits early in both manual and host-synchronized time modes.
+- Fix dynamic linking of ESP-IDF’s event loop and ring buffer in ESP32 host builds by declaring their heap and logging dependencies. Add regression coverage for both Arduino and ESP-IDF profiles.
+
+---
+
 # roo_testing 2.6.0
 
 - The reusable CI workflow now requires `arduino_esp32` and `idf_esp32` in place of `arduino` and `idf` in `profiles`. The default is `["arduino_esp32"]`.

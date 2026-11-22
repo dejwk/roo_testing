@@ -44,7 +44,9 @@ permissions:
 
 jobs:
   build_and_test:
-    name: ${{ matrix.profile }}
+    name: >-
+      ${{ (matrix.profile == 'arduino' || matrix.profile == 'idf') &&
+      format('{0}_esp32', matrix.profile) || matrix.profile }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:

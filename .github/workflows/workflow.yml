@@ -22,7 +22,7 @@ env:
 
 jobs:
   arduino:
-    name: Arduino ${{ matrix.soc }}
+    name: ${{ matrix.soc == 'esp32' && 'arduino_esp32' || format('Arduino {0}', matrix.soc) }}
     strategy:
       fail-fast: false
       matrix:
@@ -79,7 +79,7 @@ jobs:
         done
 
   arduino_asan:
-    name: Arduino ${{ matrix.soc }} (ASAN)
+    name: ${{ matrix.soc == 'esp32' && 'arduino_esp32' || format('Arduino {0}', matrix.soc) }} (ASAN)
     strategy:
       fail-fast: false
       matrix:
@@ -112,7 +112,7 @@ jobs:
           ${{ env.BAZEL_SYMBOLIZE_FLAGS }}
 
   idf_asan:
-    name: ESP-IDF ${{ matrix.soc }} (ASAN)
+    name: ${{ matrix.soc == 'esp32' && 'idf_esp32' || format('ESP-IDF {0}', matrix.soc) }} (ASAN)
     strategy:
       fail-fast: false
       matrix:
@@ -137,7 +137,7 @@ jobs:
           ${{ env.BAZEL_SYMBOLIZE_FLAGS }}
 
   idf:
-    name: ESP-IDF ${{ matrix.soc }}
+    name: ${{ matrix.soc == 'esp32' && 'idf_esp32' || format('ESP-IDF {0}', matrix.soc) }}
     strategy:
       fail-fast: false
       matrix:

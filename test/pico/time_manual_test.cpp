@@ -105,6 +105,20 @@ void RecordTimerIrq(uint) {
   observation = {time_us_64(), __get_current_exception()};
 }
 
+// Verifies that clients of the shared clock get Pico IRQ semantics too.
+TEST(PicoManualTimeTest, DispatchesHardwareAlarmDuringSharedClockDelay) {
+  const uint64_t start = time_us_64();
+  observation = {};
+  hardware_alarm_claim(0);
+  hardware_alarm_set_callback(0, RecordTimerIrq);
+  ASSERT_FALSE(hardware_alarm_set_target(0, from_us_since_boot(start + 5000)));
+  system_time_delay_micros(500000);
+  EXPECT_EQ(observation.fired_at, start + 5000);
+  EXPECT_EQ(observation.exception, 16u);
+  EXPECT_EQ(time_us_64(), start + 500000);
+  hardware_alarm_unclaim(0);
+}
+
 // Verifies that a compare interrupts a fixed sleep and the caller resumes
 // only after the original deadline.
 TEST(PicoManualTimeTest, DeliversHardwareAlarmDuringFixedSleep) {

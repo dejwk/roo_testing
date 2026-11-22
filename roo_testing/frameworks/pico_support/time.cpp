@@ -51,25 +51,34 @@ bool time_reached(absolute_time_t target) {
   return time_us_64() >= to_us_since_boot(target);
 }
 
+#if defined(ROO_TESTING_RUNTIME_BARE_METAL) && ROO_TESTING_RUNTIME_BARE_METAL
+// Drives fixed sleeps through the same timer checkpoints for both SDK callers
+// and libraries that use the emulator clock directly.
+bool roo_testing_runtime_delay_micros(uint64_t us) {
+  CHECK_EQ(__get_current_exception(), 0u) << "Cannot sleep in a Pico interrupt";
+  const uint64_t start = time_us_64();
+  CHECK_LE(us, kMaxClockMicros - start);
+  const uint64_t end = start + us;
+
+  // Advance only to the next hardware compare so its handler can rearm it
+  // before the remainder of this explicit delay is published.
+  roo_testing::pico::PollTimerInterrupts();
+  uint64_t now = time_us_64();
+  do {
+    const uint64_t next = std::min(end, roo_testing::pico::NextHardwareAlarm());
+    roo_testing::AdvanceSystemTimeByMicros(next > now ? next - now : 0);
+    roo_testing::pico::PollTimerInterrupts();
+    now = time_us_64();
+  } while (now < end);
+  return true;
+}
+#endif
+
 void sleep_us(uint64_t us) {
   CHECK_LE(us, kMaxClockMicros)
       << "Pico duration exceeds the emulated clock range";
   if (us == 0) return;
-#if defined(ROO_TESTING_RUNTIME_BARE_METAL) && ROO_TESTING_RUNTIME_BARE_METAL
-  CHECK_EQ(__get_current_exception(), 0u) << "Cannot sleep in a Pico interrupt";
-  uint64_t now = time_us_64();
-  CHECK_LE(us, kMaxClockMicros - now);
-  const uint64_t deadline = now + us;
-  roo_testing::pico::PollTimerInterrupts();
-  while ((now = time_us_64()) < deadline) {
-    const uint64_t next =
-        std::min(deadline, roo_testing::pico::NextHardwareAlarm());
-    if (next > now) system_time_delay_micros(next - now);
-    roo_testing::pico::PollTimerInterrupts();
-  }
-#else
   system_time_delay_micros(us);
-#endif
 }
 
 void sleep_ms(uint32_t ms) { sleep_us(static_cast<uint64_t>(ms) * 1000); }

@@ -102,14 +102,14 @@ consumes a latched event or reaches its timeout. Manual mode advances to the
 next relevant deadline before testing for a wakeup. Auto mode waits on the
 host with a time limit and delivers Pico IRQs on the emulated core.
 
-Time mode is fixed by the executable's link dependencies before global
-constructors. The default follows host elapsed time; depending on
-`//roo_testing/system:manual_time_mode` selects manual progression. SDK reads do
+The executable selects its time mode before global constructors. The default
+follows host elapsed time. Linking `//roo_testing/system:manual_time_mode`
+selects manual progression. SDK reads do
 not dispatch work. SDK sleeps use the shared chronological alarm pump, so
 emulated device callbacks agree with application timestamps. Those callbacks
 are native shared-service callbacks. Hardware compare channels use the same
-uptime and deliver through the Pico interrupt backend at SDK sleep,
-`tight_loop_contents()`, and interrupt-control checkpoints. The native
+uptime and deliver through the Pico interrupt backend during SDK and shared
+clock delays, `tight_loop_contents()`, and interrupt-control checkpoints. The native
 bare-metal runner cannot preempt arbitrary host instructions.
 
 Zero sleeps and nil/past deadlines return without advancing or dispatching.

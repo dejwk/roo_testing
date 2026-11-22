@@ -27,6 +27,14 @@ bool TryBeginSystemTimeServiceShutdownForHost();
 /// Joins the alarm worker and discards pending callbacks after scheduler exit.
 void FinishSystemTimeServiceShutdownForHost();
 
+namespace roo_testing {
+
+/// Advances the shared clock and delivers device alarms without invoking the
+/// runtime wait hook. Runtime adapters use this when implementing that hook.
+void AdvanceSystemTimeByMicros(uint64_t micros);
+
+}  // namespace roo_testing
+
 extern "C" {
 #endif
 

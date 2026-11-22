@@ -488,6 +488,12 @@ void FinishSystemTimeServiceShutdownForHost() {
   }
 }
 
+void roo_testing::AdvanceSystemTimeByMicros(uint64_t micros) {
+  kPublication.isAutoSyncEnabled();
+  DeliverAlarmsThrough(ReserveDelayedUptimeNs(MicrosToNanos(micros)), true);
+  PaceAutoSync();
+}
+
 extern "C" {
 
 void system_time_sync() {
@@ -515,9 +521,7 @@ void system_time_delay_micros(uint64_t micros) {
   if (roo_testing_runtime_delay_micros != nullptr &&
       roo_testing_runtime_delay_micros(micros))
     return;
-  kPublication.isAutoSyncEnabled();
-  DeliverAlarmsThrough(ReserveDelayedUptimeNs(MicrosToNanos(micros)), true);
-  PaceAutoSync();
+  roo_testing::AdvanceSystemTimeByMicros(micros);
 }
 
 void system_time_busy_wait_micros(uint64_t micros) {

@@ -156,14 +156,14 @@ def CheckBinary():
             raise RuntimeError(f"Expected one linked implementation of {symbol}")
     if any(name.startswith(("esp_", "vTask")) for name in names):
         raise RuntimeError("ESP-IDF/FreeRTOS symbols entered the native binary")
-    # Disable core dumps for the expected upstream panic trap.
+    # Disable core dumps for the expected fatal error.
     def DisableCoreDump():
         import resource
         resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
-    failure = subprocess.run([str(binary), "unsupported-alarm"], capture_output=True,
+    failure = subprocess.run([str(binary), "invalid-alarm"], capture_output=True,
                              preexec_fn=DisableCoreDump)
     if failure.returncode >= 0:
-        raise RuntimeError("Unsupported hardware alarm must terminate explicitly")
+        raise RuntimeError("Invalid hardware alarm must terminate explicitly")
 
 
 def CheckFailures():

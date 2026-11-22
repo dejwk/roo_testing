@@ -196,7 +196,6 @@ TEST_F(ArduinoPicoTest, SharedSpi) {
 
 // Verifies absent interrupt, DMA, USB and slave hardware cannot report success.
 TEST_F(ArduinoPicoTest, UnsupportedFeatures) {
-  EXPECT_DEATH(noInterrupts(), "Unimplemented");
   EXPECT_DEATH(attachInterrupt(25, [] {}, RISING), "Unimplemented");
   EXPECT_DEATH(Wire.begin(0x30), "slave");
   EXPECT_FALSE(Wire.writeAsync(0x30, nullptr, 0));

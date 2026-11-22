@@ -20,7 +20,7 @@ functions absent from glibc. Linux ABI limitations still apply.
 
 | API | Native behavior |
 | --- | --- |
-| GPIO/time | Basic input, pulls, output and shared clock; `delay` pumps alarms. Drive-strength variants beyond default, open drain, IRQs and pulse measurement fail. |
+| GPIO/time | Basic input, pulls, output and shared clock; `delay` pumps alarms. `noInterrupts()` and `interrupts()` mask and restore timer IRQs. Drive-strength variants beyond default, open drain, GPIO IRQs and pulse measurement fail. |
 | `Serial` | Host stdin/stdout through the existing POSIX console. Warns once about USB substitution. Writes complete immediately without stdio buffering. Nonblocking read/peek; blocking Stream reads observe timeouts. USB descriptors, DTR/RTS and USB flow control fail. |
 | `Serial1/2` | SDK UART0/1, 8N1, polling the upstream software queue. Shared cable/device models; UART0 defaults to the host console. Pin routes are checked. IRQ mode, inversion, breaks and flow control are unsupported. |
 | `SPI/SPI1` | Synchronous transfers, manual GPIO CS, four modes, MSB or software-reversed LSB. Bounded transfer storage; borrowed const TX data is preserved. Hardware CS, DMA, asynchronous transfers and IRQ masking fail. |

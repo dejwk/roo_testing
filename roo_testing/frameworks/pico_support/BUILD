@@ -12,14 +12,23 @@ cc_library(
 
 cc_library(
     name = "time",
-    srcs = ["time.cpp"],
+    srcs = ["time.cpp"] + select({
+        "//roo_testing/platforms:is_bare_metal": [
+            "hardware_alarm.cpp",
+            "hardware_alarm.h",
+        ],
+        "//conditions:default": [],
+    }),
     copts = ["-fno-exceptions"],
     visibility = ["//roo_testing/frameworks/pico-sdk:__pkg__"],
     deps = [
         "//roo_testing/frameworks/pico-sdk:headers",
         "//roo_testing/system:timer",
         "@glog",
-    ],
+    ] + select({
+        "//roo_testing/platforms:is_bare_metal": ["//roo_testing/interrupts:interrupt_controller"],
+        "//conditions:default": [],
+    }),
 )
 
 cc_library(

@@ -18,11 +18,11 @@ static_assert(std::string_view(roo_testing::soc::kName) == "rp2040");
 static_assert(NUM_BANK0_GPIOS == 30);
 
 // Verifies C++ consumers share the C implementation and globally selected
-// target identity. Explicit unsupported-alarm mode is checked by the
+// target identity. Invalid hardware alarm indices are checked by the
 // integration script.
 int main(int argc, char** argv) {
-  if (argc == 2 && std::string_view(argv[1]) == "unsupported-alarm") {
-    hardware_alarm_claim(0);
+  if (argc == 2 && std::string_view(argv[1]) == "invalid-alarm") {
+    hardware_alarm_claim(NUM_ALARMS);
     return 1;
   }
   const uint64_t before = time_us_64();

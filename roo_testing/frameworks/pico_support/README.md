@@ -24,7 +24,8 @@ original Pico board header without switching execution to the device platform.
 
 The [patch series](../../../copybara/patches/pico-sdk/series) retains the stage-2
 host timer fixes and corrects `delayed_by_us` saturation before unsigned
-addition can wrap. The upstream host timer implementation is now excluded from
+addition can wrap. The native platform header reports the simulated exception
+number in the bare-metal profile. The upstream host timer implementation is now excluded from
 the link. SDK time entry points are owned by [time.cpp](time.cpp), and the [GPIO adapter](gpio.cpp) supplies checked digital I/O. No upstream
 GPIO/UART/USB or clock-configuration success stubs are compiled.
 
@@ -49,7 +50,7 @@ Physical RP2040 identity does not change the native ABI.
 
 Exposed include roots are `src/common/pico_base_headers/include`,
 `src/common/pico_time/include`, `src/host/pico_platform/include`,
-`src/host/hardware_timer/include`, `src/boards/include`, and
+`src/host/hardware_timer/include`, `src/host/hardware_sync/include`, `src/boards/include`, and
 `roo_testing_host_include`. Host `hardware_gpio/include` and
 `hardware_irq/include` are additionally exposed for supported GPIO declarations
 and IRQ parameter types. Host `hardware_uart/include` exposes the synchronous
@@ -75,8 +76,8 @@ one linked implementation of each supported SDK entry point.
 | `busy_wait_until` | Auto mode rechecks shared uptime until the target; manual mode consumes the sampled remaining host duration without changing manual time. |
 | `best_effort_wfe_or_timeout` | Sleeps until the timeout and returns true; processor events are not modeled. |
 | `get_core_num` | Always 0 for this single-threaded application runtime. |
-| Hardware alarm allocation | Optional allocation returns -1; required allocation/claim/unclaim fails explicitly. |
-| Hardware alarm callbacks/targets | `LOG(FATAL)` with the unsupported operation; SDK interrupt context is not emulated. |
+| Hardware alarm allocation | The bare-metal profile tracks the four RP2040 compare channels. |
+| Hardware alarm callbacks/targets | Bare-metal timer IRQs run on core 0 at SDK wait and interrupt-control checkpoints. Masked IRQs stay pending. |
 | SDK alarm pools, repeating timers | Unavailable implementations fail to link. |
 | Digital GPIO, SIO latches/direction, pulls, input enable and overrides | Checked GP0–GP29 state, shared voltage sources/sinks, and low-bank mask operations. |
 | Function mux | SIO, NULL, legal UART TX/RX, and SPI SCK/TX/RX; other peripheral functions fail explicitly. |
@@ -101,7 +102,10 @@ constructors. The default follows host elapsed time; depending on
 `//roo_testing/system:manual_time_mode` selects manual progression. SDK reads do
 not dispatch work. SDK sleeps use the shared chronological alarm pump, so
 emulated device callbacks agree with application timestamps. Those callbacks
-are native shared-service callbacks, not Pico SDK interrupt handlers.
+are native shared-service callbacks. Hardware compare channels use the same
+uptime and deliver through the Pico interrupt backend at SDK sleep,
+`tight_loop_contents()`, and interrupt-control checkpoints. The native
+bare-metal runner cannot preempt arbitrary host instructions.
 
 Zero sleeps and nil/past deadlines return without advancing or dispatching.
 Milliseconds are widened before multiplication. Shared uptime is signed

@@ -1,11 +1,16 @@
 #include "pico/time.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <limits>
 
 #include "glog/logging.h"
 #include "roo_testing/system/timer.h"
+
+#if defined(ROO_TESTING_RUNTIME_BARE_METAL) && ROO_TESTING_RUNTIME_BARE_METAL
+#include "roo_testing/frameworks/pico_support/hardware_alarm.h"
+#endif
 
 namespace {
 
@@ -20,11 +25,13 @@ uint64_t CheckedDeadline(absolute_time_t target) {
   return target_us;
 }
 
+#if !defined(ROO_TESTING_RUNTIME_BARE_METAL) || !ROO_TESTING_RUNTIME_BARE_METAL
 /// Fails unsupported hardware operations instead of reporting completion.
 [[noreturn]] void UnsupportedAlarm(const char* operation) {
   LOG(FATAL) << "Unimplemented: Pico hardware alarm " << operation;
   std::abort();
 }
+#endif
 
 }  // namespace
 
@@ -48,7 +55,21 @@ void sleep_us(uint64_t us) {
   CHECK_LE(us, kMaxClockMicros)
       << "Pico duration exceeds the emulated clock range";
   if (us == 0) return;
+#if defined(ROO_TESTING_RUNTIME_BARE_METAL) && ROO_TESTING_RUNTIME_BARE_METAL
+  CHECK_EQ(__get_current_exception(), 0u) << "Cannot sleep in a Pico interrupt";
+  uint64_t now = time_us_64();
+  CHECK_LE(us, kMaxClockMicros - now);
+  const uint64_t deadline = now + us;
+  roo_testing::pico::PollTimerInterrupts();
+  while ((now = time_us_64()) < deadline) {
+    const uint64_t next =
+        std::min(deadline, roo_testing::pico::NextHardwareAlarm());
+    if (next > now) system_time_delay_micros(next - now);
+    roo_testing::pico::PollTimerInterrupts();
+  }
+#else
   system_time_delay_micros(us);
+#endif
 }
 
 void sleep_ms(uint32_t ms) { sleep_us(static_cast<uint64_t>(ms) * 1000); }
@@ -92,6 +113,7 @@ bool best_effort_wfe_or_timeout(absolute_time_t target) {
   return time_reached(target);
 }
 
+#if !defined(ROO_TESTING_RUNTIME_BARE_METAL) || !ROO_TESTING_RUNTIME_BARE_METAL
 void hardware_alarm_claim(uint) { UnsupportedAlarm("claim"); }
 
 void hardware_alarm_unclaim(uint) { UnsupportedAlarm("unclaim"); }
@@ -112,5 +134,6 @@ bool hardware_alarm_set_target(uint, absolute_time_t) {
 void hardware_alarm_cancel(uint) { UnsupportedAlarm("cancel"); }
 
 void hardware_alarm_force_irq(uint) { UnsupportedAlarm("force IRQ"); }
+#endif
 
 }  // extern "C"

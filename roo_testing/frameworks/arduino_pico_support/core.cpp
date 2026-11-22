@@ -9,6 +9,7 @@
 #include "task.h"
 #endif
 #include "glog/logging.h"
+#include "hardware/sync.h"
 #include "pico/time.h"
 #include "roo_testing/system/timer.h"
 
@@ -65,7 +66,7 @@ void interrupts() {
     portEXIT_CRITICAL();
   }
 #else
-  UnsupportedInterrupt();
+  enable_interrupts();
 #endif
 }
 void noInterrupts() {
@@ -73,7 +74,7 @@ void noInterrupts() {
   portENTER_CRITICAL();
   ++interrupt_depth;
 #else
-  UnsupportedInterrupt();
+  disable_interrupts();
 #endif
 }
 void pinMode(pin_size_t pin, PinMode mode) {

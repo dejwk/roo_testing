@@ -19,7 +19,9 @@ int main(void) {
   if (after < before || after - before >= UINT32_MAX) return 1;
   if ((uint32_t)(low - (uint32_t)before) > after - before) return 2;
   if (get_core_num() != 0) return 3;
-  if (hardware_alarm_claim_unused(false) != -1) return 4;
+  const int alarm = hardware_alarm_claim_unused(false);
+  if (alarm < 0) return 4;
+  hardware_alarm_unclaim((uint)alarm);
   gpio_init(PICO_DEFAULT_LED_PIN);
   gpio_put(PICO_DEFAULT_LED_PIN, 1);
   if (gpio_get(PICO_DEFAULT_LED_PIN)) return 5;

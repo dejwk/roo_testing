@@ -159,10 +159,17 @@ static inline void __compiler_memory_barrier(void) {
 
 uint get_core_num();
 
+#if defined(ROO_TESTING_RUNTIME_BARE_METAL) && ROO_TESTING_RUNTIME_BARE_METAL
+uint roo_testing_pico_current_exception(void);
+
+static inline uint __get_current_exception(void) {
+    return roo_testing_pico_current_exception();
+}
+#else
 static inline uint __get_current_exception(void) {
     return 0;
-
 }
+#endif
 
 void busy_wait_at_least_cycles(uint32_t minimum_cycles);
 

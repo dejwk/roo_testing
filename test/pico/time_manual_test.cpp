@@ -4,6 +4,7 @@
 #include <limits>
 
 #include "gtest/gtest.h"
+#include "hardware/sync.h"
 #include "pico/time.h"
 #include "roo_testing/system/timer.h"
 
@@ -88,6 +89,72 @@ TEST(PicoManualTimeTest, DeliversSharedDeviceDeadlinesDuringSleep) {
   sleep_us(20);
   EXPECT_EQ(observed_us, before_us + 10);
   EXPECT_EQ(time_us_64(), static_cast<uint64_t>(before_us + 20));
+}
+
+struct TimerObservation {
+  uint64_t fired_at = 0;
+  unsigned exception = 0;
+};
+
+TimerObservation observation;
+
+/// Records the clock and exception while a hardware timer IRQ is active.
+void RecordTimerIrq(uint) {
+  observation = {time_us_64(), __get_current_exception()};
+}
+
+// Verifies that a compare interrupts a fixed sleep and the caller resumes
+// only after the original deadline.
+TEST(PicoManualTimeTest, DeliversHardwareAlarmDuringFixedSleep) {
+  const uint64_t start = time_us_64();
+  observation = {};
+  hardware_alarm_claim(0);
+  hardware_alarm_set_callback(0, RecordTimerIrq);
+  ASSERT_FALSE(hardware_alarm_set_target(0, from_us_since_boot(start + 5000)));
+  sleep_us(500000);
+  EXPECT_EQ(observation.fired_at, start + 5000);
+  EXPECT_EQ(observation.exception, 16u);
+  EXPECT_EQ(__get_current_exception(), 0u);
+  EXPECT_EQ(time_us_64(), start + 500000);
+  hardware_alarm_unclaim(0);
+}
+
+// Verifies that an expired compare remains pending across nested IRQ masks.
+TEST(PicoManualTimeTest, DefersHardwareAlarmUntilInterruptsAreRestored) {
+  observation = {};
+  hardware_alarm_claim(1);
+  hardware_alarm_set_callback(1, RecordTimerIrq);
+  const uint32_t outer = save_and_disable_interrupts();
+  const uint32_t inner = save_and_disable_interrupts();
+  EXPECT_FALSE(hardware_alarm_set_target(1, make_timeout_time_us(10)));
+  sleep_us(20);
+  restore_interrupts(inner);
+  EXPECT_EQ(observation.exception, 0u);
+  restore_interrupts(outer);
+  EXPECT_EQ(observation.fired_at, time_us_64());
+  EXPECT_EQ(observation.exception, 17u);
+  hardware_alarm_unclaim(1);
+}
+
+// Verifies that cancellation clears a masked compare without leaking delivery
+// into a new target and that a past target reports a missed compare.
+TEST(PicoManualTimeTest, CancelsPendingHardwareAlarmBeforeRearming) {
+  observation = {};
+  hardware_alarm_claim(2);
+  hardware_alarm_set_callback(2, RecordTimerIrq);
+  const uint32_t state = save_and_disable_interrupts();
+  EXPECT_FALSE(hardware_alarm_set_target(2, make_timeout_time_us(10)));
+  sleep_us(20);
+  hardware_alarm_cancel(2);
+  restore_interrupts(state);
+  EXPECT_EQ(observation.exception, 0u);
+  EXPECT_TRUE(hardware_alarm_set_target(2, nil_time));
+  const uint64_t next = time_us_64() + 10;
+  EXPECT_FALSE(hardware_alarm_set_target(2, from_us_since_boot(next)));
+  sleep_us(20);
+  EXPECT_EQ(observation.fired_at, next);
+  EXPECT_EQ(observation.exception, 18u);
+  hardware_alarm_unclaim(2);
 }
 
 // Verifies host busy waits neither advance manual uptime nor deliver alarms.

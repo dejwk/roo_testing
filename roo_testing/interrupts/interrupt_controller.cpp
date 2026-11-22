@@ -75,6 +75,7 @@ void DispatchPendingInterrupts() {
         InterruptHandler handler = slot.handler.load(std::memory_order_acquire);
         void* argument = slot.argument.load(std::memory_order_acquire);
         if (handler != nullptr) handler(argument);
+        if (!interrupt_delivery::CanDispatch()) return;
         dispatched = true;
         break;
       }

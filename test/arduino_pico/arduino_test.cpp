@@ -7,6 +7,7 @@
 #include "gtest/gtest.h"
 #include "hardware/adc.h"
 #include "hardware/pwm.h"
+#include "hardware/sync.h"
 #include "hardware/uart.h"
 #include "pico/time.h"
 #include "roo_testing/buses/uart/fake_uart.h"
@@ -195,7 +196,7 @@ TEST_F(ArduinoPicoTest, SharedSpi) {
   SPI.end();
 }
 
-// Verifies Arduino's interrupt mask gates SDK timer IRQs in the same runtime.
+// Verifies nested Arduino masking preserves an existing SDK interrupt mask.
 TEST_F(ArduinoPicoTest, MasksPicoTimerAlarmUntilInterruptsAreEnabled) {
   unsigned exception = 0;
   ASSERT_GT(add_alarm_in_us(
@@ -206,10 +207,18 @@ TEST_F(ArduinoPicoTest, MasksPicoTimerAlarmUntilInterruptsAreEnabled) {
                 },
                 &exception, false),
             0);
+  const uint32_t saved = save_and_disable_interrupts();
+  noInterrupts();
   noInterrupts();
   delay(1);
   EXPECT_EQ(exception, 0u);
   interrupts();
+  EXPECT_EQ(exception, 0u);
+  interrupts();
+  EXPECT_EQ(exception, 0u);
+  interrupts();
+  EXPECT_EQ(exception, 0u);
+  restore_interrupts(saved);
   EXPECT_NE(exception, 0u);
 }
 

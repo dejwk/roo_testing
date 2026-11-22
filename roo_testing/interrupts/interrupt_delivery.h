@@ -16,6 +16,9 @@ uint32_t Mask();
 /// Restores the dispatch state saved by Mask().
 void Restore(uint32_t state);
 
+/// Checks whether the current dispatch may claim another pending handler.
+bool CanDispatch();
+
 /// Requests delivery of pending interrupts through the selected runtime.
 void RequestDispatch() noexcept;
 

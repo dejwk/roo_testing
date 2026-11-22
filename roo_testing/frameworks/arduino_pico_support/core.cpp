@@ -18,6 +18,12 @@ void __clearADCPin(pin_size_t pin);
 namespace {
 std::array<PinMode, 30> modes{};
 
+#if !defined(__FREERTOS)
+constexpr unsigned kMaxInterruptDepth = 15;
+uint32_t saved_interrupt_masks = 0;
+unsigned interrupt_depth = 0;
+#endif
+
 /// Makes unsupported interrupt context explicit instead of inventing masking.
 void UnsupportedInterrupt() {
   LOG(FATAL) << "Unimplemented: Arduino-Pico interrupts";
@@ -66,7 +72,11 @@ void interrupts() {
     portEXIT_CRITICAL();
   }
 #else
-  enable_interrupts();
+  if (interrupt_depth == 0) return;
+  const uint32_t saved = saved_interrupt_masks & 1u;
+  saved_interrupt_masks >>= 1;
+  --interrupt_depth;
+  restore_interrupts(saved);
 #endif
 }
 void noInterrupts() {
@@ -74,7 +84,10 @@ void noInterrupts() {
   portENTER_CRITICAL();
   ++interrupt_depth;
 #else
-  disable_interrupts();
+  CHECK_LT(interrupt_depth, kMaxInterruptDepth) << "IRQ stack overflow";
+  saved_interrupt_masks =
+      (saved_interrupt_masks << 1) | save_and_disable_interrupts();
+  ++interrupt_depth;
 #endif
 }
 void pinMode(pin_size_t pin, PinMode mode) {

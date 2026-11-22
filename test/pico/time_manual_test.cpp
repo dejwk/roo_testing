@@ -152,6 +152,32 @@ TEST(PicoManualTimeTest, DefersHardwareAlarmUntilInterruptsAreRestored) {
   hardware_alarm_unclaim(1);
 }
 
+unsigned irqs_observed = 0;
+
+/// Leaves interrupts masked after the first of two simultaneous compares.
+void MaskAfterFirstTimerIrq(uint) {
+  ++irqs_observed;
+  if (irqs_observed == 1) disable_interrupts();
+}
+
+// Verifies a mask set by an IRQ applies to the rest of the pending IRQs.
+TEST(PicoManualTimeTest, DefersRemainingIrqsWhenFirstHandlerMasksInterrupts) {
+  irqs_observed = 0;
+  hardware_alarm_claim(0);
+  hardware_alarm_claim(1);
+  hardware_alarm_set_callback(0, MaskAfterFirstTimerIrq);
+  hardware_alarm_set_callback(1, MaskAfterFirstTimerIrq);
+  const absolute_time_t target = make_timeout_time_us(10);
+  EXPECT_FALSE(hardware_alarm_set_target(0, target));
+  EXPECT_FALSE(hardware_alarm_set_target(1, target));
+  sleep_us(20);
+  EXPECT_EQ(irqs_observed, 1u);
+  enable_interrupts();
+  EXPECT_EQ(irqs_observed, 2u);
+  hardware_alarm_unclaim(1);
+  hardware_alarm_unclaim(0);
+}
+
 // Verifies that cancellation clears a masked compare without leaking delivery
 // into a new target and that a past target reports a missed compare.
 TEST(PicoManualTimeTest, CancelsPendingHardwareAlarmBeforeRearming) {

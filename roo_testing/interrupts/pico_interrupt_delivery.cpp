@@ -41,9 +41,18 @@ void RequestDispatch() noexcept {
   dispatch_requested.store(true, std::memory_order_release);
 }
 
+bool CanDispatch() {
+  if (!interrupts_masked) return true;
+  // A timer handler can mask interrupts after dispatch has already started.
+  // Leave the remaining work requested until the core restores its mask.
+  RequestDispatch();
+  return false;
+}
+
 void DispatchPicoInterrupts() {
-  if (interrupts_masked || current_exception != 0) return;
-  while (dispatch_requested.exchange(false, std::memory_order_acquire)) {
+  if (current_exception != 0) return;
+  while (!interrupts_masked &&
+         dispatch_requested.exchange(false, std::memory_order_acquire)) {
     dispatch_pending();
   }
 }

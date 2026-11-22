@@ -21,6 +21,8 @@ uint32_t Mask() {
 
 void Restore(uint32_t) { portEXIT_CRITICAL(nullptr); }
 
+bool CanDispatch() { return true; }
+
 void RequestDispatch() noexcept { vPortRequestSimulatedInterrupt(); }
 
 }  // namespace roo_testing::interrupt_delivery

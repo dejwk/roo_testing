@@ -1,5 +1,6 @@
 #include <Arduino.h>
 
+#include "roo_display.h"
 #include "roo_display/hal/arduino/spi.h"
 #include "roo_display/hal/spi_settings.h"
 #include "roo_scheduler.h"

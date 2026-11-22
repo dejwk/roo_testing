@@ -2,7 +2,11 @@ load("@rules_cc//cc:cc_library.bzl", "cc_library")
 
 cc_library(
     name = "interrupt_controller",
-    srcs = ["interrupt_controller.cpp"],
+    srcs = [
+        "freertos_interrupt_delivery.cpp",
+        "interrupt_controller.cpp",
+        "interrupt_delivery.h",
+    ],
     hdrs = ["interrupt_controller.h"],
     copts = ["-Werror"],
     include_prefix = "roo_testing/interrupts",
@@ -16,7 +20,11 @@ cc_library(
 
 cc_library(
     name = "interrupt_controller_exhaustion_test_support",
-    srcs = ["interrupt_controller.cpp"],
+    srcs = [
+        "freertos_interrupt_delivery.cpp",
+        "interrupt_controller.cpp",
+        "interrupt_delivery.h",
+    ],
     hdrs = ["interrupt_controller.h"],
     copts = ["-Werror"],
     include_prefix = "roo_testing/interrupts",

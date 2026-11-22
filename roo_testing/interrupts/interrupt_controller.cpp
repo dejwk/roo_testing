@@ -6,9 +6,7 @@
 #include <cstdint>
 #include <limits>
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "roo_testing_port.h"
+#include "roo_testing/interrupts/interrupt_delivery.h"
 
 namespace roo_testing {
 namespace {
@@ -57,11 +55,6 @@ bool HasUnusedGeneration(uint64_t state) {
   return Generation(state) < kMaxGeneration;
 }
 
-bool IsTaskOperationContext() {
-  return xTaskGetSchedulerState() == taskSCHEDULER_RUNNING &&
-         xPortIsFreeRtosTask() == pdTRUE && xPortInIsrContext() == pdFALSE;
-}
-
 bool Matches(uint64_t state, InterruptHandle handle) {
   return (state & kAllocated) != 0 && Generation(state) == handle.generation;
 }
@@ -99,13 +92,13 @@ InterruptRegistrationResult registerInterrupt(InterruptHandler handler,
   if (handler == nullptr || out_handle == nullptr) {
     return InterruptRegistrationResult::kInvalidArgument;
   }
-  if (!IsTaskOperationContext()) {
+  if (!interrupt_delivery::CanRegister()) {
     return InterruptRegistrationResult::kWrongContext;
   }
 
-  portENTER_CRITICAL(nullptr);
-  if (!xPortInstallSimulatedInterruptDispatcher(DispatchPendingInterrupts)) {
-    portEXIT_CRITICAL(nullptr);
+  const uint32_t dispatch_state = interrupt_delivery::Mask();
+  if (!interrupt_delivery::InstallDispatcher(DispatchPendingInterrupts)) {
+    interrupt_delivery::Restore(dispatch_state);
     return InterruptRegistrationResult::kBackendUnavailable;
   }
 
@@ -123,22 +116,22 @@ InterruptRegistrationResult registerInterrupt(InterruptHandler handler,
     slot.state.store(StateWithGeneration(generation, flags),
                      std::memory_order_release);
     *out_handle = {static_cast<uint32_t>(i), generation};
-    portEXIT_CRITICAL(nullptr);
+    interrupt_delivery::Restore(dispatch_state);
     return InterruptRegistrationResult::kRegistered;
   }
 
-  portEXIT_CRITICAL(nullptr);
+  interrupt_delivery::Restore(dispatch_state);
   return InterruptRegistrationResult::kNoCapacity;
 }
 
 bool unregisterInterrupt(InterruptHandle handle) {
-  if (!IsTaskOperationContext() || !handle.isValid() ||
+  if (!interrupt_delivery::CanRegister() || !handle.isValid() ||
       handle.slot >= interrupt_slots.size()) {
     return false;
   }
 
   InterruptSlot& slot = interrupt_slots[handle.slot];
-  portENTER_CRITICAL(nullptr);
+  const uint32_t dispatch_state = interrupt_delivery::Mask();
   uint64_t state = slot.state.load(std::memory_order_acquire);
   while (Matches(state, handle)) {
     if (slot.state.compare_exchange_weak(
@@ -146,11 +139,11 @@ bool unregisterInterrupt(InterruptHandle handle) {
             std::memory_order_acq_rel, std::memory_order_acquire)) {
       slot.handler.store(nullptr, std::memory_order_relaxed);
       slot.argument.store(nullptr, std::memory_order_relaxed);
-      portEXIT_CRITICAL(nullptr);
+      interrupt_delivery::Restore(dispatch_state);
       return true;
     }
   }
-  portEXIT_CRITICAL(nullptr);
+  interrupt_delivery::Restore(dispatch_state);
   return false;
 }
 
@@ -166,7 +159,8 @@ bool enableInterrupt(InterruptHandle handle) noexcept {
     if (slot.state.compare_exchange_weak(state, enabled_state,
                                          std::memory_order_acq_rel,
                                          std::memory_order_acquire)) {
-      if ((enabled_state & kPending) != 0) vPortRequestSimulatedInterrupt();
+      if ((enabled_state & kPending) != 0)
+        interrupt_delivery::RequestDispatch();
       return true;
     }
   }
@@ -201,7 +195,7 @@ bool setInterruptPending(InterruptHandle handle) noexcept {
                                          std::memory_order_acq_rel,
                                          std::memory_order_acquire)) {
       if ((pending_state & kEnabled) != 0) {
-        vPortRequestSimulatedInterrupt();
+        interrupt_delivery::RequestDispatch();
       }
       return true;
     }

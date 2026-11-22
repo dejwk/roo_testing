@@ -4,7 +4,7 @@
 
 namespace roo_testing {
 
-/// Raw handler invoked in emulated FreeRTOS ISR context.
+/// Raw handler invoked in the selected runtime's emulated ISR context.
 using InterruptHandler = void (*)(void* argument);
 
 /// Identifies one live interrupt-handler registration.
@@ -27,11 +27,12 @@ enum class InterruptRegistrationResult {
   kBackendUnavailable,
 };
 
-/// Registers a handler from a scheduler-running FreeRTOS task.
+/// Registers a handler from the runtime context that owns interrupt
+/// registrations.
 ///
 /// The handler and argument must remain valid until successful unregistration.
-/// The handler runs in POSIX-signal and FreeRTOS ISR context, so it must use
-/// only ISR-safe APIs and must not throw, block, lock, or allocate.
+/// The handler runs in emulated ISR context. Use only APIs supported by the
+/// selected runtime from an ISR.
 /// Generations never wrap; a slot is permanently retired after exhausting its
 /// handle identity space.
 InterruptRegistrationResult registerInterrupt(InterruptHandler handler,
@@ -39,7 +40,8 @@ InterruptRegistrationResult registerInterrupt(InterruptHandler handler,
                                               bool initially_enabled,
                                               InterruptHandle* out_handle);
 
-/// Disables and removes a registration from a FreeRTOS task.
+/// Disables and removes a registration from the context that owns
+/// registrations.
 ///
 /// A successful return is quiescent on the current single-dispatch-context
 /// backend: the handler is no longer executing. Any future parallel backend

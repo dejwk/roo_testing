@@ -4,10 +4,13 @@ on:
   workflow_call:
     inputs:
       profiles:
-        description: JSON array of host, arduino, idf, arduino_esp32s3, idf_esp32s3, arduino_esp32c3, idf_esp32c3, pico_rp2040, arduino_rp2040, or arduino_rp2040_freertos.
+        description: >-
+          JSON array of host, arduino_esp32, idf_esp32, arduino_esp32s3,
+          idf_esp32s3, arduino_esp32c3, idf_esp32c3, pico_rp2040,
+          arduino_rp2040, or arduino_rp2040_freertos.
         required: false
         type: string
-        default: '["arduino"]'
+        default: '["arduino_esp32"]'
       run_tests:
         description: Run the configured test targets in normal and ASAN builds.
         required: false
@@ -44,9 +47,7 @@ permissions:
 
 jobs:
   build_and_test:
-    name: >-
-      ${{ (matrix.profile == 'arduino' || matrix.profile == 'idf') &&
-      format('{0}_esp32', matrix.profile) || matrix.profile }}
+    name: ${{ matrix.profile }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -107,13 +108,8 @@ jobs:
               # A plain host build must bypass the interactive Arduino default.
               skip_wrapper=true
               ;;
-            arduino)
-              profile_args=(--config=roo_testing_arduino_esp32)
-              ;;
-            idf)
-              profile_args=(--config=roo_testing_idf_esp32)
-              ;;
-            arduino_esp32s3|idf_esp32s3|arduino_esp32c3|idf_esp32c3|pico_rp2040|arduino_rp2040|arduino_rp2040_freertos)
+            arduino_esp32|idf_esp32|arduino_esp32s3|idf_esp32s3|arduino_esp32c3|idf_esp32c3|\
+            pico_rp2040|arduino_rp2040|arduino_rp2040_freertos)
               profile_args=("--config=roo_testing_${PROFILE}")
               ;;
             *)

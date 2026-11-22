@@ -343,14 +343,17 @@ jobs:
   ci:
     uses: dejwk/roo_testing/.github/workflows/client-ci.yml@FULL_COMMIT_SHA
     with:
-      profiles: '["arduino", "idf"]'
+      profiles: '["arduino_esp32", "idf_esp32"]'
       build_targets: '//...'
       test_targets: '//...'
 ```
 
-`profiles` is a JSON array containing any of `host`, `arduino`, and `idf`.
-Arduino and IDF select their frontend configs explicitly; `host` bypasses the
-interactive Arduino default. Each matrix entry builds and tests normally and
+`profiles` is a JSON array of job names. The supported values are `host`,
+`arduino_esp32`, `idf_esp32`, `arduino_esp32s3`, `idf_esp32s3`,
+`arduino_esp32c3`, `idf_esp32c3`, `pico_rp2040`, `arduino_rp2040`, and
+`arduino_rp2040_freertos`. The default is `["arduino_esp32"]`.
+Embedded profiles select the matching `roo_testing_` Bazel config. The `host`
+profile bypasses the Bazelisk wrapper. Each matrix entry builds and tests normally and
 with ASAN. For emulator profiles, the ASAN phase also compiles the public
 `@roo_testing//test/profile:asan_profile_probe`, so an undefined or incomplete
 ASAN config cannot silently produce an unsanitized build. Every ASAN matrix

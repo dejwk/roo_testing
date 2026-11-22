@@ -22,7 +22,7 @@ env:
 
 jobs:
   arduino:
-    name: ${{ matrix.soc == 'esp32' && 'arduino_esp32' || format('Arduino {0}', matrix.soc) }}
+    name: arduino_${{ matrix.soc }}
     strategy:
       fail-fast: false
       matrix:
@@ -79,7 +79,7 @@ jobs:
         done
 
   arduino_asan:
-    name: ${{ matrix.soc == 'esp32' && 'arduino_esp32' || format('Arduino {0}', matrix.soc) }} (ASAN)
+    name: arduino_${{ matrix.soc }}_asan
     strategy:
       fail-fast: false
       matrix:
@@ -112,7 +112,7 @@ jobs:
           ${{ env.BAZEL_SYMBOLIZE_FLAGS }}
 
   idf_asan:
-    name: ${{ matrix.soc == 'esp32' && 'idf_esp32' || format('ESP-IDF {0}', matrix.soc) }} (ASAN)
+    name: idf_${{ matrix.soc }}_asan
     strategy:
       fail-fast: false
       matrix:
@@ -137,7 +137,7 @@ jobs:
           ${{ env.BAZEL_SYMBOLIZE_FLAGS }}
 
   idf:
-    name: ${{ matrix.soc == 'esp32' && 'idf_esp32' || format('ESP-IDF {0}', matrix.soc) }}
+    name: idf_${{ matrix.soc }}
     strategy:
       fail-fast: false
       matrix:
@@ -161,7 +161,7 @@ jobs:
           ${{ env.BAZEL_SYMBOLIZE_FLAGS }}
 
   pico:
-    name: Pico ${{ matrix.frontend }} ${{ matrix.mode }}
+    name: ${{ matrix.frontend }}_rp2040${{ matrix.mode == 'asan' && '_asan' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -187,7 +187,7 @@ jobs:
           "${options[@]}" --test_output=errors
 
   pico_freertos:
-    name: Pico FreeRTOS ${{ matrix.mode }}
+    name: arduino_rp2040_freertos${{ matrix.mode == 'asan' && '_asan' || '' }}
     strategy:
       fail-fast: false
       matrix:

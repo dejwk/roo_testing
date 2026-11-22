@@ -206,6 +206,30 @@ int64_t RecordSdkAlarm(alarm_id_t, void* data) {
   return 0;
 }
 
+alarm_id_t chained_alarm_id = 0;
+TimerObservation chained_alarm;
+
+/// Schedules a default-pool alarm from a raw hardware timer ISR.
+void ArmSdkAlarmFromTimerIrq(uint) {
+  chained_alarm_id = add_alarm_in_us(10, RecordSdkAlarm, &chained_alarm, false);
+}
+
+// Verifies a raw IRQ can add an SDK alarm on the first call into the pool.
+TEST(PicoManualTimeTest, ArmsSdkAlarmFromHardwareIrq) {
+  const uint64_t start = time_us_64();
+  chained_alarm_id = 0;
+  chained_alarm = {};
+  hardware_alarm_claim(0);
+  hardware_alarm_set_callback(0, ArmSdkAlarmFromTimerIrq);
+  EXPECT_FALSE(hardware_alarm_set_target(0, make_timeout_time_us(10)));
+  sleep_us(30);
+  EXPECT_GT(chained_alarm_id, 0);
+  EXPECT_EQ(chained_alarm.fired_at, start + 20);
+  EXPECT_EQ(chained_alarm.exception,
+            16u + PICO_TIME_DEFAULT_ALARM_POOL_HARDWARE_ALARM_NUM);
+  hardware_alarm_unclaim(0);
+}
+
 // Verifies that the SDK default alarm uses the reserved timer IRQ during sleep.
 TEST(PicoManualTimeTest, DeliversSdkAlarmDuringFixedSleep) {
   const uint64_t start = time_us_64();

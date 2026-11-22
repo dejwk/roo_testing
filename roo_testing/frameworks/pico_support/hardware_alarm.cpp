@@ -111,6 +111,12 @@ int hardware_alarm_claim_unused(bool required) {
 
 void hardware_alarm_set_callback(uint number, hardware_alarm_callback_t cb) {
   HardwareAlarm& alarm = Alarm(number);
+  if (cb != nullptr &&
+      number != PICO_TIME_DEFAULT_ALARM_POOL_HARDWARE_ALARM_NUM) {
+    // Firmware may use the default pool for the first time from a raw timer
+    // IRQ.
+    alarm_pool_init_default();
+  }
   alarm.callback = cb;
   if (cb == nullptr) {
     alarm.fired = false;

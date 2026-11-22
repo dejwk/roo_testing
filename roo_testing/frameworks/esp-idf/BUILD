@@ -248,6 +248,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":headers",
+        "//roo_testing/frameworks/esp32_shims:idf_core",
         "//roo_testing/frameworks/esp-idf/components/freertos",
     ],
 )

@@ -19,6 +19,7 @@ cc_library(
         "//roo_testing/frameworks/esp-idf:components/esp_ringbuf/ringbuf.c",
     ],
     deps = [
+        ":idf_core",
         "//roo_testing/frameworks/esp-idf:headers",
         "//roo_testing/frameworks/esp-idf/components/freertos",
     ],
@@ -49,13 +50,36 @@ cc_library(
     ],
 )
 
+# Compiled separately so ESP-IDF components can declare their heap and logging
+# dependencies directly.
+cc_library(
+    name = "idf_core",
+    srcs = ["idf_core.cpp"],
+    hdrs = ["shim_internal.h"],
+    copts = [
+        "-Werror",
+        "-Wno-error=format",
+    ],
+    local_defines = [
+        "CONFIG_ESP_TIMER_ISR_AFFINITY_CPU0=1",
+        "CONFIG_LOG_VERSION=1",
+    ],
+    visibility = ["//roo_testing/frameworks/esp-idf:__pkg__"],
+    deps = [
+        ":esp_timer_impl_host",
+        "//roo_testing/frameworks/esp-idf:headers",
+        "//roo_testing/frameworks/esp-idf/components/freertos",
+        "//roo_testing/microcontrollers/esp32:core",
+        "//roo_testing/system:timer",
+    ],
+)
+
 cc_library(
     name = "idf",
     srcs = [
         "esp_now.cpp",
         "esp_timer_host_etm.cpp",
         "esp_timer_host_lifecycle.cpp",
-        "idf_core.cpp",
         "idf_drivers.cpp",
         "idf_i2c.cpp",
         "idf_ledc.cpp",
@@ -71,7 +95,6 @@ cc_library(
     ],
     hdrs = [
         "esp_timer_host.h",
-        "shim_internal.h",
         "sntp_host.h",
         "sntp_netif.h",
         "wifi_host.h",
@@ -90,6 +113,7 @@ cc_library(
         ":esp_err_to_name",
         ":esp_ringbuf",
         ":esp_timer_impl_host",
+        ":idf_core",
         ":ledc_fade_engine",
         "//roo_testing/frameworks/esp-idf:esp_event",
         "//roo_testing/frameworks/esp-idf:headers",
@@ -244,6 +268,16 @@ cc_test(
         "//roo_testing/system:manual_time_mode",
         "@googletest//:gtest",
     ],
+)
+
+cc_test(
+    name = "idf_component_link_test",
+    size = "small",
+    srcs = ["idf_component_link_test.cpp"],
+    # Exercise shared-library linkage through the public ESP-IDF target.
+    linkstatic = False,
+    target_compatible_with = ["//roo_testing/platforms:esp_idf"],
+    deps = ["//roo_testing/frameworks/esp-idf"],
 )
 
 cc_test(

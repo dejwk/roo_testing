@@ -1,3 +1,11 @@
+# roo_testing 2.7.1
+
+- `Viewport::drawRect()` now explicitly takes ownership of its ARGB pixel buffer through `std::unique_ptr<const uint32_t[]>`. Update custom viewport overrides and move pixel buffers into calls.
+- Fix pixel-buffer leaks in transformed `FlexViewport` draws and when FLTK discards queued draws or shuts down with draws pending.
+- Add regression coverage for forwarding original and transformed pixel buffers and releasing pending FLTK buffers when the viewport is destroyed.
+
+---
+
 # roo_testing 2.7.0
 
 - Emulate all four RP2040 hardware timer channels, Pico SDK alarm pools, and repeating timers in bare-metal Pico SDK and Arduino-Pico host builds. Timer callbacks run in interrupt context during SDK waits and shared-clock delays. Raw timer handlers can schedule alarms in the default pool.

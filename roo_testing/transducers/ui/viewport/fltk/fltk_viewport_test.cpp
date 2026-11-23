@@ -39,8 +39,8 @@ TEST(FltkViewportDeathTest, RejectsUninitializedDrawingAndInvalidSizes) {
 
 // Verifies inclusive boundary coordinates and one-pixel displays remain valid.
 TEST(FltkViewportTest, AcceptsFullDisplayAndBoundaryPixels) {
-  // No consumer is registered; the local pixel stays alive until the queued
-  // messages are destroyed with the viewport.
+  // Leave the messages queued so LeakSanitizer also checks that viewport
+  // destruction releases their pixel arrays.
   const uint32_t pixel = 0xFFFFFFFF;
   FltkViewport viewport;
   viewport.Viewport::init(320, 240);
@@ -48,12 +48,15 @@ TEST(FltkViewportTest, AcceptsFullDisplayAndBoundaryPixels) {
   for (int16_t x : {0, 319}) {
     for (int16_t y : {0, 239}) {
       viewport.fillRect(x, y, x, y, pixel);
-      viewport.drawRect(x, y, x, y, &pixel);
+      viewport.drawRect(
+          x, y, x, y,
+          std::unique_ptr<const uint32_t[]>(new uint32_t[1]{pixel}));
     }
   }
   viewport.Viewport::init(1, 1);
   viewport.fillRect(0, 0, 0, 0, pixel);
-  viewport.drawRect(0, 0, 0, 0, &pixel);
+  viewport.drawRect(0, 0, 0, 0,
+                    std::unique_ptr<const uint32_t[]>(new uint32_t[1]{pixel}));
 }
 
 } // namespace

@@ -31,8 +31,9 @@ class FlexViewport : public Viewport {
   void fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
                 uint32_t color_argb) override;
 
+  /// Transforms the owned pixel array and transfers it to the delegate.
   void drawRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                const uint32_t* color_argb) override;
+                std::unique_ptr<const uint32_t[]> color_argb) override;
 
   void flush() override { delegate_.flush(); }
 

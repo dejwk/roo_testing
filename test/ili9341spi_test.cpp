@@ -1,6 +1,7 @@
 #include "roo_testing/devices/display/ili9341/ili9341spi.h"
 
 #include <cstdint>
+#include <memory>
 
 #include "gtest/gtest.h"
 #include "roo_testing/buses/spi/fake_spi.h"
@@ -27,8 +28,9 @@ class RecordingViewport : public roo_testing_transducers::Viewport {
     last_color = color_argb;
   }
 
-  void drawRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                const uint32_t* color_argb) override {}
+  /// Discards the owned rectangle.
+  void drawRect(int16_t, int16_t, int16_t, int16_t,
+                std::unique_ptr<const uint32_t[]>) override {}
 
   int16_t last_y = -1;
   uint32_t last_color = 0;

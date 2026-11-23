@@ -41,10 +41,10 @@ class FltkViewport : public Viewport {
   void fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
                 uint32_t color_argb) override;
 
-  /// Queues pixel data for a rectangle within the initialized display.
+  /// Takes ownership of pixels and queues their rectangle for drawing.
   /// Applies the same rectangle validation as fillRect().
   void drawRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                const uint32_t *color_argb) override;
+                std::unique_ptr<const uint32_t[]> color_argb) override;
 
  private:
   /// Rejects invalid drawing bounds on the caller thread, before queueing.

@@ -1,5 +1,6 @@
 #include <array>
 #include <cstdio>
+#include <memory>
 #include <vector>
 
 #include "examples/pico_spi/pattern.h"
@@ -22,11 +23,12 @@ class Framebuffer : public roo_testing_transducers::Viewport {
     }
   }
 
-  /// Copies a rectangle supplied by the shared viewport interface.
+  /// Copies pixels from the owned rectangle into the framebuffer.
   void drawRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                const uint32_t* colors) override {
+                std::unique_ptr<const uint32_t[]> colors) override {
+    const uint32_t* pixel = colors.get();
     for (int y = y0; y <= y1; ++y) {
-      for (int x = x0; x <= x1; ++x) fillRect(x, y, x, y, *colors++);
+      for (int x = x0; x <= x1; ++x) fillRect(x, y, x, y, *pixel++);
     }
   }
 

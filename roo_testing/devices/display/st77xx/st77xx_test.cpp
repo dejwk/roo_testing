@@ -1,5 +1,6 @@
 #include "roo_testing/devices/display/st77xx/st77xx.h"
 
+#include <memory>
 #include <utility>
 
 #include "gtest/gtest.h"
@@ -28,7 +29,9 @@ class RecordingViewport : public roo_testing_transducers::Viewport {
     ++writes;
   }
 
-  void drawRect(int16_t, int16_t, int16_t, int16_t, const uint32_t*) override {}
+  /// Discards the owned rectangle.
+  void drawRect(int16_t, int16_t, int16_t, int16_t,
+                std::unique_ptr<const uint32_t[]>) override {}
 
   int last_x = -1;
   int last_y = -1;

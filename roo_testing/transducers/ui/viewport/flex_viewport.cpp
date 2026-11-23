@@ -1,5 +1,7 @@
 #include "roo_testing/transducers/ui/viewport/flex_viewport.h"
 
+#include <utility>
+
 namespace roo_testing_transducers {
 
 void FlexViewport::fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
@@ -24,10 +26,10 @@ void FlexViewport::fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
 }
 
 void FlexViewport::drawRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                            const uint32_t* color_argb) {
+                            std::unique_ptr<const uint32_t[]> color_argb) {
   if (!bottom_to_top_ && !right_to_left_ && !xy_swapped_ &&
       magnification_ == 1) {
-    delegate_.drawRect(x0, y0, x1, y1, color_argb);
+    delegate_.drawRect(x0, y0, x1, y1, std::move(color_argb));
     return;
   }
   // Compute transformed destination rectangle using the same logic as fillRect.
@@ -50,7 +52,7 @@ void FlexViewport::drawRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
   int16_t h = y1 - y0 + 1;
   int dw = (dx1 - dx0 + 1) * magnification_;
   int dh = (dy1 - dy0 + 1) * magnification_;
-  uint32_t* dest = new uint32_t[dw * dh];
+  std::unique_ptr<uint32_t[]> dest(new uint32_t[static_cast<size_t>(dw) * dh]);
   for (int16_t sy = 0; sy < h; ++sy) {
     for (int16_t sx = 0; sx < w; ++sx) {
       uint32_t color = color_argb[sy * w + sx];
@@ -71,7 +73,7 @@ void FlexViewport::drawRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
   }
   delegate_.drawRect(dx0 * magnification_, dy0 * magnification_,
                      dx0 * magnification_ + dw - 1,
-                     dy0 * magnification_ + dh - 1, dest);
+                     dy0 * magnification_ + dh - 1, std::move(dest));
 }
 
 FlexViewport::FlexViewport(Viewport& delegate, int magnification,

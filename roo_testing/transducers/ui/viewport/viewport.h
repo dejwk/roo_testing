@@ -2,6 +2,8 @@
 
 #include <inttypes.h>
 
+#include <memory>
+
 namespace roo_testing_transducers {
 
 class Viewport {
@@ -18,8 +20,11 @@ class Viewport {
   virtual void fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
                         uint32_t color_argb) = 0;
 
+  /// Draws the inclusive rectangle from a row-major ARGB pixel array.
+  /// Takes ownership of @p color_argb, which contains one pixel per
+  /// coordinate. Implementations may retain it for deferred drawing.
   virtual void drawRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                        const uint32_t* color_argb) = 0;
+                        std::unique_ptr<const uint32_t[]> color_argb) = 0;
 
   virtual void flush() {}
 

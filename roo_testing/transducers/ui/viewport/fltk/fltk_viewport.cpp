@@ -7,6 +7,7 @@
 #include <mutex>
 #include <queue>
 #include <thread>
+#include <utility>
 #include <vector>
 
 // #define FLTK_DEVICE_NOISE_BITS 6
@@ -36,15 +37,9 @@ int noiseSample(int noise_bits) {
 DeviceManager* manager();
 
 struct Message {
-  Message() {}
   enum Type { INIT, FILLRECT, DRAWRECT } type;
   union Content {
-    Content() {}
     struct FillRectMessage {
-      FillRectMessage() {}
-      FillRectMessage(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                      uint32_t color_argb)
-          : x0(x0), y0(y0), x1(x1), y1(y1), color_argb(color_argb) {}
       int x0;
       int y0;
       int x1;
@@ -53,31 +48,24 @@ struct Message {
     } fillrect;
 
     struct DrawRectMessage {
-      DrawRectMessage() {}
-      DrawRectMessage(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                      const uint32_t* color_argb)
-          : x0(x0), y0(y0), x1(x1), y1(y1), color_argb(color_argb) {}
       int x0;
       int y0;
       int x1;
       int y1;
-      const uint32_t* color_argb;
     } drawrect;
 
     struct InitMessage {
-      InitMessage() {}
       int width;
       int height;
     } init;
   } content;
-  ~Message() {}
+  std::unique_ptr<const uint32_t[]> pixels;
 };
 
 Message createInitDisplayMsg(int width, int height) {
   Message message;
   message.type = Message::INIT;
-  message.content.init.width = width;
-  message.content.init.height = height;
+  message.content.init = {width, height};
   return message;
 }
 
@@ -85,17 +73,16 @@ Message createFillRectMsg(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
                           uint32_t color_argb) {
   Message message;
   message.type = Message::FILLRECT;
-  message.content.fillrect =
-      Message::Content::FillRectMessage(x0, y0, x1, y1, color_argb);
+  message.content.fillrect = {x0, y0, x1, y1, color_argb};
   return message;
 }
 
 Message createDrawRectMsg(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                          const uint32_t* color_argb) {
+                          std::unique_ptr<const uint32_t[]> color_argb) {
   Message message;
   message.type = Message::DRAWRECT;
-  message.content.drawrect =
-      Message::Content::DrawRectMessage(x0, y0, x1, y1, color_argb);
+  message.content.drawrect = {x0, y0, x1, y1};
+  message.pixels = std::move(color_argb);
   return message;
 }
 
@@ -132,7 +119,7 @@ class EventQueue {
       if (queue_.empty()) {
         pthread_cond_signal(&nonempty_);
       }
-      queue_.push(message);
+      queue_.push(std::move(message));
     }
     // Wake the FLTK thread whenever work arrives. This avoids a stall where
     // the queue is non-empty but no wake event is pending.
@@ -164,10 +151,6 @@ class EventQueue {
         *message = queue_.front().content.init;
         queue_.pop();
         return true;
-      } else if (queue_.front().type == Message::FILLRECT) {
-      } else if (queue_.front().type == Message::DRAWRECT) {
-        // Deallocate any allocated memory for drawrect messages.
-        delete[] queue_.front().content.drawrect.color_argb;
       }
       queue_.pop();
     }
@@ -182,7 +165,7 @@ class EventQueue {
       }
       if (queue_.front().type == Message::FILLRECT ||
           queue_.front().type == Message::DRAWRECT) {
-        message = queue_.front();
+        message = std::move(queue_.front());
         queue_.pop();
         return true;
       }
@@ -397,9 +380,9 @@ void FltkViewport::fillRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
 }
 
 void FltkViewport::drawRect(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
-                            const uint32_t* color_argb) {
+                            std::unique_ptr<const uint32_t[]> color_argb) {
   validateRect(x0, y0, x1, y1);
-  queue_->push(createDrawRectMsg(x0, y0, x1, y1, color_argb));
+  queue_->push(createDrawRectMsg(x0, y0, x1, y1, std::move(color_argb)));
 }
 
 FltkViewport::FltkViewport(FltkViewportOptions options)
@@ -479,7 +462,7 @@ class Device {
           int16_t y0 = drawrect.y0;
           int16_t x1 = drawrect.x1;
           int16_t y1 = drawrect.y1;
-          const uint32_t* color_argb = drawrect.color_argb;
+          const uint32_t* color_argb = msg.pixels.get();
           for (int y = y0; y <= y1; y++) {
             for (int x = x0; x <= x1; x++) {
               uint32_t color_rgbi = *color_argb << 8;
@@ -493,7 +476,6 @@ class Device {
               color_argb++;
             }
           }
-          delete[] drawrect.color_argb;
         }
       }
     }
